@@ -6,6 +6,7 @@ import android.util.Size
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,12 +29,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.example.photogallery.ui.photo.PhotoData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.math.abs
 
 @Composable
 fun PhotoDetailScreen(
@@ -48,9 +52,13 @@ fun PhotoDetailScreen(
     val index = currentIndex.coerceIn(0, photos.lastIndex)
     val photo = photos[index]
     val context = LocalContext.current
+    val density = LocalDensity.current
+    val swipeThresholdPx = with(density) { 96.dp.toPx() }
     var preview by remember(photo.cacheKey) { mutableStateOf<ImageBitmap?>(null) }
     var failed by remember(photo.cacheKey) { mutableStateOf(false) }
     var showToolbar by remember { mutableStateOf(true) }
+    var horizontalDragPx by remember { mutableStateOf(0f) }
+    var verticalDragPx by remember { mutableStateOf(0f) }
 
     LaunchedEffect(photo.cacheKey) {
         failed = false
@@ -75,6 +83,37 @@ fun PhotoDetailScreen(
         modifier = modifier
             .fillMaxSize()
             .background(Color(0xEE10140F))
+            .pointerInput(index, photos.size, swipeThresholdPx) {
+                detectDragGestures(
+                    onDragStart = {
+                        horizontalDragPx = 0f
+                        verticalDragPx = 0f
+                    },
+                    onDragEnd = {
+                        handleDetailSwipe(
+                            horizontalDragPx = horizontalDragPx,
+                            verticalDragPx = verticalDragPx,
+                            thresholdPx = swipeThresholdPx,
+                            index = index,
+                            lastIndex = photos.lastIndex,
+                            onIndexChange = onIndexChange,
+                            onDismiss = onDismiss
+                        )
+                        horizontalDragPx = 0f
+                        verticalDragPx = 0f
+                    },
+                    onDragCancel = {
+                        horizontalDragPx = 0f
+                        verticalDragPx = 0f
+                    }
+                ) { change, dragAmount ->
+                    horizontalDragPx += dragAmount.x
+                    verticalDragPx += dragAmount.y
+                    if (abs(horizontalDragPx) > abs(verticalDragPx)) {
+                        change.consume()
+                    }
+                }
+            }
             .clickable { showToolbar = !showToolbar }
             .padding(20.dp)
     ) {
@@ -130,5 +169,34 @@ fun PhotoDetailScreen(
                 }
             }
         }
+    }
+}
+
+private fun handleDetailSwipe(
+    horizontalDragPx: Float,
+    verticalDragPx: Float,
+    thresholdPx: Float,
+    index: Int,
+    lastIndex: Int,
+    onIndexChange: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    if (abs(horizontalDragPx) < thresholdPx || abs(horizontalDragPx) < abs(verticalDragPx) * 1.35f) {
+        return
+    }
+
+    if (horizontalDragPx < 0f) {
+        if (index == 0) {
+            onDismiss()
+        } else {
+            onIndexChange(index - 1)
+        }
+        return
+    }
+
+    if (index == lastIndex) {
+        onDismiss()
+    } else {
+        onIndexChange(index + 1)
     }
 }
