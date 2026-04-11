@@ -1,8 +1,7 @@
 package com.example.photogallery.ui.detail
 
 import android.graphics.BitmapFactory
-import android.os.Build
-import android.util.Size
+import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +42,7 @@ import com.example.photogallery.ui.photo.PhotoData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
+import kotlin.math.max
 import kotlin.math.sqrt
 
 @Composable
@@ -66,20 +67,18 @@ fun PhotoDetailScreen(
     var zoomScale by remember(photo.cacheKey) { mutableFloatStateOf(1f) }
     var imageOffsetX by remember(photo.cacheKey) { mutableFloatStateOf(0f) }
     var imageOffsetY by remember(photo.cacheKey) { mutableFloatStateOf(0f) }
+    val isImageDraggable = zoomScale > 1.01f
+    val isImageDraggableState by rememberUpdatedState(isImageDraggable)
 
     LaunchedEffect(photo.cacheKey) {
         failed = false
         preview = runCatching {
             withContext(Dispatchers.IO) {
-                val resolver = context.contentResolver
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    resolver.loadThumbnail(photo.uri, Size(1440, 1440), null).asImageBitmap()
-                } else {
-                    val bitmap = resolver.openInputStream(photo.uri)?.use { input ->
-                        BitmapFactory.decodeStream(input)
-                    }
-                    bitmap?.asImageBitmap() ?: error("Unable to decode preview")
-                }
+                decodeDetailBitmap(
+                    uri = photo.uri,
+                    context = context,
+                    maxDimensionPx = 4096
+                ).asImageBitmap()
             }
         }.onFailure {
             failed = true
@@ -118,7 +117,7 @@ fun PhotoDetailScreen(
                                     imageOffsetY = 0f
                                 }
                             }
-                            if (previous != null && zoomScale > 1f) {
+                            if (previous != null && isImageDraggableState) {
                                 val pan = centroid - previous
                                 imageOffsetX += pan.x
                                 imageOffsetY += pan.y
@@ -133,7 +132,7 @@ fun PhotoDetailScreen(
                         previousPinchDistance = 0f
                         previousCentroid = null
                         val delta = pressed.first().positionChange()
-                        if (zoomScale > 1.01f) {
+                        if (isImageDraggableState) {
                             transformed = true
                             imageOffsetX += delta.x
                             imageOffsetY += delta.y
@@ -169,14 +168,14 @@ fun PhotoDetailScreen(
                 contentDescription = null,
                 modifier = Modifier
                     .align(Alignment.Center)
+                    .sizeIn(maxWidth = 720.dp, maxHeight = 720.dp)
+                    .fillMaxWidth()
                     .graphicsLayer {
                         scaleX = defaultImageScale * zoomScale
                         scaleY = defaultImageScale * zoomScale
                         translationX = imageOffsetX
                         translationY = imageOffsetY
-                    }
-                    .sizeIn(maxWidth = 720.dp, maxHeight = 720.dp)
-                    .fillMaxWidth(),
+                    },
                 contentScale = ContentScale.Fit
             )
         } else {
@@ -215,6 +214,35 @@ fun PhotoDetailScreen(
             }
         }
     }
+}
+
+private fun decodeDetailBitmap(
+    uri: Uri,
+    context: android.content.Context,
+    maxDimensionPx: Int
+): android.graphics.Bitmap {
+    val resolver = context.contentResolver
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    resolver.openInputStream(uri)?.use { input ->
+        BitmapFactory.decodeStream(input, null, bounds)
+    }
+
+    val sampleSize = calculateDetailSampleSize(bounds, maxDimensionPx)
+    val options = BitmapFactory.Options().apply {
+        inSampleSize = sampleSize
+    }
+    return resolver.openInputStream(uri)?.use { input ->
+        BitmapFactory.decodeStream(input, null, options)
+    } ?: error("Unable to decode detail bitmap")
+}
+
+private fun calculateDetailSampleSize(options: BitmapFactory.Options, maxDimensionPx: Int): Int {
+    val sourceMaxDimension = max(options.outWidth, options.outHeight)
+    var sampleSize = 1
+    while (sourceMaxDimension / (sampleSize * 2) >= maxDimensionPx) {
+        sampleSize *= 2
+    }
+    return sampleSize
 }
 
 private fun distanceBetween(

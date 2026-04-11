@@ -37,6 +37,7 @@ import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.floor
+import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -130,11 +131,15 @@ fun RopeWithClips(
     }
 
     var windPhase by remember { mutableFloatStateOf(0f) }
-    var contentScale by remember { mutableFloatStateOf(1f) }
     val minContentScale = 1f
     val maxContentScale = 4f / 3f
+    val minContentScaleOvershoot = 0.80f
+    val maxContentScaleOvershoot = 1.70f
+    var settledContentScale by remember { mutableFloatStateOf(1f) }
+    var displayContentScale by remember { mutableFloatStateOf(1f) }
     val coroutineScope = rememberCoroutineScope()
     var flingJob: Job? by remember { mutableStateOf(null) }
+    var scaleReboundJob: Job? by remember { mutableStateOf(null) }
     var dragVelocityIndexPerSecond by remember { mutableFloatStateOf(0f) }
     var lastDragTimeMillis by remember { mutableLongStateOf(0L) }
     var isDragging by remember { mutableStateOf(false) }
@@ -221,34 +226,78 @@ fun RopeWithClips(
             .pointerInput(Unit) {
                 awaitEachGesture {
                     var previousDistance = 0f
+                    var lastScaleTimeMillis = 0L
+                    var scaleVelocityLogPerSecond = 0f
+                    var hasPinched = false
+                    scaleReboundJob?.cancel()
                     while (true) {
                         val event = awaitPointerEvent()
                         val pressed = event.changes.filter { it.pressed }
                         if (pressed.size < 2) {
                             previousDistance = 0f
-                            if (pressed.isEmpty()) break
+                            lastScaleTimeMillis = 0L
+                            if (hasPinched || pressed.isEmpty()) break
                             continue
                         }
 
+                        hasPinched = true
                         val currentDistance = distanceBetween(pressed[0].position, pressed[1].position)
+                        val now = pressed.first().uptimeMillis
                         if (previousDistance > 0f && currentDistance > 0f) {
                             val zoom = currentDistance / previousDistance
                             if (abs(zoom - 1f) > 0.001f) {
                                 flingJob?.cancel()
-                                contentScale = applyDampedScale(
-                                    currentScale = contentScale,
-                                    zoom = zoom,
+                                val previousDisplayScale = displayContentScale
+                                val rawGestureScale = previousDisplayScale * zoom
+                                val nextDisplayScale = applyRubberBandScale(
+                                    rawScale = rawGestureScale,
                                     minScale = minContentScale,
-                                    maxScale = maxContentScale
+                                    maxScale = maxContentScale,
+                                    minOvershootScale = minContentScaleOvershoot,
+                                    maxOvershootScale = maxContentScaleOvershoot
                                 )
+                                displayContentScale = nextDisplayScale
+                                settledContentScale = nextDisplayScale.coerceIn(minContentScale, maxContentScale)
+                                if (lastScaleTimeMillis > 0L) {
+                                    val dtSeconds = ((now - lastScaleTimeMillis).coerceAtLeast(1L)) / 1000f
+                                    scaleVelocityLogPerSecond = (ln(rawGestureScale / previousDisplayScale) / dtSeconds)
+                                        .coerceIn(-4.5f, 4.5f)
+                                }
                             }
                         }
+                        lastScaleTimeMillis = now
                         previousDistance = currentDistance
                         pressed.forEach { it.consume() }
                     }
+                    if (!hasPinched) return@awaitEachGesture
+                    if (abs(scaleVelocityLogPerSecond) > 0.025f) {
+                        scaleReboundJob?.cancel()
+                        scaleReboundJob = coroutineScope.launch {
+                            runScaleInertia(
+                                start = displayContentScale,
+                                velocityLogPerSecond = scaleVelocityLogPerSecond,
+                                minScale = minContentScale,
+                                maxScale = maxContentScale,
+                                minOvershootScale = minContentScaleOvershoot,
+                                maxOvershootScale = maxContentScaleOvershoot
+                            ) { nextDisplayScale ->
+                                displayContentScale = nextDisplayScale
+                                settledContentScale = nextDisplayScale.coerceIn(minContentScale, maxContentScale)
+                            }
+                        }
+                    } else if (settledContentScale != displayContentScale) {
+                        scaleReboundJob?.cancel()
+                        scaleReboundJob = coroutineScope.launch {
+                            val targetScale = settledContentScale
+                            runScaleRebound(start = displayContentScale, target = targetScale) { nextDisplayScale ->
+                                displayContentScale = nextDisplayScale
+                                settledContentScale = targetScale
+                            }
+                        }
+                    }
                 }
             }
-            .pointerInput(totalClipCount, minCenterIndex, maxCenterIndex, contentScale) {
+            .pointerInput(totalClipCount, minCenterIndex, maxCenterIndex, settledContentScale) {
                 detectDragGestures(
                     onDragStart = {
                         flingJob?.cancel()
@@ -298,12 +347,12 @@ fun RopeWithClips(
                     }
                 ) { change, amount ->
                     val now = change.uptimeMillis
-                    val effectiveSlotSpacing = dragSlotSpacingPx * contentScale
+                    val effectiveSlotSpacing = dragSlotSpacingPx * settledContentScale
                     val dragResistance = computeGalleryDragResistance(
                         centerIndex = targetCenterIndex,
                         minCenterIndex = minCenterIndex,
                         maxCenterIndex = maxCenterIndex,
-                        contentScale = contentScale
+                        contentScale = settledContentScale
                     )
                     val deltaIndex = amount.x / effectiveSlotSpacing * dragResistance
                     val nextCenter = (targetCenterIndex - deltaIndex).coerceIn(minDragCenterIndex, maxDragCenterIndex)
@@ -371,7 +420,7 @@ fun RopeWithClips(
         val ropeEnd = Offset(w + offscreenExtend, safeY - waveOffset)
 
         withTransform({
-            scale(contentScale, contentScale, pivot = Offset(w * 0.5f, safeY))
+            scale(displayContentScale, displayContentScale, pivot = Offset(w * 0.5f, safeY))
         }) {
             val framePhotoBounds = mutableListOf<PhotoHitBounds>()
             // Fix: Use a consistent seed per render pass so jitter doesn't dance, but don't tie it to config.seed directly
@@ -410,7 +459,7 @@ fun RopeWithClips(
                     anchor = anchor,
                     rotationDegrees = photoRotation,
                     photoStyle = photoSt,
-                    contentScale = contentScale,
+                    contentScale = displayContentScale,
                     contentScalePivot = Offset(w * 0.5f, safeY)
                 )
                 PhotoRenderer.drawPolaroid(
@@ -473,31 +522,105 @@ private suspend fun runCenterIndexFling(
     onUpdate(position.coerceIn(minCenterIndex, maxCenterIndex))
 }
 
+private suspend fun runScaleRebound(
+    start: Float,
+    target: Float,
+    onUpdate: (Float) -> Unit
+) {
+    var scale = start
+    var lastFrameNanos = withFrameNanos { it }
+
+    while (abs(scale - target) > 0.001f) {
+        val now = withFrameNanos { it }
+        val dt = ((now - lastFrameNanos) / 1_000_000_000f).coerceIn(0.001f, 0.032f)
+        lastFrameNanos = now
+
+        val approach = 1f - exp(-18f * dt)
+        val nextScale = scale + (target - scale) * approach
+        scale = if ((target - scale) * (target - nextScale) <= 0f) target else nextScale
+        onUpdate(scale)
+    }
+
+    onUpdate(target)
+}
+
+private suspend fun runScaleInertia(
+    start: Float,
+    velocityLogPerSecond: Float,
+    minScale: Float,
+    maxScale: Float,
+    minOvershootScale: Float,
+    maxOvershootScale: Float,
+    onUpdate: (Float) -> Unit
+) {
+    var scale = start
+    var velocity = velocityLogPerSecond.coerceIn(-4.5f, 4.5f)
+    var lastFrameNanos = withFrameNanos { it }
+
+    while (abs(velocity) > 0.008f) {
+        val now = withFrameNanos { it }
+        val dt = ((now - lastFrameNanos) / 1_000_000_000f).coerceIn(0.001f, 0.032f)
+        lastFrameNanos = now
+
+        val rawTarget = scale * exp(velocity * dt)
+        scale = applyRubberBandScale(
+            rawScale = rawTarget,
+            minScale = minScale,
+            maxScale = maxScale,
+            minOvershootScale = minOvershootScale,
+            maxOvershootScale = maxOvershootScale
+        )
+        val beyond = when {
+            scale < minScale -> scale - minScale
+            scale > maxScale -> scale - maxScale
+            else -> 0f
+        }
+        if (beyond != 0f) {
+            if (beyond * velocity > 0f) {
+                velocity *= exp(-9f * dt)
+            } else {
+                velocity += -beyond * 48f * dt
+            }
+            velocity *= exp(-4.2f * dt)
+            if (abs(velocity) < 0.08f) break
+        } else {
+            velocity *= exp(-1.8f * dt)
+        }
+        onUpdate(scale)
+    }
+
+    val settledScale = scale.coerceIn(minScale, maxScale)
+    if (settledScale != scale) {
+        runScaleRebound(start = scale, target = settledScale, onUpdate = onUpdate)
+    } else {
+        onUpdate(settledScale)
+    }
+}
+
 private fun distanceBetween(a: Offset, b: Offset): Float {
     val dx = a.x - b.x
     val dy = a.y - b.y
     return sqrt(dx * dx + dy * dy)
 }
 
-private fun applyDampedScale(
-    currentScale: Float,
-    zoom: Float,
+private fun applyRubberBandScale(
+    rawScale: Float,
     minScale: Float,
-    maxScale: Float
+    maxScale: Float,
+    minOvershootScale: Float,
+    maxOvershootScale: Float
 ): Float {
-    val rawTarget = currentScale * zoom
-    val beyondMin = (minScale - rawTarget).coerceAtLeast(0f)
-    val beyondMax = (rawTarget - maxScale).coerceAtLeast(0f)
-    val edgeResistance = when {
-        beyondMin > 0f -> 1f / (1f + beyondMin * 10f)
-        beyondMax > 0f -> 1f / (1f + beyondMax * 10f)
-        else -> {
-            val distanceToEdge = min(currentScale - minScale, maxScale - currentScale)
-            val normalizedEdgeDistance = (distanceToEdge / (maxScale - minScale).coerceAtLeast(0.001f)).coerceIn(0f, 1f)
-            0.55f + normalizedEdgeDistance * 0.45f
+    return when {
+        rawScale < minScale -> {
+            val overshoot = minScale - rawScale
+            (minScale - overshoot / (1f + overshoot * 4.2f)).coerceAtLeast(minOvershootScale)
         }
+        rawScale > maxScale -> {
+            val overshoot = rawScale - maxScale
+            (maxScale + overshoot / (1f + overshoot * 4.2f)).coerceAtMost(maxOvershootScale)
+        }
+        else -> rawScale
     }
-    return (currentScale + (rawTarget - currentScale) * edgeResistance).coerceIn(minScale, maxScale)
 }
 
 private fun computeGalleryDragResistance(
