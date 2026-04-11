@@ -104,8 +104,8 @@ fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = R
             min(verticalOffsetPx, h * 0.42f)
         }
 
-        val widthDrivenPhoto = (w * if (isLandscape) 0.82f else 0.9f) /
-            (visibleClipSlots + if (isLandscape) 0.35f else 0.15f)
+        val widthDrivenPhoto = (w * if (isLandscape) 0.95f else 0.9f) /
+            (visibleClipSlots * if (isLandscape) 1.15f else 1.05f)
         val widthScale = widthDrivenPhoto.coerceIn(95f, 170f) / config.photoStyle.photoWidth
         val heightScale = (h / if (isLandscape) 560f else 720f).coerceIn(0.55f, 2.2f)
         val scale = min(widthScale, heightScale)
@@ -142,9 +142,9 @@ fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = R
             handDrawnJitter = config.photoStyle.handDrawnJitter * scale
         )
 
-        val slotSpacing = photoSt.photoWidth * if (isLandscape) 0.84f else 0.92f
+        val slotSpacing = photoSt.photoWidth * if (isLandscape) 1.15f else 1.05f
         dragSlotSpacingPx = slotSpacing
-        val offscreenExtend = max(w * 0.12f, slotSpacing * 0.9f)
+        val offscreenExtend = max(w * 0.2f, slotSpacing * cacheEachSide * 1.2f)
 
         val sagFloor = h * if (isLandscape) 0.055f else 0.07f
         val ropeSag = max(ropeSt.sagAmount, sagFloor)
@@ -178,8 +178,8 @@ fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = R
             val hp = createHangPointAtX(sampledPoints, slotX, idx)
 
             // Hard-constraint: clip top is locked to rope tangent, photo top is locked to clip mouth.
-            val clipRotation = hp.tangentAngle + pendulumAngle * 0.2f
-            val photoRotation = clipRotation + pendulumAngle * 0.35f
+            val clipRotation = hp.tangentAngle + pendulumAngle * 1.5f
+            val photoRotation = clipRotation // Fix: Remove independent swing so photo stays firmly attached to clip
             val anchor = computePhotoAnchor(hp.ropePosition, clipRotation, clipSt)
             PhotoRenderer.drawPolaroid(
                 this,
@@ -256,7 +256,10 @@ private fun computePhotoAnchor(
 ): Offset {
     val rad = Math.toRadians(clipRotation.toDouble())
     // Pin photo upper edge directly under the clothespin mouth.
-    val localY = (clipSt.headLength * 0.58f).coerceAtLeast(6f)
+    // Fix: Use actual sum of clip parts and scale the offset to prevent deviation
+    val yBodyEnd = clipSt.headLength + clipSt.gripLength + clipSt.bodyLength
+    val scaleRatio = clipSt.totalHeight / 70f
+    val localY = yBodyEnd - 6f * scaleRatio
     return Offset(
         x = clipAnchor.x - sin(rad).toFloat() * localY,
         y = clipAnchor.y + cos(rad).toFloat() * localY

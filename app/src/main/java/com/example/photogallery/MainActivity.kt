@@ -33,7 +33,8 @@ fun PhotoGalleryScreen() {
         RopeWithClips(
             modifier = Modifier.fillMaxSize(),
             config = RopeWithClipsConfig(
-                clipCount = 5,
+                clipCount = 15,
+                cacheEachSide = 3,
                 ropeStyle = RopeStyle(
                     sagAmount = 35f,
                     jitterAmount = 4f,

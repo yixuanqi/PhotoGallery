@@ -52,7 +52,7 @@ object RopeGenerator {
         points.mapIndexed { idx, point ->
             if (idx == 0 || idx == points.size - 1) point
             else Offset(
-                x = point.x + (random.nextFloat() - 0.5f) * 2f * amount,
+                x = point.x, // Fix: Remove X jitter to maintain monotonic X for stable hang point calculation during drag
                 y = point.y + (random.nextFloat() - 0.5f) * 2f * amount * 0.7f
             )
         }

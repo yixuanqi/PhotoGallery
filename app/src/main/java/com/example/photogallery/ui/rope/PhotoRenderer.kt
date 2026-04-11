@@ -48,7 +48,8 @@ object PhotoRenderer {
 
     fun drawPolaroid(scope: DrawScope, anchor: Offset, config: PhotoConfig) {
         val rng = java.util.Random(config.seed)
-        val rotDeg = config.additionalRotation + (rng.nextFloat() - 0.5f) * config.style.rotationRange * 0.35f
+        // Fix: Remove the random rotation applied per-photo to ensure the photo aligns perfectly with the clip
+        val rotDeg = config.additionalRotation
         val hasCurlRight = rng.nextFloat() < config.style.curlChance
         val hasCurlLeft = !hasCurlRight && rng.nextFloat() < 0.35f
         val hasWavyEdges = rng.nextFloat() < config.style.wavyEdgeChance
@@ -56,7 +57,8 @@ object PhotoRenderer {
 
         scope.withTransform({
             translate(anchor.x, anchor.y)
-            rotate(rotDeg.toFloat())
+            // Fix: Explicitly set pivot to Offset.Zero to rotate exactly around the anchor point
+            rotate(rotDeg.toFloat(), pivot = Offset.Zero)
             // Keep photo top-center fixed at anchor.
             translate(0f, config.style.photoHeight / 2f)
         }) {
