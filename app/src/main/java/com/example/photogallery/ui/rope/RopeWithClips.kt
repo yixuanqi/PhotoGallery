@@ -78,7 +78,9 @@ fun RopeWithClips(
     config: RopeWithClipsConfig = RopeWithClipsConfig(),
     photos: List<PhotoData> = emptyList(),
     photoStates: Map<String, PhotoState> = emptyMap(),
-    onViewportChanged: (PhotoViewportRequest) -> Unit = {}
+    scrollToIndex: Int? = null,
+    onViewportChanged: (PhotoViewportRequest) -> Unit = {},
+    onScrollToIndexConsumed: () -> Unit = {}
 ) {
     val density = LocalDensity.current
     val configuration = LocalConfiguration.current
@@ -105,6 +107,15 @@ fun RopeWithClips(
     var dragSlotSpacingPx by remember { mutableFloatStateOf(120f) }
     if (targetCenterIndex < minDragCenterIndex || targetCenterIndex > maxDragCenterIndex) {
         targetCenterIndex = targetCenterIndex.coerceIn(minDragCenterIndex, maxDragCenterIndex)
+    }
+
+    LaunchedEffect(scrollToIndex, totalClipCount, visibleClipSlots) {
+        scrollToIndex?.let { requestedIndex ->
+            targetCenterIndex = requestedIndex
+                .toFloat()
+                .coerceIn(minCenterIndex, maxCenterIndex)
+            onScrollToIndexConsumed()
+        }
     }
 
     var windPhase by remember { mutableFloatStateOf(0f) }

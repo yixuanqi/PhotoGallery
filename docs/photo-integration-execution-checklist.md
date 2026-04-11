@@ -270,13 +270,13 @@ data class PhotoGroup(
 
 ### 阶段 4：时间轴选择器与快速定位（对应步骤 15、17）
 
-- [ ] 新增 `ui/timeline/TimelineSelector.kt`。
-- [ ] 设计入口：点击顶部/浮动时间指示器打开，不使用“双指下滑”作为首选入口，避免与现有双指缩放冲突。
-- [ ] 按年月分组展示可跳转项。
-- [ ] 点击月份后获取该组 `startIndex`。
-- [ ] 在 `RopeWithClips` 暴露受控跳转 API 或状态，例如 `targetCenterIndex` / `scrollToIndex`。
-- [ ] 跳转后触发目标位置附近缩略图加载。
-- [ ] 验收：
+- [x] 新增 `ui/timeline/TimelineSelector.kt`。
+- [x] 设计入口：点击顶部/浮动时间指示器打开，不使用“双指下滑”作为首选入口，避免与现有双指缩放冲突。
+- [x] 按年月分组展示可跳转项。
+- [x] 点击月份后获取该组 `startIndex`。
+- [x] 在 `RopeWithClips` 暴露受控跳转 API 或状态，例如 `targetCenterIndex` / `scrollToIndex`。
+- [x] 跳转后触发目标位置附近缩略图加载。
+- [x] 验收：
   - 点击月份能跳到该月第一张照片。
   - 跳转动画不破坏现有拖拽和 fling。
   - Android 14+ 部分授权导致分组变化时，时间轴能刷新。

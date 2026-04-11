@@ -6,6 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -41,6 +42,7 @@ import com.example.photogallery.ui.rope.RopeStyle
 import com.example.photogallery.ui.rope.PhotoStyle
 import com.example.photogallery.ui.timeline.PhotoGroup
 import com.example.photogallery.ui.timeline.TimeIndicator
+import com.example.photogallery.ui.timeline.TimelineSelector
 import com.example.photogallery.ui.timeline.groupPhotosByMonth
 import kotlinx.coroutines.delay
 
@@ -62,7 +64,9 @@ fun PhotoGalleryScreen() {
     val photoGroups = remember(photos) { groupPhotosByMonth(photos) }
     var activePhotoGroup by remember { mutableStateOf<PhotoGroup?>(null) }
     var showTimeIndicator by remember { mutableStateOf(false) }
+    var showTimelineSelector by remember { mutableStateOf(false) }
     var timeIndicatorPulse by remember { mutableLongStateOf(0L) }
+    var scrollToIndex by remember { mutableStateOf<Int?>(null) }
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) {
@@ -100,6 +104,8 @@ fun PhotoGalleryScreen() {
             modifier = Modifier.fillMaxSize(),
             photos = photos,
             photoStates = photoStates,
+            scrollToIndex = scrollToIndex,
+            onScrollToIndexConsumed = { scrollToIndex = null },
             onViewportChanged = { request ->
                 viewModel.onViewportChanged(
                     visibleRange = request.visibleRange,
@@ -176,8 +182,25 @@ fun PhotoGalleryScreen() {
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = 48.dp)
+                        .clickable {
+                            showTimelineSelector = true
+                            showTimeIndicator = true
+                        }
                 )
             }
+        }
+        if (showTimelineSelector) {
+            TimelineSelector(
+                groups = photoGroups,
+                onGroupSelected = { group ->
+                    scrollToIndex = group.startIndex
+                    activePhotoGroup = group
+                    showTimeIndicator = true
+                    timeIndicatorPulse += 1
+                    showTimelineSelector = false
+                },
+                onDismiss = { showTimelineSelector = false }
+            )
         }
         if (permissionState == PhotoPermissionState.Denied && hasRequestedPermission) {
             Column(
