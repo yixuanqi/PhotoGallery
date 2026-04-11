@@ -1,18 +1,18 @@
 package com.example.photogallery.ui.rope
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -67,32 +67,46 @@ fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = R
     val minCenterIndex = halfVisible.coerceAtMost((totalClipCount - 1).toFloat())
     val maxCenterIndex = ((totalClipCount - 1).toFloat() - halfVisible).coerceAtLeast(minCenterIndex)
 
-    var centerIndexFloat by remember(totalClipCount, visibleClipSlots, config.seed) {
+    var targetCenterIndex by remember(totalClipCount, visibleClipSlots, config.seed) {
         mutableFloatStateOf(((totalClipCount - 1) / 2f).coerceIn(minCenterIndex, maxCenterIndex))
     }
     var dragSlotSpacingPx by remember { mutableFloatStateOf(120f) }
-    if (centerIndexFloat < minCenterIndex || centerIndexFloat > maxCenterIndex) {
-        centerIndexFloat = centerIndexFloat.coerceIn(minCenterIndex, maxCenterIndex)
+    if (targetCenterIndex < minCenterIndex || targetCenterIndex > maxCenterIndex) {
+        targetCenterIndex = targetCenterIndex.coerceIn(minCenterIndex, maxCenterIndex)
     }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "pendulum")
+    var windPhase by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(config.enableAnimation) {
+        if (!config.enableAnimation) {
+            windPhase = 0f
+            return@LaunchedEffect
+        }
 
-    val windPhase by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = (PI.toFloat() * 2f),
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 7200, easing = LinearEasing)
+        val startNanos = withFrameNanos { it }
+        while (true) {
+            withFrameNanos { now ->
+                val seconds = (now - startNanos) / 1_000_000_000f
+                windPhase = seconds * (2f * PI.toFloat() / 7.2f)
+            }
+        }
+    }
+
+    val centerIndexFloat by animateFloatAsState(
+        targetValue = targetCenterIndex,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow
         ),
-        label = "wind_phase"
+        label = "center_index"
     )
 
-    val random = remember(config.seed) { java.util.Random(config.seed) }
+    val random = remember { java.util.Random() } // Fix: Remove seed dependency so it doesn't reset on every recomposition
 
     Canvas(
         modifier = modifier.fillMaxSize().pointerInput(totalClipCount, minCenterIndex, maxCenterIndex) {
             detectDragGestures(onDragStart = {}, onDragEnd = {}, onDragCancel = {}) { _, amount ->
                 val deltaIndex = amount.x / dragSlotSpacingPx
-                centerIndexFloat = (centerIndexFloat - deltaIndex).coerceIn(minCenterIndex, maxCenterIndex)
+                targetCenterIndex = (targetCenterIndex - deltaIndex).coerceIn(minCenterIndex, maxCenterIndex)
             }
         }
     ) {
@@ -154,7 +168,9 @@ fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = R
         val ropeStart = Offset(-offscreenExtend, safeY + waveOffset)
         val ropeEnd = Offset(w + offscreenExtend, safeY - waveOffset)
 
-        random.setSeed(config.seed)
+        // Fix: Use a consistent seed per render pass so jitter doesn't dance, but don't tie it to config.seed directly
+        val renderSeed = config.seed
+        random.setSeed(renderSeed)
         val sampledPoints = RopeGenerator.generateSampledPoints(ropeStart, ropeEnd, ropeStWithSag, random)
 
         RopeRenderer.drawClothesline(this, sampledPoints, ropeStWithSag, config.ropeColor)
@@ -216,10 +232,14 @@ private fun createHangPointAtX(sampledPoints: List<Offset>, x: Float, index: Int
     }
 
     var targetIndex = -1
+    // Fix: Search from left to right and explicitly handle the monotonic X requirement.
+    // If we find the interval that contains X, we break immediately.
     for (i in 0 until sampledPoints.size - 1) {
         val p0 = sampledPoints[i]
         val p1 = sampledPoints[i + 1]
-        if ((x >= p0.x && x <= p1.x) || (x <= p0.x && x >= p1.x)) {
+        val minX = min(p0.x, p1.x)
+        val maxX = max(p0.x, p1.x)
+        if (x in minX..maxX) {
             targetIndex = i
             break
         }
@@ -242,11 +262,19 @@ private fun createHangPointAtX(sampledPoints: List<Offset>, x: Float, index: Int
         x = p0.x + (p1.x - p0.x) * frac,
         y = p0.y + (p1.y - p0.y) * frac
     )
-    val tangentAngle = Math.toDegrees(
-        kotlin.math.atan2((p1.y - p0.y).toDouble(), (p1.x - p0.x).toDouble())
-    ).toFloat()
+    val tangentAngle = computeSmoothedTangent(sampledPoints, targetIndex)
     
     return HangPoint(index, position, tangentAngle, tangentAngle - 90f)
+}
+
+private fun computeSmoothedTangent(points: List<Offset>, index: Int): Float {
+    val from = (index - 2).coerceAtLeast(0)
+    val to = (index + 3).coerceAtMost(points.lastIndex)
+    val p0 = points[from]
+    val p1 = points[to]
+    return Math.toDegrees(
+        kotlin.math.atan2((p1.y - p0.y).toDouble(), (p1.x - p0.x).toDouble())
+    ).toFloat()
 }
 
 private fun computePhotoAnchor(
