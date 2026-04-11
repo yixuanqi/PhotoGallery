@@ -4,27 +4,37 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sqrt
 import kotlin.math.sin
 
 data class RopeWithClipsConfig(
@@ -76,6 +86,11 @@ fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = R
     }
 
     var windPhase by remember { mutableFloatStateOf(0f) }
+    var contentScale by remember { mutableFloatStateOf(1f) }
+    val coroutineScope = rememberCoroutineScope()
+    var flingJob: Job? by remember { mutableStateOf(null) }
+    var dragVelocityIndexPerSecond by remember { mutableFloatStateOf(0f) }
+    var lastDragTimeMillis by remember { mutableLongStateOf(0L) }
     LaunchedEffect(config.enableAnimation) {
         if (!config.enableAnimation) {
             windPhase = 0f
@@ -103,12 +118,71 @@ fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = R
     val random = remember { java.util.Random() } // Fix: Remove seed dependency so it doesn't reset on every recomposition
 
     Canvas(
-        modifier = modifier.fillMaxSize().pointerInput(totalClipCount, minCenterIndex, maxCenterIndex) {
-            detectDragGestures(onDragStart = {}, onDragEnd = {}, onDragCancel = {}) { _, amount ->
-                val deltaIndex = amount.x / dragSlotSpacingPx
-                targetCenterIndex = (targetCenterIndex - deltaIndex).coerceIn(minCenterIndex, maxCenterIndex)
+        modifier = modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    var previousDistance = 0f
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val pressed = event.changes.filter { it.pressed }
+                        if (pressed.size < 2) {
+                            previousDistance = 0f
+                            if (pressed.isEmpty()) break
+                            continue
+                        }
+
+                        val currentDistance = distanceBetween(pressed[0].position, pressed[1].position)
+                        if (previousDistance > 0f && currentDistance > 0f) {
+                            val zoom = currentDistance / previousDistance
+                            if (abs(zoom - 1f) > 0.001f) {
+                                flingJob?.cancel()
+                                contentScale = (contentScale * zoom).coerceIn(1f, 2f)
+                            }
+                        }
+                        previousDistance = currentDistance
+                        pressed.forEach { it.consume() }
+                    }
+                }
             }
-        }
+            .pointerInput(totalClipCount, minCenterIndex, maxCenterIndex, contentScale) {
+                detectDragGestures(
+                    onDragStart = {
+                        flingJob?.cancel()
+                        dragVelocityIndexPerSecond = 0f
+                        lastDragTimeMillis = 0L
+                    },
+                    onDragEnd = {
+                        val startVelocity = dragVelocityIndexPerSecond
+                        if (abs(startVelocity) > 0.15f) {
+                            flingJob?.cancel()
+                            flingJob = coroutineScope.launch {
+                                runCenterIndexFling(
+                                    start = targetCenterIndex,
+                                    velocityIndexPerSecond = startVelocity,
+                                    minCenterIndex = minCenterIndex,
+                                    maxCenterIndex = maxCenterIndex
+                                ) { targetCenterIndex = it }
+                            }
+                        }
+                    },
+                    onDragCancel = {
+                        flingJob?.cancel()
+                        targetCenterIndex = targetCenterIndex.coerceIn(minCenterIndex, maxCenterIndex)
+                    }
+                ) { change, amount ->
+                    val now = change.uptimeMillis
+                    val effectiveSlotSpacing = dragSlotSpacingPx * contentScale
+                    val deltaIndex = amount.x / effectiveSlotSpacing
+                    val nextCenter = (targetCenterIndex - deltaIndex).coerceIn(minCenterIndex, maxCenterIndex)
+                    if (lastDragTimeMillis > 0L) {
+                        val dtSeconds = ((now - lastDragTimeMillis).coerceAtLeast(1L)) / 1000f
+                        dragVelocityIndexPerSecond = ((nextCenter - targetCenterIndex) / dtSeconds).coerceIn(-8f, 8f)
+                    }
+                    lastDragTimeMillis = now
+                    targetCenterIndex = nextCenter
+                }
+            }
     ) {
         val w = size.width
         val h = size.height
@@ -160,7 +234,7 @@ fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = R
         dragSlotSpacingPx = slotSpacing
         val offscreenExtend = max(w * 0.2f, slotSpacing * cacheEachSide * 1.2f)
 
-        val sagFloor = h * if (isLandscape) 0.055f else 0.07f
+        val sagFloor = h * if (isLandscape) 0.09f else 0.12f
         val ropeSag = max(ropeSt.sagAmount, sagFloor)
         val ropeStWithSag = ropeSt.copy(sagAmount = ropeSag)
 
@@ -168,49 +242,98 @@ fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = R
         val ropeStart = Offset(-offscreenExtend, safeY + waveOffset)
         val ropeEnd = Offset(w + offscreenExtend, safeY - waveOffset)
 
-        // Fix: Use a consistent seed per render pass so jitter doesn't dance, but don't tie it to config.seed directly
-        val renderSeed = config.seed
-        random.setSeed(renderSeed)
-        val sampledPoints = RopeGenerator.generateSampledPoints(ropeStart, ropeEnd, ropeStWithSag, random)
+        withTransform({
+            scale(contentScale, contentScale, pivot = Offset(w * 0.5f, safeY))
+        }) {
+            // Fix: Use a consistent seed per render pass so jitter doesn't dance, but don't tie it to config.seed directly
+            val renderSeed = config.seed
+            random.setSeed(renderSeed)
+            val sampledPoints = RopeGenerator.generateSampledPoints(ropeStart, ropeEnd, ropeStWithSag, random)
 
-        RopeRenderer.drawClothesline(this, sampledPoints, ropeStWithSag, config.ropeColor)
+            RopeRenderer.drawClothesline(this, sampledPoints, ropeStWithSag, config.ropeColor)
 
-        val desiredStart = floor(centerIndexFloat - visibleClipSlots / 2f - cacheEachSide).toInt()
-        val maxWindowStart = max(0, totalClipCount - renderSlotCount)
-        val windowStart = desiredStart.coerceIn(0, maxWindowStart)
-        val windowEndExclusive = min(totalClipCount, windowStart + renderSlotCount)
-        val viewportCenterX = w * 0.5f
+            val desiredStart = floor(centerIndexFloat - visibleClipSlots / 2f - cacheEachSide).toInt()
+            val maxWindowStart = max(0, totalClipCount - renderSlotCount)
+            val windowStart = desiredStart.coerceIn(0, maxWindowStart)
+            val windowEndExclusive = min(totalClipCount, windowStart + renderSlotCount)
+            val viewportCenterX = w * 0.5f
 
-        for (idx in windowStart until windowEndExclusive) {
-            val pendulumAngle = if (config.enableAnimation) {
-                val pc = createPendulumConfig(config.seed, idx)
-                sin(windPhase * pc.primaryFreq + pc.phase) * pc.amplitude +
-                    sin(windPhase * pc.secondaryFreq + pc.phase * 1.4f) * (pc.amplitude * 0.35f)
-            } else {
-                0f
-            }
+            for (idx in windowStart until windowEndExclusive) {
+                val pendulumAngle = if (config.enableAnimation) {
+                    val pc = createPendulumConfig(config.seed, idx)
+                    sin(windPhase * pc.primaryFreq + pc.phase) * pc.amplitude +
+                        sin(windPhase * pc.secondaryFreq + pc.phase * 1.4f) * (pc.amplitude * 0.35f)
+                } else {
+                    0f
+                }
 
-            val slotX = viewportCenterX + (idx - centerIndexFloat) * slotSpacing
-            val hp = createHangPointAtX(sampledPoints, slotX, idx)
+                val slotX = viewportCenterX + (idx - centerIndexFloat) * slotSpacing
+                val hp = createHangPointAtX(sampledPoints, slotX, idx)
 
-            // Hard-constraint: clip top is locked to rope tangent, photo top is locked to clip mouth.
-            val clipRotation = hp.tangentAngle + pendulumAngle * 1.5f
-            val photoRotation = clipRotation // Fix: Remove independent swing so photo stays firmly attached to clip
-            val anchor = computePhotoAnchor(hp.ropePosition, clipRotation, clipSt)
-            PhotoRenderer.drawPolaroid(
-                this,
-                anchor,
-                PhotoConfig(
-                    index = idx,
-                    style = photoSt,
-                    seed = config.seed + idx * 777L,
-                    additionalRotation = photoRotation
+                // Hard-constraint: clip top is locked to rope tangent, photo top is locked to clip mouth.
+                val clipRotation = hp.tangentAngle + pendulumAngle * 1.5f
+                val photoRotation = clipRotation // Fix: Remove independent swing so photo stays firmly attached to clip
+                val anchor = computePhotoAnchor(hp.ropePosition, clipRotation, clipSt)
+                PhotoRenderer.drawPolaroid(
+                    this,
+                    anchor,
+                    PhotoConfig(
+                        index = idx,
+                        style = photoSt,
+                        seed = config.seed + idx * 777L,
+                        additionalRotation = photoRotation
+                    )
                 )
-            )
-            val clipRandom = java.util.Random(config.seed + idx * 500L)
-            ClipRenderer.drawClothespin(this, hp, clipSt, clipRandom, clipRotation)
+                val clipRandom = java.util.Random(config.seed + idx * 500L)
+                ClipRenderer.drawClothespin(this, hp, clipSt, clipRandom, clipRotation)
+            }
         }
     }
+}
+
+private suspend fun runCenterIndexFling(
+    start: Float,
+    velocityIndexPerSecond: Float,
+    minCenterIndex: Float,
+    maxCenterIndex: Float,
+    onUpdate: (Float) -> Unit
+) {
+    var position = start
+    var velocity = velocityIndexPerSecond.coerceIn(-8f, 8f)
+    val overscroll = 0.38f
+    val minOver = minCenterIndex - overscroll
+    val maxOver = maxCenterIndex + overscroll
+    var lastFrameNanos = withFrameNanos { it }
+
+    while (abs(velocity) > 0.02f || position < minCenterIndex || position > maxCenterIndex) {
+        val now = withFrameNanos { it }
+        val dt = ((now - lastFrameNanos) / 1_000_000_000f).coerceIn(0.001f, 0.032f)
+        lastFrameNanos = now
+
+        position = (position + velocity * dt).coerceIn(minOver, maxOver)
+        val beyond = when {
+            position < minCenterIndex -> position - minCenterIndex
+            position > maxCenterIndex -> position - maxCenterIndex
+            else -> 0f
+        }
+        if (beyond != 0f) {
+            velocity += -beyond * 36f * dt
+            if ((position <= minOver && velocity < 0f) || (position >= maxOver && velocity > 0f)) {
+                velocity *= -0.35f
+            }
+        }
+
+        velocity *= exp(-4.2f * dt)
+        onUpdate(position)
+    }
+
+    onUpdate(position.coerceIn(minCenterIndex, maxCenterIndex))
+}
+
+private fun distanceBetween(a: Offset, b: Offset): Float {
+    val dx = a.x - b.x
+    val dy = a.y - b.y
+    return sqrt(dx * dx + dy * dy)
 }
 
 private fun createPendulumConfig(seed: Long, index: Int): PendulumConfig {

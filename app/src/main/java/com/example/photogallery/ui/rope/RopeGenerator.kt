@@ -30,20 +30,18 @@ data class RopeStyle(
 object RopeGenerator {
 
     fun generateSampledPoints(start: Offset, end: Offset, style: RopeStyle, random: java.util.Random): List<Offset> {
-        val basePoints = generateCubicBezierPoints(start, end, style, style.sampleCount)
+        val basePoints = generateGravitySagPoints(start, end, style, style.sampleCount)
         return applyJitter(basePoints, style.jitterAmount, random)
     }
 
-    private fun generateCubicBezierPoints(start: Offset, end: Offset, style: RopeStyle, sampleCount: Int): List<Offset> {
-        val midX = (start.x + end.x) / 2f; val midY = (start.y + end.y) / 2f
-        val cp1 = Offset(x = start.x + (end.x - start.x) * 0.25f, y = midY + style.sagAmount * 0.6f)
-        val cp2 = Offset(x = start.x + (end.x - start.x) * 0.75f, y = midY + style.sagAmount * 0.95f)
+    private fun generateGravitySagPoints(start: Offset, end: Offset, style: RopeStyle, sampleCount: Int): List<Offset> {
         return (0..sampleCount).map { i ->
-            val t = i.toFloat() / sampleCount; val u = 1f - t; val uu = u * u; val uuu = uu * u
-            val tt = t * t; val ttt = tt * t
+            val t = i.toFloat() / sampleCount
+            val baselineY = start.y + (end.y - start.y) * t
+            val gravitySag = sin(t * PI.toFloat()) * style.sagAmount
             Offset(
-                x = uuu * start.x + 3f * uu * t * cp1.x + 3f * u * tt * cp2.x + ttt * end.x,
-                y = uuu * start.y + 3f * uu * t * cp1.y + 3f * u * tt * cp2.y + ttt * end.y
+                x = start.x + (end.x - start.x) * t,
+                y = baselineY + gravitySag
             )
         }
     }
