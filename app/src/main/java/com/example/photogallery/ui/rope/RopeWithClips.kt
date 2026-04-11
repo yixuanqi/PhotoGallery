@@ -1,0 +1,198 @@
+package com.example.photogallery.ui.rope
+
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
+import kotlin.math.PI
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.cos
+import kotlin.math.sin
+
+data class RopeWithClipsConfig(
+    val clipCount: Int = 5,
+    val ropeStyle: RopeStyle = RopeStyle(),
+    val clipStyle: ClipStyle = ClipStyle(),
+    val photoStyle: PhotoStyle = PhotoStyle(),
+    val ropeColor: Color = Color(0xFF8B9177),
+    val verticalOffsetDp: Int = 100,
+    val seed: Long = 42L,
+    val enableAnimation: Boolean = true,
+    val responsiveClipCount: Boolean = true,
+    val portraitClipCount: Int = 3,
+    val landscapeClipCount: Int = 5
+)
+
+data class PendulumConfig(
+    val amplitude: Float,
+    val primaryFreq: Float,
+    val secondaryFreq: Float,
+    val phase: Float
+)
+
+@Composable
+fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = RopeWithClipsConfig()) {
+    val density = LocalDensity.current
+    val configuration = LocalConfiguration.current
+    val verticalOffsetPx = with(density) { config.verticalOffsetDp.dp.toPx() }
+    val isLandscape = configuration.screenWidthDp > configuration.screenHeightDp
+    val effectiveClipCount = if (config.responsiveClipCount) {
+        if (isLandscape) config.landscapeClipCount else config.portraitClipCount
+    } else {
+        config.clipCount
+    }.coerceAtLeast(1)
+
+    var ropeOffsetX by remember { mutableFloatStateOf(0f) }
+
+    val pendulumConfigs = remember(effectiveClipCount, config.seed) {
+        (0 until effectiveClipCount).map { idx ->
+            val rng = java.util.Random(config.seed + idx * 123L)
+            PendulumConfig(
+                amplitude = 1.6f + rng.nextFloat() * 2.2f,
+                primaryFreq = 0.85f + rng.nextFloat() * 0.5f,
+                secondaryFreq = 1.7f + rng.nextFloat() * 0.6f,
+                phase = rng.nextFloat() * (PI.toFloat() * 2f)
+            )
+        }
+    }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "pendulum")
+
+    val windPhase by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = (PI.toFloat() * 2f),
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 7200, easing = LinearEasing)
+        ),
+        label = "wind_phase"
+    )
+
+    val random = remember(config.seed) { java.util.Random(config.seed) }
+
+    Canvas(
+        modifier = modifier.fillMaxSize().pointerInput(Unit) {
+            detectDragGestures(onDragStart = {}, onDragEnd = {}, onDragCancel = {}) { _, amount ->
+                ropeOffsetX += amount.x
+                ropeOffsetX = ropeOffsetX.coerceIn(-size.width * 0.2f, size.width * 0.2f)
+            }
+        }
+    ) {
+        val w = size.width
+        val h = size.height
+        val safeY = if (isLandscape) {
+            h * 0.24f
+        } else {
+            min(verticalOffsetPx, h * 0.42f)
+        }
+
+        val widthDrivenPhoto = (w * if (isLandscape) 0.82f else 0.9f) /
+            (effectiveClipCount + if (isLandscape) 0.35f else 0.15f)
+        val widthScale = widthDrivenPhoto.coerceIn(95f, 170f) / config.photoStyle.photoWidth
+        val heightScale = (h / if (isLandscape) 560f else 720f).coerceIn(0.55f, 2.2f)
+        val scale = min(widthScale, heightScale)
+
+        val ropeSt = config.ropeStyle.copy(
+            sagAmount = config.ropeStyle.sagAmount * scale,
+            jitterAmount = config.ropeStyle.jitterAmount * scale,
+            baseStrokeWidth = config.ropeStyle.baseStrokeWidth * scale,
+            twistCount = config.ropeStyle.twistCount,
+            shadowOffset = config.ropeStyle.shadowOffset * scale,
+            handDrawnJitter = config.ropeStyle.handDrawnJitter * scale
+        )
+        
+        val clipSt = config.clipStyle.scaleBy(scale)
+        
+        val photoSt = PhotoStyle(
+            photoWidth = config.photoStyle.photoWidth * scale,
+            photoHeight = config.photoStyle.photoHeight * scale,
+            borderSize = config.photoStyle.borderSize * scale,
+            cornerRadius = config.photoStyle.cornerRadius * scale,
+            rotationRange = config.photoStyle.rotationRange,
+            shadowOffsetX = config.photoStyle.shadowOffsetX * scale,
+            shadowOffsetY = config.photoStyle.shadowOffsetY * scale,
+            curlAmount = config.photoStyle.curlAmount * scale,
+            edgeIrregularity = config.photoStyle.edgeIrregularity * scale,
+            borderColor = config.photoStyle.borderColor,
+            photoAreaColor = config.photoStyle.photoAreaColor,
+            photoGradientTop = config.photoStyle.photoGradientTop,
+            photoGradientBot = config.photoStyle.photoGradientBot,
+            curlChance = config.photoStyle.curlChance,
+            shadowAlpha = config.photoStyle.shadowAlpha,
+            shadowBlur = config.photoStyle.shadowBlur,
+            highlightAlpha = config.photoStyle.highlightAlpha,
+            handDrawnJitter = config.photoStyle.handDrawnJitter * scale
+        )
+
+        val perPhotoSlot = photoSt.photoWidth * if (isLandscape) 0.84f else 0.92f
+        val requiredSpan = max(0f, (effectiveClipCount - 1) * perPhotoSlot)
+        val offscreenExtend = max(w * 0.12f, requiredSpan * 0.15f)
+        val waveOffset = if (config.enableAnimation) sin(windPhase * 0.6f).toFloat() * 2f else 0f
+        val ropeStart = Offset(-offscreenExtend + ropeOffsetX, safeY + waveOffset)
+        val ropeEnd = Offset(w + offscreenExtend + ropeOffsetX, safeY - waveOffset)
+
+        random.setSeed(config.seed)
+        val sampledPoints = RopeGenerator.generateSampledPoints(ropeStart, ropeEnd, ropeSt, random)
+
+        RopeRenderer.drawClothesline(this, sampledPoints, ropeSt, config.ropeColor)
+
+        random.setSeed(config.seed)
+        val hangPoints = HangPointGenerator.generateHangPoints(sampledPoints, effectiveClipCount)
+
+        for ((idx, hp) in hangPoints.withIndex()) {
+            val pendulumAngle = if (config.enableAnimation && idx < pendulumConfigs.size) {
+                val pc = pendulumConfigs[idx]
+                sin(windPhase * pc.primaryFreq + pc.phase) * pc.amplitude +
+                    sin(windPhase * pc.secondaryFreq + pc.phase * 1.4f) * (pc.amplitude * 0.35f)
+            } else {
+                0f
+            }
+
+            val clipRotation = hp.tangentAngle + pendulumAngle * 0.35f
+            val clipRandom = java.util.Random(config.seed + idx * 500L)
+            ClipRenderer.drawClothespin(this, hp, clipSt, clipRandom, clipRotation)
+
+            val anchor = computePhotoAnchor(hp.ropePosition, clipRotation, clipSt)
+            PhotoRenderer.drawPolaroid(
+                this,
+                anchor,
+                PhotoConfig(
+                    index = idx,
+                    style = photoSt,
+                    seed = config.seed + idx * 777L,
+                    additionalRotation = pendulumAngle
+                )
+            )
+        }
+    }
+}
+
+private fun computePhotoAnchor(
+    clipAnchor: Offset,
+    clipRotation: Float,
+    clipSt: ClipStyle
+): Offset {
+    val rad = Math.toRadians(clipRotation.toDouble())
+    // Photo top-center is pinned near the clip gripping zone.
+    val localY = clipSt.headLength + clipSt.gripLength * 0.9f + clipSt.springHeight * 0.45f
+    return Offset(
+        x = clipAnchor.x - sin(rad).toFloat() * localY,
+        y = clipAnchor.y + cos(rad).toFloat() * localY
+    )
+}

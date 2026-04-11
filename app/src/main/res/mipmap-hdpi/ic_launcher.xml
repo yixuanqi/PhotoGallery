@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    
+    <path
+        android:fillColor="#E8F4E5"
+        android:pathData="M0,0h48v48h-48z"/>
+    
+    <path
+        android:fillColor="#F5F0E6"
+        android:pathData="M24,10
+                          L36,10
+                          Q38,10 38,12
+                          L38,32
+                          Q38,34 36,34
+                          L12,34
+                          Q10,34 10,32
+                          L10,12
+                          Q10,10 12,10
+                          Z"/>
+    
+    <path
+        android:fillColor="#D4E4D0"
+        android:pathData="M14,14
+                          L34,14
+                          L34,26
+                          Q34,27 33,27
+                          L15,27
+                          Q14,27 14,26
+                          Z"/>
+    
+    <path
+        android:fillColor="#B8D0B4"
+        android:pathData="M14,23
+                          Q22,18 28,24
+                          Q32,20 34,23
+                          L34,26
+                          Q34,27 33,27
+                          L15,27
+                          Q14,27 14,26
+                          Z"/>
+    
+    <path
+        android:strokeColor="#8A9A78"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M6,16
+                          Q24,26 42,16"/>
+    
+    <path
+        android:strokeColor="#8A9A78"
+        android:strokeWidth="1"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M24,16 L24,10"/>
+    
+    <path
+        android:fillColor="#C4A35A"
+        android:pathData="M22,8
+                          L26,8
+                          L26,10
+                          Q26,11 25,11
+                          L23,11
+                          Q22,11 22,10
+                          Z"/>
+
+</vector>
