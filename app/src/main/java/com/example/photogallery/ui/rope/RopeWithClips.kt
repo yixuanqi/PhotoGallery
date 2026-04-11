@@ -38,6 +38,7 @@ import kotlin.math.exp
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sqrt
 import kotlin.math.sin
 
@@ -67,7 +68,8 @@ data class PhotoViewportRequest(
     val visibleRange: IntRange,
     val preloadRange: IntRange,
     val targetWidthPx: Int,
-    val targetHeightPx: Int
+    val targetHeightPx: Int,
+    val centerIndex: Int
 )
 
 @Composable
@@ -165,7 +167,8 @@ fun RopeWithClips(
             visibleRange = visibleStart..visibleEnd,
             preloadRange = windowStart..(windowEndExclusive - 1),
             targetWidthPx = targetWidth,
-            targetHeightPx = targetHeight
+            targetHeightPx = targetHeight,
+            centerIndex = viewportRenderCenterIndex.roundToInt().coerceIn(0, totalClipCount - 1)
         )
     } else {
         null

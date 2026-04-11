@@ -18,6 +18,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -38,6 +39,10 @@ import com.example.photogallery.ui.rope.RopeWithClipsConfig
 import com.example.photogallery.ui.rope.ClipStyle
 import com.example.photogallery.ui.rope.RopeStyle
 import com.example.photogallery.ui.rope.PhotoStyle
+import com.example.photogallery.ui.timeline.PhotoGroup
+import com.example.photogallery.ui.timeline.TimeIndicator
+import com.example.photogallery.ui.timeline.groupPhotosByMonth
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,6 +59,10 @@ fun PhotoGalleryScreen() {
     val photoStates by viewModel.photoStates.collectAsState()
     val permissionState by viewModel.permissionState.collectAsState()
     var hasRequestedPermission by remember { mutableStateOf(false) }
+    val photoGroups = remember(photos) { groupPhotosByMonth(photos) }
+    var activePhotoGroup by remember { mutableStateOf<PhotoGroup?>(null) }
+    var showTimeIndicator by remember { mutableStateOf(false) }
+    var timeIndicatorPulse by remember { mutableLongStateOf(0L) }
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) {
@@ -78,6 +87,13 @@ fun PhotoGalleryScreen() {
         }
     }
 
+    LaunchedEffect(timeIndicatorPulse) {
+        if (timeIndicatorPulse > 0L) {
+            delay(1_500)
+            showTimeIndicator = false
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         BackgroundRenderer(modifier = Modifier.fillMaxSize())
         RopeWithClips(
@@ -91,6 +107,11 @@ fun PhotoGalleryScreen() {
                     targetWidthPx = request.targetWidthPx,
                     targetHeightPx = request.targetHeightPx
                 )
+                activePhotoGroup = photoGroups.firstOrNull { group ->
+                    request.centerIndex in group.startIndex..group.endIndex
+                }
+                showTimeIndicator = activePhotoGroup != null
+                timeIndicatorPulse += 1
             },
             config = RopeWithClipsConfig(
                 clipCount = 15,
@@ -148,6 +169,16 @@ fun PhotoGalleryScreen() {
                 seed = 42L
             )
         )
+        if (showTimeIndicator) {
+            activePhotoGroup?.let { group ->
+                TimeIndicator(
+                    group = group,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 48.dp)
+                )
+            }
+        }
         if (permissionState == PhotoPermissionState.Denied && hasRequestedPermission) {
             Column(
                 modifier = Modifier
