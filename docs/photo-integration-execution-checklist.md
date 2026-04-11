@@ -298,7 +298,7 @@ data class PhotoGroup(
 
 - [x] 在 Gallery 中增加双击照片进入详情页。
 - [x] 优先使用 Compose 现有 pointer input / gesture API，不先新增独立 `gesture/` 目录。
-- [x] `RopeWithClips` 需要暴露照片绘制位置或点击命中信息。
+- [x] `RopeWithClips` 需要暴露照片绘制位置或点击命中信息；当前使用绘制阶段生成的照片四边形 bounds 做精确命中。
 - [x] 展开动画首版可先做淡入/缩放；共享元素精确回位作为后续增强。
 - [x] 验收：
   - 双击照片能进入详情页。

@@ -73,6 +73,15 @@ data class PhotoViewportRequest(
     val centerIndex: Int
 )
 
+private data class PhotoHitBounds(
+    val index: Int,
+    val corners: List<Offset>
+)
+
+private class PhotoHitBoundsStore {
+    var bounds: List<PhotoHitBounds> = emptyList()
+}
+
 @Composable
 fun RopeWithClips(
     modifier: Modifier = Modifier,
@@ -152,6 +161,7 @@ fun RopeWithClips(
     )
 
     val random = remember { java.util.Random() } // Fix: Remove seed dependency so it doesn't reset on every recomposition
+    val photoHitBoundsStore = remember { PhotoHitBoundsStore() }
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
     val viewportWidth = canvasSize.width.toFloat()
     val viewportHeight = canvasSize.height.toFloat()
@@ -197,29 +207,12 @@ fun RopeWithClips(
             .onSizeChanged { canvasSize = it }
             .pointerInput(
                 photos.size,
-                viewportWidth,
-                viewportHeight,
-                viewportRenderCenterIndex,
-                contentScale,
-                config.photoStyle,
-                config.clipStyle
+                photoHitBoundsStore
             ) {
                 detectTapGestures(
                     onDoubleTap = { tapPosition ->
                         if (photos.isEmpty()) return@detectTapGestures
-                        findPhotoIndexAtTap(
-                            tapPosition = tapPosition,
-                            canvasWidth = viewportWidth,
-                            canvasHeight = viewportHeight,
-                            centerIndex = viewportRenderCenterIndex,
-                            contentScale = contentScale,
-                            visibleClipSlots = visibleClipSlots,
-                            totalClipCount = totalClipCount,
-                            isLandscape = isLandscape,
-                            verticalOffsetPx = verticalOffsetPx,
-                            photoStyle = config.photoStyle,
-                            clipStyle = config.clipStyle
-                        )?.let(onPhotoDoubleTap)
+                        findPhotoIndexAtTap(tapPosition, photoHitBoundsStore.bounds)?.let(onPhotoDoubleTap)
                     }
                 )
             }
@@ -367,6 +360,7 @@ fun RopeWithClips(
         withTransform({
             scale(contentScale, contentScale, pivot = Offset(w * 0.5f, safeY))
         }) {
+            val framePhotoBounds = mutableListOf<PhotoHitBounds>()
             // Fix: Use a consistent seed per render pass so jitter doesn't dance, but don't tie it to config.seed directly
             val renderSeed = config.seed
             random.setSeed(renderSeed)
@@ -398,6 +392,14 @@ fun RopeWithClips(
                 val clipRotation = hp.tangentAngle + pendulumAngle * 1.5f
                 val photoRotation = clipRotation // Fix: Remove independent swing so photo stays firmly attached to clip
                 val anchor = computePhotoAnchor(hp.ropePosition, clipRotation, clipSt)
+                framePhotoBounds += createPhotoHitBounds(
+                    index = idx,
+                    anchor = anchor,
+                    rotationDegrees = photoRotation,
+                    photoStyle = photoSt,
+                    contentScale = contentScale,
+                    contentScalePivot = Offset(w * 0.5f, safeY)
+                )
                 PhotoRenderer.drawPolaroid(
                     this,
                     anchor,
@@ -414,6 +416,7 @@ fun RopeWithClips(
                 val clipRandom = java.util.Random(config.seed + idx * 500L)
                 ClipRenderer.drawClothespin(this, hp, clipSt, clipRandom, clipRotation)
             }
+            photoHitBoundsStore.bounds = framePhotoBounds
         }
     }
 }
@@ -478,48 +481,68 @@ private fun computePhotoScale(
     return min(widthScale, heightScale)
 }
 
+private fun createPhotoHitBounds(
+    index: Int,
+    anchor: Offset,
+    rotationDegrees: Float,
+    photoStyle: PhotoStyle,
+    contentScale: Float,
+    contentScalePivot: Offset
+): PhotoHitBounds {
+    val halfWidth = photoStyle.photoWidth / 2f
+    val photoHeight = photoStyle.photoHeight
+    val unscaledCorners = listOf(
+        Offset(-halfWidth, 0f),
+        Offset(halfWidth, 0f),
+        Offset(halfWidth, photoHeight),
+        Offset(-halfWidth, photoHeight)
+    ).map { localPoint ->
+        rotatePoint(localPoint, rotationDegrees) + anchor
+    }
+
+    return PhotoHitBounds(
+        index = index,
+        corners = unscaledCorners.map { point ->
+            contentScalePivot + (point - contentScalePivot) * contentScale
+        }
+    )
+}
+
 private fun findPhotoIndexAtTap(
     tapPosition: Offset,
-    canvasWidth: Float,
-    canvasHeight: Float,
-    centerIndex: Float,
-    contentScale: Float,
-    visibleClipSlots: Int,
-    totalClipCount: Int,
-    isLandscape: Boolean,
-    verticalOffsetPx: Float,
-    photoStyle: PhotoStyle,
-    clipStyle: ClipStyle
+    bounds: List<PhotoHitBounds>
 ): Int? {
-    if (canvasWidth <= 0f || canvasHeight <= 0f || totalClipCount <= 0) return null
+    return bounds
+        .asReversed()
+        .firstOrNull { tapPosition.isInsideConvexPolygon(it.corners) }
+        ?.index
+}
 
-    val safeY = if (isLandscape) {
-        canvasHeight * 0.24f
-    } else {
-        min(verticalOffsetPx, canvasHeight * 0.42f)
-    }
-    val pivot = Offset(canvasWidth * 0.5f, safeY)
-    val unscaledTap = Offset(
-        x = pivot.x + (tapPosition.x - pivot.x) / contentScale.coerceAtLeast(0.001f),
-        y = pivot.y + (tapPosition.y - pivot.y) / contentScale.coerceAtLeast(0.001f)
+private fun rotatePoint(point: Offset, degrees: Float): Offset {
+    val radians = Math.toRadians(degrees.toDouble())
+    val cosValue = cos(radians).toFloat()
+    val sinValue = sin(radians).toFloat()
+    return Offset(
+        x = point.x * cosValue - point.y * sinValue,
+        y = point.x * sinValue + point.y * cosValue
     )
+}
 
-    val scale = computePhotoScale(canvasWidth, canvasHeight, visibleClipSlots, isLandscape, photoStyle.photoWidth)
-    val photoWidth = photoStyle.photoWidth * scale
-    val photoHeight = photoStyle.photoHeight * scale
-    val slotSpacing = photoWidth * if (isLandscape) 1.15f else 1.05f
-    val index = (centerIndex + (unscaledTap.x - pivot.x) / slotSpacing)
-        .roundToInt()
-        .coerceIn(0, totalClipCount - 1)
-    val slotX = pivot.x + (index - centerIndex) * slotSpacing
-
-    val clipDrop = (clipStyle.headLength + clipStyle.gripLength + clipStyle.bodyLength - 6f) * scale
-    val topY = safeY + clipDrop - photoHeight * 0.08f
-    val bottomY = topY + photoHeight * 1.12f
-    val withinX = abs(unscaledTap.x - slotX) <= photoWidth * 0.62f
-    val withinY = unscaledTap.y in topY..bottomY
-
-    return if (withinX && withinY) index else null
+private fun Offset.isInsideConvexPolygon(corners: List<Offset>): Boolean {
+    if (corners.size < 3) return false
+    var sign = 0f
+    for (index in corners.indices) {
+        val start = corners[index]
+        val end = corners[(index + 1) % corners.size]
+        val cross = (end.x - start.x) * (y - start.y) - (end.y - start.y) * (x - start.x)
+        if (abs(cross) < 0.001f) continue
+        if (sign == 0f) {
+            sign = cross
+        } else if (sign * cross < 0f) {
+            return false
+        }
+    }
+    return true
 }
 
 private fun createPendulumConfig(seed: Long, index: Int): PendulumConfig {
