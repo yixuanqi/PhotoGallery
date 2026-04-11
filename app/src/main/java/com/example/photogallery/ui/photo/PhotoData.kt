@@ -13,8 +13,12 @@ data class PhotoData(
     val cacheKey: String = uri.toString()
 
     val effectiveTimeMillis: Long?
-        get() = listOf(takenAtMillis, addedAtMillis, modifiedAtMillis)
-            .firstOrNull { it != null && it > 0L }
+        get() = when {
+            takenAtMillis != null && takenAtMillis > 0L -> takenAtMillis
+            addedAtMillis != null && addedAtMillis > 0L -> addedAtMillis
+            modifiedAtMillis != null && modifiedAtMillis > 0L -> modifiedAtMillis
+            else -> null
+        }
 }
 
 sealed class PhotoState {

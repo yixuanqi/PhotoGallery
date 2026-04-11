@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.unit.IntOffset
@@ -67,7 +68,7 @@ object PhotoRenderer {
             // Keep photo top-center fixed at anchor.
             translate(0f, config.style.photoHeight / 2f)
         }) {
-            drawPhotoBorder(config.style, hasCurlRight, hasCurlLeft, hasWavyEdges, rng)
+            drawPhotoBorder(config.style, hasWavyEdges, rng)
             drawPhotoArea(config.style, photoTint, rng, config.realPhoto)
             drawPhotoHighlight(config.style, rng)
             if (hasCurlRight) drawCurledCorner(config.style, isRight = true, rng)
@@ -97,7 +98,7 @@ object PhotoRenderer {
         }
     }
 
-    private fun DrawScope.drawPhotoBorder(st: PhotoStyle, curlR: Boolean, curlL: Boolean, wavyEdges: Boolean, rng: java.util.Random) {
+    private fun DrawScope.drawPhotoBorder(st: PhotoStyle, wavyEdges: Boolean, rng: java.util.Random) {
         val hw = st.photoWidth / 2f
         val hh = st.photoHeight / 2f
         val cr = st.cornerRadius
@@ -246,26 +247,15 @@ object PhotoRenderer {
     private fun DrawScope.drawPhotoArea(st: PhotoStyle, tint: Color, rng: java.util.Random, realPhoto: ImageBitmap?) {
         val innerW = st.photoWidth - st.borderSize * 2f
         val innerH = st.photoHeight - st.borderSize * 2f - st.borderSize * 0.5f
-        val halfW = innerW / 2f
         val topY = -st.photoHeight / 2f + st.borderSize
-        if (realPhoto != null) {
-            drawCenterCropPhoto(realPhoto, innerW, innerH, topY)
-            return
-        }
-
         val j = { (rng.nextFloat() - 0.5f) * st.handDrawnJitter * 0.5f }
-        
-        val path = Path().apply {
-            val cr = st.cornerRadius * 0.7f
-            moveTo(-halfW + cr + j(), topY + j())
-            lineTo(halfW - cr + j(), topY + j())
-            lineTo(halfW + j(), topY + cr + j())
-            lineTo(halfW + j(), topY + innerH - cr + j())
-            lineTo(halfW - cr + j(), topY + innerH + j())
-            lineTo(-halfW + cr + j(), topY + innerH + j())
-            lineTo(-halfW + j(), topY + innerH - cr + j())
-            lineTo(-halfW + j(), topY + cr + j())
-            close()
+        val path = createPhotoAreaPath(st, innerW, innerH, topY, j)
+
+        if (realPhoto != null) {
+            clipPath(path) {
+                drawCenterCropPhoto(realPhoto, innerW, innerH, topY)
+            }
+            return
         }
         
         drawPath(
@@ -282,6 +272,28 @@ object PhotoRenderer {
         )
         
         drawGhibliLandscapeDetails(innerW, innerH, topY, rng)
+    }
+
+    private fun createPhotoAreaPath(
+        st: PhotoStyle,
+        innerW: Float,
+        innerH: Float,
+        topY: Float,
+        jitter: () -> Float
+    ): Path {
+        val halfW = innerW / 2f
+        return Path().apply {
+            val cr = st.cornerRadius * 0.7f
+            moveTo(-halfW + cr + jitter(), topY + jitter())
+            lineTo(halfW - cr + jitter(), topY + jitter())
+            lineTo(halfW + jitter(), topY + cr + jitter())
+            lineTo(halfW + jitter(), topY + innerH - cr + jitter())
+            lineTo(halfW - cr + jitter(), topY + innerH + jitter())
+            lineTo(-halfW + cr + jitter(), topY + innerH + jitter())
+            lineTo(-halfW + jitter(), topY + innerH - cr + jitter())
+            lineTo(-halfW + jitter(), topY + cr + jitter())
+            close()
+        }
     }
 
     private fun DrawScope.drawCenterCropPhoto(image: ImageBitmap, innerW: Float, innerH: Float, topY: Float) {
@@ -427,9 +439,6 @@ object PhotoRenderer {
     }
 
     private fun DrawScope.drawPhotoEdgeDetails(st: PhotoStyle, rng: java.util.Random) {
-        val hw = st.photoWidth / 2f
-        val hh = st.photoHeight / 2f
-        
         repeat(5) { _ ->
             val angle = rng.nextFloat() * 360f
             val rad = Math.toRadians(angle.toDouble())

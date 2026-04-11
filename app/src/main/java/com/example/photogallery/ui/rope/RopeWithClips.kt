@@ -22,8 +22,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.example.photogallery.ui.photo.PhotoData
 import com.example.photogallery.ui.photo.PhotoState
@@ -135,11 +137,48 @@ fun RopeWithClips(
     )
 
     val random = remember { java.util.Random() } // Fix: Remove seed dependency so it doesn't reset on every recomposition
-    val lastViewportRequest = remember { arrayOfNulls<PhotoViewportRequest>(1) }
+    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+    val viewportWidth = canvasSize.width.toFloat()
+    val viewportHeight = canvasSize.height.toFloat()
+    val viewportPhotoScale = computePhotoScale(
+        width = viewportWidth,
+        height = viewportHeight,
+        visibleClipSlots = visibleClipSlots,
+        isLandscape = isLandscape,
+        basePhotoWidth = config.photoStyle.photoWidth
+    )
+    val viewportRenderCenterIndex = if (isDragging) targetCenterIndex else centerIndexFloat
+    val viewportRequest = if (photos.isNotEmpty() && viewportWidth > 0f && viewportHeight > 0f) {
+        val desiredStart = floor(viewportRenderCenterIndex - visibleClipSlots / 2f - cacheEachSide).toInt()
+        val maxWindowStart = max(0, totalClipCount - renderSlotCount)
+        val windowStart = desiredStart.coerceIn(0, maxWindowStart)
+        val windowEndExclusive = min(totalClipCount, windowStart + renderSlotCount)
+        val visibleStart = floor(viewportRenderCenterIndex - visibleClipSlots / 2f).toInt().coerceIn(0, totalClipCount - 1)
+        val visibleEnd = (visibleStart + visibleClipSlots - 1).coerceIn(0, totalClipCount - 1)
+        val targetWidth = ((config.photoStyle.photoWidth * viewportPhotoScale - config.photoStyle.borderSize * viewportPhotoScale * 2f) * 1.25f)
+            .toInt()
+            .coerceAtLeast(1)
+        val targetHeight = ((config.photoStyle.photoHeight * viewportPhotoScale - config.photoStyle.borderSize * viewportPhotoScale * 2.5f) * 1.25f)
+            .toInt()
+            .coerceAtLeast(1)
+        PhotoViewportRequest(
+            visibleRange = visibleStart..visibleEnd,
+            preloadRange = windowStart..(windowEndExclusive - 1),
+            targetWidthPx = targetWidth,
+            targetHeightPx = targetHeight
+        )
+    } else {
+        null
+    }
+
+    LaunchedEffect(viewportRequest) {
+        viewportRequest?.let(onViewportChanged)
+    }
 
     Canvas(
         modifier = modifier
             .fillMaxSize()
+            .onSizeChanged { canvasSize = it }
             .pointerInput(Unit) {
                 awaitEachGesture {
                     var previousDistance = 0f
@@ -235,11 +274,7 @@ fun RopeWithClips(
             min(verticalOffsetPx, h * 0.42f)
         }
 
-        val widthDrivenPhoto = (w * if (isLandscape) 0.95f else 0.9f) /
-            (visibleClipSlots * if (isLandscape) 1.15f else 1.05f)
-        val widthScale = widthDrivenPhoto.coerceIn(95f, 170f) / config.photoStyle.photoWidth
-        val heightScale = (h / if (isLandscape) 560f else 720f).coerceIn(0.55f, 2.2f)
-        val scale = min(widthScale, heightScale)
+        val scale = computePhotoScale(w, h, visibleClipSlots, isLandscape, config.photoStyle.photoWidth)
 
         val ropeSt = config.ropeStyle.copy(
             sagAmount = config.ropeStyle.sagAmount * scale,
@@ -302,20 +337,6 @@ fun RopeWithClips(
             val windowStart = desiredStart.coerceIn(0, maxWindowStart)
             val windowEndExclusive = min(totalClipCount, windowStart + renderSlotCount)
             val viewportCenterX = w * 0.5f
-            if (photos.isNotEmpty()) {
-                val visibleStart = floor(renderCenterIndex - visibleClipSlots / 2f).toInt().coerceIn(0, totalClipCount - 1)
-                val visibleEnd = (visibleStart + visibleClipSlots - 1).coerceIn(0, totalClipCount - 1)
-                val viewportRequest = PhotoViewportRequest(
-                    visibleRange = visibleStart..visibleEnd,
-                    preloadRange = windowStart..(windowEndExclusive - 1),
-                    targetWidthPx = ((photoSt.photoWidth - photoSt.borderSize * 2f) * 1.25f).toInt().coerceAtLeast(1),
-                    targetHeightPx = ((photoSt.photoHeight - photoSt.borderSize * 2f - photoSt.borderSize * 0.5f) * 1.25f).toInt().coerceAtLeast(1)
-                )
-                if (lastViewportRequest[0] != viewportRequest) {
-                    lastViewportRequest[0] = viewportRequest
-                    onViewportChanged(viewportRequest)
-                }
-            }
 
             for (idx in windowStart until windowEndExclusive) {
                 val pendulumAngle = if (config.enableAnimation) {
@@ -396,6 +417,21 @@ private fun distanceBetween(a: Offset, b: Offset): Float {
     val dx = a.x - b.x
     val dy = a.y - b.y
     return sqrt(dx * dx + dy * dy)
+}
+
+private fun computePhotoScale(
+    width: Float,
+    height: Float,
+    visibleClipSlots: Int,
+    isLandscape: Boolean,
+    basePhotoWidth: Float
+): Float {
+    if (width <= 0f || height <= 0f) return 1f
+    val widthDrivenPhoto = (width * if (isLandscape) 0.95f else 0.9f) /
+        (visibleClipSlots * if (isLandscape) 1.15f else 1.05f)
+    val widthScale = widthDrivenPhoto.coerceIn(95f, 170f) / basePhotoWidth
+    val heightScale = (height / if (isLandscape) 560f else 720f).coerceIn(0.55f, 2.2f)
+    return min(widthScale, heightScale)
 }
 
 private fun createPendulumConfig(seed: Long, index: Int): PendulumConfig {
