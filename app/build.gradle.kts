@@ -31,6 +31,12 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+
+    sourceSets {
+        getByName("main") {
+            res.srcDirs("src/main/res", "src/res")
+        }
+    }
 }
 
 dependencies {

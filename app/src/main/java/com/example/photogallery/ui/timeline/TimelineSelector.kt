@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -24,6 +25,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.photogallery.HandDrawnInk
+import com.example.photogallery.LightGreenOverlay
 
 @Composable
 fun TimelineSelector(
@@ -44,13 +47,15 @@ fun TimelineSelector(
                 .fillMaxWidth()
                 .heightIn(max = 360.dp)
                 .pointerInput(Unit) { detectTapGestures { } },
-            color = Color(0xFFF7F5EA),
-            contentColor = Color(0xFF40513A),
+            color = LightGreenOverlay,
+            contentColor = HandDrawnInk,
             shape = MaterialTheme.shapes.small,
             shadowElevation = 6.dp
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+                modifier = Modifier
+                    .background(LightGreenOverlay)
+                    .padding(horizontal = 18.dp, vertical = 14.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
@@ -88,6 +93,10 @@ private fun TimelineSelectorRow(
 ) {
     TextButton(
         modifier = Modifier.fillMaxWidth(),
+        colors = ButtonDefaults.textButtonColors(
+            containerColor = LightGreenOverlay,
+            contentColor = HandDrawnInk
+        ),
         onClick = onClick
     ) {
         Row(

@@ -8,9 +8,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.photogallery.HandDrawnInk
+import com.example.photogallery.LightGreenOverlay
 
 @Composable
 fun TimeIndicator(
@@ -19,8 +20,8 @@ fun TimeIndicator(
 ) {
     Surface(
         modifier = modifier,
-        color = Color(0xEAF7F5EA),
-        contentColor = Color(0xFF40513A),
+        color = LightGreenOverlay,
+        contentColor = HandDrawnInk,
         shape = MaterialTheme.shapes.small,
         shadowElevation = 3.dp
     ) {

@@ -19,7 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -58,7 +58,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { MaterialTheme { PhotoGalleryScreen() } }
+        setContent { PhotoGalleryTheme { PhotoGalleryScreen() } }
     }
 }
 
@@ -213,6 +213,12 @@ fun PhotoGalleryScreen() {
                     if (photos.isNotEmpty()) {
                         FilledTonalButton(
                             modifier = Modifier.padding(start = 8.dp),
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = LightGreenOverlay,
+                                contentColor = HandDrawnInk,
+                                disabledContainerColor = LightGreenOverlay.copy(alpha = 0.45f),
+                                disabledContentColor = HandDrawnInk.copy(alpha = 0.55f)
+                            ),
                             onClick = {
                                 detailIndex = currentCenterIndex.coerceIn(0, photos.lastIndex)
                                 isDetailVisible = true
@@ -274,6 +280,12 @@ fun PhotoGalleryScreen() {
                 Button(
                     modifier = Modifier
                         .padding(top = 12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = LightGreenOverlay,
+                        contentColor = HandDrawnInk,
+                        disabledContainerColor = LightGreenOverlay.copy(alpha = 0.45f),
+                        disabledContentColor = HandDrawnInk.copy(alpha = 0.55f)
+                    ),
                     onClick = {
                         permissionLauncher.launch(PhotoGalleryViewModel.requiredPermissions())
                     }

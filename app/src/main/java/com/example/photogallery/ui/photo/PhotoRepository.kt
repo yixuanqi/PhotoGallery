@@ -53,8 +53,8 @@ class PhotoRepository(private val context: Context) {
         }
 
         photos.sortedWith(
-            compareByDescending<PhotoData> { it.effectiveTimeMillis ?: Long.MIN_VALUE }
-                .thenByDescending { it.id }
+            compareBy<PhotoData> { it.effectiveTimeMillis ?: Long.MIN_VALUE }
+                .thenBy { it.id }
         )
     }
 

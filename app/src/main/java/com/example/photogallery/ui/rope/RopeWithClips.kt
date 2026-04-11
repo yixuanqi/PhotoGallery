@@ -131,6 +131,8 @@ fun RopeWithClips(
 
     var windPhase by remember { mutableFloatStateOf(0f) }
     var contentScale by remember { mutableFloatStateOf(1f) }
+    val minContentScale = 1f
+    val maxContentScale = 4f / 3f
     val coroutineScope = rememberCoroutineScope()
     var flingJob: Job? by remember { mutableStateOf(null) }
     var dragVelocityIndexPerSecond by remember { mutableFloatStateOf(0f) }
@@ -233,7 +235,12 @@ fun RopeWithClips(
                             val zoom = currentDistance / previousDistance
                             if (abs(zoom - 1f) > 0.001f) {
                                 flingJob?.cancel()
-                                contentScale = (contentScale * zoom).coerceIn(1f, 4f / 3f)
+                                contentScale = applyDampedScale(
+                                    currentScale = contentScale,
+                                    zoom = zoom,
+                                    minScale = minContentScale,
+                                    maxScale = maxContentScale
+                                )
                             }
                         }
                         previousDistance = currentDistance
@@ -292,11 +299,17 @@ fun RopeWithClips(
                 ) { change, amount ->
                     val now = change.uptimeMillis
                     val effectiveSlotSpacing = dragSlotSpacingPx * contentScale
-                    val deltaIndex = amount.x / effectiveSlotSpacing
+                    val dragResistance = computeGalleryDragResistance(
+                        centerIndex = targetCenterIndex,
+                        minCenterIndex = minCenterIndex,
+                        maxCenterIndex = maxCenterIndex,
+                        contentScale = contentScale
+                    )
+                    val deltaIndex = amount.x / effectiveSlotSpacing * dragResistance
                     val nextCenter = (targetCenterIndex - deltaIndex).coerceIn(minDragCenterIndex, maxDragCenterIndex)
                     if (lastDragTimeMillis > 0L) {
                         val dtSeconds = ((now - lastDragTimeMillis).coerceAtLeast(1L)) / 1000f
-                        dragVelocityIndexPerSecond = ((nextCenter - targetCenterIndex) / dtSeconds).coerceIn(-8f, 8f)
+                        dragVelocityIndexPerSecond = (((nextCenter - targetCenterIndex) / dtSeconds) * dragResistance).coerceIn(-8f, 8f)
                     }
                     lastDragTimeMillis = now
                     targetCenterIndex = nextCenter
@@ -464,6 +477,43 @@ private fun distanceBetween(a: Offset, b: Offset): Float {
     val dx = a.x - b.x
     val dy = a.y - b.y
     return sqrt(dx * dx + dy * dy)
+}
+
+private fun applyDampedScale(
+    currentScale: Float,
+    zoom: Float,
+    minScale: Float,
+    maxScale: Float
+): Float {
+    val rawTarget = currentScale * zoom
+    val beyondMin = (minScale - rawTarget).coerceAtLeast(0f)
+    val beyondMax = (rawTarget - maxScale).coerceAtLeast(0f)
+    val edgeResistance = when {
+        beyondMin > 0f -> 1f / (1f + beyondMin * 10f)
+        beyondMax > 0f -> 1f / (1f + beyondMax * 10f)
+        else -> {
+            val distanceToEdge = min(currentScale - minScale, maxScale - currentScale)
+            val normalizedEdgeDistance = (distanceToEdge / (maxScale - minScale).coerceAtLeast(0.001f)).coerceIn(0f, 1f)
+            0.55f + normalizedEdgeDistance * 0.45f
+        }
+    }
+    return (currentScale + (rawTarget - currentScale) * edgeResistance).coerceIn(minScale, maxScale)
+}
+
+private fun computeGalleryDragResistance(
+    centerIndex: Float,
+    minCenterIndex: Float,
+    maxCenterIndex: Float,
+    contentScale: Float
+): Float {
+    val beyondEdge = when {
+        centerIndex < minCenterIndex -> minCenterIndex - centerIndex
+        centerIndex > maxCenterIndex -> centerIndex - maxCenterIndex
+        else -> 0f
+    }
+    val edgeResistance = 1f / (1f + beyondEdge * 2.4f)
+    val zoomResistance = 1f / (1f + (contentScale - 1f).coerceAtLeast(0f) * 1.8f)
+    return (edgeResistance * zoomResistance).coerceIn(0.32f, 1f)
 }
 
 private fun computePhotoScale(
