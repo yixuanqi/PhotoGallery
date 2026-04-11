@@ -68,7 +68,6 @@ object PhotoRenderer {
             if (hasCurlRight) drawCurledCorner(config.style, isRight = true, rng)
             if (hasCurlLeft) drawCurledCorner(config.style, isRight = false, rng)
             drawPhotoEdgeDetails(config.style, rng)
-            drawHandDrawnOutline(config.style, rng)
         }
     }
 

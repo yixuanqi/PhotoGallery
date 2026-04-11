@@ -76,13 +76,16 @@ fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = R
     val halfVisible = (visibleClipSlots - 1) / 2f
     val minCenterIndex = halfVisible.coerceAtMost((totalClipCount - 1).toFloat())
     val maxCenterIndex = ((totalClipCount - 1).toFloat() - halfVisible).coerceAtLeast(minCenterIndex)
+    val edgeOverscroll = 0.45f
+    val minDragCenterIndex = minCenterIndex - edgeOverscroll
+    val maxDragCenterIndex = maxCenterIndex + edgeOverscroll
 
     var targetCenterIndex by remember(totalClipCount, visibleClipSlots, config.seed) {
         mutableFloatStateOf(((totalClipCount - 1) / 2f).coerceIn(minCenterIndex, maxCenterIndex))
     }
     var dragSlotSpacingPx by remember { mutableFloatStateOf(120f) }
-    if (targetCenterIndex < minCenterIndex || targetCenterIndex > maxCenterIndex) {
-        targetCenterIndex = targetCenterIndex.coerceIn(minCenterIndex, maxCenterIndex)
+    if (targetCenterIndex < minDragCenterIndex || targetCenterIndex > maxDragCenterIndex) {
+        targetCenterIndex = targetCenterIndex.coerceIn(minDragCenterIndex, maxDragCenterIndex)
     }
 
     var windPhase by remember { mutableFloatStateOf(0f) }
@@ -137,7 +140,7 @@ fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = R
                             val zoom = currentDistance / previousDistance
                             if (abs(zoom - 1f) > 0.001f) {
                                 flingJob?.cancel()
-                                contentScale = (contentScale * zoom).coerceIn(1f, 2f)
+                                contentScale = (contentScale * zoom).coerceIn(1f, 4f / 3f)
                             }
                         }
                         previousDistance = currentDistance
@@ -161,20 +164,40 @@ fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = R
                                     start = targetCenterIndex,
                                     velocityIndexPerSecond = startVelocity,
                                     minCenterIndex = minCenterIndex,
-                                    maxCenterIndex = maxCenterIndex
+                                    maxCenterIndex = maxCenterIndex,
+                                    overscroll = edgeOverscroll
+                                ) { targetCenterIndex = it }
+                            }
+                        } else if (targetCenterIndex < minCenterIndex || targetCenterIndex > maxCenterIndex) {
+                            flingJob?.cancel()
+                            flingJob = coroutineScope.launch {
+                                runCenterIndexFling(
+                                    start = targetCenterIndex,
+                                    velocityIndexPerSecond = 0f,
+                                    minCenterIndex = minCenterIndex,
+                                    maxCenterIndex = maxCenterIndex,
+                                    overscroll = edgeOverscroll
                                 ) { targetCenterIndex = it }
                             }
                         }
                     },
                     onDragCancel = {
                         flingJob?.cancel()
-                        targetCenterIndex = targetCenterIndex.coerceIn(minCenterIndex, maxCenterIndex)
+                        flingJob = coroutineScope.launch {
+                            runCenterIndexFling(
+                                start = targetCenterIndex,
+                                velocityIndexPerSecond = 0f,
+                                minCenterIndex = minCenterIndex,
+                                maxCenterIndex = maxCenterIndex,
+                                overscroll = edgeOverscroll
+                            ) { targetCenterIndex = it }
+                        }
                     }
                 ) { change, amount ->
                     val now = change.uptimeMillis
                     val effectiveSlotSpacing = dragSlotSpacingPx * contentScale
                     val deltaIndex = amount.x / effectiveSlotSpacing
-                    val nextCenter = (targetCenterIndex - deltaIndex).coerceIn(minCenterIndex, maxCenterIndex)
+                    val nextCenter = (targetCenterIndex - deltaIndex).coerceIn(minDragCenterIndex, maxDragCenterIndex)
                     if (lastDragTimeMillis > 0L) {
                         val dtSeconds = ((now - lastDragTimeMillis).coerceAtLeast(1L)) / 1000f
                         dragVelocityIndexPerSecond = ((nextCenter - targetCenterIndex) / dtSeconds).coerceIn(-8f, 8f)
@@ -296,11 +319,11 @@ private suspend fun runCenterIndexFling(
     velocityIndexPerSecond: Float,
     minCenterIndex: Float,
     maxCenterIndex: Float,
+    overscroll: Float,
     onUpdate: (Float) -> Unit
 ) {
     var position = start
     var velocity = velocityIndexPerSecond.coerceIn(-8f, 8f)
-    val overscroll = 0.38f
     val minOver = minCenterIndex - overscroll
     val maxOver = maxCenterIndex + overscroll
     var lastFrameNanos = withFrameNanos { it }
