@@ -8,10 +8,9 @@ data class PhotoData(
     val uri: Uri,
     val takenAtMillis: Long?,
     val addedAtMillis: Long?,
-    val modifiedAtMillis: Long?
-) {
+    val modifiedAtMillis: Long?,
     val cacheKey: String = uri.toString()
-
+) {
     val effectiveTimeMillis: Long?
         get() = when {
             takenAtMillis != null && takenAtMillis > 0L -> takenAtMillis
