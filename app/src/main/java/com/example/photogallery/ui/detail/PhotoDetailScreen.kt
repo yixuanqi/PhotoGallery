@@ -35,6 +35,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.photogallery.HandDrawnInk
 import com.example.photogallery.LightGreenOverlay
 import com.example.photogallery.ui.photo.PhotoData
@@ -188,12 +189,15 @@ fun PhotoDetailScreen(
 
         if (showToolbar) {
             Column(
-                modifier = Modifier.align(Alignment.TopCenter),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 36.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = "${index + 1} / ${photos.size}",
-                    color = Color(0xFFF7F5EA)
+                    color = Color(0xFFF7F5EA),
+                    fontSize = 28.sp
                 )
             }
 
