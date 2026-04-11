@@ -1,6 +1,11 @@
 package com.example.photogallery
 
 import android.os.Bundle
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
@@ -72,6 +77,7 @@ fun PhotoGalleryScreen() {
     var scrollToIndex by remember { mutableStateOf<Int?>(null) }
     var currentCenterIndex by remember { mutableStateOf(0) }
     var detailIndex by remember { mutableStateOf<Int?>(null) }
+    var isDetailVisible by remember { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) {
@@ -111,6 +117,14 @@ fun PhotoGalleryScreen() {
             photoStates = photoStates,
             scrollToIndex = scrollToIndex,
             onScrollToIndexConsumed = { scrollToIndex = null },
+            onPhotoDoubleTap = handlePhotoDoubleTap@{ index ->
+                if (photos.isEmpty()) return@handlePhotoDoubleTap
+                detailIndex = index.coerceIn(0, photos.lastIndex)
+                scrollToIndex = detailIndex
+                isDetailVisible = true
+                showTimelineSelector = false
+                showTimeIndicator = false
+            },
             onViewportChanged = { request ->
                 viewModel.onViewportChanged(
                     visibleRange = request.visibleRange,
@@ -201,6 +215,8 @@ fun PhotoGalleryScreen() {
                             modifier = Modifier.padding(start = 8.dp),
                             onClick = {
                                 detailIndex = currentCenterIndex.coerceIn(0, photos.lastIndex)
+                                isDetailVisible = true
+                                showTimelineSelector = false
                             }
                         ) {
                             Text("查看")
@@ -210,19 +226,25 @@ fun PhotoGalleryScreen() {
             }
         }
         detailIndex?.let { index ->
-            PhotoDetailScreen(
-                photos = photos,
-                currentIndex = index,
-                onIndexChange = { nextIndex ->
-                    detailIndex = nextIndex
-                    scrollToIndex = nextIndex
-                },
-                onDismiss = {
-                    detailIndex = null
-                    scrollToIndex = index.coerceIn(0, photos.lastIndex)
-                },
-                modifier = Modifier.fillMaxSize()
-            )
+            AnimatedVisibility(
+                visible = isDetailVisible,
+                enter = fadeIn() + scaleIn(initialScale = 0.96f),
+                exit = fadeOut() + scaleOut(targetScale = 0.96f)
+            ) {
+                PhotoDetailScreen(
+                    photos = photos,
+                    currentIndex = index,
+                    onIndexChange = { nextIndex ->
+                        detailIndex = nextIndex
+                        scrollToIndex = nextIndex
+                    },
+                    onDismiss = {
+                        isDetailVisible = false
+                        scrollToIndex = detailIndex?.coerceIn(0, photos.lastIndex)
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         }
         if (showTimelineSelector) {
             TimelineSelector(

@@ -6,6 +6,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -80,6 +81,7 @@ fun RopeWithClips(
     photoStates: Map<String, PhotoState> = emptyMap(),
     scrollToIndex: Int? = null,
     onViewportChanged: (PhotoViewportRequest) -> Unit = {},
+    onPhotoDoubleTap: (Int) -> Unit = {},
     onScrollToIndexConsumed: () -> Unit = {}
 ) {
     val density = LocalDensity.current
@@ -193,6 +195,34 @@ fun RopeWithClips(
         modifier = modifier
             .fillMaxSize()
             .onSizeChanged { canvasSize = it }
+            .pointerInput(
+                photos.size,
+                viewportWidth,
+                viewportHeight,
+                viewportRenderCenterIndex,
+                contentScale,
+                config.photoStyle,
+                config.clipStyle
+            ) {
+                detectTapGestures(
+                    onDoubleTap = { tapPosition ->
+                        if (photos.isEmpty()) return@detectTapGestures
+                        findPhotoIndexAtTap(
+                            tapPosition = tapPosition,
+                            canvasWidth = viewportWidth,
+                            canvasHeight = viewportHeight,
+                            centerIndex = viewportRenderCenterIndex,
+                            contentScale = contentScale,
+                            visibleClipSlots = visibleClipSlots,
+                            totalClipCount = totalClipCount,
+                            isLandscape = isLandscape,
+                            verticalOffsetPx = verticalOffsetPx,
+                            photoStyle = config.photoStyle,
+                            clipStyle = config.clipStyle
+                        )?.let(onPhotoDoubleTap)
+                    }
+                )
+            }
             .pointerInput(Unit) {
                 awaitEachGesture {
                     var previousDistance = 0f
@@ -446,6 +476,50 @@ private fun computePhotoScale(
     val widthScale = widthDrivenPhoto.coerceIn(95f, 170f) / basePhotoWidth
     val heightScale = (height / if (isLandscape) 560f else 720f).coerceIn(0.55f, 2.2f)
     return min(widthScale, heightScale)
+}
+
+private fun findPhotoIndexAtTap(
+    tapPosition: Offset,
+    canvasWidth: Float,
+    canvasHeight: Float,
+    centerIndex: Float,
+    contentScale: Float,
+    visibleClipSlots: Int,
+    totalClipCount: Int,
+    isLandscape: Boolean,
+    verticalOffsetPx: Float,
+    photoStyle: PhotoStyle,
+    clipStyle: ClipStyle
+): Int? {
+    if (canvasWidth <= 0f || canvasHeight <= 0f || totalClipCount <= 0) return null
+
+    val safeY = if (isLandscape) {
+        canvasHeight * 0.24f
+    } else {
+        min(verticalOffsetPx, canvasHeight * 0.42f)
+    }
+    val pivot = Offset(canvasWidth * 0.5f, safeY)
+    val unscaledTap = Offset(
+        x = pivot.x + (tapPosition.x - pivot.x) / contentScale.coerceAtLeast(0.001f),
+        y = pivot.y + (tapPosition.y - pivot.y) / contentScale.coerceAtLeast(0.001f)
+    )
+
+    val scale = computePhotoScale(canvasWidth, canvasHeight, visibleClipSlots, isLandscape, photoStyle.photoWidth)
+    val photoWidth = photoStyle.photoWidth * scale
+    val photoHeight = photoStyle.photoHeight * scale
+    val slotSpacing = photoWidth * if (isLandscape) 1.15f else 1.05f
+    val index = (centerIndex + (unscaledTap.x - pivot.x) / slotSpacing)
+        .roundToInt()
+        .coerceIn(0, totalClipCount - 1)
+    val slotX = pivot.x + (index - centerIndex) * slotSpacing
+
+    val clipDrop = (clipStyle.headLength + clipStyle.gripLength + clipStyle.bodyLength - 6f) * scale
+    val topY = safeY + clipDrop - photoHeight * 0.08f
+    val bottomY = topY + photoHeight * 1.12f
+    val withinX = abs(unscaledTap.x - slotX) <= photoWidth * 0.62f
+    val withinY = unscaledTap.y in topY..bottomY
+
+    return if (withinX && withinY) index else null
 }
 
 private fun createPendulumConfig(seed: Long, index: Int): PendulumConfig {

@@ -296,11 +296,11 @@ data class PhotoGroup(
 
 ### 阶段 6：双击展开与返回动画（对应步骤 12）
 
-- [ ] 在 Gallery 中增加双击照片进入详情页。
-- [ ] 优先使用 Compose 现有 pointer input / gesture API，不先新增独立 `gesture/` 目录。
-- [ ] `RopeWithClips` 需要暴露照片绘制位置或点击命中信息。
-- [ ] 展开动画首版可先做淡入/缩放；共享元素精确回位作为后续增强。
-- [ ] 验收：
+- [x] 在 Gallery 中增加双击照片进入详情页。
+- [x] 优先使用 Compose 现有 pointer input / gesture API，不先新增独立 `gesture/` 目录。
+- [x] `RopeWithClips` 需要暴露照片绘制位置或点击命中信息。
+- [x] 展开动画首版可先做淡入/缩放；共享元素精确回位作为后续增强。
+- [x] 验收：
   - 双击照片能进入详情页。
   - 双击不会误触发拖拽或双指缩放。
   - 动画期间不会出现照片与夹子错位闪烁。
