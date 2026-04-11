@@ -34,7 +34,7 @@ object RopeGenerator {
         return applyJitter(basePoints, style.jitterAmount, random)
     }
 
-    private fun generateGravitySagPoints(start: Offset, end: Offset, style: RopeStyle, sampleCount: Int): List<Offset> {
+    fun generateGravitySagPoints(start: Offset, end: Offset, style: RopeStyle, sampleCount: Int): List<Offset> {
         return (0..sampleCount).map { i ->
             val t = i.toFloat() / sampleCount
             val baselineY = start.y + (end.y - start.y) * t
@@ -46,7 +46,7 @@ object RopeGenerator {
         }
     }
 
-    private fun applyJitter(points: List<Offset>, amount: Float, random: java.util.Random): List<Offset> =
+    fun applyJitter(points: List<Offset>, amount: Float, random: java.util.Random): List<Offset> =
         points.mapIndexed { idx, point ->
             if (idx == 0 || idx == points.size - 1) point
             else Offset(

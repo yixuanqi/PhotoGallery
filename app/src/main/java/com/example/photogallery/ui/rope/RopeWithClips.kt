@@ -94,6 +94,7 @@ fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = R
     var flingJob: Job? by remember { mutableStateOf(null) }
     var dragVelocityIndexPerSecond by remember { mutableFloatStateOf(0f) }
     var lastDragTimeMillis by remember { mutableLongStateOf(0L) }
+    var isDragging by remember { mutableStateOf(false) }
     LaunchedEffect(config.enableAnimation) {
         if (!config.enableAnimation) {
             windPhase = 0f
@@ -154,8 +155,10 @@ fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = R
                         flingJob?.cancel()
                         dragVelocityIndexPerSecond = 0f
                         lastDragTimeMillis = 0L
+                        isDragging = true
                     },
                     onDragEnd = {
+                        isDragging = false
                         val startVelocity = dragVelocityIndexPerSecond
                         if (abs(startVelocity) > 0.15f) {
                             flingJob?.cancel()
@@ -182,6 +185,7 @@ fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = R
                         }
                     },
                     onDragCancel = {
+                        isDragging = false
                         flingJob?.cancel()
                         flingJob = coroutineScope.launch {
                             runCenterIndexFling(
@@ -257,7 +261,7 @@ fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = R
         dragSlotSpacingPx = slotSpacing
         val offscreenExtend = max(w * 0.2f, slotSpacing * cacheEachSide * 1.2f)
 
-        val sagFloor = h * if (isLandscape) 0.09f else 0.12f
+        val sagFloor = h * if (isLandscape) 0.13f else 0.17f
         val ropeSag = max(ropeSt.sagAmount, sagFloor)
         val ropeStWithSag = ropeSt.copy(sagAmount = ropeSag)
 
@@ -271,11 +275,13 @@ fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = R
             // Fix: Use a consistent seed per render pass so jitter doesn't dance, but don't tie it to config.seed directly
             val renderSeed = config.seed
             random.setSeed(renderSeed)
-            val sampledPoints = RopeGenerator.generateSampledPoints(ropeStart, ropeEnd, ropeStWithSag, random)
+            val basePoints = RopeGenerator.generateGravitySagPoints(ropeStart, ropeEnd, ropeStWithSag, ropeStWithSag.sampleCount)
+            val sampledPoints = RopeGenerator.applyJitter(basePoints, ropeStWithSag.jitterAmount, random)
 
             RopeRenderer.drawClothesline(this, sampledPoints, ropeStWithSag, config.ropeColor)
 
-            val desiredStart = floor(centerIndexFloat - visibleClipSlots / 2f - cacheEachSide).toInt()
+            val renderCenterIndex = if (isDragging) targetCenterIndex else centerIndexFloat
+            val desiredStart = floor(renderCenterIndex - visibleClipSlots / 2f - cacheEachSide).toInt()
             val maxWindowStart = max(0, totalClipCount - renderSlotCount)
             val windowStart = desiredStart.coerceIn(0, maxWindowStart)
             val windowEndExclusive = min(totalClipCount, windowStart + renderSlotCount)
@@ -290,8 +296,8 @@ fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = R
                     0f
                 }
 
-                val slotX = viewportCenterX + (idx - centerIndexFloat) * slotSpacing
-                val hp = createHangPointAtX(sampledPoints, slotX, idx)
+                val slotX = viewportCenterX + (idx - renderCenterIndex) * slotSpacing
+                val hp = createHangPointAtX(basePoints, slotX, idx)
 
                 // Hard-constraint: clip top is locked to rope tangent, photo top is locked to clip mouth.
                 val clipRotation = hp.tangentAngle + pendulumAngle * 1.5f
