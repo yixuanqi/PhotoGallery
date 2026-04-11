@@ -7,10 +7,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -18,7 +16,6 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -61,6 +58,7 @@ fun PhotoDetailScreen(
     val context = LocalContext.current
     val density = LocalDensity.current
     val swipeThresholdPx = with(density) { 96.dp.toPx() }
+    val defaultImageScale = 1.25f
     var preview by remember(photo.cacheKey) { mutableStateOf<ImageBitmap?>(null) }
     var failed by remember(photo.cacheKey) { mutableStateOf(false) }
     var showToolbar by remember { mutableStateOf(true) }
@@ -133,8 +131,13 @@ fun PhotoDetailScreen(
 
                         previousPinchDistance = 0f
                         previousCentroid = null
-                        if (!transformed && zoomScale <= 1.01f) {
-                            val delta = pressed.first().positionChange()
+                        val delta = pressed.first().positionChange()
+                        if (zoomScale > 1.01f) {
+                            transformed = true
+                            imageOffsetX += delta.x
+                            imageOffsetY += delta.y
+                            pressed.first().consume()
+                        } else if (!transformed) {
                             horizontalDragPx += delta.x
                             verticalDragPx += delta.y
                             if (abs(horizontalDragPx) > abs(verticalDragPx)) {
@@ -166,8 +169,8 @@ fun PhotoDetailScreen(
                 modifier = Modifier
                     .align(Alignment.Center)
                     .graphicsLayer {
-                        scaleX = zoomScale
-                        scaleY = zoomScale
+                        scaleX = defaultImageScale * zoomScale
+                        scaleY = defaultImageScale * zoomScale
                         translationX = imageOffsetX
                         translationY = imageOffsetY
                     }
@@ -192,47 +195,19 @@ fun PhotoDetailScreen(
                     text = "${index + 1} / ${photos.size}",
                     color = Color(0xFFF7F5EA)
                 )
-                TextButton(
-                    colors = ButtonDefaults.textButtonColors(
-                        containerColor = LightGreenOverlay,
-                        contentColor = HandDrawnInk
-                    ),
-                    onClick = onDismiss
-                ) {
-                    Text("返回")
-                }
             }
 
-            Row(
+            Button(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = LightGreenOverlay,
+                    contentColor = HandDrawnInk
+                ),
+                onClick = onDismiss
             ) {
-                Button(
-                    enabled = index > 0,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = LightGreenOverlay,
-                        contentColor = HandDrawnInk,
-                        disabledContainerColor = LightGreenOverlay.copy(alpha = 0.45f),
-                        disabledContentColor = HandDrawnInk.copy(alpha = 0.55f)
-                    ),
-                    onClick = { onIndexChange(index - 1) }
-                ) {
-                    Text("上一张")
-                }
-                Button(
-                    enabled = index < photos.lastIndex,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = LightGreenOverlay,
-                        contentColor = HandDrawnInk,
-                        disabledContainerColor = LightGreenOverlay.copy(alpha = 0.45f),
-                        disabledContentColor = HandDrawnInk.copy(alpha = 0.55f)
-                    ),
-                    onClick = { onIndexChange(index + 1) }
-                ) {
-                    Text("下一张")
-                }
+                Text("返回")
             }
         }
     }
