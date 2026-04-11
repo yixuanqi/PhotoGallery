@@ -283,13 +283,13 @@ data class PhotoGroup(
 
 ### 阶段 5：详情页基础（对应步骤 11）
 
-- [ ] 新增 `ui/detail/PhotoDetailScreen.kt`。
-- [ ] 决定是否引入 Navigation Compose；如果只做局部 overlay，可先不引入 Navigation。
-- [ ] 详情页接收当前照片 URI 和索引。
-- [ ] 详情页加载比 Gallery 缩略图更大的预览图，不能直接复用小缩略图。
-- [ ] 支持左右切换上一张/下一张。
-- [ ] 支持单击显示/隐藏轻量工具栏。
-- [ ] 验收：
+- [x] 新增 `ui/detail/PhotoDetailScreen.kt`。
+- [x] 决定是否引入 Navigation Compose；如果只做局部 overlay，可先不引入 Navigation。
+- [x] 详情页接收当前照片 URI 和索引。
+- [x] 详情页加载比 Gallery 缩略图更大的预览图，不能直接复用小缩略图。
+- [x] 支持左右切换上一张/下一张。
+- [x] 支持单击显示/隐藏轻量工具栏。
+- [x] 验收：
   - 从 Gallery 进入详情页后显示清晰照片。
   - 左右切换不越界。
   - 返回 Gallery 后保留或合理恢复原中心索引。

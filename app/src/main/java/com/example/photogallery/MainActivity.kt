@@ -9,8 +9,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -33,6 +35,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.photogallery.ui.background.BackgroundRenderer
+import com.example.photogallery.ui.detail.PhotoDetailScreen
 import com.example.photogallery.ui.photo.PhotoGalleryViewModel
 import com.example.photogallery.ui.photo.PhotoPermissionState
 import com.example.photogallery.ui.rope.RopeWithClips
@@ -67,6 +70,8 @@ fun PhotoGalleryScreen() {
     var showTimelineSelector by remember { mutableStateOf(false) }
     var timeIndicatorPulse by remember { mutableLongStateOf(0L) }
     var scrollToIndex by remember { mutableStateOf<Int?>(null) }
+    var currentCenterIndex by remember { mutableStateOf(0) }
+    var detailIndex by remember { mutableStateOf<Int?>(null) }
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) {
@@ -116,6 +121,7 @@ fun PhotoGalleryScreen() {
                 activePhotoGroup = photoGroups.firstOrNull { group ->
                     request.centerIndex in group.startIndex..group.endIndex
                 }
+                currentCenterIndex = request.centerIndex
                 showTimeIndicator = activePhotoGroup != null
                 timeIndicatorPulse += 1
             },
@@ -177,17 +183,46 @@ fun PhotoGalleryScreen() {
         )
         if (showTimeIndicator) {
             activePhotoGroup?.let { group ->
-                TimeIndicator(
-                    group = group,
+                Row(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .padding(top = 48.dp)
-                        .clickable {
+                        .padding(top = 48.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TimeIndicator(
+                        group = group,
+                        modifier = Modifier.clickable {
                             showTimelineSelector = true
                             showTimeIndicator = true
                         }
-                )
+                    )
+                    if (photos.isNotEmpty()) {
+                        FilledTonalButton(
+                            modifier = Modifier.padding(start = 8.dp),
+                            onClick = {
+                                detailIndex = currentCenterIndex.coerceIn(0, photos.lastIndex)
+                            }
+                        ) {
+                            Text("查看")
+                        }
+                    }
+                }
             }
+        }
+        detailIndex?.let { index ->
+            PhotoDetailScreen(
+                photos = photos,
+                currentIndex = index,
+                onIndexChange = { nextIndex ->
+                    detailIndex = nextIndex
+                    scrollToIndex = nextIndex
+                },
+                onDismiss = {
+                    detailIndex = null
+                    scrollToIndex = index.coerceIn(0, photos.lastIndex)
+                },
+                modifier = Modifier.fillMaxSize()
+            )
         }
         if (showTimelineSelector) {
             TimelineSelector(
@@ -215,7 +250,8 @@ fun PhotoGalleryScreen() {
                     textAlign = TextAlign.Center
                 )
                 Button(
-                    modifier = Modifier.padding(top = 12.dp),
+                    modifier = Modifier
+                        .padding(top = 12.dp),
                     onClick = {
                         permissionLauncher.launch(PhotoGalleryViewModel.requiredPermissions())
                     }
