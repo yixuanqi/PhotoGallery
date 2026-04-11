@@ -25,6 +25,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.example.photogallery.ui.photo.PhotoData
+import com.example.photogallery.ui.photo.PhotoState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.PI
@@ -59,8 +61,21 @@ data class PendulumConfig(
     val phase: Float
 )
 
+data class PhotoViewportRequest(
+    val visibleRange: IntRange,
+    val preloadRange: IntRange,
+    val targetWidthPx: Int,
+    val targetHeightPx: Int
+)
+
 @Composable
-fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = RopeWithClipsConfig()) {
+fun RopeWithClips(
+    modifier: Modifier = Modifier,
+    config: RopeWithClipsConfig = RopeWithClipsConfig(),
+    photos: List<PhotoData> = emptyList(),
+    photoStates: Map<String, PhotoState> = emptyMap(),
+    onViewportChanged: (PhotoViewportRequest) -> Unit = {}
+) {
     val density = LocalDensity.current
     val configuration = LocalConfiguration.current
     val verticalOffsetPx = with(density) { config.verticalOffsetDp.dp.toPx() }
@@ -70,7 +85,7 @@ fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = R
     } else {
         config.clipCount
     }.coerceAtLeast(1)
-    val totalClipCount = config.clipCount.coerceAtLeast(1)
+    val totalClipCount = (photos.takeIf { it.isNotEmpty() }?.size ?: config.clipCount).coerceAtLeast(1)
     val cacheEachSide = config.cacheEachSide.coerceAtLeast(0)
     val renderSlotCount = visibleClipSlots + cacheEachSide * 2
     val halfVisible = (visibleClipSlots - 1) / 2f
@@ -120,6 +135,7 @@ fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = R
     )
 
     val random = remember { java.util.Random() } // Fix: Remove seed dependency so it doesn't reset on every recomposition
+    val lastViewportRequest = remember { arrayOfNulls<PhotoViewportRequest>(1) }
 
     Canvas(
         modifier = modifier
@@ -286,6 +302,20 @@ fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = R
             val windowStart = desiredStart.coerceIn(0, maxWindowStart)
             val windowEndExclusive = min(totalClipCount, windowStart + renderSlotCount)
             val viewportCenterX = w * 0.5f
+            if (photos.isNotEmpty()) {
+                val visibleStart = floor(renderCenterIndex - visibleClipSlots / 2f).toInt().coerceIn(0, totalClipCount - 1)
+                val visibleEnd = (visibleStart + visibleClipSlots - 1).coerceIn(0, totalClipCount - 1)
+                val viewportRequest = PhotoViewportRequest(
+                    visibleRange = visibleStart..visibleEnd,
+                    preloadRange = windowStart..(windowEndExclusive - 1),
+                    targetWidthPx = ((photoSt.photoWidth - photoSt.borderSize * 2f) * 1.25f).toInt().coerceAtLeast(1),
+                    targetHeightPx = ((photoSt.photoHeight - photoSt.borderSize * 2f - photoSt.borderSize * 0.5f) * 1.25f).toInt().coerceAtLeast(1)
+                )
+                if (lastViewportRequest[0] != viewportRequest) {
+                    lastViewportRequest[0] = viewportRequest
+                    onViewportChanged(viewportRequest)
+                }
+            }
 
             for (idx in windowStart until windowEndExclusive) {
                 val pendulumAngle = if (config.enableAnimation) {
@@ -310,7 +340,10 @@ fun RopeWithClips(modifier: Modifier = Modifier, config: RopeWithClipsConfig = R
                         index = idx,
                         style = photoSt,
                         seed = config.seed + idx * 777L,
-                        additionalRotation = photoRotation
+                        additionalRotation = photoRotation,
+                        realPhoto = (photos.getOrNull(idx)?.let { photo ->
+                            photoStates[photo.cacheKey] as? PhotoState.Loaded
+                        })?.bitmap
                     )
                 )
                 val clipRandom = java.util.Random(config.seed + idx * 500L)

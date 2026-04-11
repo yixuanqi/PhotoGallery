@@ -4,10 +4,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import kotlin.math.max
 import kotlin.math.sin
 import kotlin.math.cos
 
@@ -41,7 +45,8 @@ data class PhotoConfig(
         Color(0xFFD4E4D0), Color(0xFFE8DCC8), Color(0xFFD0DCE8),
         Color(0xFFE8E0D0), Color(0xFFD8E4D0)
     ),
-    val additionalRotation: Float = 0f
+    val additionalRotation: Float = 0f,
+    val realPhoto: ImageBitmap? = null
 )
 
 object PhotoRenderer {
@@ -63,7 +68,7 @@ object PhotoRenderer {
             translate(0f, config.style.photoHeight / 2f)
         }) {
             drawPhotoBorder(config.style, hasCurlRight, hasCurlLeft, hasWavyEdges, rng)
-            drawPhotoArea(config.style, photoTint, rng)
+            drawPhotoArea(config.style, photoTint, rng, config.realPhoto)
             drawPhotoHighlight(config.style, rng)
             if (hasCurlRight) drawCurledCorner(config.style, isRight = true, rng)
             if (hasCurlLeft) drawCurledCorner(config.style, isRight = false, rng)
@@ -238,12 +243,16 @@ object PhotoRenderer {
         return path
     }
 
-    private fun DrawScope.drawPhotoArea(st: PhotoStyle, tint: Color, rng: java.util.Random) {
+    private fun DrawScope.drawPhotoArea(st: PhotoStyle, tint: Color, rng: java.util.Random, realPhoto: ImageBitmap?) {
         val innerW = st.photoWidth - st.borderSize * 2f
         val innerH = st.photoHeight - st.borderSize * 2f - st.borderSize * 0.5f
         val halfW = innerW / 2f
-        val halfH = innerH / 2f
         val topY = -st.photoHeight / 2f + st.borderSize
+        if (realPhoto != null) {
+            drawCenterCropPhoto(realPhoto, innerW, innerH, topY)
+            return
+        }
+
         val j = { (rng.nextFloat() - 0.5f) * st.handDrawnJitter * 0.5f }
         
         val path = Path().apply {
@@ -273,6 +282,28 @@ object PhotoRenderer {
         )
         
         drawGhibliLandscapeDetails(innerW, innerH, topY, rng)
+    }
+
+    private fun DrawScope.drawCenterCropPhoto(image: ImageBitmap, innerW: Float, innerH: Float, topY: Float) {
+        val srcWidth = image.width
+        val srcHeight = image.height
+        if (srcWidth <= 0 || srcHeight <= 0) return
+
+        val dstWidth = innerW.toInt().coerceAtLeast(1)
+        val dstHeight = innerH.toInt().coerceAtLeast(1)
+        val scale = max(dstWidth.toFloat() / srcWidth, dstHeight.toFloat() / srcHeight)
+        val cropWidth = (dstWidth / scale).toInt().coerceIn(1, srcWidth)
+        val cropHeight = (dstHeight / scale).toInt().coerceIn(1, srcHeight)
+        val cropLeft = ((srcWidth - cropWidth) / 2).coerceAtLeast(0)
+        val cropTop = ((srcHeight - cropHeight) / 2).coerceAtLeast(0)
+
+        drawImage(
+            image = image,
+            srcOffset = IntOffset(cropLeft, cropTop),
+            srcSize = IntSize(cropWidth, cropHeight),
+            dstOffset = IntOffset((-innerW / 2f).toInt(), topY.toInt()),
+            dstSize = IntSize(dstWidth, dstHeight)
+        )
     }
 
     private fun DrawScope.drawGhibliLandscapeDetails(innerW: Float, innerH: Float, topY: Float, rng: java.util.Random) {

@@ -1,0 +1,227 @@
+# 真实照片集成开发执行清单
+
+> 本清单基于 `docs/photo-integration-design.md`，用于指导后续 agent 分阶段开发。默认当前项目为 Android Compose Canvas 应用，`minSdk = 26`，`targetSdk = 34`。执行时优先保持现有手绘绳子、夹子、拍立得边框和拖拽/缩放体验不回退。
+
+## 0. 开发边界
+
+### 首版目标
+
+- [ ] 将用户授权范围内的真实照片绘制到现有拍立得画框内部。
+- [ ] 支持照片元数据查询、统一时间排序、窗口化缩略图加载、LruCache 缓存。
+- [ ] 支持无权限、部分授权、空图库、缩略图失败时的占位兜底。
+- [ ] 不实现详情页、时间轴 UI、磁盘缓存、弱/软引用缓存、复杂手势模块。
+
+### 关键取舍
+
+- [ ] 若首版必须自动浏览图库或为后续时间轴铺路，采用 MediaStore。
+- [ ] 若首版只验证“真实照片上墙”体验，可改用 Photo Picker，但后续时间轴需要再切换到 MediaStore。
+- [ ] 无论采用哪种方案，文案和逻辑都只能承诺“用户授权范围内的照片”，不要承诺“所有照片”。
+
+## 1. 预检
+
+- [ ] 阅读 `docs/photo-integration-design.md`。
+- [ ] 确认当前 `app/build.gradle.kts` 中 `minSdk = 26`、`targetSdk = 34`。
+- [ ] 确认当前 `AndroidManifest.xml` 尚未声明读取媒体权限。
+- [ ] 确认现有主要改动文件：
+  - `app/src/main/java/com/example/photogallery/MainActivity.kt`
+  - `app/src/main/java/com/example/photogallery/ui/rope/RopeWithClips.kt`
+  - `app/src/main/java/com/example/photogallery/ui/rope/PhotoRenderer.kt`
+- [ ] 检查工作区是否已有用户未提交改动，不要回滚无关改动。
+
+## 2. 权限与照片来源
+
+### MediaStore 路线
+
+- [ ] 在 manifest 中新增读取媒体权限：
+
+```xml
+<uses-permission
+    android:name="android.permission.READ_EXTERNAL_STORAGE"
+    android:maxSdkVersion="32" />
+<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+<uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+```
+
+- [ ] Android 13 使用 `READ_MEDIA_IMAGES`。
+- [ ] Android 14+ 处理全量授权、部分授权、拒绝授权。
+- [ ] Android 10-12 使用 `READ_EXTERNAL_STORAGE`。
+- [ ] Android 8-9 使用 `READ_EXTERNAL_STORAGE`。
+- [ ] 如首版不需要显式识别 Android 14+ 部分授权，重新确认是否仍要声明 `READ_MEDIA_VISUAL_USER_SELECTED`。
+- [ ] 在 `onStart` 或 `onResume` 重新计算权限状态并刷新查询结果。
+- [ ] URI 失效或授权范围变化时，对应照片回退为占位图或空状态。
+
+### Photo Picker 路线
+
+- [ ] 若选择 Photo Picker，不添加读取媒体权限。
+- [ ] 保留 URI 列表、缩略图加载、Canvas 绘制、缓存逻辑。
+- [ ] 标记后续时间轴需要改回 MediaStore 或补充可用元数据来源。
+
+## 3. 数据模型
+
+- [ ] 新增 `ui/photo/PhotoData.kt`，或按项目结构选择等价位置。
+- [ ] 定义不可变元数据模型：
+
+```kotlin
+data class PhotoData(
+    val id: Long,
+    val uri: Uri,
+    val takenAtMillis: Long?,
+    val addedAtMillis: Long?,
+    val modifiedAtMillis: Long?
+)
+```
+
+- [ ] 定义加载状态：
+
+```kotlin
+sealed class PhotoState {
+    object Unloaded : PhotoState()
+    object Loading : PhotoState()
+    data class Loaded(val bitmap: ImageBitmap) : PhotoState()
+    data class Failed(val reason: String? = null) : PhotoState()
+}
+```
+
+- [ ] 图片加载状态不要放回 `PhotoData` 内，避免频繁替换元数据列表。
+- [ ] `photoStates` 使用 `Map<String, PhotoState>`，key 使用 `uri.toString()`。
+- [ ] 缓存 key 同样使用 `uri.toString()`。
+
+## 4. Repository
+
+- [ ] 新增 `ui/photo/PhotoRepository.kt`。
+- [ ] MediaStore 查询字段至少包含：
+  - `_ID`
+  - `DATE_TAKEN`
+  - `DATE_ADDED`
+  - `DATE_MODIFIED`
+- [ ] 使用 `_ID` 构造图片 URI。
+- [ ] 排序使用统一有效时间：
+  - 优先 `takenAtMillis`
+  - 其次 `addedAtMillis`
+  - 再次 `modifiedAtMillis`
+  - 全部不可用时放到列表末尾
+- [ ] 首版默认排序方向按文档待确认项决定；未确认时建议“新到旧”。
+- [ ] 不要在首版实现复杂增量同步。
+- [ ] 如果照片很多，先加入数量上限或简单分页策略，而不是完整同步系统。
+
+## 5. 缩略图加载
+
+- [ ] Android 10+ 使用 `ContentResolver.loadThumbnail(uri, targetSize, null)`。
+- [ ] Android 8-9 使用 `ContentResolver.openInputStream(uri)` + 采样解码兜底。
+- [ ] 缩略图目标尺寸根据画框内部区域和 density 动态计算，不写死 `224x264 px`。
+- [ ] 建议公式：
+
+```text
+targetWidthPx = frameInnerWidthDp * density * qualityFactor
+targetHeightPx = frameInnerHeightDp * density * qualityFactor
+```
+
+- [ ] 首版 `qualityFactor` 可取 `1.0f` 到 `1.5f`。
+- [ ] 所有缩略图加载在 `Dispatchers.IO` 执行。
+- [ ] 捕获加载异常，失败时设置 `PhotoState.Failed` 并保持占位图。
+- [ ] 已加载或加载中的 URI 不重复启动加载任务。
+
+## 6. 缓存
+
+- [ ] 新增 `ui/photo/ThumbnailCache.kt`，或在 ViewModel 内先实现简单封装。
+- [ ] 使用 `LruCache<String, ImageBitmap>`。
+- [ ] 首版缓存 30-60 张缩略图即可。
+- [ ] 暂不实现磁盘缓存、弱/软引用缓存、Bitmap 复用。
+- [ ] 离开预加载范围后不强制 unload，由 LruCache 自然淘汰。
+- [ ] 后续若发现内存压力，再改成按字节限制。
+
+## 7. ViewModel
+
+- [ ] 新增 `ui/photo/PhotoGalleryViewModel.kt`。
+- [ ] 暴露状态：
+
+```kotlin
+val photos: StateFlow<List<PhotoData>>
+val photoStates: StateFlow<Map<String, PhotoState>>
+val permissionState: StateFlow<PhotoPermissionState>
+val isLoading: StateFlow<Boolean>
+```
+
+- [ ] 实现 `loadPhotos()`：查询元数据并更新 `photos`。
+- [ ] 实现 `onViewportChanged(visibleRange, preloadRange)`：根据窗口触发缩略图加载。
+- [ ] 为 `onViewportChanged` 加防抖：快速 fling 时暂停或合并请求，约 100ms 无新请求后加载最终窗口。
+- [ ] 实现 `reloadPermissionLimitedPhotos()`：Android 14+ 部分授权重新选择后刷新列表。
+- [ ] 实现 `checkPermissionOnResume()` 或等价生命周期入口：回到前台后重新检查权限和查询结果。
+
+## 8. RopeWithClips 改造
+
+- [ ] 修改 `RopeWithClips` 支持接收 `photos: List<PhotoData>`。
+- [ ] 将总照片数从 `config.clipCount` 切换为 `photos.size` 或明确两者关系。
+- [ ] 当前绘制索引 `idx` 对应 `photos[idx]`。
+- [ ] 暴露窗口变化回调，例如 `onViewportChanged(visibleRange, preloadRange)`。
+- [ ] 复用当前窗口计算：
+
+```text
+renderSlotCount = visibleClipSlots + cacheEachSide * 2
+windowStart until windowEndExclusive
+```
+
+- [ ] 当照片数量少于可见槽位时，根据产品决定：
+  - 只显示已有照片
+  - 或用占位画框补齐
+- [ ] 保持现有拖拽、fling、双指缩放、摆动动画不回退。
+
+## 9. PhotoRenderer 改造
+
+- [ ] 修改 `PhotoRenderer.drawPolaroid` 或相关配置，使其能接收当前照片状态。
+- [ ] 画框边框、卷角、高光、阴影、手绘边缘继续保留。
+- [ ] 只替换画框内部 `drawPhotoArea` 的内容。
+- [ ] `PhotoState.Loaded` 时以 CenterCrop 绘制真实图片。
+- [ ] `Unloaded`、`Loading`、`Failed` 时使用现有渐变 + 手绘风景占位图。
+- [ ] CenterCrop 要求：
+  - 保持原图比例
+  - 填满画框内部区域
+  - 超出部分裁剪
+  - 不覆盖拍立得边框、卷角和高光
+
+## 10. MainActivity 接入
+
+- [ ] 在 `MainActivity` 或上层 Composable 中接入 ViewModel。
+- [ ] 根据权限状态触发权限请求或照片加载。
+- [ ] 将 `photos` 和 `photoStates` 传给 `RopeWithClips` 或其上层适配器。
+- [ ] 无权限、部分授权、空图库、加载失败时保留现有视觉，不出现空白屏。
+- [ ] 若使用 MediaStore，在用户拒绝权限时可提供 Photo Picker 备选入口。
+
+## 11. 测试与验收
+
+### 功能验收
+
+- [ ] 首次进入应用能正确请求/处理权限。
+- [ ] Android 14+ 部分授权时只展示授权范围内照片。
+- [ ] 用户在系统设置中改变权限后，回到应用能刷新状态。
+- [ ] 空图库或拒绝权限时不崩溃、不黑屏。
+- [ ] 缩略图加载失败时对应拍立得显示占位图。
+- [ ] 有照片时真实图片显示在拍立得内部，边框和夹子仍可见。
+- [ ] 滑动窗口变化时新照片逐步加载，已加载照片不重复解码。
+
+### 性能验收
+
+- [ ] 快速横向滑动不会启动大量无效缩略图加载任务。
+- [ ] 缓存数量受控，不无限增长。
+- [ ] Canvas 动画和拖拽没有明显卡顿。
+- [ ] 旋转屏幕或前后台切换后状态可恢复或合理重新加载。
+
+### 构建验收
+
+- [ ] `./gradlew.bat :app:compileDebugKotlin` 通过。
+- [ ] 如新增权限或依赖，确认 manifest 和 Gradle 配置正确。
+- [ ] 如引入新依赖，说明理由；首版不建议引入图片加载库，除非明确替代手写 API 26-28 解码。
+
+## 12. 暂不实现
+
+- [ ] 不实现照片详情页。
+- [ ] 不实现时间轴 UI 和月份快速定位。
+- [ ] 不实现磁盘缓存、弱/软引用缓存。
+- [ ] 不实现共享元素返回动画。
+- [ ] 不新增独立 `gesture/` 目录，除非现有 Compose 手势 API 无法满足需求。
+
+## 13. 交付要求
+
+- [ ] 每个阶段完成后更新本清单勾选状态或在提交说明中列出完成项。
+- [ ] 若偏离 `docs/photo-integration-design.md`，在 PR/总结中说明原因。
+- [ ] 任何权限、照片来源、缓存策略变更都要同步更新设计文档和本清单。

@@ -9,4 +9,5 @@
 .cxx
 local.properties
 
-app/build/
+/app/build/
+/.gradle/
