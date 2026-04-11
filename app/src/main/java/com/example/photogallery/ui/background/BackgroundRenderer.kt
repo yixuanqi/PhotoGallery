@@ -191,11 +191,13 @@ private fun DrawScope.createGhibliHillPath(
 ): Path {
     val r = Random(seed)
     val path = Path()
+    val aspect = size.width / size.height
+    val portraitFactor = ((1f / aspect) - 1f).coerceIn(0f, 1f)
     
     path.moveTo(-size.width * 0.1f, size.height)
     
     val points = mutableListOf<Offset>()
-    val steps = 80
+    val steps = 120
     for (i in 0..steps) {
         val x = (i.toFloat() / steps) * size.width * 1.2f - size.width * 0.1f + offsetX
         val normalizedX = (x - offsetX) / size.width
@@ -203,7 +205,8 @@ private fun DrawScope.createGhibliHillPath(
         val mainWave = sin(normalizedX * Math.PI * frequency) * amplitude * 0.6
         val secondaryWave = sin(normalizedX * Math.PI * frequency * 2.3f + seed * 0.01f) * amplitude * 0.25
         val tertiaryWave = sin(normalizedX * Math.PI * frequency * 0.5f + seed * 0.02f) * amplitude * 0.15
-        val jitter = (r.nextFloat() - 0.5f) * amplitude * 0.08f
+        // Reduce high-frequency jitter in portrait to avoid sharp mountain spikes.
+        val jitter = (r.nextFloat() - 0.5f) * amplitude * (0.04f - 0.025f * portraitFactor)
         
         val y = baseY - mainWave.toFloat() - secondaryWave.toFloat() - tertiaryWave.toFloat() + jitter
         points.add(Offset(x, y))
@@ -239,7 +242,7 @@ private fun DrawScope.drawForegroundGrass() {
             val x = (i.toFloat() / steps) * size.width
             val normalizedX = x / size.width
             val wave = sin(normalizedX * Math.PI * 3f) * 8f + sin(normalizedX * Math.PI * 7f) * 3f
-            val jitter = (r.nextFloat() - 0.5f) * 2f
+            val jitter = (r.nextFloat() - 0.5f) * 1.2f
             lineTo(x, grassBaseY + wave.toFloat() + jitter)
         }
         

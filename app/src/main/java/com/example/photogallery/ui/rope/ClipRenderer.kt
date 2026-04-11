@@ -50,7 +50,7 @@ object ClipRenderer {
         rotationDeg: Float = hangPoint.tangentAngle
     ) {
         scope.translate(hangPoint.clipAnchor.x, hangPoint.clipAnchor.y) {
-            rotate(rotationDeg) {
+            rotate(rotationDeg, pivot = Offset.Zero) {
                 drawFullPinBody(style, random)
             }
         }

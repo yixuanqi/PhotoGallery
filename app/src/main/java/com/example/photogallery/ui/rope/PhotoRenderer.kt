@@ -48,7 +48,7 @@ object PhotoRenderer {
 
     fun drawPolaroid(scope: DrawScope, anchor: Offset, config: PhotoConfig) {
         val rng = java.util.Random(config.seed)
-        val rotDeg = (rng.nextFloat() - 0.5f) * config.style.rotationRange * 2f + config.additionalRotation
+        val rotDeg = config.additionalRotation + (rng.nextFloat() - 0.5f) * config.style.rotationRange * 0.35f
         val hasCurlRight = rng.nextFloat() < config.style.curlChance
         val hasCurlLeft = !hasCurlRight && rng.nextFloat() < 0.35f
         val hasWavyEdges = rng.nextFloat() < config.style.wavyEdgeChance
