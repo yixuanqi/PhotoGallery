@@ -26,7 +26,9 @@
 param(
     [switch]$SkipSource,
     [switch]$SkipManual,
-    [switch]$SkipPrivacy
+    [switch]$SkipPrivacy,
+    [switch]$Deploy,
+    [string]$RepoUrl = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -131,6 +133,17 @@ try {
     Write-Host "  2. 补充个人信息（姓名、身份证号等）" -ForegroundColor White
     Write-Host "  3. 将隐私政策部署到可访问的网址" -ForegroundColor White
     Write-Host "  4. 准备软著申请材料提交" -ForegroundColor White
+    
+    if ($Deploy) {
+        Write-Host ""
+        Write-Step -Step 4 -Total 4 -Message "部署到 GitHub Pages..."
+        $deployScript = Join-Path $PSScriptRoot "deploy-pages.ps1"
+        if ($RepoUrl) {
+            & $deployScript -RepoUrl $RepoUrl
+        } else {
+            & $deployScript
+        }
+    }
     
 } catch {
     Write-Host ""

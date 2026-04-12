@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小笨相册 - 应用信息</title>
+    <style>
+        :root {
+            --primary-color: #40513A;
+            --secondary-color: #DCEFD2;
+            --text-color: #333;
+            --light-text: #666;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.8;
+            color: var(--text-color);
+            background: linear-gradient(135deg, #f5f7f0 0%, #e8f4e5 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .app-icon {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(145deg, var(--secondary-color), #c8e6c9);
+            border-radius: 28px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 30px rgba(64, 81, 58, 0.2);
+        }
+        
+        .app-icon svg {
+            width: 60px;
+            height: 60px;
+            fill: var(--primary-color);
+        }
+        
+        h1 {
+            color: var(--primary-color);
+            font-size: 2.2em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: var(--light-text);
+            font-size: 1.1em;
+        }
+        
+        .version {
+            display: inline-block;
+            background: var(--primary-color);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            margin-top: 10px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+        }
+        
+        .card h2 {
+            color: var(--primary-color);
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card h2::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: var(--secondary-color);
+            border-radius: 2px;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .feature {
+            background: #f8faf8;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 3px solid var(--primary-color);
+        }
+        
+        .feature strong {
+            color: var(--primary-color);
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .link-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .link-btn:hover {
+            background: #2d3a28;
+            transform: translateY(-1px);
+        }
+        
+        .link-btn.secondary {
+            background: var(--secondary-color);
+            color: var(--primary-color);
+        }
+        
+        .link-btn.secondary:hover {
+            background: #c8e6c9;
+        }
+        
+        .info-list {
+            list-style: none;
+        }
+        
+        .info-list li {
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .info-list li:last-child {
+            border-bottom: none;
+        }
+        
+        .info-list .label {
+            color: var(--light-text);
+        }
+        
+        .info-list .value {
+            font-weight: 500;
+            color: var(--primary-color);
+        }
+        
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: var(--light-text);
+            font-size: 0.9em;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px 15px;
+            }
+            
+            h1 {
+                font-size: 1.8em;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+            
+            .links {
+                flex-direction: column;
+            }
+            
+            .link-btn {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="app-icon">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                </svg>
+            </div>
+            <h1>小笨相册</h1>
+            <p class="subtitle">Photo Gallery</p>
+            <span class="version">V1.0</span>
+        </header>
+        
+        <div class="card">
+            <h2>应用简介</h2>
+            <p>小笨相册是一款简洁优雅的本地照片浏览应用，采用独特的手绘风格界面设计，为您带来温馨自然的照片浏览体验。</p>
+        </div>
+        
+        <div class="card">
+            <h2>主要功能</h2>
+            <div class="features">
+                <div class="feature">
+                    <strong>照片浏览</strong>
+                    <span>流畅浏览本地相册照片</span>
+                </div>
+                <div class="feature">
+                    <strong>手绘风格</strong>
+                    <span>独特的手绘界面渲染</span>
+                </div>
+                <div class="feature">
+                    <strong>时间线导航</strong>
+                    <span>按日期分组快速定位</span>
+                </div>
+                <div class="feature">
+                    <strong>照片详情</strong>
+                    <span>查看照片详细信息</span>
+                </div>
+                <div class="feature">
+                    <strong>缩放手势</strong>
+                    <span>双指缩放查看细节</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>应用信息</h2>
+            <ul class="info-list">
+                <li>
+                    <span class="label">应用名称</span>
+                    <span class="value">小笨相册</span>
+                </li>
+                <li>
+                    <span class="label">版本号</span>
+                    <span class="value">1.0</span>
+                </li>
+                <li>
+                    <span class="label">开发者</span>
+                    <span class="value">齐异轩</span>
+                </li>
+                <li>
+                    <span class="label">应用类别</span>
+                    <span class="value">应用软件-多媒体</span>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="card">
+            <h2>相关链接</h2>
+            <div class="links">
+                <a href="privacy-policy.html" class="link-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
+                    </svg>
+                    隐私政策
+                </a>
+                <a href="user-manual.html" class="link-btn secondary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                    </svg>
+                    用户手册
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>© 2025 小笨相册开发团队. 保留所有权利。</p>
+    </footer>
+</body>
+</html>
