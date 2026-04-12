@@ -6,6 +6,7 @@ import android.content.Context
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Size
 import androidx.compose.ui.graphics.ImageBitmap
@@ -14,10 +15,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.max
 
+data class PhotoPage(
+    val photos: List<PhotoData>,
+    val nextOffset: Int,
+    val hasMore: Boolean
+)
+
 class PhotoRepository(private val context: Context) {
     private val resolver: ContentResolver = context.contentResolver
 
-    suspend fun queryPhotos(maxPhotos: Int = 500): List<PhotoData> = withContext(Dispatchers.IO) {
+    suspend fun queryPhotoPage(offset: Int, pageSize: Int): PhotoPage = withContext(Dispatchers.IO) {
         val collection = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
         val projection = arrayOf(
             MediaStore.Images.Media._ID,
@@ -27,19 +34,22 @@ class PhotoRepository(private val context: Context) {
         )
 
         val photos = mutableListOf<PhotoData>()
-        resolver.query(
-            collection,
-            projection,
-            null,
-            null,
-            "${MediaStore.Images.Media.DATE_TAKEN} DESC, ${MediaStore.Images.Media.DATE_ADDED} DESC"
-        )?.use { cursor ->
+        val queryArgs = Bundle().apply {
+            putStringArray(
+                ContentResolver.QUERY_ARG_SORT_COLUMNS,
+                arrayOf(MediaStore.Images.Media.DATE_TAKEN, MediaStore.Images.Media.DATE_ADDED)
+            )
+            putInt(ContentResolver.QUERY_ARG_SORT_DIRECTION, ContentResolver.QUERY_SORT_DIRECTION_ASCENDING)
+            putInt(ContentResolver.QUERY_ARG_OFFSET, offset.coerceAtLeast(0))
+            putInt(ContentResolver.QUERY_ARG_LIMIT, (pageSize + 1).coerceAtLeast(1))
+        }
+        resolver.query(collection, projection, queryArgs, null)?.use { cursor ->
             val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
             val takenColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN)
             val addedColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
             val modifiedColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_MODIFIED)
 
-            while (cursor.moveToNext() && photos.size < maxPhotos) {
+            while (cursor.moveToNext() && photos.size < pageSize + 1) {
                 val id = cursor.getLong(idColumn)
                 val uri = ContentUris.withAppendedId(collection, id)
                 photos += PhotoData(
@@ -52,9 +62,15 @@ class PhotoRepository(private val context: Context) {
             }
         }
 
-        photos.sortedWith(
+        val hasMore = photos.size > pageSize
+        val pagePhotos = photos.take(pageSize).sortedWith(
             compareBy<PhotoData> { it.effectiveTimeMillis ?: Long.MIN_VALUE }
                 .thenBy { it.id }
+        )
+        PhotoPage(
+            photos = pagePhotos,
+            nextOffset = offset.coerceAtLeast(0) + pagePhotos.size,
+            hasMore = hasMore
         )
     }
 

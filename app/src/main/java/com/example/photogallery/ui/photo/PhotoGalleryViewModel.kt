@@ -20,6 +20,9 @@ class PhotoGalleryViewModel(application: Application) : AndroidViewModel(applica
     private val thumbnailCache = ThumbnailCache()
     private val loadingKeys = mutableSetOf<String>()
     private var viewportJob: Job? = null
+    private var photoPageJob: Job? = null
+    private var nextPhotoOffset = 0
+    private var hasMorePhotoPages = true
 
     private val _photos = MutableStateFlow<List<PhotoData>>(emptyList())
     val photos: StateFlow<List<PhotoData>> = _photos.asStateFlow()
@@ -53,20 +56,7 @@ class PhotoGalleryViewModel(application: Application) : AndroidViewModel(applica
             return
         }
 
-        viewModelScope.launch {
-            _isLoading.value = true
-            runCatching { repository.queryPhotos() }
-                .onSuccess { photos ->
-                    _photos.value = photos
-                    val validKeys = photos.mapTo(mutableSetOf()) { it.cacheKey }
-                    _photoStates.value = _photoStates.value.filterKeys { it in validKeys }
-                }
-                .onFailure {
-                    _photos.value = emptyList()
-                    _photoStates.value = emptyMap()
-                }
-            _isLoading.value = false
-        }
+        loadNextPhotoPage(reset = true)
     }
 
     fun onViewportChanged(
@@ -116,6 +106,54 @@ class PhotoGalleryViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
+    private fun loadNextPhotoPage(reset: Boolean) {
+        if (!reset && (!hasMorePhotoPages || photoPageJob?.isActive == true)) return
+        if (reset) {
+            photoPageJob?.cancel()
+            viewportJob?.cancel()
+            loadingKeys.clear()
+            thumbnailCache.clear()
+            nextPhotoOffset = 0
+            hasMorePhotoPages = true
+            _photos.value = emptyList()
+            _photoStates.value = emptyMap()
+        }
+
+        photoPageJob = viewModelScope.launch {
+            _isLoading.value = true
+            while (hasMorePhotoPages) {
+                val shouldContinue = runCatching {
+                    repository.queryPhotoPage(
+                        offset = nextPhotoOffset,
+                        pageSize = PHOTO_PAGE_SIZE
+                    )
+                }.fold(
+                    onSuccess = { page ->
+                        val previousCount = _photos.value.size
+                        val mergedPhotos = mergePhotos(_photos.value, page.photos)
+                        _photos.value = mergedPhotos
+                        nextPhotoOffset = page.nextOffset
+                        hasMorePhotoPages = page.hasMore && mergedPhotos.size > previousCount
+                        val validKeys = mergedPhotos.mapTo(mutableSetOf()) { it.cacheKey }
+                        _photoStates.value = _photoStates.value.filterKeys { it in validKeys }
+                        hasMorePhotoPages
+                    },
+                    onFailure = {
+                        if (_photos.value.isEmpty()) {
+                            _photoStates.value = emptyMap()
+                        }
+                        hasMorePhotoPages = false
+                        false
+                    }
+                )
+                if (!shouldContinue) {
+                    break
+                }
+            }
+            _isLoading.value = false
+        }
+    }
+
     private fun updatePhotoState(key: String, state: PhotoState) {
         _photoStates.value = _photoStates.value.toMutableMap().apply {
             put(key, state)
@@ -124,8 +162,11 @@ class PhotoGalleryViewModel(application: Application) : AndroidViewModel(applica
 
     private fun clearPhotos() {
         viewportJob?.cancel()
+        photoPageJob?.cancel()
         loadingKeys.clear()
         thumbnailCache.clear()
+        nextPhotoOffset = 0
+        hasMorePhotoPages = true
         _photos.value = emptyList()
         _photoStates.value = emptyMap()
         _isLoading.value = false
@@ -137,7 +178,19 @@ class PhotoGalleryViewModel(application: Application) : AndroidViewModel(applica
         return start..end
     }
 
+    private fun mergePhotos(current: List<PhotoData>, nextPage: List<PhotoData>): List<PhotoData> {
+        if (current.isEmpty()) return nextPage
+        if (nextPage.isEmpty()) return current
+        val seenIds = current.mapTo(mutableSetOf()) { it.id }
+        return (current + nextPage.filter { seenIds.add(it.id) }).sortedWith(
+            compareBy<PhotoData> { it.effectiveTimeMillis ?: Long.MIN_VALUE }
+                .thenBy { it.id }
+        )
+    }
+
     companion object {
+        private const val PHOTO_PAGE_SIZE = 500
+
         fun requiredPermissions(): Array<String> {
             return when {
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> arrayOf(
