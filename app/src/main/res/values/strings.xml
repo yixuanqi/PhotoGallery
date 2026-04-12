@@ -1,4 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">PhotoGallery</string>
+    <string name="action_view">View</string>
+    <string name="permission_rationale">Grant access to hang photos from your gallery on the rope</string>
+    <string name="action_select_photo_permission">Choose photo access</string>
+    <string name="detail_photo_open_failed">This photo can\'t be opened right now</string>
+    <string name="detail_loading_photo">Opening photo</string>
+    <string name="action_back">Back</string>
+    <string name="timeline_group_month_year">%1$s %2$d</string>
+    <string name="timeline_group_unknown_time">Unknown time</string>
+    <string name="timeline_count_total">%1$d photos</string>
+    <string name="timeline_jump_to_month">Jump to month</string>
+    <string name="timeline_no_photos">No photos available to jump to</string>
+    <string name="timeline_count_short">%1$d photos</string>
 </resources>

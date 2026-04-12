@@ -1,0 +1,40 @@
+{
+    "project": {
+        "name": "PhotoGallery",
+        "packageName": "com.example.photogallery",
+        "versionName": "1.0",
+        "versionCode": 1
+    },
+    "softwareCopyright": {
+        "softwareName": "小笨相册",
+        "abbreviation": "Photo Gallery",
+        "version": "V1.0",
+        "category": "应用软件-多媒体",
+        "developmentCompletionDate": "2025-04-12",
+        "firstPublishDate": "",
+        "developmentMethod": "独立开发",
+        "linesOfCode": 3202,
+        "mainFunctions": [
+            "照片浏览与展示",
+            "手绘风格界面渲染",
+            "时间线分组导航",
+            "照片详情查看",
+            "缩放手势支持"
+        ]
+    },
+    "author": {
+        "name": "",
+        "idNumber": "",
+        "nationality": "中国"
+    },
+    "paths": {
+        "sourceDir": "../app/src/main/java",
+        "outputDir": "./output",
+        "templatesDir": "./templates"
+    },
+    "output": {
+        "sourceCodeDoc": "source-code-document.md",
+        "userManual": "user-manual.md",
+        "privacyPolicy": "privacy-policy.html"
+    }
+}

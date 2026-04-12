@@ -1,8 +1,14 @@
 package com.example.photogallery.ui.timeline
 
+import android.content.Context
+import android.os.Build
+import com.example.photogallery.R
 import com.example.photogallery.ui.photo.PhotoData
 import java.time.Instant
+import java.time.Month
 import java.time.ZoneId
+import java.time.format.TextStyle
+import java.util.Locale
 
 data class PhotoGroup(
     val year: Int?,
@@ -41,12 +47,12 @@ fun groupPhotoTimesByMonth(
             GroupKey(
                 year = date.year,
                 month = date.monthValue,
-                label = "${date.year}年${date.monthValue}月"
+                label = "${date.year}-${date.monthValue.toString().padStart(2, '0')}"
             )
         } ?: GroupKey(
             year = null,
             month = null,
-            label = "未知时间"
+            label = "unknown"
         )
 
         groupStarts.putIfAbsent(key, index)
@@ -64,4 +70,21 @@ fun groupPhotoTimesByMonth(
             count = groupCounts.getValue(key)
         )
     }
+}
+
+fun formatPhotoGroupLabel(group: PhotoGroup, context: Context): String {
+    val year = group.year
+    val month = group.month
+    if (year == null || month == null) {
+        return context.getString(R.string.timeline_group_unknown_time)
+    }
+
+    val locale = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+        context.resources.configuration.locales[0]
+    } else {
+        @Suppress("DEPRECATION")
+        context.resources.configuration.locale ?: Locale.getDefault()
+    }
+    val monthName = Month.of(month.coerceIn(1, 12)).getDisplayName(TextStyle.FULL, locale)
+    return context.getString(R.string.timeline_group_month_year, monthName, year, month)
 }

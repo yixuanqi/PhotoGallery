@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">小笨相册</string>
+    <string name="action_view">查看</string>
+    <string name="permission_rationale">授权后可以把相册里的照片挂到绳子上</string>
+    <string name="action_select_photo_permission">选择照片权限</string>
+    <string name="detail_photo_open_failed">照片暂时无法打开</string>
+    <string name="detail_loading_photo">正在打开照片</string>
+    <string name="action_back">返回</string>
+    <string name="timeline_group_month_year">%2$d年%3$d月</string>
+    <string name="timeline_group_unknown_time">未知时间</string>
+    <string name="timeline_count_total">共 %1$d 张</string>
+    <string name="timeline_jump_to_month">跳到月份</string>
+    <string name="timeline_no_photos">暂无可定位的照片</string>
+    <string name="timeline_count_short">%1$d 张</string>
+</resources>

@@ -34,10 +34,12 @@ import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.photogallery.HandDrawnInk
 import com.example.photogallery.LightGreenOverlay
+import com.example.photogallery.R
 import com.example.photogallery.ui.photo.PhotoData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -180,7 +182,11 @@ fun PhotoDetailScreen(
             )
         } else {
             Text(
-                text = if (failed) "照片暂时无法打开" else "正在打开照片",
+                text = if (failed) {
+                    stringResource(R.string.detail_photo_open_failed)
+                } else {
+                    stringResource(R.string.detail_loading_photo)
+                },
                 color = Color(0xFFF7F5EA),
                 modifier = Modifier.align(Alignment.Center)
             )
@@ -210,7 +216,7 @@ fun PhotoDetailScreen(
                 ),
                 onClick = onDismiss
             ) {
-                Text("返回")
+                Text(stringResource(R.string.action_back))
             }
         }
     }

@@ -23,10 +23,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.photogallery.HandDrawnInk
 import com.example.photogallery.LightGreenOverlay
+import com.example.photogallery.R
 
 @Composable
 fun TimelineSelector(
@@ -35,6 +38,7 @@ fun TimelineSelector(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -59,13 +63,13 @@ fun TimelineSelector(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "跳到月份",
+                    text = stringResource(R.string.timeline_jump_to_month),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
                 if (groups.isEmpty()) {
                     Text(
-                        text = "暂无可定位的照片",
+                        text = stringResource(R.string.timeline_no_photos),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 } else {
@@ -76,6 +80,7 @@ fun TimelineSelector(
                         items(groups) { group ->
                             TimelineSelectorRow(
                                 group = group,
+                                label = formatPhotoGroupLabel(group, context),
                                 onClick = { onGroupSelected(group) }
                             )
                         }
@@ -89,6 +94,7 @@ fun TimelineSelector(
 @Composable
 private fun TimelineSelectorRow(
     group: PhotoGroup,
+    label: String,
     onClick: () -> Unit
 ) {
     TextButton(
@@ -105,12 +111,12 @@ private fun TimelineSelectorRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = group.label,
+                text = label,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium
             )
             Text(
-                text = "${group.count} 张",
+                text = stringResource(R.string.timeline_count_short, group.count),
                 style = MaterialTheme.typography.bodyMedium
             )
         }

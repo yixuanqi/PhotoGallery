@@ -21,6 +21,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
+import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -209,7 +210,7 @@ fun PhotoGalleryScreen() {
                             showTimelineSelector = false
                         }
                     ) {
-                        Text("查看")
+                        Text(stringResource(R.string.action_view))
                     }
                 }
             }
@@ -254,7 +255,7 @@ fun PhotoGalleryScreen() {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "授权后可以把相册里的照片挂到绳子上",
+                    text = stringResource(R.string.permission_rationale),
                     color = Color(0xFF4B5A45),
                     textAlign = TextAlign.Center
                 )
@@ -271,7 +272,7 @@ fun PhotoGalleryScreen() {
                         permissionLauncher.launch(PhotoGalleryViewModel.requiredPermissions())
                     }
                 ) {
-                    Text("选择照片权限")
+                    Text(stringResource(R.string.action_select_photo_permission))
                 }
             }
         }

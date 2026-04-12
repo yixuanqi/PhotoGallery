@@ -19,7 +19,7 @@ class PhotoGroupTest {
         val groups = groupPhotoTimesByMonth(times, zone)
 
         assertEquals(1, groups.size)
-        assertEquals(PhotoGroup(2026, 4, "2026年4月", 0, 1, 2), groups.first())
+        assertEquals(PhotoGroup(2026, 4, "2026-04", 0, 1, 2), groups.first())
     }
 
     @Test
@@ -34,8 +34,8 @@ class PhotoGroupTest {
 
         assertEquals(
             listOf(
-                PhotoGroup(2026, 4, "2026年4月", 0, 0, 1),
-                PhotoGroup(2026, 3, "2026年3月", 1, 2, 2)
+                PhotoGroup(2026, 4, "2026-04", 0, 0, 1),
+                PhotoGroup(2026, 3, "2026-03", 1, 2, 2)
             ),
             groups
         )
@@ -48,7 +48,7 @@ class PhotoGroupTest {
         val groups = groupPhotoTimesByMonth(times, zone)
 
         assertEquals(1, groups.size)
-        assertEquals(PhotoGroup(null, null, "未知时间", 0, 1, 2), groups.first())
+        assertEquals(PhotoGroup(null, null, "unknown", 0, 1, 2), groups.first())
     }
 
     @Test
