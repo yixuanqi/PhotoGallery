@@ -26,7 +26,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -52,7 +51,6 @@ import com.example.photogallery.ui.timeline.PhotoGroup
 import com.example.photogallery.ui.timeline.TimeIndicator
 import com.example.photogallery.ui.timeline.TimelineSelector
 import com.example.photogallery.ui.timeline.groupPhotosByMonth
-import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -71,9 +69,7 @@ fun PhotoGalleryScreen() {
     var hasRequestedPermission by remember { mutableStateOf(false) }
     val photoGroups = remember(photos) { groupPhotosByMonth(photos) }
     var activePhotoGroup by remember { mutableStateOf<PhotoGroup?>(null) }
-    var showTimeIndicator by remember { mutableStateOf(false) }
     var showTimelineSelector by remember { mutableStateOf(false) }
-    var timeIndicatorPulse by remember { mutableLongStateOf(0L) }
     var scrollToIndex by remember { mutableStateOf<Int?>(null) }
     var currentCenterIndex by remember { mutableStateOf(0) }
     var detailIndex by remember { mutableStateOf<Int?>(null) }
@@ -102,13 +98,6 @@ fun PhotoGalleryScreen() {
         }
     }
 
-    LaunchedEffect(timeIndicatorPulse) {
-        if (timeIndicatorPulse > 0L) {
-            delay(1_500)
-            showTimeIndicator = false
-        }
-    }
-
     Box(modifier = Modifier.fillMaxSize()) {
         BackgroundRenderer(modifier = Modifier.fillMaxSize())
         RopeWithClips(
@@ -123,7 +112,6 @@ fun PhotoGalleryScreen() {
                 scrollToIndex = detailIndex
                 isDetailVisible = true
                 showTimelineSelector = false
-                showTimeIndicator = false
             },
             onViewportChanged = { request ->
                 viewModel.onViewportChanged(
@@ -136,8 +124,6 @@ fun PhotoGalleryScreen() {
                     request.centerIndex in group.startIndex..group.endIndex
                 }
                 currentCenterIndex = request.centerIndex
-                showTimeIndicator = activePhotoGroup != null
-                timeIndicatorPulse += 1
             },
             config = RopeWithClipsConfig(
                 clipCount = 15,
@@ -195,38 +181,35 @@ fun PhotoGalleryScreen() {
                 seed = 42L
             )
         )
-        if (showTimeIndicator) {
-            activePhotoGroup?.let { group ->
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 48.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TimeIndicator(
-                        group = group,
-                        modifier = Modifier.clickable {
-                            showTimelineSelector = true
-                            showTimeIndicator = true
+        activePhotoGroup?.let { group ->
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 48.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TimeIndicator(
+                    group = group,
+                    modifier = Modifier.clickable {
+                        showTimelineSelector = true
+                    }
+                )
+                if (photos.isNotEmpty()) {
+                    FilledTonalButton(
+                        modifier = Modifier.padding(start = 8.dp),
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = LightGreenOverlay,
+                            contentColor = HandDrawnInk,
+                            disabledContainerColor = LightGreenOverlay.copy(alpha = 0.45f),
+                            disabledContentColor = HandDrawnInk.copy(alpha = 0.55f)
+                        ),
+                        onClick = {
+                            detailIndex = currentCenterIndex.coerceIn(0, photos.lastIndex)
+                            isDetailVisible = true
+                            showTimelineSelector = false
                         }
-                    )
-                    if (photos.isNotEmpty()) {
-                        FilledTonalButton(
-                            modifier = Modifier.padding(start = 8.dp),
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = LightGreenOverlay,
-                                contentColor = HandDrawnInk,
-                                disabledContainerColor = LightGreenOverlay.copy(alpha = 0.45f),
-                                disabledContentColor = HandDrawnInk.copy(alpha = 0.55f)
-                            ),
-                            onClick = {
-                                detailIndex = currentCenterIndex.coerceIn(0, photos.lastIndex)
-                                isDetailVisible = true
-                                showTimelineSelector = false
-                            }
-                        ) {
-                            Text("查看")
-                        }
+                    ) {
+                        Text("查看")
                     }
                 }
             }
@@ -258,8 +241,6 @@ fun PhotoGalleryScreen() {
                 onGroupSelected = { group ->
                     scrollToIndex = group.startIndex
                     activePhotoGroup = group
-                    showTimeIndicator = true
-                    timeIndicatorPulse += 1
                     showTimelineSelector = false
                 },
                 onDismiss = { showTimelineSelector = false }

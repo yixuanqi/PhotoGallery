@@ -45,7 +45,7 @@ fun TimelineSelector(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 360.dp)
+                .heightIn(max = 244.dp)
                 .pointerInput(Unit) { detectTapGestures { } },
             color = LightGreenOverlay,
             contentColor = HandDrawnInk,
@@ -70,7 +70,7 @@ fun TimelineSelector(
                     )
                 } else {
                     LazyColumn(
-                        modifier = Modifier.heightIn(max = 292.dp),
+                        modifier = Modifier.heightIn(max = 164.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         items(groups) { group ->
