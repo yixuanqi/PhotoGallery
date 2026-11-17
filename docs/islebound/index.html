@@ -1025,9 +1025,26 @@ function setVisualTestView(islandId,weatherId='clear'){
  updateCamera(.016);camera.updateMatrixWorld();
  return true;
 }
+// 猫狗模型专用近景验收（仅 visualTest=1）：正面和背面都可截图，检查耳朵和尾巴轮廓。
+function setAnimalPreview(kind='cat',view='front'){
+ if(!visualQA||!['cat','dog'].includes(kind)||!['front','back'].includes(view))return false;
+ const isl=ISLANDS.find(i=>i.id===kind);
+ const position=kind==='cat'?new THREE.Vector3(isl.x-25,13.05,isl.z+14):
+  new THREE.Vector3(isl.x-34,13.05,isl.z-16);
+ const scale=kind==='cat'?1.56:2.1;
+ const look=position.clone().add(new THREE.Vector3(0,2.25*scale,0));
+ const from=look.clone().add(new THREE.Vector3(5.2,6.0,(view==='front'?-1:1)*17.5));
+ fixedVisualCamera={position:from,target:look};
+ state.started=true;state.paused=true;state.mode='flight';
+ state.x=position.x;state.y=55;state.z=position.z;
+ plane.visible=false;showPanel(null);weather.force('clear');
+ $('ui').style.visibility='hidden';
+ updateCamera(.016);camera.updateMatrixWorld();
+ return true;
+}
 window.__ISLEBOUND_DEBUG={
  islands:ISLANDS,terrainHeight,renderer,scene,state,weather,quests:QUEST_DEFS,
- getActiveQuest:()=>activeQuest,acceptQuest,finishQuest,questTarget,refreshQuestUI,setVisualTestView,
+ getActiveQuest:()=>activeQuest,acceptQuest,finishQuest,questTarget,refreshQuestUI,setVisualTestView,setAnimalPreview,
  isReady:()=>sceneReady,version:document.querySelector('meta[name="islebound-build"]')?.content
 };
 </script>
