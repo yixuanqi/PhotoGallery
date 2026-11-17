@@ -52,6 +52,28 @@ function compareWithBaseline(buffer,name){
  expect(difference,name+' drifted significantly from approved baseline').toBeLessThan(.38);
  return {status:'compared',meanAbsoluteRgbDifference:+difference.toFixed(4)};
 }
+test('cat and dog characters: front and rear low-poly portrait captures',async({page})=>{
+ await openGame(page);
+ fs.mkdirSync(dir,{recursive:true});
+ const snapshots=[];
+ for(const animal of ['cat','dog']){
+  for(const view of ['front','back']){
+   const ok=await page.evaluate(([kind,side])=>window.__ISLEBOUND_DEBUG.setAnimalPreview(kind,side),[animal,view]);
+   expect(ok).toBe(true);
+   await page.waitForTimeout(250);
+   const name='animal-'+animal+'-'+view+'.png';
+   const file=path.join(dir,name);
+   const buffer=await page.screenshot({animations:'disabled',path:file});
+   const metrics=imageHealth(buffer,name);
+   const draw=await page.evaluate(()=>window.__ISLEBOUND_DEBUG.renderer.info.render.calls);
+   expect(draw).toBeGreaterThan(0);
+   snapshots.push({animal,view,file:name,drawCalls:draw,...metrics});
+  }
+ }
+ fs.writeFileSync(path.join(dir,'animal-portrait-report.json'),JSON.stringify(snapshots,null,2));
+ expect(snapshots).toHaveLength(4);
+});
+
 test('4 island viewpoints x clear / storm / fog: automatic visual captures',async({page})=>{
  await openGame(page);
  fs.mkdirSync(dir,{recursive:true});
