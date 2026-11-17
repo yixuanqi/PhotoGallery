@@ -412,7 +412,7 @@ catCottage(p,-92,-52,0xf2d9bc,1.4);catCottage(p,-113,39,0xedd5c7,1.12);catCottag
 marketStand(p,-91,11,0xe8a5a2);marketStand(p,-75,31,0x9cb6ac);marketStand(p,55,74,0xebbf96);
 fishSculpture(p,-80,-72,1.45,0x76a5aa);fishSculpture(p,-119,74,.73,0xd6a6a2);
 // 猫抓柱上打盹的小猫，海岸石板路旁是鱼形灯与樱花树。
-const scratch=new THREE.Group();scratch.position.set(-104,13,73);p.add(scratch);cylinder(scratch,0xd0b58f,0,6,0,1.6,1.8,12);surfaceDisc(scratch,0xe8d6b7,0,12.4,0,6.5,1.0);const sleepy=makeCat(scratch,0,0,0xe7c6af,.76);sleepy.position.y=.2;
+const scratch=new THREE.Group();scratch.position.set(-104,13,73);p.add(scratch);cylinder(scratch,0xd0b58f,0,6,0,1.6,1.8,12);surfaceDisc(scratch,0xe8d6b7,0,12.4,0,6.5,1.0);const sleepy=makeCat(scratch,0,0,0xe7c6af,.76);sleepy.position.y=12.95; // 平台上沿为 12.9，前爪略微嵌入，避免猫咪错误落在柱脚
 for(let j=0;j<10;j++){const xx=-126+j*9,zz=89+Math.sin(j*.68)*7;surfaceDisc(p,0xd5bdad,xx,13.12,zz,2.2,.16)}
 for(const [x,z] of [[-112,-76],[-64,91],[105,-58],[112,71],[-35,88]])makeTree(p,x,z,r,'pink',.9);
 makeCat(p,-94,-26,0xf1cbb1,1.25);makeCat(p,-76,73,0x8c9295,1.08);makeCat(p,113,-9,0xe2b2a6,1.1);
