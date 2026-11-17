@@ -212,14 +212,124 @@
   background:linear-gradient(145deg,rgba(204,156,99,.36),rgba(196,145,85,.18));
 }
 
+
+/* STAR_RIVER_V5 — immersive sea of stars, two art-directed sky palettes */
+:root{
+ --bg:#050e20;--ink:#f6e7d0;--mute:#bccdd6;
+ --gold:#e8c48f;--line:rgba(188,218,231,.28);
+ --pane:rgba(8,21,41,.65);--scroll-thumb:rgba(173,194,206,.38);
+ --scroll-thumb-hover:rgba(204,225,230,.72);
+}
+:root[data-theme="paper"]{
+ --bg:#3b5675;--ink:#fff0dc;--mute:#e5d8cb;
+ --gold:#ffcf96;--line:rgba(242,220,187,.38);
+ --pane:rgba(17,35,59,.61);
+ --scroll-thumb:rgba(242,210,172,.43);
+ --scroll-thumb-hover:rgba(255,218,170,.75);
+}
+body{
+ background:
+  radial-gradient(ellipse 64% 70% at 54% 49%,rgba(36,75,122,.38),transparent 75%),
+  radial-gradient(ellipse 36% 58% at 80% 72%,rgba(67,47,102,.28),transparent 85%),
+  linear-gradient(145deg,#040b18 0%,#091a35 46%,#101b31 100%);
+}
+:root[data-theme="paper"] body{
+ background:
+  radial-gradient(ellipse 54% 70% at 58% 36%,rgba(210,143,125,.31),transparent 79%),
+  radial-gradient(ellipse 63% 72% at 19% 70%,rgba(72,126,150,.43),transparent 79%),
+  radial-gradient(ellipse 65% 54% at 85% 86%,rgba(171,114,125,.25),transparent 80%),
+  linear-gradient(145deg,#233b61 0%,#425e7b 40%,#776e83 72%,#b58e83 100%);
+}
+#vignette{background:radial-gradient(ellipse 70% 75% at 50% 50%,transparent 39%,rgba(0,4,14,.29) 100%)}
+:root[data-theme="paper"] #vignette{
+ background:radial-gradient(ellipse 77% 76% at 50% 48%,transparent 37%,rgba(19,23,41,.20) 100%);
+}
+#frame{opacity:.31}
+:root[data-theme="paper"] #frame{opacity:.27}
+.top{justify-content:flex-end;left:auto;right:24px;top:21px}
+.nav{gap:6px}
+.nav .btn{
+ background:rgba(10,25,45,.49);
+ border-color:rgba(210,214,207,.23);
+ color:rgba(248,236,218,.88);
+ padding:8px 11px;
+ box-shadow:none;
+ backdrop-filter:blur(12px);
+ font-weight:500;
+}
+:root[data-theme="paper"] .nav .btn{
+ background:rgba(18,39,61,.39);
+ border-color:rgba(249,230,199,.29);
+ color:#fff0dc;
+}
+.nav .btn:hover{background:rgba(46,79,106,.71);border-color:var(--gold);color:var(--ink)}
+/* No title plate, oversized introductory paragraph or status plaque obscuring the universe. */
+.brand,.intro,.status,#hint{display:none!important}
+.bottom{justify-content:flex-end;right:25px;left:auto;bottom:24px}
+.controls{
+ background:rgba(10,25,45,.49);
+ box-shadow:none;
+ border-color:rgba(206,213,211,.22);
+ padding:5px 7px;
+ backdrop-filter:blur(13px);
+}
+:root[data-theme="paper"] .controls{background:rgba(18,39,61,.42);border-color:rgba(246,222,194,.27)}
+.controls .btn{color:rgba(255,237,215,.9);font-size:11px}
+.controls label{color:rgba(248,229,209,.81)}
+.controls input{accent-color:#ebbc83}
+.label strong{
+ background:rgba(10,27,48,.71);
+ border-color:rgba(209,219,217,.36);
+ color:#ffe8c7;
+ box-shadow:0 3px 12px rgba(0,9,26,.23);
+ backdrop-filter:blur(9px);
+}
+:root[data-theme="paper"] .label strong{
+ background:rgba(20,43,68,.69);
+ border-color:rgba(251,219,184,.42);
+ color:#ffefcf;
+ box-shadow:0 5px 15px rgba(16,27,46,.21);
+}
+.label small{color:#f0bd8a;opacity:.9}
+.label:hover strong,.label.selected strong{border-color:#efc58f;color:#ffe0aa}
+.card,.panel{
+ color:var(--ink);
+ box-shadow:0 12px 35px rgba(0,8,24,.21),2px 3px 0 rgba(11,22,38,.16);
+}
+:root[data-theme="paper"] .card,:root[data-theme="paper"] .panel{
+ border-color:rgba(232,214,186,.37);
+}
+:root[data-theme="paper"] .card-actions a,
+:root[data-theme="paper"] .card-actions a:link,
+:root[data-theme="paper"] .card-actions a:visited{
+ color:var(--ink);
+ background:rgba(200,168,127,.13);
+ border-color:var(--line);
+}
+:root[data-theme="paper"] .card-actions a.primary,
+:root[data-theme="paper"] .card-actions a.primary:link,
+:root[data-theme="paper"] .card-actions a.primary:visited{
+ color:#fff1dc;border-color:#e0b787;
+ background:linear-gradient(140deg,rgba(215,158,104,.27),rgba(202,144,94,.12));
+}
+:root[data-theme="paper"] .card-actions a:hover,
+:root[data-theme="paper"] .card-actions a:focus-visible{color:#ffd6a6}
+:root[data-theme="paper"] .description,:root[data-theme="paper"] .article p{color:#f4dfc9}
+:root[data-theme="paper"] .note{color:#d5c4b8}
+@media(max-width:640px){
+ .top{right:22px;top:20px}
+ .nav .btn{font-size:10px;padding:7px}
+ .bottom{right:19px;left:19px;justify-content:center}
+ .controls{gap:0}
+ .controls .btn{font-size:10px;padding:7px}
+}
 </style>
 </head><body>
 <div id="scene"></div><div id="vignette"></div><div id="frame"></div><div id="labels"></div>
-<header class="top"><div class="brand"><div class="symbol">☾</div><div><h1>星海漫游</h1><p>Atlas of Little Universes · Yixuanqi</p></div></div>
-<nav class="nav"><button class="btn" id="home">✦ 漫游</button><button class="btn" id="index">☷ 星球索引</button><button class="btn" id="logs">✎ 航行日志</button><button class="btn" id="palette">☾ 画风</button></nav></header>
-<section class="intro" id="intro"><div class="mini">The wandering universe / No. 001</div><h2>星星会流动，<br>作品会发光。</h2><p>拖动视角穿过星河，<br>缩放镜头靠近星球。<br>轻点一颗星，就能飞向一个作品。</p></section>
-<div id="hint">✧ 拖动旋转 · 滚轮缩放 · 点击星球飞行 · 双击星球直达作品 ✧</div>
-<div class="bottom"><div class="status"><b>Exploration log · Vol. I</b><span id="counter">06</span> 颗作品星球 · 透视航行中<br>可以暂停、换画风，也可以返回星海</div>
+<header class="top"><nav class="nav" aria-label="星海控制">
+<button class="btn" id="home">✦ 漫游</button><button class="btn" id="index">☷ 星球索引</button><button class="btn" id="logs">✎ 航行日志</button><button class="btn" id="palette">☾ 深空</button></nav></header>
+<section id="intro" hidden></section><div id="hint" hidden></div>
+<div class="bottom">
 <div class="controls"><button class="btn active" id="pause">Ⅱ 暂停星流</button><label>流速 <input id="speed" type="range" min="0" max="3" step=".1" value=".7"></label><button class="btn" id="prev">← 上一颗</button><button class="btn" id="next">下一颗 →</button><button class="btn" id="reset">◎ 归位</button></div></div>
 <aside id="card" class="card" aria-label="星球作品信息"><div class="card-head"><span id="number">STAR 01 · ONLINE</span><button class="close" id="card-close">×</button></div>
 <div class="illustration"><span id="art">✺</span></div><h2 id="name"></h2><div id="latin" class="latin"></div><div id="tags" class="tags"></div><p id="desc" class="description"></p><p id="note" class="note"></p><div id="links" class="card-actions"></div></aside>
@@ -246,7 +356,7 @@ var POSTS=[
 
 ];
 const el=id=>document.getElementById(id),mobile=matchMedia('(max-width:640px)').matches,reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;
-let renderer,scene,camera,controls,galaxyGroup,planets=[],meshes=[],labels=[],starGroups=[],orbitRings=[],planetHalos=[],dustCloud=null,lights=null,selected=-1,flight=null,paused=false,clock=0,last=0,speed=.7,started=false,theme='night',raycaster,pointer;
+let renderer,scene,camera,controls,galaxyGroup,nebulaPivot=null,nebulaMesh=null,nebulaTextures=null,coreHalo=null,planets=[],meshes=[],labels=[],starGroups=[],orbitRings=[],planetHalos=[],dustCloud=null,lights=null,selected=-1,flight=null,paused=false,clock=0,last=0,speed=.7,started=false,theme='night',raycaster,pointer;
 const locations=[[22,1,10],[-7,1,25],[-25,2,-12],[30,1,-15],[-28,1,17],[-15,2,0]];
 try{theme=localStorage.getItem('star-theme')==='paper'?'paper':'night'}catch(e){}
 document.documentElement.dataset.theme=theme;
@@ -313,34 +423,132 @@ function spriteTexture(){
  r.addColorStop(0,'rgba(255,255,228,1)');r.addColorStop(.12,'rgba(255,231,179,.85)');r.addColorStop(.5,'rgba(250,192,133,.18)');r.addColorStop(1,'rgba(255,175,107,0)');
  x.fillStyle=r;x.fillRect(0,0,128,128);return new THREE.CanvasTexture(c)
 }
-function populateGalaxy(glow){
- let palette=['#75b8c9','#efc486','#d89892','#a5c7ad'];
- let dawnPalette=['#416c78','#ae7858','#99676e','#678a80'];
+
+function nebulaTexture(isDawn){
+ // Paint four broad, translucent watercolor spiral arms into a reusable GPU texture.
+ // The texture sits on a genuine 3D plane; nearby points and project planets have depth.
+ const canvas=document.createElement('canvas'),N=1280;
+ canvas.width=canvas.height=N;
+ const g=canvas.getContext('2d');
+ const tones=isDawn?['#7ed8e1','#f1bc96','#d8a2cc','#a7d9ce']:['#4bbce6','#e7a46e','#b09bdb','#74d3c4'];
+ function rgba(hex,a){
+  const v=parseInt(hex.substring(1),16);
+  return 'rgba('+((v>>16)&255)+','+((v>>8)&255)+','+(v&255)+','+a+')';
+ }
+ g.translate(N/2,N/2);
+ // Soft broad lanes, narrow luminous seams, and irregular transparent gaps.
  for(let arm=0;arm<4;arm++){
-  let amount=mobile?1550:3900,coords=[],col=[],colDawn=[];
-  for(let i=0;i<amount;i++){
-   let r=2+Math.pow(Math.random(),.7)*56,a=arm*Math.PI/2+r*.09+(Math.random()-.5)*(.24+r*.004);
-   coords.push(Math.cos(a)*r,(Math.random()-.5)*(1.4+r*.09),Math.sin(a)*r);
-   let color=new THREE.Color(palette[arm]).lerp(new THREE.Color('#fff4dc'),Math.random()*.43);
-   col.push(color.r,color.g,color.b);
-   let dc=new THREE.Color(dawnPalette[arm]).lerp(new THREE.Color('#c9a787'),Math.random()*.23);
-   colDawn.push(dc.r,dc.g,dc.b);
+  const tone=tones[arm];
+  for(let pass=0;pass<5;pass++){
+   g.beginPath();
+   for(let i=0;i<=180;i++){
+    const r=3+(i/180)*54;
+    const angle=arm*Math.PI/2+r*.09+(pass-2)*.027+Math.sin(r*.42+arm)*.010;
+    const x=Math.cos(angle)*r*10.1,y=Math.sin(angle)*r*10.1;
+    if(i===0)g.moveTo(x,y);else g.lineTo(x,y);
+   }
+   g.lineCap='round';g.lineJoin='round';
+   g.lineWidth=[103,74,47,22,7][pass];
+   g.strokeStyle=rgba(tone,[.052,.071,.093,.13,.23][pass]);
+   g.shadowColor=tone;g.shadowBlur=[38,27,15,8,2][pass];
+   g.stroke();g.shadowBlur=0;
   }
-  let geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(coords,3));geo.setAttribute('color',new THREE.Float32BufferAttribute(theme==='night'?col:colDawn,3));
-  // Textured circular particles remove the distracting pixel-square appearance.
-  let mat=new THREE.PointsMaterial({map:glow,alphaTest:.009,size:mobile?.54:.50,vertexColors:true,transparent:true,opacity:.85,depthWrite:false,blending:THREE.AdditiveBlending,sizeAttenuation:true});
-  let pts=new THREE.Points(geo,mat);galaxyGroup.add(pts);starGroups.push({points:pts,speed:.002+.0008*arm,nightColors:col,dawnColors:colDawn});
  }
- for(let r of [15,31,48]){
-  let pts=[];for(let k=0;k<=256;k++){let a=k/256*Math.PI*2;pts.push(new THREE.Vector3(Math.cos(a)*r,Math.sin(a*3)*.08,Math.sin(a)*r))}
-  let ring=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineDashedMaterial({color:'#b79e7c',opacity:.15,transparent:true,dashSize:.4,gapSize:.38}));ring.computeLineDistances();galaxyGroup.add(ring);orbitRings.push(ring)
+ let seed=92871;
+ function rand(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296}
+ // Fine pigment speckles organize the dust into spiral streams.
+ for(let i=0;i<8200;i++){
+  let arm=i%4,r=3+Math.pow(rand(),.84)*56,phi=arm*Math.PI/2+r*.09+(rand()-.5)*(.28+r*.0035);
+  let x=Math.cos(phi)*r*10.1,y=Math.sin(phi)*r*10.1;
+  let rad=.35+rand()*1.9;
+  g.globalAlpha=.12+rand()*.40;g.fillStyle=tones[arm];
+  g.beginPath();g.arc(x,y,rad,0,Math.PI*2);g.fill();
  }
- // Real 3D drifting dust above and below the galaxy plane.
- let dustCoords=[];for(let i=0;i<(mobile?800:2500);i++){let r=14+Math.random()*75,a=Math.random()*Math.PI*2;dustCoords.push(Math.cos(a)*r,(Math.random()-.5)*28,Math.sin(a)*r)}
- let geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(dustCoords,3));
- dustCloud=new THREE.Points(geo,new THREE.PointsMaterial({map:glow,size:1.5,color:'#d3e1df',transparent:true,opacity:.34,blending:THREE.AdditiveBlending,depthWrite:false}));
+ g.globalAlpha=1;
+ const core=g.createRadialGradient(0,0,0,0,0,172);
+ core.addColorStop(0,isDawn?'rgba(255,230,179,.52)':'rgba(255,217,170,.63)');
+ core.addColorStop(.17,isDawn?'rgba(240,176,137,.24)':'rgba(239,170,122,.32)');
+ core.addColorStop(.50,'rgba(166,140,192,.10)');
+ core.addColorStop(1,'rgba(180,148,202,0)');
+ g.fillStyle=core;g.beginPath();g.arc(0,0,172,0,Math.PI*2);g.fill();
+ const tex=new THREE.CanvasTexture(canvas);tex.needsUpdate=true;
+ tex.minFilter=THREE.LinearFilter;tex.magFilter=THREE.LinearFilter;
+ return tex;
+}
+function populateGalaxy(glow){
+ const night=['#66cce5','#ffe0a7','#c3a6eb','#a2e1d9'];
+ const dawn=['#91e5ef','#ffe1bc','#edc5e5','#afe0d8'];
+ nebulaTextures={night:nebulaTexture(false),paper:nebulaTexture(true)};
+ nebulaPivot=new THREE.Group();
+ galaxyGroup.add(nebulaPivot);
+ nebulaMesh=new THREE.Mesh(new THREE.PlaneGeometry(128,128),
+  new THREE.MeshBasicMaterial({
+   map:theme==='night'?nebulaTextures.night:nebulaTextures.paper,
+   side:THREE.DoubleSide,transparent:true,depthWrite:false,
+   opacity:theme==='night'?.84:.73,blending:THREE.AdditiveBlending
+  }));
+ nebulaMesh.rotation.x=-Math.PI/2;nebulaMesh.position.y=-.65;
+ nebulaPivot.add(nebulaMesh);
+ let core=glow.clone();
+ coreHalo=new THREE.Sprite(new THREE.SpriteMaterial({
+  map:core,color:'#f8d2a0',transparent:true,opacity:.52,
+  blending:THREE.AdditiveBlending,depthWrite:false
+ }));
+ coreHalo.position.set(0,1.2,0);coreHalo.scale.set(24,24,1);
+ galaxyGroup.add(coreHalo);
+ // Thousands of perspective-correct particles at different depths.
+ for(let arm=0;arm<4;arm++){
+  let count=mobile?2400:5500,coords=[],nightColors=[],dawnColors=[];
+  let seed=1001+arm*9999;
+  function rand(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296}
+  for(let i=0;i<count;i++){
+   let r=2+Math.pow(rand(),.73)*57;
+   let theta=arm*Math.PI/2+r*.09+(rand()-.5)*(.24+r*.003);
+   let spread=(rand()-.5)*(1.5+r*.11);
+   coords.push(Math.cos(theta)*r,spread,Math.sin(theta)*r);
+   let c1=new THREE.Color(night[arm]).lerp(new THREE.Color('#fff7d9'),rand()*.33);
+   let c2=new THREE.Color(dawn[arm]).lerp(new THREE.Color('#fff0d1'),rand()*.27);
+   nightColors.push(c1.r,c1.g,c1.b);
+   dawnColors.push(c2.r,c2.g,c2.b);
+  }
+  let geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(coords,3));
+  geo.setAttribute('color',new THREE.Float32BufferAttribute(theme==='night'?nightColors:dawnColors,3));
+  let mat=new THREE.PointsMaterial({
+   map:glow,alphaTest:.007,
+   size:mobile?.92:1.10,
+   vertexColors:true,transparent:true,
+   opacity:.97,depthWrite:false,
+   blending:THREE.AdditiveBlending,sizeAttenuation:true
+  });
+  let pts=new THREE.Points(geo,mat);galaxyGroup.add(pts);
+  starGroups.push({points:pts,speed:.011+arm*.002,nightColors,dawnColors});
+ }
+ // Delicate orbit engraving is secondary to the visible colored stellar rivers.
+ for(let radius of [17,35,51]){
+  let pts=[];for(let i=0;i<=220;i++){
+   const a=i/220*Math.PI*2;pts.push(new THREE.Vector3(Math.cos(a)*radius,Math.sin(a*3)*.12,Math.sin(a)*radius));
+  }
+  let geo=new THREE.BufferGeometry().setFromPoints(pts);
+  let r=new THREE.LineLoop(geo,new THREE.LineDashedMaterial({
+   color:'#7a99ad',opacity:.075,transparent:true,dashSize:.32,gapSize:.45
+  }));
+  r.computeLineDistances();galaxyGroup.add(r);orbitRings.push(r);
+ }
+ let dust=[];let seed=234123;
+ function rnd(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296}
+ for(let i=0;i<(mobile?650:1800);i++){
+  let r=14+rnd()*80,a=rnd()*Math.PI*2;
+  dust.push(Math.cos(a)*r,(rnd()-.5)*34,Math.sin(a)*r);
+ }
+ let dg=new THREE.BufferGeometry();dg.setAttribute('position',new THREE.Float32BufferAttribute(dust,3));
+ dustCloud=new THREE.Points(dg,new THREE.PointsMaterial({
+  map:glow,color:'#a8c7d6',size:1.8,opacity:.28,
+  transparent:true,blending:THREE.AdditiveBlending,depthWrite:false
+ }));
  galaxyGroup.add(dustCloud);
 }
+
 function populatePlanets(glow){
  const loc=locations;let colors=['#e2af77','#db8d65','#8ad5dc','#cfb2d7','#e2cd9d','#87b9d3'];
  PROJECTS.forEach((p,i)=>{
@@ -364,7 +572,7 @@ function init(){
  if(!window.THREE||!THREE.OrbitControls){fail('Three.js 或 OrbitControls 加载失败。可以通过星球索引访问全部作品。');return}
  try{renderer=new THREE.WebGLRenderer({antialias:!mobile,alpha:true,powerPreference:'high-performance'})}catch(e){fail('WebGL 不可用，请使用更新版 Chrome 或 Edge；仍可打开作品索引。');return}
  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,mobile?1.4:1.65));renderer.setSize(innerWidth,innerHeight);renderer.setClearColor(0x091b2c,0);renderer.outputEncoding=THREE.sRGBEncoding;el('scene').appendChild(renderer.domElement);
- scene=new THREE.Scene();scene.fog=new THREE.FogExp2(theme==='night'?0x091b2c:0x9eafb3,theme==='night'?.003:.0023);
+ scene=new THREE.Scene();scene.fog=new THREE.FogExp2(theme==='night'?0x0a1b35:0x4c6685,theme==='night'?.0016:.0012);
  camera=new THREE.PerspectiveCamera(52,innerWidth/innerHeight,.1,420);camera.position.set(0,mobile?50:43,mobile?103:88);
  controls=new THREE.OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.058;controls.enablePan=true;controls.minDistance=8;controls.maxDistance=165;controls.autoRotate=!reduced;controls.autoRotateSpeed=.18;
  controls.minPolarAngle=.08;controls.maxPolarAngle=Math.PI*.9;
@@ -408,7 +616,7 @@ function updateLabels(){
 function animate(now){
  if(!started)return;requestAnimationFrame(animate);
  let dt=last?Math.min(.05,(now-last)/1000):0;last=now;
- if(!paused){clock+=dt*speed;starGroups.forEach(a=>a.points.rotation.y+=dt*a.speed*speed*60)}
+ if(!paused){clock+=dt*speed;starGroups.forEach(a=>a.points.rotation.y+=dt*a.speed*speed);if(nebulaPivot)nebulaPivot.rotation.y+=dt*.012*speed}
  planets.forEach((p,i)=>{p.position.y=p.userData.baseY+Math.sin(clock*.5+i*1.4)*.22;p.userData.mesh.rotation.y+=dt*.1;p.userData.ring.rotation.z+=dt*.10});
  if(flight){
   flight.t=Math.min(1,flight.t+dt*.88);let t=flight.t,k=t*t*(3-2*t);
@@ -419,34 +627,40 @@ function animate(now){
 }
 function resize(){if(!started)return;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}
 function applyTheme(){
- let day=theme==='paper';
+ const dawn=theme==='paper';
  document.documentElement.dataset.theme=theme;
  if(renderer){
-  // Transparent WebGL sky lets the multi-stop morning wash show through, while all stars remain 3D.
   renderer.setClearColor(0x091b2c,0);
-  scene.fog.color.set(day?0x9eafb3:0x091b2c);
-  scene.fog.density=day?.0023:.003;
+  scene.fog.color.set(dawn?0x4c6685:0x0a1b35);
+  scene.fog.density=dawn?.0012:.0016;
   starGroups.forEach(g=>{
-   let attr=g.points.geometry.getAttribute('color');
-   attr.array.set(day?g.dawnColors:g.nightColors);
-   attr.needsUpdate=true;
-   g.points.material.blending=day?THREE.NormalBlending:THREE.AdditiveBlending;
-   g.points.material.opacity=day?.76:.85;
-   g.points.material.size=mobile?(day?.43:.54):(day?.41:.50);
-   g.points.material.needsUpdate=true;
+   const attr=g.points.geometry.getAttribute('color');
+   attr.array.set(dawn?g.dawnColors:g.nightColors);attr.needsUpdate=true;
+   g.points.material.blending=THREE.AdditiveBlending;
+   g.points.material.size=mobile?(dawn?.96:.92):(dawn?1.13:1.10);
+   g.points.material.opacity=dawn?.94:.97;g.points.material.needsUpdate=true;
   });
-  orbitRings.forEach(r=>{r.material.color.set(day?'#7e6b5c':'#b79e7c');r.material.opacity=day?.27:.15});
-  planetHalos.forEach(h=>{h.material.opacity=day?.23:.48;h.material.blending=day?THREE.NormalBlending:THREE.AdditiveBlending;h.material.needsUpdate=true});
-  if(dustCloud){dustCloud.material.color.set(day?'#647d87':'#d3e1df');dustCloud.material.opacity=day?.19:.34;dustCloud.material.blending=day?THREE.NormalBlending:THREE.AdditiveBlending;dustCloud.material.needsUpdate=true}
+  if(nebulaMesh){
+   nebulaMesh.material.map=dawn?nebulaTextures.paper:nebulaTextures.night;
+   nebulaMesh.material.opacity=dawn?.76:.84;
+   nebulaMesh.material.needsUpdate=true;
+  }
+  if(coreHalo){coreHalo.material.opacity=dawn?.38:.52}
+  orbitRings.forEach(r=>{r.material.color.set(dawn?'#c6c6cc':'#7a99ad');r.material.opacity=dawn?.105:.075});
+  planetHalos.forEach(h=>{h.material.opacity=dawn?.31:.42;h.material.blending=THREE.AdditiveBlending;h.material.needsUpdate=true});
+  if(dustCloud){
+   dustCloud.material.color.set(dawn?'#d7d1df':'#a8c7d6');
+   dustCloud.material.opacity=dawn?.26:.28;
+  }
   if(lights){
-   lights.ambient.intensity=day?.53:.75;
-   lights.key.intensity=day?1.05:2.05;
-   lights.fill.intensity=day?.48:.72;
+   lights.ambient.intensity=dawn?.68:.78;
+   lights.key.intensity=dawn?1.15:1.85;
+   lights.fill.intensity=dawn?.66:.72;
   }
  }
- el('palette').textContent=day?'☾ 深空':'☀ 晨曦';
- let meta=document.querySelector('meta[name="theme-color"]');
- if(meta)meta.setAttribute('content',day?'#98b3bc':'#091b2c');
+ el('palette').textContent=dawn?'☾ 深空':'☀ 暮光';
+ const meta=document.querySelector('meta[name="theme-color"]');
+ if(meta)meta.setAttribute('content',dawn?'#425f7d':'#050e20');
 }
 function setTheme(){
  theme=theme==='night'?'paper':'night';
@@ -454,7 +668,7 @@ function setTheme(){
  try{localStorage.setItem('star-theme',theme)}catch(e){}
 }
 function listen(){
- makeIndex();setText('counter',String(PROJECTS.length).padStart(2,'0'));
+ makeIndex();
  el('home').addEventListener('click',reset);el('reset').addEventListener('click',reset);
  el('index').addEventListener('click',openIndex);el('drawer-close').addEventListener('click',hidePanels);
  el('logs').addEventListener('click',()=>{el('card').classList.remove('show');el('drawer').classList.remove('show');el('journal').classList.add('show');journalList()});
