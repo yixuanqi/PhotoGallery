@@ -657,7 +657,14 @@ function createWeatherSystem(){
   if(ws.age-ws.lastLabel>.5){ws.lastLabel=ws.age;refresh()}
  }
  refresh();
- return {update,applyWind,gustRoll,select,cycle:()=>select(order[(order.indexOf(ws.mode)+1)%order.length]),state:ws,values,presets};
+ function force(mode){
+  if(!select(mode))return false;
+  for(const key of Object.keys(values))values[key]=ws.target[key];
+  ws.flash=0;ws.nextFlash=Number.MAX_SAFE_INTEGER;
+  update(0,ws.age,{started:false,paused:true});
+  return true;
+ }
+ return {update,applyWind,gustRoll,select,force,cycle:()=>select(order[(order.indexOf(ws.mode)+1)%order.length]),state:ws,values,presets};
 }
 const weather=createWeatherSystem();
 
@@ -824,8 +831,17 @@ const a=state.takeoff;a.t=Math.min(1,a.t+dt/a.duration);const t=a.t;const pos=ne
 for(const isl of ISLANDS){if(Math.hypot(state.x-isl.x,state.z-isl.z)<Math.max(isl.rx,isl.rz)+45&&state.y<130)markDiscover(isl)}
 }
 const viewOffset=[new THREE.Vector3(0,12,28),new THREE.Vector3(0,32,71),new THREE.Vector3(1.7,5,14)];const Y=new THREE.Vector3(0,1,0),camTarget=new THREE.Vector3();
+let fixedVisualCamera=null;
 // 机头沿本地 -Z；航向角正值代表右转，因此跟随镜头需绕 Y 轴旋转 -yaw 才真正位于机尾。
-function updateCamera(dt){const offset=viewOffset[state.camera].clone().applyAxisAngle(Y,-state.yaw);const target=new THREE.Vector3(state.x,state.y,state.z).add(offset);const forward=new THREE.Vector3(Math.sin(state.yaw),0,-Math.cos(state.yaw));const look=new THREE.Vector3(state.x,state.y+2.2,state.z).addScaledVector(forward,state.camera===1?11:16);
+function updateCamera(dt){
+ if(fixedVisualCamera){
+  camera.position.copy(fixedVisualCamera.position);camera.lookAt(fixedVisualCamera.target);
+  sky.position.copy(camera.position);seaMat.uniforms.uCam.value.copy(camera.position);
+  sunLight.position.set(fixedVisualCamera.target.x-230,400,fixedVisualCamera.target.z-260);
+  sunLight.target.position.set(fixedVisualCamera.target.x,0,fixedVisualCamera.target.z);sunLight.target.updateMatrixWorld();
+  return;
+ }
+ const offset=viewOffset[state.camera].clone().applyAxisAngle(Y,-state.yaw);const target=new THREE.Vector3(state.x,state.y,state.z).add(offset);const forward=new THREE.Vector3(Math.sin(state.yaw),0,-Math.cos(state.yaw));const look=new THREE.Vector3(state.x,state.y+2.2,state.z).addScaledVector(forward,state.camera===1?11:16);
 if(!camInitialized){camera.position.copy(target);camTarget.copy(look);camInitialized=true}else{camera.position.lerp(target,1-Math.exp(-dt*2.8));camTarget.lerp(look,1-Math.exp(-dt*3.0))}camera.lookAt(camTarget);sky.position.copy(camera.position);seaMat.uniforms.uCam.value.copy(camera.position);
 // 阴影相机跟着飞机移动，四座岛仍可保持空间比例。
 sunLight.position.set(state.x-230,400,state.z-260);sunLight.target.position.set(state.x,0,state.z);sunLight.target.updateMatrixWorld();}
@@ -905,7 +921,26 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
  sceneReady=true;const b=$('startBtn');b.disabled=false;b.style.opacity='';b.style.cursor='';b.textContent='开启群岛之旅　↗';
 }));
 // 给自动化测试与新岛开发提供可读的地面贴合/绘制批次指标。
-window.__ISLEBOUND_DEBUG={islands:ISLANDS,terrainHeight,renderer,scene,state,weather,quests:QUEST_DEFS,getActiveQuest:()=>activeQuest,acceptQuest,finishQuest,questTarget,refreshQuestUI};
+// 仅 ?visualTest=1 开放稳定机位，供 GitHub Actions 生成可复查的四岛天气截图。
+const visualQA=new URLSearchParams(location.search).has('visualTest');
+function setVisualTestView(islandId,weatherId='clear'){
+ if(!visualQA)return false;
+ const isl=ISLANDS.find(i=>i.id===islandId);
+ if(!isl||!weather.presets[weatherId])return false;
+ fixedVisualCamera={
+  position:new THREE.Vector3(isl.x+isl.rx*.68,100,isl.z+isl.rz*1.27),
+  target:new THREE.Vector3(isl.x,15,isl.z)
+ };
+ state.started=true;state.paused=true;state.mode='flight';state.x=isl.x;state.z=isl.z;state.y=55;
+ plane.visible=false;showPanel(null);weather.force(weatherId);refreshQuestUI();
+ updateCamera(.016);camera.updateMatrixWorld();
+ return true;
+}
+window.__ISLEBOUND_DEBUG={
+ islands:ISLANDS,terrainHeight,renderer,scene,state,weather,quests:QUEST_DEFS,
+ getActiveQuest:()=>activeQuest,acceptQuest,finishQuest,questTarget,refreshQuestUI,setVisualTestView,
+ isReady:()=>sceneReady,version:document.querySelector('meta[name="islebound-build"]')?.content
+};
 </script>
 <script>
 // JS 模块加载或网络失败时给出友好提示，不留下空白屏幕。
