@@ -158,6 +158,60 @@
   .card-actions a.primary { min-height:46px; font-size:11px; }
 }
 
+
+/* DAWN_SKY_THEME_V4: morning-watercolor atmosphere, not flat beige inversion */
+:root[data-theme="paper"]{
+  --bg:#9eb4b5;
+  --ink:#352e29;
+  --mute:#655a50;
+  --line:rgba(83,62,43,.42);
+  --pane:rgba(249,241,221,.91);
+  --gold:#975934;
+  --pearl:#3b3029;
+  --scroll-thumb:rgba(110,83,59,.42);
+  --scroll-thumb-hover:rgba(110,83,59,.73);
+}
+:root[data-theme="paper"] body{
+  background:
+    radial-gradient(ellipse 45% 50% at 74% 22%,rgba(255,231,190,.59),transparent 84%),
+    radial-gradient(ellipse 75% 65% at 13% 100%,rgba(97,132,146,.42),transparent 75%),
+    linear-gradient(155deg,#6e8ea2 0%,#a1b9bd 40%,#d7c5aa 74%,#a6b9bc 100%);
+}
+:root[data-theme="paper"] #vignette{
+  background:radial-gradient(ellipse 74% 75% at 51% 46%,transparent 34%,rgba(62,66,68,.20) 100%);
+}
+:root[data-theme="paper"] #frame{opacity:.38}
+:root[data-theme="paper"] .brand,
+:root[data-theme="paper"] .nav .btn,
+:root[data-theme="paper"] .controls,
+:root[data-theme="paper"] .status,
+:root[data-theme="paper"] .card,
+:root[data-theme="paper"] .panel{
+  box-shadow:0 12px 35px rgba(39,55,65,.11),2px 3px 0 rgba(103,83,60,.15);
+}
+:root[data-theme="paper"] .card,
+:root[data-theme="paper"] .panel{border-color:rgba(103,78,52,.45)}
+:root[data-theme="paper"] .label strong{
+  background:rgba(250,240,217,.91);
+  box-shadow:0 3px 12px rgba(38,56,66,.18);
+}
+:root[data-theme="paper"] .description,
+:root[data-theme="paper"] .article p{color:#44382f}
+:root[data-theme="paper"] .intro p,
+:root[data-theme="paper"] .note{color:#504c46}
+:root[data-theme="paper"] .card-actions a,
+:root[data-theme="paper"] .card-actions a:link,
+:root[data-theme="paper"] .card-actions a:visited{
+  color:#3c3028;
+  background:rgba(164,124,75,.12);
+}
+:root[data-theme="paper"] .card-actions a.primary,
+:root[data-theme="paper"] .card-actions a.primary:link,
+:root[data-theme="paper"] .card-actions a.primary:visited{
+  color:#362b25;
+  background:linear-gradient(145deg,rgba(204,156,99,.36),rgba(196,145,85,.18));
+}
+
 </style>
 </head><body>
 <div id="scene"></div><div id="vignette"></div><div id="frame"></div><div id="labels"></div>
@@ -192,7 +246,7 @@ var POSTS=[
 
 ];
 const el=id=>document.getElementById(id),mobile=matchMedia('(max-width:640px)').matches,reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;
-let renderer,scene,camera,controls,galaxyGroup,planets=[],meshes=[],labels=[],starGroups=[],selected=-1,flight=null,paused=false,clock=0,last=0,speed=.7,started=false,theme='night',raycaster,pointer;
+let renderer,scene,camera,controls,galaxyGroup,planets=[],meshes=[],labels=[],starGroups=[],orbitRings=[],planetHalos=[],dustCloud=null,lights=null,selected=-1,flight=null,paused=false,clock=0,last=0,speed=.7,started=false,theme='night',raycaster,pointer;
 const locations=[[22,1,10],[-7,1,25],[-25,2,-12],[30,1,-15],[-28,1,17],[-15,2,0]];
 try{theme=localStorage.getItem('star-theme')==='paper'?'paper':'night'}catch(e){}
 document.documentElement.dataset.theme=theme;
@@ -261,26 +315,31 @@ function spriteTexture(){
 }
 function populateGalaxy(glow){
  let palette=['#75b8c9','#efc486','#d89892','#a5c7ad'];
+ let dawnPalette=['#416c78','#ae7858','#99676e','#678a80'];
  for(let arm=0;arm<4;arm++){
-  let amount=mobile?1550:3900,coords=[],col=[];
+  let amount=mobile?1550:3900,coords=[],col=[],colDawn=[];
   for(let i=0;i<amount;i++){
    let r=2+Math.pow(Math.random(),.7)*56,a=arm*Math.PI/2+r*.09+(Math.random()-.5)*(.24+r*.004);
    coords.push(Math.cos(a)*r,(Math.random()-.5)*(1.4+r*.09),Math.sin(a)*r);
    let color=new THREE.Color(palette[arm]).lerp(new THREE.Color('#fff4dc'),Math.random()*.43);
    col.push(color.r,color.g,color.b);
+   let dc=new THREE.Color(dawnPalette[arm]).lerp(new THREE.Color('#c9a787'),Math.random()*.23);
+   colDawn.push(dc.r,dc.g,dc.b);
   }
-  let geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(coords,3));geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
-  let mat=new THREE.PointsMaterial({size:mobile?.20:.21,vertexColors:true,transparent:true,opacity:.82,depthWrite:false,blending:THREE.AdditiveBlending,sizeAttenuation:true});
-  let pts=new THREE.Points(geo,mat);galaxyGroup.add(pts);starGroups.push({points:pts,speed:.002+.0008*arm});
+  let geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(coords,3));geo.setAttribute('color',new THREE.Float32BufferAttribute(theme==='night'?col:colDawn,3));
+  // Textured circular particles remove the distracting pixel-square appearance.
+  let mat=new THREE.PointsMaterial({map:glow,alphaTest:.009,size:mobile?.54:.50,vertexColors:true,transparent:true,opacity:.85,depthWrite:false,blending:THREE.AdditiveBlending,sizeAttenuation:true});
+  let pts=new THREE.Points(geo,mat);galaxyGroup.add(pts);starGroups.push({points:pts,speed:.002+.0008*arm,nightColors:col,dawnColors:colDawn});
  }
  for(let r of [15,31,48]){
   let pts=[];for(let k=0;k<=256;k++){let a=k/256*Math.PI*2;pts.push(new THREE.Vector3(Math.cos(a)*r,Math.sin(a*3)*.08,Math.sin(a)*r))}
-  let ring=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineDashedMaterial({color:'#b79e7c',opacity:.15,transparent:true,dashSize:.4,gapSize:.38}));ring.computeLineDistances();galaxyGroup.add(ring)
+  let ring=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineDashedMaterial({color:'#b79e7c',opacity:.15,transparent:true,dashSize:.4,gapSize:.38}));ring.computeLineDistances();galaxyGroup.add(ring);orbitRings.push(ring)
  }
  // Real 3D drifting dust above and below the galaxy plane.
  let dustCoords=[];for(let i=0;i<(mobile?800:2500);i++){let r=14+Math.random()*75,a=Math.random()*Math.PI*2;dustCoords.push(Math.cos(a)*r,(Math.random()-.5)*28,Math.sin(a)*r)}
  let geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(dustCoords,3));
- galaxyGroup.add(new THREE.Points(geo,new THREE.PointsMaterial({map:glow,size:1.5,transparent:true,opacity:.35,blending:THREE.AdditiveBlending,depthWrite:false})));
+ dustCloud=new THREE.Points(geo,new THREE.PointsMaterial({map:glow,size:1.5,color:'#d3e1df',transparent:true,opacity:.34,blending:THREE.AdditiveBlending,depthWrite:false}));
+ galaxyGroup.add(dustCloud);
 }
 function populatePlanets(glow){
  const loc=locations;let colors=['#e2af77','#db8d65','#8ad5dc','#cfb2d7','#e2cd9d','#87b9d3'];
@@ -289,26 +348,29 @@ function populatePlanets(glow){
   let mesh=new THREE.Mesh(new THREE.SphereGeometry(radius,42,30),new THREE.MeshStandardMaterial({map:texture(i),roughness:.89,metalness:0}));
   mesh.userData.index=i;g.add(mesh);
   let halo=new THREE.Sprite(new THREE.SpriteMaterial({map:glow,color:new THREE.Color(colors[i]),transparent:true,opacity:.58,blending:THREE.AdditiveBlending,depthWrite:false}));
-  halo.scale.set(radius*7,radius*7,1);g.add(halo);
+  halo.scale.set(radius*7,radius*7,1);g.add(halo);planetHalos.push(halo);
   let outline=new THREE.Mesh(new THREE.SphereGeometry(radius*1.08,32,20),new THREE.MeshBasicMaterial({color:colors[i],transparent:true,opacity:.07,side:THREE.BackSide,depthWrite:false}));g.add(outline);
   let curve=[];for(let j=0;j<=100;j++){let a=j/100*Math.PI*2;curve.push(new THREE.Vector3(Math.cos(a)*radius*1.68,Math.sin(a*2)*.10,Math.sin(a)*radius*1.68))}
   let ring=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(curve),new THREE.LineBasicMaterial({color:colors[i],opacity:.62,transparent:true}));ring.rotation.x=.30+i*.12;g.add(ring);
   g.userData={baseY:g.position.y,mesh,ring};scene.add(g);planets.push(g);meshes.push(mesh);labels.push(addLabel(p,i));
  });
- scene.add(new THREE.AmbientLight(0xffffff,.85));let key=new THREE.PointLight(0xffd3ac,2.6,180);key.position.set(0,28,5);scene.add(key);
- let fill=new THREE.DirectionalLight(0xc2ddeb,.85);fill.position.set(20,45,30);scene.add(fill)
+ let ambient=new THREE.AmbientLight(0xffffff,.85);scene.add(ambient);
+ let key=new THREE.PointLight(0xffd3ac,2.6,180);key.position.set(0,28,5);scene.add(key);
+ let fill=new THREE.DirectionalLight(0xc2ddeb,.85);fill.position.set(20,45,30);scene.add(fill);
+ lights={ambient,key,fill};
 }
 function fail(s){el('fail').classList.add('show');setText('reason',s)}
 function init(){
  if(!window.THREE||!THREE.OrbitControls){fail('Three.js 或 OrbitControls 加载失败。可以通过星球索引访问全部作品。');return}
- try{renderer=new THREE.WebGLRenderer({antialias:!mobile,alpha:false,powerPreference:'high-performance'})}catch(e){fail('WebGL 不可用，请使用更新版 Chrome 或 Edge；仍可打开作品索引。');return}
- renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,mobile?1.4:1.65));renderer.setSize(innerWidth,innerHeight);renderer.setClearColor(theme==='night'?0x091b2c:0xe3d5b9);renderer.outputEncoding=THREE.sRGBEncoding;el('scene').appendChild(renderer.domElement);
- scene=new THREE.Scene();scene.fog=new THREE.FogExp2(theme==='night'?0x091b2c:0xe3d5b9,.003);
+ try{renderer=new THREE.WebGLRenderer({antialias:!mobile,alpha:true,powerPreference:'high-performance'})}catch(e){fail('WebGL 不可用，请使用更新版 Chrome 或 Edge；仍可打开作品索引。');return}
+ renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,mobile?1.4:1.65));renderer.setSize(innerWidth,innerHeight);renderer.setClearColor(0x091b2c,0);renderer.outputEncoding=THREE.sRGBEncoding;el('scene').appendChild(renderer.domElement);
+ scene=new THREE.Scene();scene.fog=new THREE.FogExp2(theme==='night'?0x091b2c:0x9eafb3,theme==='night'?.003:.0023);
  camera=new THREE.PerspectiveCamera(52,innerWidth/innerHeight,.1,420);camera.position.set(0,mobile?50:43,mobile?103:88);
  controls=new THREE.OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.058;controls.enablePan=true;controls.minDistance=8;controls.maxDistance=165;controls.autoRotate=!reduced;controls.autoRotateSpeed=.18;
  controls.minPolarAngle=.08;controls.maxPolarAngle=Math.PI*.9;
  galaxyGroup=new THREE.Group();scene.add(galaxyGroup);let glow=spriteTexture();
  populateGalaxy(glow);populatePlanets(glow);raycaster=new THREE.Raycaster();pointer=new THREE.Vector2();
+ applyTheme();
  renderer.domElement.addEventListener('pointerdown',e=>{renderer.domElement._down=[e.clientX,e.clientY];el('hint').classList.add('hidden');el('intro').classList.add('faded')});
  renderer.domElement.addEventListener('pointerup',e=>{let d=renderer.domElement._down;if(!d||Math.hypot(e.clientX-d[0],e.clientY-d[1])>7)return;let idx=hit(e);if(idx>=0)focus(idx)});
  renderer.domElement.addEventListener('dblclick',e=>{let idx=hit(e);if(idx>=0)jump(idx)});
@@ -356,9 +418,39 @@ function animate(now){
  controls.update();updateLabels();renderer.render(scene,camera)
 }
 function resize(){if(!started)return;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}
+function applyTheme(){
+ let day=theme==='paper';
+ document.documentElement.dataset.theme=theme;
+ if(renderer){
+  // Transparent WebGL sky lets the multi-stop morning wash show through, while all stars remain 3D.
+  renderer.setClearColor(0x091b2c,0);
+  scene.fog.color.set(day?0x9eafb3:0x091b2c);
+  scene.fog.density=day?.0023:.003;
+  starGroups.forEach(g=>{
+   let attr=g.points.geometry.getAttribute('color');
+   attr.array.set(day?g.dawnColors:g.nightColors);
+   attr.needsUpdate=true;
+   g.points.material.blending=day?THREE.NormalBlending:THREE.AdditiveBlending;
+   g.points.material.opacity=day?.76:.85;
+   g.points.material.size=mobile?(day?.43:.54):(day?.41:.50);
+   g.points.material.needsUpdate=true;
+  });
+  orbitRings.forEach(r=>{r.material.color.set(day?'#7e6b5c':'#b79e7c');r.material.opacity=day?.27:.15});
+  planetHalos.forEach(h=>{h.material.opacity=day?.23:.48;h.material.blending=day?THREE.NormalBlending:THREE.AdditiveBlending;h.material.needsUpdate=true});
+  if(dustCloud){dustCloud.material.color.set(day?'#647d87':'#d3e1df');dustCloud.material.opacity=day?.19:.34;dustCloud.material.blending=day?THREE.NormalBlending:THREE.AdditiveBlending;dustCloud.material.needsUpdate=true}
+  if(lights){
+   lights.ambient.intensity=day?.53:.75;
+   lights.key.intensity=day?1.05:2.05;
+   lights.fill.intensity=day?.48:.72;
+  }
+ }
+ el('palette').textContent=day?'☾ 深空':'☀ 晨曦';
+ let meta=document.querySelector('meta[name="theme-color"]');
+ if(meta)meta.setAttribute('content',day?'#98b3bc':'#091b2c');
+}
 function setTheme(){
- theme=theme==='night'?'paper':'night';document.documentElement.dataset.theme=theme;
- if(renderer){renderer.setClearColor(theme==='night'?0x091b2c:0xe3d5b9);scene.fog.color.set(theme==='night'?0x091b2c:0xe3d5b9)}
+ theme=theme==='night'?'paper':'night';
+ applyTheme();
  try{localStorage.setItem('star-theme',theme)}catch(e){}
 }
 function listen(){
