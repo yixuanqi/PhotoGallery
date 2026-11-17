@@ -704,6 +704,8 @@ const labelAlphas=new Float32Array(ISLANDS.length);
 const labelWorld=new THREE.Vector3();
 function sceneLabelFade(t){t=THREE.MathUtils.clamp(t,0,1);return t*t*(3-2*t)}
 function updateSceneLabels(dt){
+ // Vector3.project(camera) uses matrixWorldInverse; update it BEFORE renderer.render().
+ camera.updateMatrixWorld();
  const w=innerWidth,h=innerHeight;
  // 植入的标记和 3D 场景同步逐帧运动；只对出现/消失的透明度作平滑，位置绝不延迟。
  const fadeFactor=1-Math.exp(-Math.min(dt,.05)*7.5);
