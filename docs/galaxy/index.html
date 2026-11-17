@@ -361,7 +361,7 @@ var POSTS=[
 
 ];
 const el=id=>document.getElementById(id),mobile=matchMedia('(max-width:640px)').matches,reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;
-let renderer,scene,camera,controls,galaxyGroup,nebulaPivot=null,nebulaMesh=null,nebulaTextures=null,coreHalo=null,planets=[],meshes=[],labels=[],starGroups=[],orbitRings=[],planetHalos=[],dustCloud=null,lights=null,selected=-1,flight=null,paused=false,clock=0,last=0,speed=.7,started=false,theme='night',raycaster,pointer;
+let renderer,scene,camera,controls,galaxyGroup,nebulaPivot=null,nebulaMesh=null,nebulaTextures=null,coreHalo=null,glintPoints=null,glintColors=null,planets=[],meshes=[],labels=[],starGroups=[],orbitRings=[],planetHalos=[],dustCloud=null,lights=null,selected=-1,flight=null,paused=false,clock=0,last=0,speed=.7,started=false,theme='night',raycaster,pointer;
 const locations=[[22,1,10],[-7,1,25],[-25,2,-12],[30,1,-15],[-28,1,17],[-15,2,0]];
 try{theme=localStorage.getItem('star-theme')==='paper'?'paper':'night'}catch(e){}
 document.documentElement.dataset.theme=theme;
@@ -435,7 +435,7 @@ function nebulaTexture(isDawn){
  const canvas=document.createElement('canvas'),N=1280;
  canvas.width=canvas.height=N;
  const g=canvas.getContext('2d');
- const tones=isDawn?['#83aab9','#c39d8a','#a69eb6','#91b5b3']:['#518ca8','#b99b7a','#857ba1','#72a3a1'];
+ const tones=isDawn?['#83c2cd','#c8a487','#b9a3c0','#91c5b8']:['#569fb6','#c4a17e','#9c8fb8','#75afa9'];
  function rgba(hex,a){
   const v=parseInt(hex.substring(1),16);
   return 'rgba('+((v>>16)&255)+','+((v>>8)&255)+','+(v&255)+','+a+')';
@@ -453,8 +453,8 @@ function nebulaTexture(isDawn){
     if(i===0)g.moveTo(x,y);else g.lineTo(x,y);
    }
    g.lineCap='round';g.lineJoin='round';
-   g.lineWidth=[43,29,17,8,2.5][pass];
-   g.strokeStyle=rgba(tone,[.024,.030,.038,.050,.085][pass]);
+   g.lineWidth=[56,36,20,10,3][pass];
+   g.strokeStyle=rgba(tone,[.034,.043,.058,.077,.120][pass]);
    g.shadowColor=tone;g.shadowBlur=[9,6,3,1,0][pass];
    g.stroke();g.shadowBlur=0;
   }
@@ -462,17 +462,17 @@ function nebulaTexture(isDawn){
  let seed=92871;
  function rand(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296}
  // Fine pigment speckles organize the dust into spiral streams.
- for(let i=0;i<3900;i++){
+ for(let i=0;i<5300;i++){
   let arm=i%4,r=3+Math.pow(rand(),.84)*56,phi=arm*Math.PI/2+r*.09+(rand()-.5)*(.28+r*.0035);
   let x=Math.cos(phi)*r*10.1,y=Math.sin(phi)*r*10.1;
   let rad=.28+rand()*.96;
-  g.globalAlpha=.065+rand()*.20;g.fillStyle=tones[arm];
+  g.globalAlpha=.090+rand()*.26;g.fillStyle=tones[arm];
   g.beginPath();g.arc(x,y,rad,0,Math.PI*2);g.fill();
  }
  g.globalAlpha=1;
  const core=g.createRadialGradient(0,0,0,0,0,172);
- core.addColorStop(0,isDawn?'rgba(231,203,166,.14)':'rgba(229,196,160,.19)');
- core.addColorStop(.17,isDawn?'rgba(198,166,147,.06)':'rgba(197,154,143,.09)');
+ core.addColorStop(0,isDawn?'rgba(231,203,166,.19)':'rgba(229,196,160,.25)');
+ core.addColorStop(.17,isDawn?'rgba(198,166,147,.08)':'rgba(197,154,143,.12)');
  core.addColorStop(.50,'rgba(143,145,183,.035)');
  core.addColorStop(1,'rgba(180,148,202,0)');
  g.fillStyle=core;g.beginPath();g.arc(0,0,172,0,Math.PI*2);g.fill();
@@ -481,8 +481,8 @@ function nebulaTexture(isDawn){
  return tex;
 }
 function populateGalaxy(glow){
- const night=['#7caabe','#c8ab86','#a6a0bd','#8bb7b1'];
- const dawn=['#79a8bc','#cbb19a','#baa8be','#92b6b6'];
+ const night=['#79b6cb','#d1b18d','#b4a8cd','#91c3b6'];
+ const dawn=['#8dbdc9','#d5b69c','#c4adca','#9bc6bc'];
  nebulaTextures={night:nebulaTexture(false),paper:nebulaTexture(true)};
  nebulaPivot=new THREE.Group();
  galaxyGroup.add(nebulaPivot);
@@ -490,20 +490,20 @@ function populateGalaxy(glow){
   new THREE.MeshBasicMaterial({
    map:theme==='night'?nebulaTextures.night:nebulaTextures.paper,
    side:THREE.DoubleSide,transparent:true,depthWrite:false,
-   opacity:theme==='night'?.55:.50,blending:THREE.NormalBlending
+   opacity:theme==='night'?.70:.64,blending:THREE.NormalBlending
   }));
  nebulaMesh.rotation.x=-Math.PI/2;nebulaMesh.position.y=-.65;
  nebulaPivot.add(nebulaMesh);
  let core=glow.clone();
  coreHalo=new THREE.Sprite(new THREE.SpriteMaterial({
-  map:core,color:'#dbbca0',transparent:true,opacity:.115,
+  map:core,color:'#dbbca0',transparent:true,opacity:.155,
   blending:THREE.AdditiveBlending,depthWrite:false
  }));
  coreHalo.position.set(0,1.2,0);coreHalo.scale.set(15,15,1);
  galaxyGroup.add(coreHalo);
  // Thousands of perspective-correct particles at different depths.
  for(let arm=0;arm<4;arm++){
-  let count=mobile?1300:2500,coords=[],nightColors=[],dawnColors=[];
+  let count=mobile?1700:3600,coords=[],nightColors=[],dawnColors=[];
   let seed=1001+arm*9999;
   function rand(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296}
   for(let i=0;i<count;i++){
@@ -521,13 +521,39 @@ function populateGalaxy(glow){
   geo.setAttribute('color',new THREE.Float32BufferAttribute(theme==='night'?nightColors:dawnColors,3));
   let mat=new THREE.PointsMaterial({
    map:glow,alphaTest:.045,
-   size:mobile?.56:.65,
+   size:mobile?.64:.76,
    vertexColors:true,transparent:true,
-   opacity:.59,depthWrite:false,
+   opacity:.70,depthWrite:false,
    blending:THREE.NormalBlending,sizeAttenuation:true
   });
   let pts=new THREE.Points(geo,mat);galaxyGroup.add(pts);
   starGroups.push({points:pts,speed:.011+arm*.002,nightColors,dawnColors});
+ }
+ // STAR_RIVER_V7_BALANCED: just a few brighter, crisp accents, never another broad glow layer.
+ {
+  const pos=[],cNight=[],cDawn=[];
+  const nightAccent=['#c0e7ec','#f1d4ad','#d7c8ec','#c6e9df'];
+  const dawnAccent=['#d0e3e7','#f0d5b8','#dccbe4','#cbe5d9'];
+  let seed=76393;
+  function rnd(){seed=(Math.imul(1664525,seed)+1013904223)>>>0;return seed/4294967296}
+  for(let i=0;i<(mobile?96:216);i++){
+   const arm=i%4,r=4+Math.pow(rnd(),.75)*54;
+   const a=arm*Math.PI/2+r*.09+(rnd()-.5)*(.18+r*.002);
+   pos.push(Math.cos(a)*r,(rnd()-.5)*(.8+r*.065),Math.sin(a)*r);
+   let color1=new THREE.Color(nightAccent[arm]),color2=new THREE.Color(dawnAccent[arm]);
+   cNight.push(color1.r,color1.g,color1.b);
+   cDawn.push(color2.r,color2.g,color2.b);
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  geo.setAttribute('color',new THREE.Float32BufferAttribute(theme==='night'?cNight:cDawn,3));
+  glintPoints=new THREE.Points(geo,new THREE.PointsMaterial({
+   map:glow,alphaTest:.08,size:mobile?.87:1.05,vertexColors:true,
+   transparent:true,opacity:.69,depthWrite:false,
+   blending:THREE.NormalBlending,sizeAttenuation:true
+  }));
+  glintColors={night:cNight,paper:cDawn};
+  galaxyGroup.add(glintPoints);
  }
  // Delicate orbit engraving is secondary to the visible colored stellar rivers.
  for(let radius of [17,35,51]){
@@ -621,7 +647,7 @@ function updateLabels(){
 function animate(now){
  if(!started)return;requestAnimationFrame(animate);
  let dt=last?Math.min(.05,(now-last)/1000):0;last=now;
- if(!paused){clock+=dt*speed;starGroups.forEach(a=>a.points.rotation.y+=dt*a.speed*speed);if(nebulaPivot)nebulaPivot.rotation.y+=dt*.012*speed}
+ if(!paused){clock+=dt*speed;starGroups.forEach(a=>a.points.rotation.y+=dt*a.speed*speed);if(nebulaPivot)nebulaPivot.rotation.y+=dt*.012*speed;if(glintPoints)glintPoints.rotation.y+=dt*.012*speed}
  planets.forEach((p,i)=>{p.position.y=p.userData.baseY+Math.sin(clock*.5+i*1.4)*.22;p.userData.mesh.rotation.y+=dt*.1;p.userData.ring.rotation.z+=dt*.10});
  if(flight){
   flight.t=Math.min(1,flight.t+dt*.88);let t=flight.t,k=t*t*(3-2*t);
@@ -642,16 +668,17 @@ function applyTheme(){
    const attr=g.points.geometry.getAttribute('color');
    attr.array.set(dawn?g.dawnColors:g.nightColors);attr.needsUpdate=true;
    g.points.material.blending=THREE.NormalBlending;
-   g.points.material.size=mobile?(dawn?.58:.56):(dawn?.68:.65);
-   g.points.material.opacity=dawn?.61:.59;g.points.material.needsUpdate=true;
+   g.points.material.size=mobile?(dawn?.66:.64):(dawn?.79:.76);
+   g.points.material.opacity=dawn?.72:.70;g.points.material.needsUpdate=true;
   });
   if(nebulaMesh){
    nebulaMesh.material.map=dawn?nebulaTextures.paper:nebulaTextures.night;
-   nebulaMesh.material.opacity=dawn?.50:.55;
+   nebulaMesh.material.opacity=dawn?.64:.70;
    nebulaMesh.material.blending=THREE.NormalBlending;
    nebulaMesh.material.needsUpdate=true;
   }
-  if(coreHalo){coreHalo.material.opacity=dawn?.095:.115}
+  if(coreHalo){coreHalo.material.opacity=dawn?.13:.155}
+  if(glintPoints&&glintColors){const attr=glintPoints.geometry.getAttribute('color');attr.array.set(dawn?glintColors.paper:glintColors.night);attr.needsUpdate=true;glintPoints.material.opacity=dawn?.65:.69;glintPoints.material.needsUpdate=true}
   orbitRings.forEach(r=>{r.material.color.set(dawn?'#c6c6cc':'#7a99ad');r.material.opacity=dawn?.105:.075});
   planetHalos.forEach(h=>{h.material.opacity=dawn?.16:.20;h.material.blending=THREE.NormalBlending;h.material.needsUpdate=true});
   if(dustCloud){
