@@ -25,6 +25,33 @@
 
 页面 `<head>` 包含 `<meta name="islebound-build" content="2026-11-17-github-pages-01">`。后续改版请更新该标记；开发者工具执行 `document.querySelector('meta[name="islebound-build"]')?.content` 可检查网页加载的是哪一版。
 
+
+## 动态天气 V1
+
+天气为游戏内**程序化模拟**，不依赖现实天气 API，五种预设分别为：
+
+| 天气 | 视觉和飞行反馈 |
+| --- | --- |
+| ☀ 晴朗 | 明亮的天空、柔和海面、微风 |
+| ☁ 多云 | 云层变密，天空、海面与阳光逐渐变灰 |
+| ☂ 小雨 | 倾斜雨丝、细小海面水纹、潮湿空气感 |
+| ⚡ 暴风雨 | 深色乌云、更起伏的海浪、闪电、阵风侧漂 |
+| ≈ 海雾 | 降低远景能见度，轻风，无雨丝 |
+
+点右上角的天气按钮可从天气菜单直接选择预设，按 \`T\` 顺序切换天气；切换后默认进入手动模式。菜单中的“自动变化”可重新开启自动轮换，约每 60–80 秒改变一次天气。风只影响**自由飞行**，不会改变 E 辅助降落/F 起飞的预设轨迹。
+
+单文件实现位于 \`docs/islebound/index.html\`，实现 \`createWeatherSystem()\`、\`update()\`、\`applyWind()\` 和 \`gustRoll()\`。天气状态亦暴露在 \`window.__ISLEBOUND_DEBUG.weather\`，例如在浏览器开发者工具输入 \`window.__ISLEBOUND_DEBUG.weather.select('storm')\` 即可切换到暴风雨，\`select('fog')\` 切换海雾。
+
+发布前可运行（仅需 Node.js）：
+
+\`\`\`bash
+node docs/islebound/tests/weather-regression.mjs
+\`\`\`
+
+**人工浏览器回归：** 启动游戏 → T 键切换五种天气 → 等待天气逐渐过渡 → 暴风雨中观察雨丝/海浪/闪电/侧风 → E 降落、F 起飞 → 查看移动端天气按钮和小地图 → 开启自动模式观察随时间变天。
+
+本次上线版本标记：\`2026-11-17-weather-v1\`。更新博客时继续替换相同的 \`index.html\`，发布地址无需变化。
+
 ## 架构
 
 单文件静态网页；Three.js 通过 CDN 加载，场景在浏览器中程序化生成，无服务器端功能。岛屿配置保留在游戏的 `ISLANDS` 数组中，可扩展第五座及更多岛屿。
