@@ -9,8 +9,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" defer></script>
 <style>
 :root{--paper:#f2ead8;--paper2:#e7d8bb;--white:#fbf8ee;--ink:#32281f;--sub:#76634f;--line:#7f6548;--accent:#b95b37;--gold:#b08342;--blue:#416f83;--green:#688874;--panel:rgba(250,245,231,.94);--shadow:rgba(46,32,16,.16);--outline:rgba(69,51,35,.26);}
 :root[data-theme="night"]{--paper:#112333;--paper2:#172a3c;--white:#24384a;--ink:#f1e4c8;--sub:#b5b9b3;--line:#b0a88b;--accent:#f2ac6c;--gold:#e2c582;--blue:#9ccee1;--green:#add8bd;--panel:rgba(25,44,61,.94);--shadow:rgba(0,0,0,.25);--outline:rgba(222,207,178,.29);}
@@ -91,6 +89,31 @@ body.no-webgl #fallback{display:block}
 @media(max-width:780px){.topbar{left:26px;right:25px;top:26px}.logo-card{padding:8px 10px;gap:8px}.logo-mark{width:36px;height:36px;font-size:24px}.logo-title{font-size:19px}.logo-sub{display:none}.top-actions{gap:5px}.top-actions .ink-button{padding:8px 9px;font-size:10px}.top-actions .desktop-only{display:none}.intro{top:110px;left:33px;max-width:190px}.intro h2{font-size:24px;margin-bottom:5px}.intro p{font-size:10px;line-height:1.8}.intro .kicker{font-size:17px}.project-rail{left:30px;bottom:104px;max-height:205px;width:172px;padding:9px}.rail-note{display:none}.rail-caption{font-size:10px}.rail-item{font-size:10px;padding:5px}.rail-items{max-height:126px}.bottom-bar{bottom:30px;padding:5px;gap:1px;max-width:calc(100vw - 50px)}.bottom-bar button{font-size:10px;padding:8px}.detail{right:28px;top:100px;max-height:calc(100dvh - 195px)}.journal{top:99px;bottom:92px;width:calc(100vw - 52px);padding:16px}.journal-head h2{font-size:25px}.star-pin .glyph{font-size:34px;width:43px;height:43px}.star-pin .glyph:before{width:29px;height:29px}.star-pin .label{font-size:10px;padding:4px 6px}.star-pin .hint{font-size:11px}.star-pin{min-width:88px}}
 @media(max-width:520px){.topbar{top:25px;left:25px;right:24px}.logo-title{font-size:17px}.logo-card{max-width:200px}.top-actions .ink-button{font-size:10px}.intro{top:111px;left:30px;max-width:172px}.intro h2{font-size:22px}.project-rail{left:27px;bottom:92px;width:158px}.rail-caption small{display:none}.bottom-bar button{padding:7px;font-size:10px}.bottom-bar .bottom-divider{display:none}.paper-posts{grid-template-columns:1fr}.detail{left:27px;right:27px;top:auto;bottom:95px;width:auto;max-height:55dvh}.detail-illustration{height:90px}.detail-icon{font-size:52px}.detail h3{font-size:21px}.star-pin .hint{display:none}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+
+/* v2: responsive hierarchy, ink-and-watercolor sky, consistent layering */
+#space{background:transparent}
+#space canvas{display:block;width:100%;height:100%;touch-action:none}
+:root[data-theme="night"]{--paper:#11283b;--paper2:#284257;--white:#fff5de;--ink:#f9e9c8;--sub:#bbc9c8;--line:#e0c09a;--accent:#f4af74;--gold:#f4ce8c;--blue:#8fcee2;--green:#aadcc7;--panel:rgba(26,45,61,.93);--shadow:rgba(0,0,0,.2);--outline:rgba(227,208,173,.4)}
+:root[data-theme="night"] .paper-vignette{background:radial-gradient(ellipse at 56% 54%,rgba(14,30,50,.03),rgba(1,11,24,.45) 95%)}
+.topbar{align-items:flex-start}
+.logo-card{flex:0 0 auto}
+.top-actions{flex:0 1 auto;align-items:flex-start;flex-wrap:nowrap;max-width:calc(100vw - 550px);gap:9px}
+.top-actions .ink-button{flex:0 0 auto;padding:10px 12px}
+.intro{top:151px;max-width:255px}
+.intro h2{font-size:31px;line-height:1.43}
+.project-rail{bottom:109px;padding:12px;width:232px}
+.rail-items{max-height:171px}
+.rail-note{font-size:9px}
+.star-pin{filter:drop-shadow(0 0 7px rgba(174,132,62,.22))}
+.star-pin .glyph{font-size:52px;width:68px;height:65px}
+.star-pin .glyph:before{width:48px;height:48px;border-width:1.5px}
+.star-pin .label{border:1.5px solid var(--outline);font-size:12px}
+#fallback{display:none!important}
+@media(max-width:1120px){.top-actions{max-width:calc(100vw - 430px)}.intro{top:149px}.intro h2{font-size:27px}.project-rail{width:202px}.rail-items{max-height:148px}}
+@media(max-width:900px){.top-actions{max-width:calc(100vw - 270px)}.top-actions .desktop-only{display:none}.top-actions .ink-button{padding:9px 11px}}
+@media(max-width:780px){.topbar{top:25px}.intro{top:110px}.project-rail{bottom:95px;max-height:195px}.rail-items{max-height:115px}.intro h2{font-size:23px}.star-pin .glyph{width:54px;height:51px;font-size:39px}.star-pin .glyph:before{width:33px;height:33px}.star-pin .label{font-size:10px}}
+@media(max-width:520px){.topbar{gap:6px}.logo-card{max-width:184px}.top-actions{max-width:calc(100vw - 235px);gap:4px;flex-wrap:wrap}.top-actions .ink-button{padding:7px 8px}.intro{top:105px;max-width:173px}.intro p{font-size:9px}.project-rail{left:27px;bottom:96px;width:156px;max-height:160px}.rail-items{max-height:99px}.rail-caption{padding-bottom:4px;margin-bottom:2px}.star-pin{min-width:70px}.star-pin .label{white-space:normal;max-width:102px;line-height:1.35}.star-pin .glyph{width:43px;height:42px;font-size:32px}.star-pin .glyph:before{width:27px;height:27px}.detail{z-index:45}}
+
 </style>
 </head>
 <body>
@@ -153,7 +176,7 @@ var POSTS=[
  {id:'open-door',no:'03 · 制作原则',title:'点亮一颗星，应该能去到哪里？',summary:'区分在线体验、下载安装和实验代码，让入口说人话。',paragraphs:['如果一个页面可以直接在浏览器运行，就应该尽量提供“一键进入体验”的入口。Astra 就属于这一类。','有些作品天然是桌面应用，例如 Desktop Cannon 和 AudioAlgo。银河会清楚写明平台与安装方式，而不是让人以为点击后就能在网页上运行。','还有些项目更适合展示研究过程或源码。它们不需要硬做成游戏，仍然可以拥有自己的星位。']},
 ];
 var root=document.documentElement;
-var theme=localStorage.getItem('galaxy-theme')==='night'?'night':'paper';root.dataset.theme=theme;
+var theme='paper';try{theme=localStorage.getItem('galaxy-theme')==='night'?'night':'paper'}catch(e){}root.dataset.theme=theme;
 var reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 var selected=null,filter='all',scene,camera,renderer,controls,stars=[],pinMap={},galaxyParts=[],rings=[],sceneReady=false,raf=null;
 var colorSets={paper:{bg:0xf2ead8,speck:0x947b60,speck2:0xc4a676,orbit:0x866b50,star:0xb8873f,center:0xc8a06b},night:{bg:0x112333,speck:0xb9b3a0,speck2:0xa6c9d9,orbit:0x899caf,star:0xffce87,center:0xe2b979}};
@@ -234,89 +257,215 @@ function setFilter(v){
  document.querySelectorAll('[data-project]').forEach(function(el){var p=PROJECTS.find(function(x){return x.id===el.dataset.project});el.style.display=(filter==='all'||p.category===filter)?'':'none'});
  if(selected&&!shown.some(function(p){return p.id===selected}))closeDetail()
 }
+
+/* A painterly spiral galaxy drawn on Canvas 2D.
+ * No WebGL, no CDN dependencies: the atlas remains visible on ordinary browsers.
+ * The cloud is cached to an off-screen canvas, while pins and camera stay interactive.
+ */
+var galaxyCanvas=null,galaxyCtx=null,galaxyTexture=null,skyTexture=null;
+var galaxyWidth=0,galaxyHeight=0,galaxyDpr=1,galaxySpin=-.32,galaxyZoom=1;
+var galaxyDrag=null,galaxyPointers=new Map(),lastFrame=0;
+var galaxyWorld=[];
+function randFactory(seed){return function(){seed=(Math.imul(1664525,seed)+1013904223)>>>0;return seed/4294967296}}
 function makeGalaxy(){
- var wrap=byId('space');
- if(typeof THREE==='undefined'||!THREE.OrbitControls){document.body.classList.add('no-webgl');return}
- try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'default'});renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.6));renderer.setSize(window.innerWidth,window.innerHeight);renderer.setClearAlpha(0);wrap.appendChild(renderer.domElement)}
- catch(e){document.body.classList.add('no-webgl');return}
- scene=new THREE.Scene();
- camera=new THREE.PerspectiveCamera(42,window.innerWidth/window.innerHeight,.1,240);camera.position.set(4,37,45);camera.lookAt(0,0,0);
- controls=new THREE.OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.055;controls.enablePan=false;controls.minDistance=24;controls.maxDistance=95;controls.minPolarAngle=.30;controls.maxPolarAngle=1.55;controls.autoRotate=!reduced;controls.autoRotateSpeed=.16;
- var count=window.innerWidth<650?1600:3500;var positions=[],sizes=[],dust=[];
- // Four loose hand-inked spiral arms. The galaxy is illustrative, not a scientific scale model.
- for(var i=0;i<count;i++){
-  var arm=i%4,r=2.5+Math.pow(Math.random(),.68)*31;
-  var a=arm*Math.PI/2+r*.22+(Math.random()-.5)*(.32+r*.012);
-  var x=r*Math.cos(a),z=r*Math.sin(a),y=(Math.random()-.5)*(.3+r*.022);
-  positions.push(x,y,z);sizes.push(Math.random());
+ galaxyCanvas=document.createElement('canvas');
+ galaxyCanvas.setAttribute('aria-label','可拖动旋转、滚轮缩放的水彩银河');
+ galaxyCanvas.setAttribute('role','img');
+ var host=byId('space');host.appendChild(galaxyCanvas);
+ galaxyCtx=galaxyCanvas.getContext('2d',{alpha:true});
+ if(!galaxyCtx){document.body.classList.add('no-webgl');return}
+ // We intentionally do not rely on external Three.js scripts or WebGL availability.
+ buildTextures();resize();
+ galaxyCanvas.addEventListener('pointerdown',function(e){
+  galaxyCanvas.setPointerCapture(e.pointerId);
+  galaxyPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  galaxyDrag={x:e.clientX,y:e.clientY,base:galaxySpin,moved:false};
+ });
+ galaxyCanvas.addEventListener('pointermove',function(e){
+  var old=galaxyPointers.get(e.pointerId);if(!old)return;
+  galaxyPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(galaxyPointers.size===1&&galaxyDrag){
+   var delta=e.clientX-galaxyDrag.x;
+   if(Math.abs(delta)>3||Math.abs(e.clientY-galaxyDrag.y)>3)galaxyDrag.moved=true;
+   galaxySpin=galaxyDrag.base+delta*.0045;
+  }else if(galaxyPointers.size===2){
+   var vals=Array.from(galaxyPointers.values());var distance=Math.hypot(vals[0].x-vals[1].x,vals[0].y-vals[1].y);
+   if(old.pinchDist){galaxyZoom=Math.max(.60,Math.min(2.2,galaxyZoom*distance/old.pinchDist))}
+   vals.forEach(function(p){p.pinchDist=distance});
+   if(galaxyDrag)galaxyDrag.moved=true;
+  }
+ });
+ function release(e){
+  var clicked=galaxyDrag&&!galaxyDrag.moved&&galaxyPointers.size===1;
+  galaxyPointers.delete(e.pointerId);galaxyDrag=null;
+  if(clicked){var hit=nearestProject(e.clientX,e.clientY);if(hit)openProject(hit.id)}
  }
- var geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
- var cloud=new THREE.Points(geo,new THREE.PointsMaterial({color:colorSets[theme].speck,size:.13,sizeAttenuation:true,transparent:true,opacity:.64,depthWrite:false}));scene.add(cloud);galaxyParts.push(cloud);
- // Bright flecks cluster toward the core, like uneven ink granulation.
- var flecks=[];for(var j=0;j<850;j++){var r2=Math.pow(Math.random(),1.4)*16,a2=Math.random()*Math.PI*2;flecks.push(Math.cos(a2)*r2,(Math.random()-.5)*.65,Math.sin(a2)*r2)}
- var coreG=new THREE.BufferGeometry();coreG.setAttribute('position',new THREE.Float32BufferAttribute(flecks,3));
- var core=new THREE.Points(coreG,new THREE.PointsMaterial({color:colorSets[theme].speck2,size:.12,transparent:true,opacity:.61,depthWrite:false}));scene.add(core);galaxyParts.push(core);
- // Dashed pencil circles suggest an old astronomy notebook.
- [8,17,25,34].forEach(function(radius){
-  var pts=[];for(var k=0;k<240;k++){var a=k/239*Math.PI*2;pts.push(new THREE.Vector3(Math.cos(a)*radius,-.15,Math.sin(a)*radius))}
-  var g=new THREE.BufferGeometry().setFromPoints(pts);
-  var line=new THREE.LineLoop(g,new THREE.LineDashedMaterial({color:colorSets[theme].orbit,dashSize:.24,gapSize:.22,transparent:true,opacity:.18}));
-  line.computeLineDistances();scene.add(line);rings.push(line);
- });
- PROJECTS.forEach(function(p){
-  var group=new THREE.Group();group.position.set(p.x,p.y,p.z);
-  var sphere=new THREE.Mesh(new THREE.SphereGeometry(.36,12,10),new THREE.MeshBasicMaterial({color:colorSets[theme].star}));group.add(sphere);
-  var halo=new THREE.Mesh(new THREE.RingGeometry(.7,.735,48),new THREE.MeshBasicMaterial({color:colorSets[theme].star,side:THREE.DoubleSide,transparent:true,opacity:.7}));halo.rotation.x=-Math.PI/2;group.add(halo);
-  var cross=new THREE.Group();var pts=[new THREE.Vector3(-.9,0,0),new THREE.Vector3(.9,0,0),new THREE.Vector3(0,0,-.9),new THREE.Vector3(0,0,.9)];
-  for(var t=0;t<4;t+=2){var gg=new THREE.BufferGeometry().setFromPoints([pts[t],pts[t+1]]);var line=new THREE.Line(gg,new THREE.LineBasicMaterial({color:colorSets[theme].star,transparent:true,opacity:.55}));cross.add(line)}
-  group.add(cross);group.userData={projectId:p.id,orb:halo,sphere:sphere};scene.add(group);stars.push(group);
- });
- sceneReady=true;renderer.domElement.addEventListener('click',onSceneClick);
+ galaxyCanvas.addEventListener('pointerup',release);
+ galaxyCanvas.addEventListener('pointercancel',release);
+ galaxyCanvas.addEventListener('wheel',function(e){
+  e.preventDefault();galaxyZoom=Math.max(.6,Math.min(2.2,galaxyZoom*Math.exp(-e.deltaY*.001)));
+ },{passive:false});
  window.addEventListener('resize',resize);
+ sceneReady=true;
  animate();
 }
-function onSceneClick(event){
- if(!sceneReady)return;
- var rect=renderer.domElement.getBoundingClientRect();
- var ndc=new THREE.Vector2(((event.clientX-rect.left)/rect.width)*2-1,-((event.clientY-rect.top)/rect.height)*2+1);
- var ray=new THREE.Raycaster();ray.setFromCamera(ndc,camera);var hit=[],s=[];
- stars.forEach(function(g){s.push(g.userData.sphere)});
- hit=ray.intersectObjects(s,false);if(hit.length){var object=hit[0].object;var found=stars.find(function(g){return g.userData.sphere===object});if(found)openProject(found.userData.projectId)}
+function buildTextures(){
+ var palette=theme==='night'?{
+  turquoise:'#77d5db',sage:'#a3d4c0',gold:'#ffd68d',rust:'#ff987d',
+  ink:'#78a9bf',glow:'#fbd8a2',background:'#0b2335',faint:'#9bc3d4'
+ }:{
+  turquoise:'#5e9bad',sage:'#91a994',gold:'#d6a45c',rust:'#bd7865',
+  ink:'#8d7962',glow:'#f2c88b',background:'#f2ead8',faint:'#ad9278'
+ };
+ var rand=randFactory(960427);var size=1400,cx=size/2,cy=size/2;
+ skyTexture=document.createElement('canvas');skyTexture.width=skyTexture.height=size;
+ var sky=skyTexture.getContext('2d');sky.translate(cx,cy);
+ // Atmospheric watercolor clouds behind the Milky Way.
+ for(var arm=0;arm<4;arm++){
+  for(var s=0;s<30;s++){
+   var r=25+s*13,angle=arm*Math.PI/2+r*.018-.5;
+   var xx=Math.cos(angle)*r,yy=Math.sin(angle)*r*.70;
+   var col=[palette.turquoise,palette.gold,palette.sage,palette.rust][arm];
+   sky.save();sky.translate(xx,yy);sky.rotate(angle);
+   sky.filter='blur(32px)';sky.globalAlpha=theme==='night'?.075:.045;
+   sky.fillStyle=col;sky.beginPath();sky.ellipse(0,0,39+s*.16,22,0,0,Math.PI*2);sky.fill();sky.restore();
+  }
+ }
+ var wash=sky.createRadialGradient(0,0,4,0,0,190);
+ if(theme==='night'){wash.addColorStop(0,'rgba(255,229,179,.55)');wash.addColorStop(.18,'rgba(247,187,114,.18)');wash.addColorStop(1,'rgba(247,187,114,0)')}
+ else{wash.addColorStop(0,'rgba(231,181,108,.42)');wash.addColorStop(.2,'rgba(221,179,117,.15)');wash.addColorStop(1,'rgba(231,181,108,0)')}
+ sky.fillStyle=wash;sky.beginPath();sky.arc(0,0,195,0,Math.PI*2);sky.fill();
+ galaxyTexture=document.createElement('canvas');galaxyTexture.width=galaxyTexture.height=size;
+ var ctx=galaxyTexture.getContext('2d');ctx.translate(cx,cy);
+ // Four flowing spiral bands, filled with thousands of individually inked stars.
+ var colors=[palette.turquoise,palette.gold,palette.sage,palette.rust];
+ for(var a=0;a<4;a++){
+  for(var line=0;line<6;line++){
+   ctx.beginPath();
+   for(var t=0;t<170;t++){
+    var rad=14+t*2.45;
+    var theta=a*Math.PI/2+rad*.018-.50+(line-2.5)*.042+Math.sin(rad*.07+line)*.012;
+    var lx=Math.cos(theta)*rad,ly=Math.sin(theta)*rad*.70;
+    if(t===0)ctx.moveTo(lx,ly);else ctx.lineTo(lx,ly);
+   }
+   ctx.strokeStyle=colors[a];ctx.globalAlpha=line===2?.32:.13;
+   ctx.lineWidth=line===2?1.2:.64;ctx.setLineDash(line%2?[1,6]:[2,9]);ctx.stroke();
+  }
+ }
+ ctx.setLineDash([]);
+ for(var i=0;i<15500;i++){
+  var armIdx=i%4;
+  var distance=12+Math.pow(rand(),.82)*436;
+  var a0=armIdx*Math.PI/2+distance*.018-.5;
+  var thickness=(10+distance*.065)*(rand()+rand()-.98);
+  var theta=a0+thickness/(distance+30);
+  var x=Math.cos(theta)*distance+(rand()-.5)*6;
+  var y=Math.sin(theta)*distance*.70+(rand()-.5)*8;
+  var sizeDot=(rand()<.028?2.4:.35+rand()*1.15)*(1-distance/950);
+  ctx.fillStyle=colors[armIdx];ctx.globalAlpha=(theme==='night'?.27:.21)+rand()*.57;
+  ctx.beginPath();ctx.arc(x,y,sizeDot,0,Math.PI*2);ctx.fill();
+ }
+ // Stray stars between the arms.
+ for(var j=0;j<1300;j++){
+  var a1=rand()*Math.PI*2,r1=Math.sqrt(rand())*490;
+  ctx.globalAlpha=.12+rand()*.38;ctx.fillStyle=j%3?palette.faint:palette.gold;
+  ctx.beginPath();ctx.arc(Math.cos(a1)*r1,Math.sin(a1)*r1*.76,.3+rand()*.7,0,Math.PI*2);ctx.fill();
+ }
+ ctx.globalAlpha=1;
+ // The warm, stippled core.
+ var grad=ctx.createRadialGradient(0,0,0,0,0,66);
+ grad.addColorStop(0,theme==='night'?'rgba(255,233,185,.98)':'rgba(214,156,78,.77)');
+ grad.addColorStop(.19,theme==='night'?'rgba(255,207,139,.70)':'rgba(215,159,85,.45)');
+ grad.addColorStop(1,'rgba(220,159,84,0)');
+ ctx.fillStyle=grad;ctx.beginPath();ctx.arc(0,0,66,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle=palette.glow;ctx.globalAlpha=.85;ctx.beginPath();ctx.arc(0,0,7,0,Math.PI*2);ctx.fill();
+ ctx.globalAlpha=.78;ctx.strokeStyle=palette.ink;ctx.lineWidth=1;
+ for(var arm2=0;arm2<12;arm2++){
+  var angle2=arm2*Math.PI/6;
+  ctx.beginPath();ctx.moveTo(Math.cos(angle2)*13,Math.sin(angle2)*13);
+  ctx.lineTo(Math.cos(angle2)*(arm2%2?19:25),Math.sin(angle2)*(arm2%2?19:25));ctx.stroke();
+ }
+ ctx.globalAlpha=1;
 }
-function animate(){
- raf=requestAnimationFrame(animate);
- if(!sceneReady)return;
- controls.update();
- var time=performance.now()*.001;
- stars.forEach(function(g,i){
-  var p=PROJECTS[i];var el=pinMap[p.id];var pos=new THREE.Vector3();g.getWorldPosition(pos);pos.y+=1.6;
-  pos.project(camera);var x=(pos.x*.5+.5)*window.innerWidth,y=(-pos.y*.5+.5)*window.innerHeight;
-  el.style.left=x+'px';el.style.top=y+'px';
-  var projectedInside=pos.z<1&&x>-50&&x<window.innerWidth+50&&y>-50&&y<window.innerHeight+50;
-  el.classList.toggle('is-hidden',!projectedInside);
-  var pulse=1+(reduced?0:Math.sin(time*1.5+i*1.8)*.13);
-  g.userData.orb.scale.set(pulse,pulse,pulse);
-  g.userData.sphere.scale.setScalar(p.id===selected?1.38:1);
+function layout(){
+ var w=galaxyWidth,h=galaxyHeight;
+ var small=w<650;
+ // Negative margins keep the logbook and project index from obscuring the heart of the sky.
+ return {cx:w*(small?.60:(w<1050?.58:.55)),cy:h*(small?.47:.54),
+  s:Math.max(.53,Math.min(1.24,Math.min(w/1320,h/760)))*galaxyZoom};
+}
+function worldToScreen(x,z){
+ var l=layout(),ax=x*21,az=z*21*.70,co=Math.cos(galaxySpin),si=Math.sin(galaxySpin);
+ return {x:l.cx+(ax*co-az*si)*l.s,y:l.cy+(ax*si+az*co)*l.s};
+}
+function nearestProject(x,y){
+ var match=null,best=45;
+ PROJECTS.forEach(function(p){
+  if(filter!=='all'&&p.category!==filter)return;
+  var q=worldToScreen(p.x,p.z),d=Math.hypot(q.x-x,q.y-y);
+  if(d<best){best=d;match=p}
+ });return match;
+}
+function renderGalaxy(){
+ if(!galaxyCtx||!galaxyTexture)return;
+ var g=galaxyCtx,w=galaxyWidth,h=galaxyHeight,l=layout();
+ g.setTransform(galaxyDpr,0,0,galaxyDpr,0,0);g.clearRect(0,0,w,h);
+ // Fine distant points, beyond the spiral.
+ var rand=randFactory(20261117),skycol=theme==='night'?'rgba(194,213,228,':'rgba(106,90,70,';
+ for(var i=0;i<155;i++){
+  var x=rand()*w,y=rand()*h,op=.09+rand()*.32;
+  g.fillStyle=skycol+op+')';g.beginPath();g.arc(x,y,rand()<.06?1.65:.65,0,Math.PI*2);g.fill();
+ }
+ g.save();g.translate(l.cx,l.cy);g.rotate(galaxySpin);g.scale(l.s,l.s);
+ // Silk-soft nebula beneath the inked spiral.
+ g.drawImage(skyTexture,-700,-700);g.drawImage(galaxyTexture,-700,-700);
+ // Light hand-drawn orbital rings and constellation guides.
+ g.strokeStyle=theme==='night'?'rgba(218,201,170,.28)':'rgba(103,76,48,.27)';
+ g.lineWidth=1/l.s;g.setLineDash([3,10]);
+ [165,305,445].forEach(function(radius){g.beginPath();g.ellipse(0,0,radius,radius*.7,0,0,Math.PI*2);g.stroke()});
+ g.setLineDash([]);
+ g.strokeStyle=theme==='night'?'rgba(240,215,177,.30)':'rgba(127,94,60,.36)';
+ g.beginPath();g.moveTo(-490,0);g.lineTo(490,0);g.moveTo(0,-330);g.lineTo(0,330);g.stroke();
+ // Minor ring marks like an engraved astronomical atlas.
+ for(var k=0;k<24;k++){
+  var a=k*Math.PI/12,r=450;
+  g.beginPath();g.moveTo(Math.cos(a)*r,Math.sin(a)*r*.7);
+  g.lineTo(Math.cos(a)*(r+7),Math.sin(a)*(r+7)*.7);g.stroke();
+ }
+ g.restore();
+ // Project pins never default to 0,0 — including when WebGL is unavailable.
+ PROJECTS.forEach(function(p){
+  var q=worldToScreen(p.x,p.z),el=pinMap[p.id];
+  el.style.left=q.x+'px';el.style.top=q.y+'px';
+  el.classList.toggle('is-hidden',q.x<45||q.x>w-40||q.y<105||q.y>h-82);
  });
- renderer.render(scene,camera);
+}
+function animate(ts){
+ if(!sceneReady)return;
+ raf=requestAnimationFrame(animate);
+ if(ts-lastFrame<30)return;lastFrame=ts;
+ if(!reduced&&!selected&&!byId('journal').classList.contains('show')&&!galaxyDrag)galaxySpin+=.00018;
+ renderGalaxy();
 }
 function resize(){
- if(!sceneReady)return;camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);
+ if(!galaxyCanvas||!galaxyCtx)return;
+ galaxyWidth=window.innerWidth;galaxyHeight=window.innerHeight;
+ galaxyDpr=Math.min(window.devicePixelRatio||1,1.5);
+ galaxyCanvas.width=Math.ceil(galaxyWidth*galaxyDpr);
+ galaxyCanvas.height=Math.ceil(galaxyHeight*galaxyDpr);
+ galaxyCanvas.style.width=galaxyWidth+'px';galaxyCanvas.style.height=galaxyHeight+'px';
+ renderGalaxy();
 }
 function resetCamera(){
- closeDetail();closeJournal();if(controls){controls.reset();camera.position.set(4,37,45);controls.target.set(0,0,0);controls.update();controls.autoRotate=!reduced}
- setFilter('all')
+ galaxySpin=-.32;galaxyZoom=1;closeDetail();closeJournal();setFilter('all');renderGalaxy();
 }
 function setTheme(){
  theme=theme==='paper'?'night':'paper';root.dataset.theme=theme;
  try{localStorage.setItem('galaxy-theme',theme)}catch(e){}
- if(sceneReady){
-  var cs=colorSets[theme];galaxyParts[0].material.color.setHex(cs.speck);galaxyParts[1].material.color.setHex(cs.speck2);
-  rings.forEach(function(r){r.material.color.setHex(cs.orbit)});
-  stars.forEach(function(g){g.userData.sphere.material.color.setHex(cs.star);g.userData.orb.material.color.setHex(cs.star);g.children[2].children.forEach(function(l){l.material.color.setHex(cs.star)})})
- }
+ buildTextures();renderGalaxy();
  byId('theme-toggle').textContent=theme==='paper'?'☀︎ 日夜':'☾ 日夜';
 }
+
 function bind(){
  byId('detail-close').addEventListener('click',closeDetail);
  byId('nav-journal').addEventListener('click',function(){openJournal('journal')});
