@@ -1,165 +1,75 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#f2ead8">
-<meta name="description" content="一座可以漫游的个人作品银河：手绘天体、桌面小玩具、音频实验与持续学习。每颗恒星，都收藏一段创造的旅程。">
-<title>星河手帐 · Yixuanqi 的创作宇宙</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1a2d">
+<title>星海漫游 · Yixuanqi 的创造宇宙</title>
+<meta name="description" content="走进一片真实可漫游的 3D 星海，每颗作品星球都通往一个可以探索的世界。">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--paper:#f2ead8;--paper2:#e7d8bb;--white:#fbf8ee;--ink:#32281f;--sub:#76634f;--line:#7f6548;--accent:#b95b37;--gold:#b08342;--blue:#416f83;--green:#688874;--panel:rgba(250,245,231,.94);--shadow:rgba(46,32,16,.16);--outline:rgba(69,51,35,.26);}
-:root[data-theme="night"]{--paper:#112333;--paper2:#172a3c;--white:#24384a;--ink:#f1e4c8;--sub:#b5b9b3;--line:#b0a88b;--accent:#f2ac6c;--gold:#e2c582;--blue:#9ccee1;--green:#add8bd;--panel:rgba(25,44,61,.94);--shadow:rgba(0,0,0,.25);--outline:rgba(222,207,178,.29);}
-*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:'Noto Serif SC',Georgia,serif;background:var(--paper);color:var(--ink)}button,input{font:inherit}button{cursor:pointer}a{color:inherit}body{overflow:hidden;transition:background .45s,color .45s}::selection{background:rgba(185,91,55,.28)}
-#space{position:fixed;inset:0;z-index:0;touch-action:none}
-.paper-noise,.paper-vignette,.frame,.chart-lines{position:fixed;inset:0;pointer-events:none}
-.paper-noise{z-index:2;opacity:.23;background-image:repeating-linear-gradient(91deg,transparent 0,transparent 3px,rgba(63,45,29,.045) 4px),repeating-linear-gradient(0deg,transparent 0,transparent 7px,rgba(63,45,29,.025) 8px)}
-.paper-vignette{z-index:1;background:radial-gradient(ellipse at 51% 52%,transparent 16%,rgba(102,66,33,.10) 75%,rgba(68,38,13,.23) 100%)}
-:root[data-theme="night"] .paper-vignette{background:radial-gradient(ellipse at 50% 50%,transparent 25%,rgba(0,0,0,.28) 100%)}
-.frame{z-index:8;inset:13px;border:1.5px solid var(--outline);border-radius:17px 99px 17px 99px/99px 18px 99px 18px}
-.frame:after{content:"";position:absolute;inset:5px;border:1px dashed var(--outline);border-radius:90px 17px 90px 17px/17px 90px 17px 90px}
-.chart-lines{z-index:1;opacity:.26;background:linear-gradient(90deg,transparent 49.92%,var(--outline) 50%,transparent 50.08%),linear-gradient(0deg,transparent 49.92%,var(--outline) 50%,transparent 50.08%);mask-image:radial-gradient(ellipse at center,#000 0%,transparent 56%)}
-.corner{position:fixed;z-index:9;pointer-events:none;color:var(--line);font-family:'Caveat',cursive;font-size:26px;opacity:.65}.corner.nw{top:20px;left:25px}.corner.ne{top:20px;right:25px}.corner.sw{bottom:21px;left:25px}.corner.se{bottom:21px;right:25px}
-.hand{font-family:'Ma Shan Zheng','Caveat',cursive;font-weight:400}.en{font-family:'Caveat',cursive;letter-spacing:.03em}
-.topbar{position:fixed;z-index:35;left:42px;right:43px;top:30px;display:flex;align-items:start;justify-content:space-between;gap:16px;pointer-events:none}
-.logo-card,.top-actions>*{pointer-events:auto}.logo-card{display:flex;align-items:center;gap:13px;background:var(--panel);padding:11px 17px;border:1.5px solid var(--ink);border-radius:43% 8px 29px 10px/10px 35px 8px 32px;box-shadow:3px 4px 0 var(--outline),0 10px 35px var(--shadow);max-width:480px}
-.logo-mark{flex:none;width:48px;height:48px;border:1.5px solid var(--ink);border-radius:50%;background:var(--paper2);display:grid;place-items:center;color:var(--accent);font-size:32px}
-.logo-title{margin:0;font-size:25px;line-height:1.08;letter-spacing:.06em}.logo-sub{font-size:12px;color:var(--sub);margin:4px 0 0}
-.top-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:end}
-.ink-button{background:var(--panel);border:1.5px solid var(--ink);border-radius:22px 5px 19px 6px/5px 23px 5px 22px;box-shadow:2px 3px 0 var(--outline);color:var(--ink);padding:10px 15px;line-height:1.15;transition:transform .18s,background .18s,box-shadow .18s;white-space:nowrap;font-size:12px;font-weight:700}
-.ink-button:hover,.ink-button:focus-visible{transform:translate(-2px,-2px);box-shadow:4px 5px 0 var(--outline);outline:none}.ink-button.active{background:var(--accent);color:var(--white)}
-.tiny-cap{font-family:'Caveat',cursive;font-size:17px;letter-spacing:.03em}
-.intro{position:fixed;z-index:15;left:65px;top:180px;max-width:265px;pointer-events:none}
-.kicker{font-family:'Caveat',cursive;color:var(--accent);font-size:22px;letter-spacing:.07em}
-.intro h2{font-size:37px;line-height:1.45;letter-spacing:.08em;margin:4px 0 10px;font-weight:400}
-.intro p{font-size:12px;line-height:2.05;color:var(--sub);margin:0}
-.intro .divider-doodle{display:flex;align-items:center;gap:11px;color:var(--gold);margin:15px 0}.intro .divider-doodle:before,.intro .divider-doodle:after{content:"";height:1px;background:var(--outline);width:50px}
-#pins{position:fixed;z-index:19;inset:0;pointer-events:none}
-.star-pin{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;border:0;background:transparent;color:var(--ink);padding:0;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:112px;transition:opacity .2s,filter .2s;filter:drop-shadow(1px 2px 0 var(--shadow))}
-.star-pin.is-hidden{opacity:0;pointer-events:none}.star-pin .glyph{position:relative;width:60px;height:60px;display:grid;place-items:center;font-size:43px;color:var(--gold);text-shadow:0 0 15px rgba(176,131,66,.22);transition:transform .2s,color .2s}
-.star-pin .glyph:before{content:"";position:absolute;width:38px;height:38px;border:1px dashed currentColor;border-radius:50%;opacity:.45;transform:rotate(18deg)}
-.star-pin .label{max-width:160px;text-align:center;white-space:nowrap;padding:5px 9px 6px;border:1px solid var(--outline);border-radius:12px 3px 10px 3px;background:var(--panel);font-size:11px;font-weight:700;box-shadow:1px 2px 0 var(--outline)}
-.star-pin .hint{font-family:'Caveat',cursive;color:var(--sub);font-size:13px}
-.star-pin:hover .glyph,.star-pin:focus-visible .glyph,.star-pin.selected .glyph{transform:scale(1.18) rotate(14deg);color:var(--accent)}
-.star-pin.selected .label{border-color:var(--accent);color:var(--accent)}
-.star-pin:focus-visible{outline:2px dashed var(--accent);outline-offset:8px}
-.project-rail{position:fixed;z-index:31;left:40px;bottom:111px;width:242px;padding:15px;background:var(--panel);border:1.5px solid var(--ink);border-radius:10px 45px 12px 48px/40px 9px 48px 12px;box-shadow:3px 4px 0 var(--outline),0 14px 35px var(--shadow)}
-.rail-caption{display:flex;align-items:center;justify-content:space-between;border-bottom:1px dashed var(--outline);padding-bottom:9px;margin-bottom:10px;gap:10px;font-size:12px;font-weight:700}
-.rail-caption small{font-size:11px;color:var(--sub);font-weight:400}
-.rail-items{display:grid;gap:2px;max-height:200px;overflow-y:auto;scrollbar-color:var(--outline) transparent}
-.rail-item{border:0;background:transparent;border-radius:7px;width:100%;display:flex;align-items:center;gap:8px;padding:8px;text-align:left;color:var(--ink);font-size:11px}
-.rail-item:hover,.rail-item.active{background:rgba(180,136,73,.15)}
-.rail-dot{font-size:17px;color:var(--gold);width:20px}.rail-item span:last-child{flex:1}.rail-item small{color:var(--sub)}
-.rail-note{font-size:10px;line-height:1.8;color:var(--sub);border-top:1px dashed var(--outline);margin-top:9px;padding-top:8px}
-.detail{position:fixed;z-index:36;top:119px;right:43px;width:min(355px,calc(100vw - 64px));max-height:calc(100dvh - 226px);overflow:auto;padding:18px;background:var(--panel);border:2px solid var(--ink);border-radius:45px 9px 34px 11px/9px 42px 10px 41px;box-shadow:5px 7px 0 var(--outline),0 12px 38px var(--shadow);transform:translateX(calc(100% + 80px));opacity:0;pointer-events:none;transition:transform .35s,opacity .35s}
-.detail.show{transform:translateX(0);opacity:1;pointer-events:auto}
-.detail .tape{width:75px;height:17px;background:rgba(195,150,86,.42);position:absolute;top:1px;left:calc(50% - 38px);transform:rotate(-4deg)}
-.detail-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;border-bottom:1px dashed var(--outline);padding-bottom:9px}.detail-head span{font-size:12px;color:var(--accent);font-weight:700}.close{border:1px solid var(--outline);background:transparent;color:var(--ink);width:29px;height:29px;border-radius:50%;font-size:19px;line-height:1}
-.detail-illustration{height:155px;border:1px solid var(--ink);border-radius:10px;background:radial-gradient(ellipse at center,rgba(184,142,82,.15),transparent 70%);display:grid;place-items:center;position:relative;overflow:hidden}
-.detail-illustration:before{content:"";width:134px;height:134px;border:1px dashed var(--outline);border-radius:50%;position:absolute}
-.detail-illustration:after{content:"✦  •  ✧  •  ✦";font-family:'Caveat';font-size:21px;letter-spacing:.3em;color:var(--sub);position:absolute;bottom:8px}
-.detail-icon{font-size:75px;line-height:1;color:var(--gold);transform:rotate(-9deg);filter:drop-shadow(3px 4px 1px var(--shadow))}
-.detail h3{font-size:25px;font-weight:400;margin:13px 0 4px;line-height:1.4}.detail .english{font-family:'Caveat',cursive;font-size:18px;color:var(--sub)}
-.tag-row{display:flex;gap:5px;flex-wrap:wrap;margin:11px 0 12px}.tag{padding:5px 8px;border:1px solid var(--outline);border-radius:4px;font-size:10px;color:var(--sub)}
-.detail p{font-size:12px;line-height:1.95;margin:10px 0 15px}
-.actions{display:flex;flex-wrap:wrap;gap:8px}.actions a{flex:1;text-align:center;text-decoration:none;font-size:11px;padding:11px 9px;border:1.5px solid var(--ink);background:var(--paper2);border-radius:19px 4px 18px 5px;box-shadow:2px 3px 0 var(--outline);font-weight:700;white-space:nowrap}
-.actions a.secondary{background:transparent}
-.footnote{margin-top:15px;font-size:10px;color:var(--sub);border-top:1px dashed var(--outline);padding-top:10px;line-height:1.8}
-.bottom-bar{position:fixed;bottom:39px;left:50%;z-index:32;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:7px;background:var(--panel);border:1.5px solid var(--ink);border-radius:18px 55px 17px 55px/54px 16px 50px 17px;padding:9px 11px;box-shadow:3px 4px 0 var(--outline);max-width:calc(100vw - 88px)}
-.bottom-bar button{background:transparent;border:1px solid transparent;color:var(--ink);border-radius:8px;padding:8px 10px;font-size:11px;white-space:nowrap}
-.bottom-bar button:hover,.bottom-bar button.active{border-color:var(--outline);background:rgba(180,136,73,.16)}
-.bottom-divider{height:22px;width:1px;background:var(--outline);flex:none}
-.coordinates{position:fixed;bottom:34px;right:47px;z-index:17;text-align:right;color:var(--sub);font-size:10px;line-height:2;pointer-events:none}
-.scroll-tip{position:fixed;left:calc(50% - 78px);bottom:105px;width:156px;text-align:center;z-index:11;pointer-events:none;color:var(--sub);font-size:11px;opacity:.9}
-.journal{position:fixed;z-index:40;top:102px;bottom:102px;left:50%;transform:translate(-50%,25px);width:min(800px,calc(100vw - 70px));border:2px solid var(--ink);border-radius:15px 70px 20px 70px/60px 20px 60px 20px;padding:24px 29px;overflow:auto;background:var(--panel);box-shadow:7px 9px 0 var(--outline),0 24px 70px var(--shadow);opacity:0;pointer-events:none;transition:opacity .25s,transform .3s}
-.journal.show{transform:translate(-50%,0);opacity:1;pointer-events:auto}
-.journal-head{display:flex;gap:14px;align-items:start;justify-content:space-between;padding-bottom:12px;border-bottom:1px dashed var(--outline);margin-bottom:18px}
-.journal-head h2{font-weight:400;font-size:31px;margin:0}.journal-head p{font-size:11px;color:var(--sub);margin:5px 0}
-.paper-posts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
-.post{padding:18px;background:rgba(177,139,88,.09);border:1px solid var(--outline);border-radius:9px 28px 8px 25px;text-align:left;color:var(--ink)}
-.post:hover{background:rgba(177,139,88,.18)}.post small{font-size:10px;color:var(--accent)}.post h3{margin:8px 0 10px;font-size:17px;font-weight:600;line-height:1.5}.post p{font-size:11px;color:var(--sub);line-height:1.9;margin:0}
-.article{max-width:660px;margin:0 auto}.article h3{font-size:25px;font-weight:400;margin:6px 0 10px}.article .article-meta{font-size:11px;color:var(--accent);margin:0 0 18px}
-.article p{line-height:2.25;font-size:13px;margin:0 0 15px}.article-back{border:1px solid var(--outline);background:transparent;color:var(--ink);padding:6px 10px;border-radius:8px;margin-bottom:14px;font-size:11px}
-.about-copy{font-size:13px;line-height:2.3;max-width:650px}.about-copy h3{font-weight:400;font-size:23px}.about-copy a{text-decoration:underline;text-underline-offset:4px;color:var(--accent)}
-#fallback{position:fixed;z-index:26;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--panel);border:1px solid var(--outline);padding:14px 18px;display:none;text-align:center;max-width:300px;font-size:12px;line-height:1.9}
-body.no-webgl #fallback{display:block}
-@media(max-width:1120px){.intro{left:45px;top:160px;max-width:205px}.intro h2{font-size:28px}.project-rail{width:205px;left:35px}.coordinates{display:none}.scroll-tip{display:none}}
-@media(max-width:780px){.topbar{left:26px;right:25px;top:26px}.logo-card{padding:8px 10px;gap:8px}.logo-mark{width:36px;height:36px;font-size:24px}.logo-title{font-size:19px}.logo-sub{display:none}.top-actions{gap:5px}.top-actions .ink-button{padding:8px 9px;font-size:10px}.top-actions .desktop-only{display:none}.intro{top:110px;left:33px;max-width:190px}.intro h2{font-size:24px;margin-bottom:5px}.intro p{font-size:10px;line-height:1.8}.intro .kicker{font-size:17px}.project-rail{left:30px;bottom:104px;max-height:205px;width:172px;padding:9px}.rail-note{display:none}.rail-caption{font-size:10px}.rail-item{font-size:10px;padding:5px}.rail-items{max-height:126px}.bottom-bar{bottom:30px;padding:5px;gap:1px;max-width:calc(100vw - 50px)}.bottom-bar button{font-size:10px;padding:8px}.detail{right:28px;top:100px;max-height:calc(100dvh - 195px)}.journal{top:99px;bottom:92px;width:calc(100vw - 52px);padding:16px}.journal-head h2{font-size:25px}.star-pin .glyph{font-size:34px;width:43px;height:43px}.star-pin .glyph:before{width:29px;height:29px}.star-pin .label{font-size:10px;padding:4px 6px}.star-pin .hint{font-size:11px}.star-pin{min-width:88px}}
-@media(max-width:520px){.topbar{top:25px;left:25px;right:24px}.logo-title{font-size:17px}.logo-card{max-width:200px}.top-actions .ink-button{font-size:10px}.intro{top:111px;left:30px;max-width:172px}.intro h2{font-size:22px}.project-rail{left:27px;bottom:92px;width:158px}.rail-caption small{display:none}.bottom-bar button{padding:7px;font-size:10px}.bottom-bar .bottom-divider{display:none}.paper-posts{grid-template-columns:1fr}.detail{left:27px;right:27px;top:auto;bottom:95px;width:auto;max-height:55dvh}.detail-illustration{height:90px}.detail-icon{font-size:52px}.detail h3{font-size:21px}.star-pin .hint{display:none}}
-@media(prefers-reduced-motion:reduce){*,*:before,*:after{transition-duration:.01ms!important;animation-duration:.01ms!important}}
-
-/* v2: responsive hierarchy, ink-and-watercolor sky, consistent layering */
-#space{background:transparent}
-#space canvas{display:block;width:100%;height:100%;touch-action:none}
-:root[data-theme="night"]{--paper:#11283b;--paper2:#284257;--white:#fff5de;--ink:#f9e9c8;--sub:#bbc9c8;--line:#e0c09a;--accent:#f4af74;--gold:#f4ce8c;--blue:#8fcee2;--green:#aadcc7;--panel:rgba(26,45,61,.93);--shadow:rgba(0,0,0,.2);--outline:rgba(227,208,173,.4)}
-:root[data-theme="night"] .paper-vignette{background:radial-gradient(ellipse at 56% 54%,rgba(14,30,50,.03),rgba(1,11,24,.45) 95%)}
-.topbar{align-items:flex-start}
-.logo-card{flex:0 0 auto}
-.top-actions{flex:0 1 auto;align-items:flex-start;flex-wrap:nowrap;max-width:calc(100vw - 550px);gap:9px}
-.top-actions .ink-button{flex:0 0 auto;padding:10px 12px}
-.intro{top:151px;max-width:255px}
-.intro h2{font-size:31px;line-height:1.43}
-.project-rail{bottom:109px;padding:12px;width:232px}
-.rail-items{max-height:226px}
-.rail-note{font-size:9px}
-.star-pin{filter:drop-shadow(0 0 7px rgba(174,132,62,.22))}
-.star-pin .glyph{font-size:52px;width:68px;height:65px}
-.star-pin .glyph:before{width:48px;height:48px;border-width:1.5px}
-.star-pin .label{border:1.5px solid var(--outline);font-size:12px}
-#fallback{display:none!important}
-@media(max-width:1120px){.top-actions{max-width:calc(100vw - 430px)}.intro{top:149px}.intro h2{font-size:27px}.project-rail{width:202px}.rail-items{max-height:186px}}
-@media(max-width:900px){.top-actions{max-width:calc(100vw - 270px)}.top-actions .desktop-only{display:none}.top-actions .ink-button{padding:9px 11px}}
-@media(max-width:780px){.topbar{top:25px}.intro{top:110px}.project-rail{bottom:95px;max-height:195px}.rail-items{max-height:115px}.intro h2{font-size:23px}.star-pin .glyph{width:54px;height:51px;font-size:39px}.star-pin .glyph:before{width:33px;height:33px}.star-pin .label{font-size:10px}}
-@media(max-width:520px){.topbar{gap:6px}.logo-card{max-width:184px}.top-actions{max-width:calc(100vw - 235px);gap:4px;flex-wrap:wrap}.top-actions .ink-button{padding:7px 8px}.intro{top:105px;max-width:173px}.intro p{font-size:9px}.project-rail{left:27px;bottom:96px;width:156px;max-height:160px}.rail-items{max-height:99px}.rail-caption{padding-bottom:4px;margin-bottom:2px}.star-pin{min-width:70px}.star-pin .label{white-space:normal;max-width:102px;line-height:1.35}.star-pin .glyph{width:43px;height:42px;font-size:32px}.star-pin .glyph:before{width:27px;height:27px}.detail{z-index:45}}
-
+:root{--bg:#091b2c;--ink:#f6e9ce;--mute:#bac6c5;--line:rgba(236,218,185,.35);--pane:rgba(13,30,48,.82);--gold:#ebc58d;--pearl:#efe0c3}
+:root[data-theme="paper"]{--bg:#e3d5b9;--ink:#32271e;--mute:#64594d;--line:rgba(64,44,27,.35);--pane:rgba(249,242,223,.91);--gold:#a9633e;--pearl:#392e24}
+*{box-sizing:border-box}html,body{height:100%;margin:0;overflow:hidden}body{background:var(--bg);color:var(--ink);font-family:'Noto Serif SC',serif;transition:background .5s}button,a{font:inherit}button{cursor:pointer}button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+#scene{position:fixed;inset:0;touch-action:none}#scene canvas{width:100%;height:100%;display:block;cursor:grab}#scene canvas:active{cursor:grabbing}
+#vignette,#frame{position:fixed;pointer-events:none;inset:0}#vignette{background:radial-gradient(ellipse at center,transparent 38%,rgba(0,3,15,.6));z-index:1}
+:root[data-theme="paper"] #vignette{background:radial-gradient(ellipse at center,transparent 37%,rgba(93,57,21,.20))}
+#frame{z-index:7;inset:13px;border:1px solid var(--line);border-radius:14px 90px 14px 90px/90px 14px 90px 14px;opacity:.65}
+#frame:before{content:'';position:absolute;inset:5px;border:1px dashed var(--line);border-radius:90px 14px 90px 14px/14px 90px 14px 90px}
+.top{position:fixed;left:31px;right:31px;top:26px;z-index:30;display:flex;justify-content:space-between;align-items:flex-start;gap:15px;pointer-events:none}.top>*{pointer-events:auto}
+.brand{display:flex;align-items:center;gap:12px;padding:10px 16px 10px 10px;background:var(--pane);border:1px solid var(--line);backdrop-filter:blur(12px);border-radius:28px 5px 25px 5px/5px 28px 5px 25px;box-shadow:3px 4px 0 rgba(143,99,50,.23)}
+.symbol{height:45px;width:45px;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center;color:var(--gold);font-size:29px}.brand h1{font:29px 'Ma Shan Zheng',serif;margin:0;letter-spacing:.06em}.brand p{font:15px 'Caveat',cursive;color:var(--mute);margin:2px 0}
+.nav{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:7px}.btn{border:1px solid var(--line);border-radius:16px 5px 15px 5px/5px 16px 5px 16px;background:var(--pane);color:var(--ink);padding:10px 13px;font-size:12px;font-weight:700;backdrop-filter:blur(10px);white-space:nowrap;transition:transform .18s,background .18s}.btn:hover{transform:translateY(-2px);background:rgba(170,135,88,.23)}.btn.active{border-color:var(--gold);background:rgba(190,148,91,.23)}
+.intro{position:fixed;top:152px;left:47px;max-width:245px;z-index:9;pointer-events:none;transition:opacity .4s}.intro.faded{opacity:.12}.intro .mini{font:22px 'Caveat',cursive;color:var(--gold)}.intro h2{font:32px/1.6 'Ma Shan Zheng',serif;letter-spacing:.05em;margin:5px 0}.intro p{font-size:11px;line-height:2.15;color:var(--mute);margin:10px 0}
+#labels{position:fixed;inset:0;pointer-events:none;z-index:12}
+.label{position:absolute;pointer-events:auto;transform:translate(-50%,0);border:0;background:transparent;color:var(--ink);text-align:center;filter:drop-shadow(0 2px 7px rgba(0,0,0,.36));transition:opacity .2s;min-width:90px}
+.label:before{content:'';height:11px;border-left:1px dashed var(--gold);display:block;width:0;margin:0 auto}
+.label strong{display:block;padding:5px 9px;background:var(--pane);border:1px solid var(--line);border-radius:9px 3px 8px 3px;backdrop-filter:blur(8px);font-size:11px;white-space:nowrap}
+.label small{display:block;font:13px 'Caveat',cursive;color:var(--gold);padding-top:3px}
+.label:hover strong,.label.selected strong{border-color:var(--gold);color:var(--gold)}.label.hidden{opacity:0;pointer-events:none}
+.bottom{position:fixed;z-index:26;bottom:28px;left:31px;right:31px;display:flex;align-items:end;justify-content:space-between;gap:10px;pointer-events:none}.bottom>*{pointer-events:auto}
+.status{background:var(--pane);border:1px solid var(--line);padding:10px 14px;border-radius:6px 25px 6px 25px;backdrop-filter:blur(12px);font-size:10px;line-height:1.9;color:var(--mute)}
+.status b{display:block;color:var(--gold);font:17px 'Caveat',cursive}
+.controls{display:flex;gap:5px;align-items:center;justify-content:center;flex-wrap:wrap;background:var(--pane);border:1px solid var(--line);padding:6px;border-radius:13px 44px 13px 44px/44px 13px 44px 13px;backdrop-filter:blur(12px)}
+.controls .btn{border-color:transparent;box-shadow:none;background:transparent;padding:8px 10px}.controls .btn:hover,.controls .btn.active{border-color:var(--line);background:rgba(196,151,93,.19)}
+.controls label{font-size:11px;color:var(--mute);white-space:nowrap}.controls input{width:75px;accent-color:var(--gold);vertical-align:middle}
+.card{position:fixed;z-index:37;right:37px;top:129px;bottom:113px;width:min(345px,calc(100vw - 74px));padding:19px;background:var(--pane);border:1px solid var(--line);border-radius:38px 8px 38px 8px/8px 38px 8px 38px;backdrop-filter:blur(17px);overflow:auto;box-shadow:3px 5px 0 rgba(118,86,53,.24),0 12px 40px rgba(0,0,0,.16);opacity:0;pointer-events:none;transform:translateX(calc(100% + 70px));transition:opacity .38s,transform .38s}
+.card.show{opacity:1;pointer-events:auto;transform:translateX(0)}.card-head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px dashed var(--line);padding-bottom:11px}
+.card-head span{color:var(--gold);font:17px 'Caveat',cursive}.close{background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:50%;width:30px;height:30px;font-size:20px}
+.illustration{height:140px;border:1px solid var(--line);border-radius:7px;margin:15px 0 10px;background:radial-gradient(circle,rgba(193,154,94,.22),transparent 73%);display:grid;place-items:center;position:relative}
+.illustration:before{content:'';width:128px;height:128px;border:1px dashed var(--line);border-radius:50%;position:absolute}.illustration span{font-size:75px;color:var(--gold);text-shadow:0 0 18px rgba(212,162,93,.28)}
+.card h2{font:29px 'Ma Shan Zheng',serif;margin:10px 0 0}.latin{font:18px 'Caveat',cursive;color:var(--mute)}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin:13px 0}.tags span{font-size:10px;border:1px solid var(--line);color:var(--mute);padding:5px 8px;border-radius:5px}
+.description{font-size:12px;line-height:2.1}.note{font-size:11px;color:var(--mute);border-top:1px dashed var(--line);padding-top:11px;line-height:1.9}
+.card-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.card-actions a{text-decoration:none;text-align:center;padding:11px 7px;border:1px solid var(--line);border-radius:12px 4px 12px 4px;font-size:11px;background:rgba(168,122,69,.16)}.card-actions a.primary{grid-column:1/-1;background:rgba(195,147,87,.26);border-color:var(--gold);font-weight:700;font-size:12px}
+.panel{position:fixed;z-index:45;background:var(--pane);border:1px solid var(--line);backdrop-filter:blur(18px);overflow:auto;pointer-events:none;opacity:0;transition:transform .3s,opacity .3s}
+.panel.show{opacity:1;pointer-events:auto}.panel header{display:flex;justify-content:space-between;align-items:center;gap:8px;padding-bottom:13px;margin-bottom:12px;border-bottom:1px dashed var(--line)}.panel h2{font:27px 'Ma Shan Zheng',serif;margin:0}
+#drawer{left:30px;top:100px;bottom:100px;width:307px;padding:20px;border-radius:8px 34px 8px 34px;transform:translateX(-350px)}#drawer.show{transform:translateX(0)}
+.entry{display:flex;gap:10px;text-align:left;width:100%;padding:12px 7px;border:0;border-bottom:1px dashed var(--line);background:transparent;color:var(--ink)}.entry:hover{background:rgba(183,142,83,.17)}.entry em{font-size:23px;color:var(--gold);width:30px;flex:none;font-style:normal}.entry strong{font-size:12px}.entry small{display:block;color:var(--mute);font:15px 'Caveat',cursive;margin-top:4px}
+#journal{top:100px;bottom:100px;left:50%;width:min(710px,calc(100vw - 50px));padding:24px;transform:translate(-50%,23px);border-radius:8px 60px 8px 60px}#journal.show{transform:translate(-50%,0)}
+.posts{display:grid;grid-template-columns:1fr 1fr;gap:11px}.post{background:rgba(177,136,78,.12);border:1px solid var(--line);text-align:left;border-radius:9px 25px 9px 25px;padding:16px;color:var(--ink)}
+.post:hover{background:rgba(177,136,78,.22)}.post small{font:16px 'Caveat',cursive;color:var(--gold)}.post h3{font-size:15px;line-height:1.6}.post p,.article p{font-size:12px;line-height:2.1;color:var(--mute)}.article p{color:var(--ink);font-size:13px}
+#hint{position:fixed;left:50%;bottom:101px;z-index:17;transform:translateX(-50%);font-size:11px;color:var(--mute);white-space:nowrap;pointer-events:none;transition:opacity .6s}#hint.hidden{opacity:0}
+#fail{display:none;position:fixed;z-index:48;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--pane);border:1px solid var(--line);padding:22px;text-align:center;line-height:2;width:min(390px,calc(100vw - 40px));font-size:12px}#fail.show{display:block}
+@media(max-width:950px){.intro{left:33px;top:123px;max-width:175px}.intro h2{font-size:25px}.status{display:none}.bottom{justify-content:center}.card{top:105px;right:23px;bottom:105px}}
+@media(max-width:640px){.top{left:23px;right:23px;top:22px}.brand{padding:8px}.brand h1{font-size:19px}.brand p{display:none}.symbol{width:31px;height:31px;font-size:22px}.nav{max-width:196px;gap:4px}.nav .btn{font-size:10px;padding:7px}.intro{top:107px;left:28px;max-width:160px}.intro h2{font-size:20px}.intro p{font-size:10px}.bottom{bottom:24px;left:24px;right:24px}.controls{padding:4px}.controls .btn{font-size:9px;padding:7px}.controls input{width:50px}.label strong{font-size:10px;padding:4px 6px}.label small{display:none}.card{left:24px;right:24px;width:auto;top:auto;bottom:93px;max-height:55dvh}.illustration{height:82px}.illustration span{font-size:49px}.card h2{font-size:22px}#drawer{left:22px;top:84px;bottom:94px;width:min(310px,calc(100vw - 44px))}#journal{top:85px;bottom:94px;padding:17px}.posts{grid-template-columns:1fr}#hint{bottom:88px;font-size:9px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{transition-duration:.01ms!important}}
 </style>
-</head>
-<body>
-<div id="space" aria-label="可交互的3D银河星图"></div>
-<div class="paper-noise"></div><div class="paper-vignette"></div><div class="chart-lines"></div><div class="frame"></div>
-<span class="corner nw">✧</span><span class="corner ne">✧</span><span class="corner sw">✧</span><span class="corner se">✧</span>
-<div id="pins" aria-label="项目星星"></div>
-<header class="topbar">
-  <div class="logo-card"><div class="logo-mark" aria-hidden="true">☾</div><div><h1 class="logo-title hand">星河手帐</h1><p class="logo-sub en">An Atlas of Little Creations · Yixuanqi</p></div></div>
-  <nav class="top-actions" aria-label="网站导航">
-    <button class="ink-button desktop-only" id="nav-home">✦ 银河全景</button>
-    <button class="ink-button" id="nav-journal">✎ 航行日志</button>
-    <button class="ink-button desktop-only" id="nav-about">☽ 关于</button>
-    <button class="ink-button" id="theme-toggle" aria-label="切换日夜画风">☀︎ 日夜</button>
-  </nav>
-</header>
-<section class="intro">
-  <div class="kicker">The little universe / No. 001</div>
-  <h2 class="hand">把每个作品，<br>都藏进一颗星。</h2>
-  <div class="divider-doodle">✦</div>
-  <p>这是一本可以漫游的创作手帐。<br>有些星星能直接进入体验，<br>有些藏着代码、实验和未完的故事。</p>
-</section>
-<nav class="project-rail" aria-label="作品目录">
-  <div class="rail-caption"><span>☷ 星体索引</span><small id="rail-counter">06 颗作品星</small></div>
-  <div id="rail-items" class="rail-items"></div>
-  <div class="rail-note">✧ 轻点星星查看作品 · 拖拽旋转银河<br>✧ 滚轮 / 双指缩放 · 从日志继续航行</div>
-</nav>
-<aside class="detail" id="detail" aria-live="polite" aria-label="作品信息">
-  <div class="tape"></div>
-  <div class="detail-head"><span id="detail-index">CHAPTER 01 · WEB</span><button class="close" id="detail-close" aria-label="关闭作品信息">×</button></div>
-  <div class="detail-illustration"><span class="detail-icon" id="detail-icon">✦</span></div>
-  <h3 class="hand" id="detail-title"></h3><span class="english" id="detail-en"></span>
-  <div class="tag-row" id="detail-tags"></div><p id="detail-description"></p>
-  <div class="actions" id="detail-actions"></div>
-  <div class="footnote" id="detail-foot"></div>
-</aside>
-<div class="scroll-tip">↔ 拖动银河，让星星缓缓转动</div>
-<div class="coordinates en">CELESTIAL ATLAS · VOL. I<br>52° N / A COLLECTION IN PROGRESS</div>
-<div id="fallback">星图需要 WebGL 与 Three.js 支持。<br>可以通过左侧的「星体索引」直接访问每个项目。</div>
-<footer class="bottom-bar" aria-label="项目类型筛选">
-  <button data-filter="all" class="active">✦ 全部星体</button><button data-filter="online">◉ 在线体验</button><button data-filter="download">⇩ 可下载</button><button data-filter="lab">✎ 实验与代码</button><span class="bottom-divider"></span><button id="reset-camera" title="重置视角">⟲ 归位</button>
-</footer>
-<section class="journal" id="journal" aria-label="航行日志" role="dialog" aria-modal="false" aria-hidden="true">
-  <div class="journal-head"><div><div class="kicker">From the logbook</div><h2 class="hand" id="journal-title">航行日志</h2><p id="journal-subtitle">不按时间排序的宇宙碎片 · 关于创造、技术与好奇心</p></div><button class="close" id="journal-close" aria-label="关闭日志">×</button></div>
-  <div id="journal-body"></div>
-</section>
+</head><body>
+<div id="scene"></div><div id="vignette"></div><div id="frame"></div><div id="labels"></div>
+<header class="top"><div class="brand"><div class="symbol">☾</div><div><h1>星海漫游</h1><p>Atlas of Little Universes · Yixuanqi</p></div></div>
+<nav class="nav"><button class="btn" id="home">✦ 漫游</button><button class="btn" id="index">☷ 星球索引</button><button class="btn" id="logs">✎ 航行日志</button><button class="btn" id="palette">☾ 画风</button></nav></header>
+<section class="intro" id="intro"><div class="mini">The wandering universe / No. 001</div><h2>星星会流动，<br>作品会发光。</h2><p>拖动视角穿过星河，<br>缩放镜头靠近星球。<br>轻点一颗星，就能飞向一个作品。</p></section>
+<div id="hint">✧ 拖动旋转 · 滚轮缩放 · 点击星球飞行 · 双击星球直达作品 ✧</div>
+<div class="bottom"><div class="status"><b>Exploration log · Vol. I</b><span id="counter">06</span> 颗作品星球 · 透视航行中<br>可以暂停、换画风，也可以返回星海</div>
+<div class="controls"><button class="btn active" id="pause">Ⅱ 暂停星流</button><label>流速 <input id="speed" type="range" min="0" max="3" step=".1" value=".7"></label><button class="btn" id="prev">← 上一颗</button><button class="btn" id="next">下一颗 →</button><button class="btn" id="reset">◎ 归位</button></div></div>
+<aside id="card" class="card" aria-label="星球作品信息"><div class="card-head"><span id="number">STAR 01 · ONLINE</span><button class="close" id="card-close">×</button></div>
+<div class="illustration"><span id="art">✺</span></div><h2 id="name"></h2><div id="latin" class="latin"></div><div id="tags" class="tags"></div><p id="desc" class="description"></p><p id="note" class="note"></p><div id="links" class="card-actions"></div></aside>
+<section id="drawer" class="panel" aria-label="星球索引"><header><h2>我的星球</h2><button class="close" id="drawer-close">×</button></header><div id="index-items"></div></section>
+<section id="journal" class="panel" aria-label="航行日志"><header><h2>航行日志</h2><button class="close" id="journal-close">×</button></header><div id="journal-content"></div></section>
+<div id="fail"><strong>3D 星图暂时无法启动</strong><p id="reason">浏览器需要支持 WebGL 并能够加载 Three.js。</p><button class="btn" id="fail-index">查看作品星球入口</button></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script>
 (function(){
 'use strict';
@@ -177,318 +87,189 @@ var POSTS=[
  {id:'open-door',no:'03 · 制作原则',title:'点亮一颗星，应该能去到哪里？',summary:'区分在线体验、下载安装和实验代码，让入口说人话。',paragraphs:['如果一个页面可以直接在浏览器运行，就应该尽量提供“一键进入体验”的入口。Astra 就属于这一类。','有些作品天然是桌面应用，例如 Desktop Cannon 和 AudioAlgo。银河会清楚写明平台与安装方式，而不是让人以为点击后就能在网页上运行。','还有些项目更适合展示研究过程或源码。它们不需要硬做成游戏，仍然可以拥有自己的星位。']}, {id:'earthplant-note',no:'04 · 地球航海志',title:'把世界画在一张可以旋转的纸上',summary:'从手绘地球到地标探索，再到一架沿球面航行的纸飞机。',paragraphs:['EarthPlant 是一张可以转动的立体航海图。它延续旧纸、水彩、钢笔排线的风格，试着让地球本身变成一本可以翻阅的博物手帐。','除了八处世界地标，我还把两地之间的大圆航线做成了可交互的巡航路线。纸飞机可以沿路径飞行，也能从第三人称视角跟随它穿过天空。','它和 Astra 一起成为银河里可以直接进入体验的作品。希望未来每一颗星背后都有这样一段可以亲手探索的旅程。']},
 
 ];
-var root=document.documentElement;
-var theme='paper';try{theme=localStorage.getItem('galaxy-theme')==='night'?'night':'paper'}catch(e){}root.dataset.theme=theme;
-var reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-var selected=null,filter='all',scene,camera,renderer,controls,stars=[],pinMap={},galaxyParts=[],rings=[],sceneReady=false,raf=null;
-var colorSets={paper:{bg:0xf2ead8,speck:0x947b60,speck2:0xc4a676,orbit:0x866b50,star:0xb8873f,center:0xc8a06b},night:{bg:0x112333,speck:0xb9b3a0,speck2:0xa6c9d9,orbit:0x899caf,star:0xffce87,center:0xe2b979}};
-function byId(id){return document.getElementById(id)}
-function safeText(id,value){byId(id).textContent=value}
-function external(href){return !href.startsWith('../')&&!href.startsWith('#')}
-function addLink(parent,text,href,secondary){var a=document.createElement('a');a.textContent=text;a.href=href;if(external(href)){a.target='_blank';a.rel='noopener noreferrer'}if(secondary)a.className='secondary';parent.appendChild(a)}
-function buildIndex(){
- var list=byId('rail-items');list.textContent='';
- PROJECTS.forEach(function(p){
-   var btn=document.createElement('button');btn.type='button';btn.className='rail-item';btn.dataset.project=p.id;
-   var dot=document.createElement('span');dot.className='rail-dot';dot.textContent=p.icon;
-   var name=document.createElement('span');name.textContent=p.name;
-   var number=document.createElement('small');number.textContent=p.index;
-   btn.append(dot,name,number);btn.addEventListener('click',function(){openProject(p.id)});list.appendChild(btn);
+const el=id=>document.getElementById(id),mobile=matchMedia('(max-width:640px)').matches,reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;
+let renderer,scene,camera,controls,galaxyGroup,planets=[],meshes=[],labels=[],starGroups=[],selected=-1,flight=null,paused=false,clock=0,last=0,speed=.7,started=false,theme='night',raycaster,pointer;
+const locations=[[22,1,10],[-7,1,25],[-25,2,-12],[30,1,-15],[-28,1,17],[-15,2,0]];
+try{theme=localStorage.getItem('star-theme')==='paper'?'paper':'night'}catch(e){}
+document.documentElement.dataset.theme=theme;
+function setText(id,s){el(id).textContent=s}
+function hidePanels(){el('drawer').classList.remove('show');el('journal').classList.remove('show')}
+function href(a,url){a.href=url;if(!url.startsWith('../')){a.target='_blank';a.rel='noopener noreferrer'}}
+function addLabel(p,i){
+ let b=document.createElement('button');b.type='button';b.className='label';b.dataset.index=i;
+ let main=document.createElement('strong');main.textContent=p.name;
+ let minor=document.createElement('small');minor.textContent=p.category==='online'?'VISIT · ONLINE':p.category==='download'?'DESKTOP · APP':'RESEARCH · LOG';
+ b.append(main,minor);b.addEventListener('click',e=>{e.stopPropagation();focus(i)});
+ b.addEventListener('dblclick',e=>{e.stopPropagation();jump(i)});el('labels').appendChild(b);return b
+}
+function makeIndex(){
+ let list=el('index-items');list.textContent='';
+ PROJECTS.forEach((p,i)=>{
+ let b=document.createElement('button');b.className='entry';b.type='button';
+ let art=document.createElement('em');art.textContent=p.icon;
+ let info=document.createElement('span'),title=document.createElement('strong'),sub=document.createElement('small');
+ title.textContent=p.name;sub.textContent=(p.category==='online'?'在线体验':p.category==='download'?'桌面安装':'研究代码')+' · '+p.index;
+ info.append(title,sub);b.append(art,info);b.addEventListener('click',()=>focus(i));list.appendChild(b);
  });
 }
-function makePins(){
- var layer=byId('pins');PROJECTS.forEach(function(p){
-   var btn=document.createElement('button');btn.type='button';btn.className='star-pin';btn.dataset.project=p.id;btn.title='探索 '+p.name;
-   var glyph=document.createElement('span');glyph.className='glyph';glyph.textContent=p.icon;
-   var label=document.createElement('span');label.className='label';label.textContent=p.name;
-   var hint=document.createElement('span');hint.className='hint';hint.textContent=p.category==='online'?'ENTER THE WORLD':p.category==='download'?'DESKTOP OBJECT':'RESEARCH & CODE';
-   btn.append(glyph,label,hint);
-   btn.addEventListener('click',function(e){e.stopPropagation();openProject(p.id)});
-   layer.appendChild(btn);pinMap[p.id]=btn;
- });
+function showCard(i){
+ let p=PROJECTS[i];selected=i;hidePanels();
+ el('card').classList.add('show');setText('number','STAR '+p.index+' / 06 · '+p.category.toUpperCase());
+ setText('art',p.icon);setText('name',p.name);setText('latin',p.en);setText('desc',p.desc);setText('note','✎ 航行手记：'+p.note);
+ let tags=el('tags');tags.textContent='';p.tags.forEach(t=>{let s=document.createElement('span');s.textContent=t;tags.appendChild(s)});
+ let links=el('links');links.textContent='';
+ let go=document.createElement('a');go.className='primary';go.textContent=p.category==='online'?'✦ 进入星球 · 立即体验':p.linkText;href(go,p.link);links.appendChild(go);
+ if(p.source){let src=document.createElement('a');src.textContent='{} 查看源码';href(src,p.source);links.appendChild(src)}
+ let back=document.createElement('a');back.href='#';back.textContent='↶ 返回星海';back.addEventListener('click',e=>{e.preventDefault();reset()});links.appendChild(back);
+ labels.forEach((l,j)=>l.classList.toggle('selected',j===i));
+ el('intro').classList.add('faded');el('hint').classList.add('hidden')
 }
-function openProject(id){
- var p=PROJECTS.find(function(v){return v.id===id});if(!p)return;
- selected=id;closeJournal();byId('detail').classList.add('show');
- safeText('detail-index','FIELD NOTE · '+p.index+' / '+p.category.toUpperCase());
- safeText('detail-icon',p.icon);safeText('detail-title',p.name);safeText('detail-en',p.en);
- safeText('detail-description',p.desc);safeText('detail-foot','✎ 星图记录：'+p.note);
- var tags=byId('detail-tags');tags.textContent='';p.tags.forEach(function(t){var s=document.createElement('span');s.className='tag';s.textContent=t;tags.appendChild(s)});
- var actions=byId('detail-actions');actions.textContent='';addLink(actions,p.linkText,p.link,false);
- if(p.source)addLink(actions,'{ } 查看源代码',p.source,true);
- document.querySelectorAll('[data-project]').forEach(function(el){el.classList.toggle('selected',el.dataset.project===id);el.classList.toggle('active',el.classList.contains('rail-item')&&el.dataset.project===id)});
- if(controls){controls.autoRotate=false}
- if(window.innerWidth<=520){byId('detail').scrollTop=0}
+function openIndex(){el('card').classList.remove('show');el('journal').classList.remove('show');el('drawer').classList.add('show')}
+function journalList(){
+ let root=el('journal-content');root.textContent='';let grid=document.createElement('div');grid.className='posts';
+ POSTS.forEach(post=>{
+ let b=document.createElement('button');b.className='post';b.type='button';
+ let number=document.createElement('small');number.textContent=post.no;let title=document.createElement('h3');title.textContent=post.title;
+ let summary=document.createElement('p');summary.textContent=post.summary;b.append(number,title,summary);b.addEventListener('click',()=>openArticle(post));grid.appendChild(b);
+ });root.appendChild(grid);
 }
-function closeDetail(){selected=null;byId('detail').classList.remove('show');document.querySelectorAll('[data-project]').forEach(function(el){el.classList.remove('selected','active')});if(controls&&!reduced)controls.autoRotate=true}
-function closeJournal(){byId('journal').classList.remove('show');byId('journal').setAttribute('aria-hidden','true')}
-function openJournal(mode){
- closeDetail();var modal=byId('journal');modal.classList.add('show');modal.setAttribute('aria-hidden','false');
- var body=byId('journal-body');body.textContent='';
- safeText('journal-title',mode==='about'?'关于这座小宇宙':'航行日志');
- safeText('journal-subtitle',mode==='about'?'个人作品 · 研究实验 · 一些慢慢生长的小想法':'不按时间排序的宇宙碎片 · 关于创造、技术与好奇心');
- if(mode==='about'){
-  var d=document.createElement('div');d.className='about-copy';
-  var h=document.createElement('h3');h.className='hand';h.textContent='你好，这里是 Yixuanqi 的星图。';
-  var p1=document.createElement('p');p1.textContent='我喜欢把想法做成可以运行的小东西：有桌面工具、有互动网页，也有暂时还没有答案的实验。与其在主页上放一长串技能标签，我更希望每个项目都有自己的入口。';
-  var p2=document.createElement('p');p2.textContent='银河还会继续生长。你可以从左下角的星体索引找到所有作品，也可以拖动画面，自由点开任何一颗星。';
-  var p3=document.createElement('p');p3.textContent='更多公开项目可见：';var a=document.createElement('a');a.href='https://github.com/yixuanqi';a.target='_blank';a.rel='noopener noreferrer';a.textContent='github.com/yixuanqi';p3.appendChild(a);d.append(h,p1,p2,p3);body.appendChild(d);
- }else{renderPosts()}
+function openArticle(post){
+ let root=el('journal-content');root.textContent='';let b=document.createElement('button');b.className='btn';b.textContent='← 返回';b.addEventListener('click',journalList);root.appendChild(b);
+ let article=document.createElement('article');article.className='article';let h=document.createElement('h2');h.textContent=post.title;article.appendChild(h);
+ post.paragraphs.forEach(s=>{let p=document.createElement('p');p.textContent=s;article.appendChild(p)});root.appendChild(article);el('journal').scrollTop=0
 }
-function renderPosts(){
- var body=byId('journal-body');body.textContent='';var grid=document.createElement('div');grid.className='paper-posts';
- POSTS.forEach(function(p){
-  var b=document.createElement('button');b.type='button';b.className='post';var meta=document.createElement('small');meta.textContent=p.no;
-  var title=document.createElement('h3');title.textContent=p.title;var intro=document.createElement('p');intro.textContent=p.summary;b.append(meta,title,intro);
-  b.addEventListener('click',function(){renderArticle(p.id)});grid.appendChild(b)
- });body.appendChild(grid)
+function openJournal(){el('card').classList.remove('show');el('drawer').classList.remove('show');el('journal').classList.add('show');journalList()}
+function jump(i){let link=PROJECTS[i].link;if(link.startsWith('../'))window.location.href=link;else window.open(link,'_blank','noopener,noreferrer')}
+function texture(i){
+ const sets=[['#b77a4c','#f3cca1','#674c40'],['#c17f5e','#ead3a1','#71533d'],['#4e8e9a','#aadbd9','#30626d'],['#827393','#c5b6d3','#554669'],['#b29c74','#f2d7aa','#736348'],['#3882a8','#b6d9c1','#68976f']];
+ let cv=document.createElement('canvas');cv.width=512;cv.height=256;let x=cv.getContext('2d'),p=sets[i],grad=x.createLinearGradient(0,0,0,256);
+ grad.addColorStop(0,p[0]);grad.addColorStop(.52,p[1]);grad.addColorStop(1,p[0]);x.fillStyle=grad;x.fillRect(0,0,512,256);
+ let seed=867+i*13007;function rand(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296}
+ for(let j=0;j<750;j++){x.globalAlpha=.04+rand()*.23;x.strokeStyle=j%3?'#46382d':'#fff5e2';x.lineWidth=.3+rand()*2;x.beginPath();x.ellipse(rand()*512,rand()*256,3+rand()*50,.3+rand()*7,rand()*.6,0,Math.PI*2);x.stroke()}
+ if(i===5){x.globalAlpha=.85;x.fillStyle=p[2];for(let j=0;j<30;j++){x.beginPath();x.ellipse(rand()*512,rand()*256,3+rand()*34,3+rand()*20,rand()*Math.PI,0,Math.PI*2);x.fill()}}
+ x.globalAlpha=1;return new THREE.CanvasTexture(cv)
 }
-function renderArticle(id){
- var post=POSTS.find(function(p){return p.id===id});if(!post)return;
- var body=byId('journal-body');body.textContent='';var article=document.createElement('div');article.className='article';
- var back=document.createElement('button');back.className='article-back';back.textContent='← 返回日志目录';back.addEventListener('click',renderPosts);
- var h=document.createElement('h3');h.className='hand';h.textContent=post.title;var m=document.createElement('div');m.className='article-meta';m.textContent=post.no+' · 星河手帐 / 策展札记';
- article.append(back,h,m);
- post.paragraphs.forEach(function(para){var p=document.createElement('p');p.textContent=para;article.appendChild(p)});
- body.appendChild(article);byId('journal').scrollTop=0;
+function spriteTexture(){
+ let c=document.createElement('canvas');c.width=c.height=128;let x=c.getContext('2d');let r=x.createRadialGradient(64,64,0,64,64,64);
+ r.addColorStop(0,'rgba(255,255,228,1)');r.addColorStop(.12,'rgba(255,231,179,.85)');r.addColorStop(.5,'rgba(250,192,133,.18)');r.addColorStop(1,'rgba(255,175,107,0)');
+ x.fillStyle=r;x.fillRect(0,0,128,128);return new THREE.CanvasTexture(c)
 }
-function setFilter(v){
- filter=v;document.querySelectorAll('[data-filter]').forEach(function(btn){btn.classList.toggle('active',btn.dataset.filter===filter)});
- var shown=PROJECTS.filter(function(p){return filter==='all'||p.category===filter});
- safeText('rail-counter',String(shown.length).padStart(2,'0')+' 颗作品星');
- document.querySelectorAll('[data-project]').forEach(function(el){var p=PROJECTS.find(function(x){return x.id===el.dataset.project});el.style.display=(filter==='all'||p.category===filter)?'':'none'});
- if(selected&&!shown.some(function(p){return p.id===selected}))closeDetail()
-}
-
-/* A painterly spiral galaxy drawn on Canvas 2D.
- * No WebGL, no CDN dependencies: the atlas remains visible on ordinary browsers.
- * The cloud is cached to an off-screen canvas, while pins and camera stay interactive.
- */
-var galaxyCanvas=null,galaxyCtx=null,galaxyTexture=null,skyTexture=null;
-var galaxyWidth=0,galaxyHeight=0,galaxyDpr=1,galaxySpin=-.32,galaxyZoom=1;
-var galaxyDrag=null,galaxyPointers=new Map(),lastFrame=0;
-var galaxyWorld=[];
-function randFactory(seed){return function(){seed=(Math.imul(1664525,seed)+1013904223)>>>0;return seed/4294967296}}
-function makeGalaxy(){
- galaxyCanvas=document.createElement('canvas');
- galaxyCanvas.setAttribute('aria-label','可拖动旋转、滚轮缩放的水彩银河');
- galaxyCanvas.setAttribute('role','img');
- var host=byId('space');host.appendChild(galaxyCanvas);
- galaxyCtx=galaxyCanvas.getContext('2d',{alpha:true});
- if(!galaxyCtx){document.body.classList.add('no-webgl');return}
- // We intentionally do not rely on external Three.js scripts or WebGL availability.
- buildTextures();resize();
- galaxyCanvas.addEventListener('pointerdown',function(e){
-  galaxyCanvas.setPointerCapture(e.pointerId);
-  galaxyPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  galaxyDrag={x:e.clientX,y:e.clientY,base:galaxySpin,moved:false};
- });
- galaxyCanvas.addEventListener('pointermove',function(e){
-  var old=galaxyPointers.get(e.pointerId);if(!old)return;
-  galaxyPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  if(galaxyPointers.size===1&&galaxyDrag){
-   var delta=e.clientX-galaxyDrag.x;
-   if(Math.abs(delta)>3||Math.abs(e.clientY-galaxyDrag.y)>3)galaxyDrag.moved=true;
-   galaxySpin=galaxyDrag.base+delta*.0045;
-  }else if(galaxyPointers.size===2){
-   var vals=Array.from(galaxyPointers.values());var distance=Math.hypot(vals[0].x-vals[1].x,vals[0].y-vals[1].y);
-   if(old.pinchDist){galaxyZoom=Math.max(.60,Math.min(2.2,galaxyZoom*distance/old.pinchDist))}
-   vals.forEach(function(p){p.pinchDist=distance});
-   if(galaxyDrag)galaxyDrag.moved=true;
+function populateGalaxy(glow){
+ let palette=['#75b8c9','#efc486','#d89892','#a5c7ad'];
+ for(let arm=0;arm<4;arm++){
+  let amount=mobile?1550:3900,coords=[],col=[];
+  for(let i=0;i<amount;i++){
+   let r=2+Math.pow(Math.random(),.7)*56,a=arm*Math.PI/2+r*.09+(Math.random()-.5)*(.24+r*.004);
+   coords.push(Math.cos(a)*r,(Math.random()-.5)*(1.4+r*.09),Math.sin(a)*r);
+   let color=new THREE.Color(palette[arm]).lerp(new THREE.Color('#fff4dc'),Math.random()*.43);
+   col.push(color.r,color.g,color.b);
   }
- });
- function release(e){
-  var clicked=galaxyDrag&&!galaxyDrag.moved&&galaxyPointers.size===1;
-  galaxyPointers.delete(e.pointerId);galaxyDrag=null;
-  if(clicked){var hit=nearestProject(e.clientX,e.clientY);if(hit)openProject(hit.id)}
+  let geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(coords,3));geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+  let mat=new THREE.PointsMaterial({size:mobile?.20:.21,vertexColors:true,transparent:true,opacity:.82,depthWrite:false,blending:THREE.AdditiveBlending,sizeAttenuation:true});
+  let pts=new THREE.Points(geo,mat);galaxyGroup.add(pts);starGroups.push({points:pts,speed:.002+.0008*arm});
  }
- galaxyCanvas.addEventListener('pointerup',release);
- galaxyCanvas.addEventListener('pointercancel',release);
- galaxyCanvas.addEventListener('wheel',function(e){
-  e.preventDefault();galaxyZoom=Math.max(.6,Math.min(2.2,galaxyZoom*Math.exp(-e.deltaY*.001)));
- },{passive:false});
+ for(let r of [15,31,48]){
+  let pts=[];for(let k=0;k<=256;k++){let a=k/256*Math.PI*2;pts.push(new THREE.Vector3(Math.cos(a)*r,Math.sin(a*3)*.08,Math.sin(a)*r))}
+  let ring=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineDashedMaterial({color:'#b79e7c',opacity:.15,transparent:true,dashSize:.4,gapSize:.38}));ring.computeLineDistances();galaxyGroup.add(ring)
+ }
+ // Real 3D drifting dust above and below the galaxy plane.
+ let dustCoords=[];for(let i=0;i<(mobile?800:2500);i++){let r=14+Math.random()*75,a=Math.random()*Math.PI*2;dustCoords.push(Math.cos(a)*r,(Math.random()-.5)*28,Math.sin(a)*r)}
+ let geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(dustCoords,3));
+ galaxyGroup.add(new THREE.Points(geo,new THREE.PointsMaterial({map:glow,size:1.5,transparent:true,opacity:.35,blending:THREE.AdditiveBlending,depthWrite:false})));
+}
+function populatePlanets(glow){
+ const loc=locations;let colors=['#e2af77','#db8d65','#8ad5dc','#cfb2d7','#e2cd9d','#87b9d3'];
+ PROJECTS.forEach((p,i)=>{
+  let g=new THREE.Group();g.position.set(...loc[i]);let radius=(i===0||i===5)?2.25:1.8;
+  let mesh=new THREE.Mesh(new THREE.SphereGeometry(radius,42,30),new THREE.MeshStandardMaterial({map:texture(i),roughness:.89,metalness:0}));
+  mesh.userData.index=i;g.add(mesh);
+  let halo=new THREE.Sprite(new THREE.SpriteMaterial({map:glow,color:new THREE.Color(colors[i]),transparent:true,opacity:.58,blending:THREE.AdditiveBlending,depthWrite:false}));
+  halo.scale.set(radius*7,radius*7,1);g.add(halo);
+  let outline=new THREE.Mesh(new THREE.SphereGeometry(radius*1.08,32,20),new THREE.MeshBasicMaterial({color:colors[i],transparent:true,opacity:.07,side:THREE.BackSide,depthWrite:false}));g.add(outline);
+  let curve=[];for(let j=0;j<=100;j++){let a=j/100*Math.PI*2;curve.push(new THREE.Vector3(Math.cos(a)*radius*1.68,Math.sin(a*2)*.10,Math.sin(a)*radius*1.68))}
+  let ring=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(curve),new THREE.LineBasicMaterial({color:colors[i],opacity:.62,transparent:true}));ring.rotation.x=.30+i*.12;g.add(ring);
+  g.userData={baseY:g.position.y,mesh,ring};scene.add(g);planets.push(g);meshes.push(mesh);labels.push(addLabel(p,i));
+ });
+ scene.add(new THREE.AmbientLight(0xffffff,.85));let key=new THREE.PointLight(0xffd3ac,2.6,180);key.position.set(0,28,5);scene.add(key);
+ let fill=new THREE.DirectionalLight(0xc2ddeb,.85);fill.position.set(20,45,30);scene.add(fill)
+}
+function fail(s){el('fail').classList.add('show');setText('reason',s)}
+function init(){
+ if(!window.THREE||!THREE.OrbitControls){fail('Three.js 或 OrbitControls 加载失败。可以通过星球索引访问全部作品。');return}
+ try{renderer=new THREE.WebGLRenderer({antialias:!mobile,alpha:false,powerPreference:'high-performance'})}catch(e){fail('WebGL 不可用，请使用更新版 Chrome 或 Edge；仍可打开作品索引。');return}
+ renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,mobile?1.4:1.65));renderer.setSize(innerWidth,innerHeight);renderer.setClearColor(theme==='night'?0x091b2c:0xe3d5b9);renderer.outputEncoding=THREE.sRGBEncoding;el('scene').appendChild(renderer.domElement);
+ scene=new THREE.Scene();scene.fog=new THREE.FogExp2(theme==='night'?0x091b2c:0xe3d5b9,.003);
+ camera=new THREE.PerspectiveCamera(52,innerWidth/innerHeight,.1,420);camera.position.set(0,mobile?50:43,mobile?103:88);
+ controls=new THREE.OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.058;controls.enablePan=true;controls.minDistance=8;controls.maxDistance=165;controls.autoRotate=!reduced;controls.autoRotateSpeed=.18;
+ controls.minPolarAngle=.08;controls.maxPolarAngle=Math.PI*.9;
+ galaxyGroup=new THREE.Group();scene.add(galaxyGroup);let glow=spriteTexture();
+ populateGalaxy(glow);populatePlanets(glow);raycaster=new THREE.Raycaster();pointer=new THREE.Vector2();
+ renderer.domElement.addEventListener('pointerdown',e=>{renderer.domElement._down=[e.clientX,e.clientY];el('hint').classList.add('hidden');el('intro').classList.add('faded')});
+ renderer.domElement.addEventListener('pointerup',e=>{let d=renderer.domElement._down;if(!d||Math.hypot(e.clientX-d[0],e.clientY-d[1])>7)return;let idx=hit(e);if(idx>=0)focus(idx)});
+ renderer.domElement.addEventListener('dblclick',e=>{let idx=hit(e);if(idx>=0)jump(idx)});
  window.addEventListener('resize',resize);
- sceneReady=true;
- animate();
+ started=true;requestAnimationFrame(animate)
 }
-function buildTextures(){
- var palette=theme==='night'?{
-  turquoise:'#77d5db',sage:'#a3d4c0',gold:'#ffd68d',rust:'#ff987d',
-  ink:'#78a9bf',glow:'#fbd8a2',background:'#0b2335',faint:'#9bc3d4'
- }:{
-  turquoise:'#5e9bad',sage:'#91a994',gold:'#d6a45c',rust:'#bd7865',
-  ink:'#8d7962',glow:'#f2c88b',background:'#f2ead8',faint:'#ad9278'
- };
- var rand=randFactory(960427);var size=1400,cx=size/2,cy=size/2;
- skyTexture=document.createElement('canvas');skyTexture.width=skyTexture.height=size;
- var sky=skyTexture.getContext('2d');sky.translate(cx,cy);
- // Atmospheric watercolor clouds behind the Milky Way.
- for(var arm=0;arm<4;arm++){
-  for(var s=0;s<30;s++){
-   var r=25+s*13,angle=arm*Math.PI/2+r*.018-.5;
-   var xx=Math.cos(angle)*r,yy=Math.sin(angle)*r*.70;
-   var col=[palette.turquoise,palette.gold,palette.sage,palette.rust][arm];
-   sky.save();sky.translate(xx,yy);sky.rotate(angle);
-   sky.filter='blur(32px)';sky.globalAlpha=theme==='night'?.075:.045;
-   sky.fillStyle=col;sky.beginPath();sky.ellipse(0,0,39+s*.16,22,0,0,Math.PI*2);sky.fill();sky.restore();
-  }
+function hit(e){
+ let rect=renderer.domElement.getBoundingClientRect();
+ pointer.x=(e.clientX-rect.left)/rect.width*2-1;pointer.y=-(e.clientY-rect.top)/rect.height*2+1;
+ raycaster.setFromCamera(pointer,camera);let items=raycaster.intersectObjects(meshes,false);return items.length?items[0].object.userData.index:-1
+}
+function focus(i){
+ showCard(i);if(!started)return;
+ let target=planets[i].position.clone(),heading=camera.position.clone().sub(controls.target).normalize();
+ let end=target.clone().addScaledVector(heading,i===0||i===5?15:12).add(new THREE.Vector3(0,3,0));
+ flight={from:camera.position.clone(),to:end,lookFrom:controls.target.clone(),lookTo:target,t:0};
+ controls.enabled=false;controls.autoRotate=false
+}
+function reset(){
+ selected=-1;el('card').classList.remove('show');hidePanels();labels.forEach(x=>x.classList.remove('selected'));el('intro').classList.remove('faded');
+ if(!started)return;
+ flight={from:camera.position.clone(),to:new THREE.Vector3(0,mobile?50:43,mobile?103:88),lookFrom:controls.target.clone(),lookTo:new THREE.Vector3(),t:0};
+ controls.enabled=false;controls.autoRotate=false
+}
+function updateLabels(){
+ planets.forEach((g,i)=>{
+  let v=g.position.clone();v.y+=2.5;v.project(camera);
+  let x=(v.x*.5+.5)*innerWidth,y=(-v.y*.5+.5)*innerHeight;
+  labels[i].style.left=x+'px';labels[i].style.top=y+'px';
+  let front=v.z<1&&x>55&&x<innerWidth-55&&y>95&&y<innerHeight-100;
+  if(selected>=0&&i!==selected&&camera.position.distanceTo(g.position)<28)front=false;
+  labels[i].classList.toggle('hidden',!front);
+ })
+}
+function animate(now){
+ if(!started)return;requestAnimationFrame(animate);
+ let dt=last?Math.min(.05,(now-last)/1000):0;last=now;
+ if(!paused){clock+=dt*speed;starGroups.forEach(a=>a.points.rotation.y+=dt*a.speed*speed*60)}
+ planets.forEach((p,i)=>{p.position.y=p.userData.baseY+Math.sin(clock*.5+i*1.4)*.22;p.userData.mesh.rotation.y+=dt*.1;p.userData.ring.rotation.z+=dt*.10});
+ if(flight){
+  flight.t=Math.min(1,flight.t+dt*.88);let t=flight.t,k=t*t*(3-2*t);
+  camera.position.copy(flight.from).lerp(flight.to,k);controls.target.copy(flight.lookFrom).lerp(flight.lookTo,k);
+  if(t>=1){flight=null;controls.enabled=true;controls.autoRotate=selected<0&&!reduced}
  }
- var wash=sky.createRadialGradient(0,0,4,0,0,190);
- if(theme==='night'){wash.addColorStop(0,'rgba(255,229,179,.55)');wash.addColorStop(.18,'rgba(247,187,114,.18)');wash.addColorStop(1,'rgba(247,187,114,0)')}
- else{wash.addColorStop(0,'rgba(231,181,108,.42)');wash.addColorStop(.2,'rgba(221,179,117,.15)');wash.addColorStop(1,'rgba(231,181,108,0)')}
- sky.fillStyle=wash;sky.beginPath();sky.arc(0,0,195,0,Math.PI*2);sky.fill();
- galaxyTexture=document.createElement('canvas');galaxyTexture.width=galaxyTexture.height=size;
- var ctx=galaxyTexture.getContext('2d');ctx.translate(cx,cy);
- // Four flowing spiral bands, filled with thousands of individually inked stars.
- var colors=[palette.turquoise,palette.gold,palette.sage,palette.rust];
- for(var a=0;a<4;a++){
-  for(var line=0;line<6;line++){
-   ctx.beginPath();
-   for(var t=0;t<170;t++){
-    var rad=14+t*2.45;
-    var theta=a*Math.PI/2+rad*.018-.50+(line-2.5)*.042+Math.sin(rad*.07+line)*.012;
-    var lx=Math.cos(theta)*rad,ly=Math.sin(theta)*rad*.70;
-    if(t===0)ctx.moveTo(lx,ly);else ctx.lineTo(lx,ly);
-   }
-   ctx.strokeStyle=colors[a];ctx.globalAlpha=line===2?.32:.13;
-   ctx.lineWidth=line===2?1.2:.64;ctx.setLineDash(line%2?[1,6]:[2,9]);ctx.stroke();
-  }
- }
- ctx.setLineDash([]);
- for(var i=0;i<15500;i++){
-  var armIdx=i%4;
-  var distance=12+Math.pow(rand(),.82)*436;
-  var a0=armIdx*Math.PI/2+distance*.018-.5;
-  var thickness=(10+distance*.065)*(rand()+rand()-.98);
-  var theta=a0+thickness/(distance+30);
-  var x=Math.cos(theta)*distance+(rand()-.5)*6;
-  var y=Math.sin(theta)*distance*.70+(rand()-.5)*8;
-  var sizeDot=(rand()<.028?2.4:.35+rand()*1.15)*(1-distance/950);
-  ctx.fillStyle=colors[armIdx];ctx.globalAlpha=(theme==='night'?.27:.21)+rand()*.57;
-  ctx.beginPath();ctx.arc(x,y,sizeDot,0,Math.PI*2);ctx.fill();
- }
- // Stray stars between the arms.
- for(var j=0;j<1300;j++){
-  var a1=rand()*Math.PI*2,r1=Math.sqrt(rand())*490;
-  ctx.globalAlpha=.12+rand()*.38;ctx.fillStyle=j%3?palette.faint:palette.gold;
-  ctx.beginPath();ctx.arc(Math.cos(a1)*r1,Math.sin(a1)*r1*.76,.3+rand()*.7,0,Math.PI*2);ctx.fill();
- }
- ctx.globalAlpha=1;
- // The warm, stippled core.
- var grad=ctx.createRadialGradient(0,0,0,0,0,66);
- grad.addColorStop(0,theme==='night'?'rgba(255,233,185,.98)':'rgba(214,156,78,.77)');
- grad.addColorStop(.19,theme==='night'?'rgba(255,207,139,.70)':'rgba(215,159,85,.45)');
- grad.addColorStop(1,'rgba(220,159,84,0)');
- ctx.fillStyle=grad;ctx.beginPath();ctx.arc(0,0,66,0,Math.PI*2);ctx.fill();
- ctx.fillStyle=palette.glow;ctx.globalAlpha=.85;ctx.beginPath();ctx.arc(0,0,7,0,Math.PI*2);ctx.fill();
- ctx.globalAlpha=.78;ctx.strokeStyle=palette.ink;ctx.lineWidth=1;
- for(var arm2=0;arm2<12;arm2++){
-  var angle2=arm2*Math.PI/6;
-  ctx.beginPath();ctx.moveTo(Math.cos(angle2)*13,Math.sin(angle2)*13);
-  ctx.lineTo(Math.cos(angle2)*(arm2%2?19:25),Math.sin(angle2)*(arm2%2?19:25));ctx.stroke();
- }
- ctx.globalAlpha=1;
+ controls.update();updateLabels();renderer.render(scene,camera)
 }
-function layout(){
- var w=galaxyWidth,h=galaxyHeight;
- var small=w<650;
- // Negative margins keep the logbook and project index from obscuring the heart of the sky.
- return {cx:w*(small?.53:(w<1050?.58:.55)),cy:h*(small?.47:.54),
-  s:(small?Math.max(.39,Math.min(.48,w/880)):Math.max(.53,Math.min(1.24,Math.min(w/1320,h/760))))*galaxyZoom};
-}
-function worldToScreen(x,z){
- var l=layout(),ax=x*21,az=z*21*.70,co=Math.cos(galaxySpin),si=Math.sin(galaxySpin);
- return {x:l.cx+(ax*co-az*si)*l.s,y:l.cy+(ax*si+az*co)*l.s};
-}
-function nearestProject(x,y){
- var match=null,best=45;
- PROJECTS.forEach(function(p){
-  if(filter!=='all'&&p.category!==filter)return;
-  var q=worldToScreen(p.x,p.z),d=Math.hypot(q.x-x,q.y-y);
-  if(d<best){best=d;match=p}
- });return match;
-}
-function renderGalaxy(){
- if(!galaxyCtx||!galaxyTexture)return;
- var g=galaxyCtx,w=galaxyWidth,h=galaxyHeight,l=layout();
- g.setTransform(galaxyDpr,0,0,galaxyDpr,0,0);g.clearRect(0,0,w,h);
- // Fine distant points, beyond the spiral.
- var rand=randFactory(20261117),skycol=theme==='night'?'rgba(194,213,228,':'rgba(106,90,70,';
- for(var i=0;i<155;i++){
-  var x=rand()*w,y=rand()*h,op=.09+rand()*.32;
-  g.fillStyle=skycol+op+')';g.beginPath();g.arc(x,y,rand()<.06?1.65:.65,0,Math.PI*2);g.fill();
- }
- g.save();g.translate(l.cx,l.cy);g.rotate(galaxySpin);g.scale(l.s,l.s);
- // Silk-soft nebula beneath the inked spiral.
- g.drawImage(skyTexture,-700,-700);g.drawImage(galaxyTexture,-700,-700);
- // Light hand-drawn orbital rings and constellation guides.
- g.strokeStyle=theme==='night'?'rgba(218,201,170,.28)':'rgba(103,76,48,.27)';
- g.lineWidth=1/l.s;g.setLineDash([3,10]);
- [165,305,445].forEach(function(radius){g.beginPath();g.ellipse(0,0,radius,radius*.7,0,0,Math.PI*2);g.stroke()});
- g.setLineDash([]);
- g.strokeStyle=theme==='night'?'rgba(240,215,177,.30)':'rgba(127,94,60,.36)';
- g.beginPath();g.moveTo(-490,0);g.lineTo(490,0);g.moveTo(0,-330);g.lineTo(0,330);g.stroke();
- // Minor ring marks like an engraved astronomical atlas.
- for(var k=0;k<24;k++){
-  var a=k*Math.PI/12,r=450;
-  g.beginPath();g.moveTo(Math.cos(a)*r,Math.sin(a)*r*.7);
-  g.lineTo(Math.cos(a)*(r+7),Math.sin(a)*(r+7)*.7);g.stroke();
- }
- g.restore();
- // Project pins never default to 0,0 — including when WebGL is unavailable.
- PROJECTS.forEach(function(p){
-  var q=worldToScreen(p.x,p.z),el=pinMap[p.id];
-  if(w<650)q.x=Math.max(64,Math.min(w-64,q.x));
-  // A faint watercolor halo makes each project star visibly part of the galaxy.
-  var halo=g.createRadialGradient(q.x,q.y,2,q.x,q.y,40);
-  if(theme==='night'){halo.addColorStop(0,'rgba(255,213,139,.28)');halo.addColorStop(1,'rgba(255,213,139,0)')}
-  else{halo.addColorStop(0,'rgba(195,128,60,.2)');halo.addColorStop(1,'rgba(195,128,60,0)')}
-  g.fillStyle=halo;g.beginPath();g.arc(q.x,q.y,40,0,Math.PI*2);g.fill();
-  g.strokeStyle=theme==='night'?'rgba(237,210,166,.4)':'rgba(112,85,57,.36)';g.lineWidth=.8;
-  g.beginPath();g.arc(q.x,q.y,25,0,Math.PI*2);g.stroke();
-  el.style.left=q.x+'px';el.style.top=q.y+'px';
-  el.classList.toggle('is-hidden',q.x<35||q.x>w-30||q.y<104||q.y>h-79);
- });
-}
-function animate(ts){
- if(!sceneReady)return;
- if(!Number.isFinite(ts))ts=0;
- raf=requestAnimationFrame(animate);
- if(ts-lastFrame<30)return;lastFrame=ts;
- if(!reduced&&!selected&&!byId('journal').classList.contains('show')&&!galaxyDrag)galaxySpin+=.00018;
- renderGalaxy();
-}
-function resize(){
- if(!galaxyCanvas||!galaxyCtx)return;
- galaxyWidth=window.innerWidth;galaxyHeight=window.innerHeight;
- galaxyDpr=Math.min(window.devicePixelRatio||1,1.5);
- galaxyCanvas.width=Math.ceil(galaxyWidth*galaxyDpr);
- galaxyCanvas.height=Math.ceil(galaxyHeight*galaxyDpr);
- galaxyCanvas.style.width=galaxyWidth+'px';galaxyCanvas.style.height=galaxyHeight+'px';
- renderGalaxy();
-}
-function resetCamera(){
- galaxySpin=-.32;galaxyZoom=1;closeDetail();closeJournal();setFilter('all');renderGalaxy();
-}
+function resize(){if(!started)return;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}
 function setTheme(){
- theme=theme==='paper'?'night':'paper';root.dataset.theme=theme;
- try{localStorage.setItem('galaxy-theme',theme)}catch(e){}
- buildTextures();renderGalaxy();
- byId('theme-toggle').textContent=theme==='paper'?'☀︎ 日夜':'☾ 日夜';
+ theme=theme==='night'?'paper':'night';document.documentElement.dataset.theme=theme;
+ if(renderer){renderer.setClearColor(theme==='night'?0x091b2c:0xe3d5b9);scene.fog.color.set(theme==='night'?0x091b2c:0xe3d5b9)}
+ try{localStorage.setItem('star-theme',theme)}catch(e){}
 }
-
-function bind(){
- byId('detail-close').addEventListener('click',closeDetail);
- byId('nav-journal').addEventListener('click',function(){openJournal('journal')});
- byId('nav-about').addEventListener('click',function(){openJournal('about')});
- byId('nav-home').addEventListener('click',resetCamera);
- byId('journal-close').addEventListener('click',closeJournal);
- byId('theme-toggle').addEventListener('click',setTheme);
- byId('reset-camera').addEventListener('click',resetCamera);
- document.querySelectorAll('[data-filter]').forEach(function(el){el.addEventListener('click',function(){setFilter(el.dataset.filter)})});
- document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeJournal();closeDetail()}});
+function listen(){
+ makeIndex();setText('counter',String(PROJECTS.length).padStart(2,'0'));
+ el('home').addEventListener('click',reset);el('reset').addEventListener('click',reset);
+ el('index').addEventListener('click',openIndex);el('drawer-close').addEventListener('click',hidePanels);
+ el('logs').addEventListener('click',()=>{el('card').classList.remove('show');el('drawer').classList.remove('show');el('journal').classList.add('show');journalList()});
+ el('journal-close').addEventListener('click',hidePanels);el('card-close').addEventListener('click',reset);
+ el('palette').addEventListener('click',setTheme);el('fail-index').addEventListener('click',()=>{el('fail').classList.remove('show');openIndex()});
+ el('pause').addEventListener('click',()=>{paused=!paused;el('pause').textContent=paused?'▶ 恢复星流':'Ⅱ 暂停星流';el('pause').classList.toggle('active',!paused)});
+ el('speed').addEventListener('input',e=>{speed=+e.target.value});
+ el('next').addEventListener('click',()=>focus((selected+1+PROJECTS.length)%PROJECTS.length));
+ el('prev').addEventListener('click',()=>focus((selected-1+PROJECTS.length)%PROJECTS.length));
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')reset();else if(e.key==='ArrowRight')focus((selected+1+PROJECTS.length)%PROJECTS.length);else if(e.key==='ArrowLeft')focus((selected-1+PROJECTS.length)%PROJECTS.length);else if(/^[1-6]$/.test(e.key))focus(+e.key-1)})
 }
-buildIndex();makePins();bind();makeGalaxy();setFilter('all');
+listen();
+if(document.readyState==='complete')init();else window.addEventListener('load',init,{once:true});
 })();
-</script>
-</body></html>
+</script></body></html>
