@@ -66,5 +66,5 @@ assert(!(Math.abs(rx)<18&&Math.abs(rz)<46),'moved bone gate must remain outside 
 have('post.position.set(x,13.05,z)','grounded shore-lamp group');
 have('cylinder(post,0x738d83,0,2.65,0,.25,.32,5.35,9)','visible lamp post');
 assert(2.65-5.35/2<=0,'light post must meet actual ground after rooting');
-have('2026-11-17-prop-grounding-v2','release marker');
+assert(html.includes('2026-11-17-prop-grounding-v2'),'release marker');
 console.log('Islebound prop grounding regression passed: dog gate/chimney, cat lamps and paving, runway clearance.');
