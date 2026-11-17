@@ -14,6 +14,7 @@ const labelIndex=frame.indexOf('updateSceneLabels(dt);');
 const hudIndex=frame.indexOf('if(uiWait>.08)');
 assert(camIndex>=0 && labelIndex>camIndex && hudIndex>labelIndex,
   'labels must update each rendered frame after the camera, outside throttled HUD');
+assert(script.includes('camera.updateMatrixWorld();'),'camera inverse must be current before projecting labels');
 assert(!script.includes('function updateLabels(){') && !frame.includes('drawMap();updateLabels();'),
   'legacy 12.5Hz label projection must be removed');
 assert(script.includes('function updateAssistHint()') && frame.includes('drawMap();updateAssistHint();'),
@@ -30,7 +31,7 @@ const THREE={MathUtils:{clamp:(v,a,b)=>Math.min(b,Math.max(a,v))}};
 const ISLANDS=[{x:10,z:0,id:'dog'}];
 const state={x:0,z:0,started:true,camera:0};
 const label={style:{opacity:'0',transform:''}};
-const sceneLabels=[label],labelAlphas=new Float32Array(1),camera={x:0};
+const sceneLabels=[label],labelAlphas=new Float32Array(1),camera={x:0,matrixUpdates:0,updateMatrixWorld(){this.matrixUpdates++;}};
 const labelWorld={
  x:0,y:0,z:0,
  set(x,y,z){this.x=x;this.y=y;this.z=z;return this;},
@@ -46,6 +47,7 @@ for(let i=0;i<120;i++){
  assert(p,'label must use GPU transform');
  positions.push(Number(p[1]));alphas.push(Number(label.style.opacity));
 }
+assert.equal(camera.matrixUpdates,120,'camera inverse must update every projected frame');
 assert(positions.slice(1).every((p,i)=>p<positions[i]&&positions[i]-p<1),
  '120 frames of camera movement must produce continuous subpixel label motion');
 assert(alphas[0]>0&&alphas[0]<.2&&alphas[20]>alphas[0]&&alphas.at(-1)>.90,
