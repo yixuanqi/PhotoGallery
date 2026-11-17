@@ -450,6 +450,7 @@ function renderGalaxy(){
 }
 function animate(ts){
  if(!sceneReady)return;
+ if(!Number.isFinite(ts))ts=0;
  raf=requestAnimationFrame(animate);
  if(ts-lastFrame<30)return;lastFrame=ts;
  if(!reduced&&!selected&&!byId('journal').classList.contains('show')&&!galaxyDrag)galaxySpin+=.00018;
