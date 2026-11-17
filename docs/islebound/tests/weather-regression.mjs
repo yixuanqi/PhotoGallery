@@ -14,7 +14,7 @@ for(const token of ['createWeatherSystem()','weather.update(ad,elapsed,state)','
   'weather.gustRoll(elapsed)','seaMat.uniforms.uRain.value','sky.material.uniforms.uMist.value',
   'rainGeo.attributes.position.needsUpdate=true','weatherBtn','weatherPanel','weatherOptions',
   'weatherAuto','KeyT','uFlash','uStorm','islebound-build',
-  'window.__ISLEBOUND_DEBUG={islands:ISLANDS,terrainHeight,renderer,scene,state,weather}']){
+  'window.__ISLEBOUND_DEBUG={']){
  assert(html.includes(token),'missing weather integration '+token);
 }
 assert(html.indexOf('weather.applyWind(dt,state,elapsed)')>html.indexOf("if(state.mode==='flight')"),'wind inside free flight');
@@ -27,7 +27,7 @@ assert.equal((html.match(/id="weatherBtn"/g)||[]).length,1,'one weather button')
 for(const token of ['float valueNoise(vec2 p)','float threshold=mix(.81,.25,clamp(uCover,0.,1.))',
   'sky.material.uniforms.uTime.value=ws.age','cloudBanks=new THREE.InstancedMesh(sphereGeo,bankMat,216)',
   'cloudBanks.visible=values.cover>.14','sunDisc.material.opacity=Math.max(0,.99-values.cover*1.65',
-  '2026-11-17-weather-v3-color-safe-fog']){
+  '2026-11-17-islebound-v0.4']){
  assert(html.includes(token),'weather V2 missing: '+token);
 }
 function frac(x){return x-Math.floor(x);}

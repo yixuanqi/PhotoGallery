@@ -1,0 +1,57 @@
+name: Islebound visual and quest regression
+
+on:
+  pull_request:
+    paths:
+      - 'docs/islebound/**'
+      - '.github/workflows/islebound-visual.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/islebound/**'
+      - '.github/workflows/islebound-visual.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  island-qa:
+    name: Four-island Chromium visual QA
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned dependencies
+        run: npm install --prefix docs/islebound --no-audit --no-fund
+      - name: Install Chromium + SwiftShader runtime
+        run: cd docs/islebound && npx playwright install --with-deps chromium
+      - name: Fetch previous successful screenshot baseline if available
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          previous="$(gh run list --workflow islebound-visual.yml --branch main --status success --limit 1 --json databaseId --jq '.[0].databaseId' || true)"
+          if [ -n "$previous" ]; then
+            mkdir -p docs/islebound/tests/baselines
+            gh run download "$previous" -n islebound-visual-snapshots -D docs/islebound/tests/baselines || true
+          fi
+      - name: Existing unit and scene-integration checks
+        run: npm run test:logic --prefix docs/islebound
+      - name: Twelve weather screenshots and two playable quests
+        run: npm run test:visual --prefix docs/islebound
+      - name: Upload browser screenshots and visual drift reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: islebound-visual-snapshots
+          path: |
+            docs/islebound/tests/test-results/screenshots/
+            docs/islebound/tests/test-results/report/
+            docs/islebound/tests/test-results/artifacts/
+          retention-days: 30
+          if-no-files-found: warn
