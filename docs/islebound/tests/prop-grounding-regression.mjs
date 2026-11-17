@@ -36,6 +36,9 @@ have('g.position.set(x,13.05,z)','cat ground baseline');
 have('blob(g,color,-.50,.32,-.42,.34,.43,.41)','cat front left paw');
 have('blob(g,color,.50,.32,-.42,.34,.43,.41)','cat front right paw');
 assert(.32-.43<0,'cat paws should slightly overlap the soil');
+// Raised scratching post must actually hold its sleeping kitten at the platform top (12.9 local).
+have('sleepy.position.y=12.95','sleeping kitten positioned on platform');
+assert(12.95+.32-.43<=12.9,'kitten paws must meet scratching-post platform');
 
 // Hanging lanterns must sample the SAME cable spline, with grounded endpoint poles.
 // Independent sin placement previously produced unsupported floating lanterns.
