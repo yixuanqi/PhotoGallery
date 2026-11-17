@@ -102,14 +102,14 @@ body.no-webgl #fallback{display:block}
 .intro{top:151px;max-width:255px}
 .intro h2{font-size:31px;line-height:1.43}
 .project-rail{bottom:109px;padding:12px;width:232px}
-.rail-items{max-height:171px}
+.rail-items{max-height:226px}
 .rail-note{font-size:9px}
 .star-pin{filter:drop-shadow(0 0 7px rgba(174,132,62,.22))}
 .star-pin .glyph{font-size:52px;width:68px;height:65px}
 .star-pin .glyph:before{width:48px;height:48px;border-width:1.5px}
 .star-pin .label{border:1.5px solid var(--outline);font-size:12px}
 #fallback{display:none!important}
-@media(max-width:1120px){.top-actions{max-width:calc(100vw - 430px)}.intro{top:149px}.intro h2{font-size:27px}.project-rail{width:202px}.rail-items{max-height:148px}}
+@media(max-width:1120px){.top-actions{max-width:calc(100vw - 430px)}.intro{top:149px}.intro h2{font-size:27px}.project-rail{width:202px}.rail-items{max-height:186px}}
 @media(max-width:900px){.top-actions{max-width:calc(100vw - 270px)}.top-actions .desktop-only{display:none}.top-actions .ink-button{padding:9px 11px}}
 @media(max-width:780px){.topbar{top:25px}.intro{top:110px}.project-rail{bottom:95px;max-height:195px}.rail-items{max-height:115px}.intro h2{font-size:23px}.star-pin .glyph{width:54px;height:51px;font-size:39px}.star-pin .glyph:before{width:33px;height:33px}.star-pin .label{font-size:10px}}
 @media(max-width:520px){.topbar{gap:6px}.logo-card{max-width:184px}.top-actions{max-width:calc(100vw - 235px);gap:4px;flex-wrap:wrap}.top-actions .ink-button{padding:7px 8px}.intro{top:105px;max-width:173px}.intro p{font-size:9px}.project-rail{left:27px;bottom:96px;width:156px;max-height:160px}.rail-items{max-height:99px}.rail-caption{padding-bottom:4px;margin-bottom:2px}.star-pin{min-width:70px}.star-pin .label{white-space:normal;max-width:102px;line-height:1.35}.star-pin .glyph{width:43px;height:42px;font-size:32px}.star-pin .glyph:before{width:27px;height:27px}.detail{z-index:45}}
@@ -137,7 +137,7 @@ body.no-webgl #fallback{display:block}
   <p>这是一本可以漫游的创作手帐。<br>有些星星能直接进入体验，<br>有些藏着代码、实验和未完的故事。</p>
 </section>
 <nav class="project-rail" aria-label="作品目录">
-  <div class="rail-caption"><span>☷ 星体索引</span><small id="rail-counter">05 颗作品星</small></div>
+  <div class="rail-caption"><span>☷ 星体索引</span><small id="rail-counter">06 颗作品星</small></div>
   <div id="rail-items" class="rail-items"></div>
   <div class="rail-note">✧ 轻点星星查看作品 · 拖拽旋转银河<br>✧ 滚轮 / 双指缩放 · 从日志继续航行</div>
 </nav>
@@ -168,12 +168,14 @@ var PROJECTS=[
   {id:'cannon',index:'02',name:'桌面小炮',en:'Desktop Cannon · Tiny Desk Game',icon:'✹',category:'download',tags:['Windows','Tauri 2','桌面小玩具'],desc:'一门住在 Windows 桌面上的可爱小炮，面向轻松、有趣的桌面交互。最新公开 Release 提供安装包和免安装版。',note:'这是一款 Windows 程序，不能直接在网页里运行。',x:-8,z:10,y:.7,link:'https://github.com/yixuanqi/desktop_cannon_v01_app/releases/tag/v0.7.0',linkText:'⇩ 下载 Windows 版',source:'https://github.com/yixuanqi/desktop_cannon_v01_app'},
   {id:'audioalgo',index:'03',name:'AudioAlgo Lab',en:'Audio Algorithm Laboratory',icon:'✧',category:'download',tags:['JUCE','音频算法','Windows'],desc:'一个用于音频算法可视化与实验的桌面平台，围绕算法处理链、听感验证与快速实验展开。公开版本提供 Windows 安装包。',note:'这是桌面音频工具，点击可前往公开版本下载页。',x:-14,z:-7,y:.6,link:'https://github.com/yixuanqi/audioalgo/releases/tag/v0.1.0',linkText:'⇩ 下载实验平台',source:'https://github.com/yixuanqi/audioalgo'},
   {id:'learning',index:'04',name:'终身学习实验室',en:'Lifelong Learning Lab',icon:'✳',category:'lab',tags:['AI 研究','实验记录','GitHub'],desc:'将持续学习、遗忘、记忆与实验方法整理成可复现的工程研究。这里收藏的不只是结果，还有探索过程。',note:'实验室仓库可公开查看；研究仍在持续，页面不宣称已发表论文。',x:14,z:13,y:.7,link:'https://github.com/yixuanqi/lifelong-learning-lab',linkText:'↗ 查看研究仓库',source:null},
-  {id:'gallery',index:'05',name:'小笨相册',en:'PhotoGallery · Little Photo Companion',icon:'✴',category:'lab',tags:['Android','应用开发','开源代码'],desc:'相册应用的开发项目，也为这座银河和 Astra 网页提供了目前的 GitHub Pages 发布空间。',note:'目前提供源代码链接，不是网页在线体验版。',x:0,z:-18,y:.4,link:'https://github.com/yixuanqi/PhotoGallery',linkText:'↗ 查看项目代码',source:null}
+  {id:'gallery',index:'05',name:'小笨相册',en:'PhotoGallery · Little Photo Companion',icon:'✴',category:'lab',tags:['Android','应用开发','开源代码'],desc:'相册应用的开发项目，也为这座银河和 Astra 网页提供了目前的 GitHub Pages 发布空间。',note:'目前提供源代码链接，不是网页在线体验版。',x:0,z:-18,y:.4,link:'https://github.com/yixuanqi/PhotoGallery',linkText:'↗ 查看项目代码',source:null},
+  {id:'earthplant',index:'06',name:'手绘博物航海志',en:'EarthPlant · Atlas Orbis Terrarum',icon:'⊕',category:'online',tags:['Three.js','3D 地球','地标探索','纸飞机航线'],desc:'一册能转动的手绘地球航海志。探索八处世界地标，规划两地间的大圆航线，让纸飞机沿球面巡航，还能切换第三人称跟随视角。',note:'可以直接在浏览器中体验，无需下载安装。',x:1,z:-9,y:.5,link:'../earthplant/',linkText:'↗ 在线探索地球',source:'https://github.com/yixuanqi/PhotoGallery/blob/main/docs/earthplant/index.html'}
 ];
 var POSTS=[
  {id:'welcome',no:'01 · 星河缘起',title:'为什么把个人主页画成一片银河？',summary:'一个项目一颗星。让作品不再只是简历上的一行文字。',paragraphs:['普通的作品集像一张排列整齐的清单。但我更喜欢手帐：它有空白、有涂改、有相互连接的线索，也允许故事继续生长。','所以这片银河并不追求天文学的严格比例。中心是好奇心，星星是一次次动手做出来的东西。能在浏览器运行的，点开就玩；需要安装的软件，找到它的下载页；尚在研究的项目，打开实验记录。','以后每做完一个项目，就点亮一颗新的星。文章也会从星际间慢慢长出来。']},
  {id:'astra-note',no:'02 · 作品手记',title:'从一颗手绘星球到一整册天体运行志',summary:'Astra 的有趣之处，不止在 3D，还在“像一本旧书”。',paragraphs:['Astra 是一页可以旋转、缩放和点击的天体手帐。它用 Three.js 承载 3D 交互，再把水彩、钢笔排线和旧纸张的视觉语言铺在星球周围。','对我来说，最有意思的并不是把一颗球渲染得多逼真，而是让界面本身像一件手工制作的小作品。它不一定高效，却让探索的过程有了一点趣味。','这也是银河主页延续这套视觉语言的原因：星系像地图，项目像被收藏在地图上的小标本。']},
- {id:'open-door',no:'03 · 制作原则',title:'点亮一颗星，应该能去到哪里？',summary:'区分在线体验、下载安装和实验代码，让入口说人话。',paragraphs:['如果一个页面可以直接在浏览器运行，就应该尽量提供“一键进入体验”的入口。Astra 就属于这一类。','有些作品天然是桌面应用，例如 Desktop Cannon 和 AudioAlgo。银河会清楚写明平台与安装方式，而不是让人以为点击后就能在网页上运行。','还有些项目更适合展示研究过程或源码。它们不需要硬做成游戏，仍然可以拥有自己的星位。']},
+ {id:'open-door',no:'03 · 制作原则',title:'点亮一颗星，应该能去到哪里？',summary:'区分在线体验、下载安装和实验代码，让入口说人话。',paragraphs:['如果一个页面可以直接在浏览器运行，就应该尽量提供“一键进入体验”的入口。Astra 就属于这一类。','有些作品天然是桌面应用，例如 Desktop Cannon 和 AudioAlgo。银河会清楚写明平台与安装方式，而不是让人以为点击后就能在网页上运行。','还有些项目更适合展示研究过程或源码。它们不需要硬做成游戏，仍然可以拥有自己的星位。']}, {id:'earthplant-note',no:'04 · 地球航海志',title:'把世界画在一张可以旋转的纸上',summary:'从手绘地球到地标探索，再到一架沿球面航行的纸飞机。',paragraphs:['EarthPlant 是一张可以转动的立体航海图。它延续旧纸、水彩、钢笔排线的风格，试着让地球本身变成一本可以翻阅的博物手帐。','除了八处世界地标，我还把两地之间的大圆航线做成了可交互的巡航路线。纸飞机可以沿路径飞行，也能从第三人称视角跟随它穿过天空。','它和 Astra 一起成为银河里可以直接进入体验的作品。希望未来每一颗星背后都有这样一段可以亲手探索的旅程。']},
+
 ];
 var root=document.documentElement;
 var theme='paper';try{theme=localStorage.getItem('galaxy-theme')==='night'?'night':'paper'}catch(e){}root.dataset.theme=theme;
