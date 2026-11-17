@@ -13,12 +13,13 @@ const have=(needle,reason)=>assert(source.includes(needle),reason+': missing '+n
 
 // Dog house and bone landmark must occupy separate locations.
 have("house(p,-10,-36,0xe6e4cd,0xb07867,.95,'dog-cottage')",'dog cottage');
-have('b.position.set(-6,13,-70)','bone landmark');
+have('b.position.set(31,13,-70)','bone landmark');
 have("if(style==='dog-cottage')",'proportionate chimney');
 have('cube(h,0xf0e7d9,2.65,7.14,-.65,1.18,2.70,1.22)','chimney body');
-const cottage=[-10,-36],bone=[-6,-70];
-assert(Math.hypot(cottage[0]-bone[0],cottage[1]-bone[1])>30,'bone arch must be clear of cottage roof');
-have("dog:[[-37,-25],[-30,29],[0,-35],[-6,-70]]",'tree clearance around arch');
+const cottage=[-10,-36],bone=[31,-70];
+assert(Math.hypot(cottage[0]-bone[0],cottage[1]-bone[1])>40,'bone arch must be clear of cottage roof');
+assert(Math.abs(cottage[0]-bone[0])>35,'bone arch must not look like a chimney from the common runway-facing viewpoint');
+have("dog:[[-37,-25],[-30,29],[0,-35],[31,-70]]",'tree clearance around arch');
 
 // Footprints of the market stepping boards and pebble patches must penetrate the ground.
 // groundIslandDecor adds (actual terrain height - 13.05) to each root-level decoration.
