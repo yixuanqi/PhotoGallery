@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#b8d6db">
 <title>ISLEBOUND · 手绘群岛漫游</title>
-<meta name="islebound-build" content="2026-11-17-weather-v1">
+<meta name="islebound-build" content="2026-11-17-weather-v2-visible-clouds">
 <style>
 :root{--ink:#254958;--muted:#577887;--paper:rgba(249,248,230,.82);--edge:rgba(47,85,92,.26);--accent:#d67d5e;--teal:#2b8b8b;--cream:#fffae7}
 *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden}body{background:#bcdde0;color:var(--ink);font-family:"Trebuchet MS","Segoe UI", "Microsoft YaHei",sans-serif;user-select:none}button{font:inherit;cursor:pointer;touch-action:manipulation}canvas#scene{position:fixed;inset:0;display:block;width:100%;height:100%}
@@ -83,7 +83,57 @@ renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.35;
 const scene=new THREE.Scene(); scene.background=new THREE.Color(0xc9e5ea);scene.fog=new THREE.FogExp2(0xc7dfe1,.00076);
 const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,3200);
-const sky=new THREE.Mesh(new THREE.SphereGeometry(2000,24,16),new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,uniforms:{uCover:{value:0},uMist:{value:0},uStorm:{value:0},uFlash:{value:0}},vertexShader:`varying vec3 vP;void main(){vP=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,fragmentShader:`uniform float uCover;uniform float uMist;uniform float uStorm;uniform float uFlash;varying vec3 vP;void main(){float h=normalize(vP).y;vec3 a=vec3(.97,.79,.65);vec3 b=vec3(.71,.85,.89);vec3 c=vec3(.43,.67,.80);vec3 col=mix(a,b,smoothstep(-.15,.20,h));col=mix(col,c,smoothstep(.22,.95,h));vec3 overcast=mix(vec3(.67,.76,.77),vec3(.44,.59,.65),smoothstep(-.17,.83,h));vec3 tempest=mix(vec3(.43,.58,.63),vec3(.24,.38,.49),smoothstep(-.22,.87,h));col=mix(col,overcast,uCover*.70);col=mix(col,tempest,uStorm*.78);col=mix(col,vec3(.76,.85,.84),uMist*.67);col=mix(col,vec3(.90,.94,.94),uFlash*.66);gl_FragColor=vec4(col,1.);}`}));sky.frustumCulled=false;scene.add(sky);
+const sky=new THREE.Mesh(new THREE.SphereGeometry(2000,32,20),new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,uniforms:{uCover:{value:0},uMist:{value:0},uStorm:{value:0},uRain:{value:0},uFlash:{value:0},uTime:{value:0}},vertexShader:`varying vec3 vP;
+void main(){
+ vP=position;
+ gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);
+}`,fragmentShader:`
+uniform float uCover;
+uniform float uMist;
+uniform float uStorm;
+uniform float uRain;
+uniform float uFlash;
+uniform float uTime;
+varying vec3 vP;
+float hash21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float valueNoise(vec2 p){
+ vec2 i=floor(p),f=fract(p);
+ f=f*f*(3.0-2.0*f);
+ return mix(mix(hash21(i),hash21(i+vec2(1.,0.)),f.x),
+            mix(hash21(i+vec2(0.,1.)),hash21(i+vec2(1.,1.)),f.x),f.y);
+}
+void main(){
+ vec3 d=normalize(vP);
+ float h=d.y;
+ vec3 warm=vec3(.94,.81,.69);
+ vec3 horizon=vec3(.73,.85,.86);
+ vec3 zenith=vec3(.42,.68,.83);
+ vec3 col=mix(warm,horizon,smoothstep(-.15,.18,h));
+ col=mix(col,zenith,smoothstep(.14,.84,h));
+ // Three scales of hand-painted cloud shapes, each driven by the same sky-wide cover.
+ // Cloud cover changes from open blue sky to distinct large overcast banks.
+ vec2 p=d.xz*3.0+vec2(h*1.6,h*.6);
+ vec2 drift=vec2(uTime*.0031,-uTime*.0017);
+ float broad=valueNoise(p*1.45+drift)*.56;
+ float medium=valueNoise(p*3.4-drift*.25)*.30;
+ float detail=valueNoise(p*7.1+drift*.6)*.14;
+ float n=broad+medium+detail;
+ float threshold=mix(.81,.25,clamp(uCover,0.,1.));
+ float cover=smoothstep(threshold-.105,threshold+.06,n);
+ float altitude=smoothstep(-.21,.07,h);
+ float density=cover*altitude;
+ vec3 cloud=vec3(.92,.92,.86);
+ cloud=mix(cloud,vec3(.67,.75,.76),smoothstep(.39,.76,n)*.68);
+ vec3 rainCloud=vec3(.57,.65,.68);
+ cloud=mix(cloud,rainCloud,uRain*.48);
+ vec3 thunder=vec3(.24,.34,.43);
+ cloud=mix(cloud,thunder,uStorm*.84);
+ col=mix(col,cloud,density*.97);
+ col=mix(col,mix(vec3(.73,.79,.81),vec3(.44,.52,.58),uStorm),uCover*.12+uStorm*.13);
+ col=mix(col,vec3(.78,.84,.83),uMist*.77);
+ col=mix(col,vec3(.91,.96,.99),uFlash*.69);
+ gl_FragColor=vec4(col,1.);
+}`}));sky.frustumCulled=false;scene.add(sky);
 const hemiLight=new THREE.HemisphereLight(0xe9f9fb,0x888b70,2.35);scene.add(hemiLight);
 const sunLight=new THREE.DirectionalLight(0xffecd1,3.05);sunLight.position.set(-230,430,-290);sunLight.castShadow=true;sunLight.shadow.mapSize.set(1024,1024);sunLight.shadow.camera.left=-590;sunLight.shadow.camera.right=590;sunLight.shadow.camera.top=590;sunLight.shadow.camera.bottom=-590;sunLight.shadow.camera.near=1;sunLight.shadow.camera.far=1200;sunLight.shadow.bias=-.00015;scene.add(sunLight);
 const sunDisc=new THREE.Mesh(new THREE.SphereGeometry(68,24,20),new THREE.MeshBasicMaterial({color:0xffe8b8,fog:false,transparent:true,opacity:1,depthWrite:false}));sunDisc.position.set(-800,530,-1150);scene.add(sunDisc);
@@ -415,10 +465,10 @@ const clouds=[];for(let k=0;k<33;k++){const g=new THREE.Group();g.position.set(r
 function createWeatherSystem(){
  const presets={
   clear:{label:'晴朗',icon:'☀',cover:.05,mist:0,storm:0,rain:0,wind:1.2,angle:.4},
-  cloudy:{label:'多云',icon:'☁',cover:.58,mist:.08,storm:0,rain:0,wind:2.9,angle:.74},
-  rain:{label:'小雨',icon:'☂',cover:.79,mist:.19,storm:.09,rain:.63,wind:4.5,angle:1.1},
+  cloudy:{label:'多云',icon:'☁',cover:.77,mist:.075,storm:0,rain:0,wind:2.9,angle:.74},
+  rain:{label:'小雨',icon:'☂',cover:.91,mist:.19,storm:.10,rain:.70,wind:4.5,angle:1.1},
   storm:{label:'暴风雨',icon:'⚡',cover:.99,mist:.37,storm:1,rain:1,wind:8.4,angle:1.38},
-  fog:{label:'海雾',icon:'≈',cover:.63,mist:1,storm:0,rain:0,wind:1.5,angle:-.85}
+  fog:{label:'海雾',icon:'≈',cover:.69,mist:1,storm:0,rain:0,wind:1.5,angle:-.85}
  };
  const order=['clear','cloudy','rain','storm','fog'];
  const cycle=['cloudy','rain','cloudy','fog','clear','storm','rain','clear'];
@@ -428,11 +478,30 @@ function createWeatherSystem(){
  const shadedCloud=new THREE.MeshToonMaterial({color:0xe7efea,roughness:1});
  const cDay=new THREE.Color(0xf0f0e7),cShade=new THREE.Color(0xe7efea);
  const cGrey=new THREE.Color(0xb5c7c8),cStorm=new THREE.Color(0x708a93);
- const cSun=new THREE.Color(0xffecd1),cRain=new THREE.Color(0xbfd4dc);
+ const cSun=new THREE.Color(0xffecd1),cRain=new THREE.Color(0xbfd4dc),fogColor=new THREE.Color(0xc3d3d1);
  clouds.forEach(c=>{
   c.baseScale=c.g.scale.x;
   c.g.children.forEach((m,i)=>{if(m.isMesh)m.material=i%3===0?dayCloud:shadedCloud});
  });
+ // One extra InstancedMesh for large low-altitude overcast banks.
+ // The original clear-sky puff clouds remain; overcast introduces new cloud masses.
+ const bankMat=new THREE.MeshToonMaterial({color:0xe1e9e6,transparent:true,opacity:0,depthWrite:false});
+ const cloudBanks=new THREE.InstancedMesh(sphereGeo,bankMat,216);
+ cloudBanks.castShadow=false;cloudBanks.receiveShadow=false;cloudBanks.frustumCulled=false;
+ const bankRand=rng(781143),cloudDummy=new THREE.Object3D();
+ for(let i=0;i<216;i++){
+  const cluster=Math.floor(i/4);
+  const bx=(cluster%9-4)*245+(bankRand()-.5)*125;
+  const bz=(Math.floor(cluster/9)-2.5)*375+(bankRand()-.5)*170;
+  const layerY=145+bankRand()*95;
+  const spread=bankRand()*.75+.45;
+  cloudDummy.position.set(bx+(i%4-1.5)*36*spread,layerY+(bankRand()-.5)*10,bz+(i%4-1.5)*19*spread);
+  cloudDummy.scale.set((45+bankRand()*28)*spread,10+bankRand()*13,(25+bankRand()*25)*spread);
+  cloudDummy.updateMatrix();cloudBanks.setMatrixAt(i,cloudDummy.matrix);
+ }
+ cloudBanks.instanceMatrix.needsUpdate=true;
+ scene.add(cloudBanks);
+
  // 雨在相机附近的有限空间内循环，采用单个 LineSegments 合批，不逐滴创建对象。
  const count=750,drops=[],rainPositions=new Float32Array(count*6),rainRandom=rng(19271117);
  for(let i=0;i<count;i++)drops.push({x:(rainRandom()-.5)*225,y:(rainRandom()-.5)*190,z:(rainRandom()-.5)*225,len:1.35+rainRandom()*2.6,speed:.75+rainRandom()*.6});
@@ -491,23 +560,30 @@ function createWeatherSystem(){
     ws.nextChange=ws.age+62+random()*20;
    }
   }
-  for(const k of ['cover','mist','storm','rain','wind','angle'])values[k]=THREE.MathUtils.damp(values[k],ws.target[k],k==='angle'?.45:.40,dt);
-  const sunLoss=values.cover*.5+values.storm*.22+values.mist*.22;
-  hemiLight.intensity=2.35*(1-values.cover*.35-values.storm*.26-values.mist*.18);
+  for(const k of ['cover','mist','storm','rain','wind','angle'])values[k]=THREE.MathUtils.damp(values[k],ws.target[k],k==='angle'?.75:1.5,dt);
+  const sunLoss=Math.min(.93,values.cover*.76+values.storm*.20+values.mist*.20);
+  hemiLight.intensity=2.35*(1-values.cover*.48-values.storm*.22-values.mist*.15);
   sunLight.color.copy(cSun).lerp(cRain,Math.min(1,values.cover*.55+values.storm*.43));
   sunLight.intensity=3.05*(1-sunLoss);
-  sunDisc.material.opacity=Math.max(0,.99-values.cover*.82-values.storm*.25-values.mist*.7);
+  sunDisc.material.opacity=Math.max(0,.99-values.cover*1.65-values.storm*.25-values.mist*.9);
   sky.material.uniforms.uCover.value=values.cover;
   sky.material.uniforms.uMist.value=values.mist;
   sky.material.uniforms.uStorm.value=values.storm;
+  sky.material.uniforms.uRain.value=values.rain;
+  sky.material.uniforms.uTime.value=ws.age;
   seaMat.uniforms.uCover.value=values.cover;
   seaMat.uniforms.uStorm.value=values.storm;
   seaMat.uniforms.uRain.value=values.rain;
   scene.fog.density=.00076+values.mist*.0060+values.storm*.0018+values.rain*.00038;
-  scene.fog.color.setRGB(.78-values.storm*.30,.87-values.storm*.24,.88-values.storm*.19).lerp(new THREE.Color(0xc3d3d1),values.mist*.45);
+  scene.fog.color.setRGB(.78-values.storm*.30,.87-values.storm*.24,.88-values.storm*.19).lerp(fogColor,values.mist*.45);
   dayCloud.color.copy(cDay).lerp(cGrey,values.cover*.54).lerp(cStorm,values.storm*.78);
   shadedCloud.color.copy(cShade).lerp(cGrey,values.cover*.58).lerp(cStorm,values.storm*.80);
   for(const c of clouds)c.g.scale.setScalar(c.baseScale*(1+values.cover*.10+values.storm*.10));
+  cloudBanks.visible=values.cover>.14 && values.mist<.96;
+  bankMat.opacity=Math.min(.88,Math.max(0,(values.cover-.12)*1.15))*(1-values.mist*.35);
+  bankMat.color.copy(cDay).lerp(cGrey,values.cover*.64).lerp(cStorm,values.storm*.86);
+  cloudBanks.position.x=Math.sin(ws.age*.022)*15;
+  cloudBanks.position.z=Math.cos(ws.age*.019)*11;
   if(values.storm>.65 && state.started && ws.age>ws.nextFlash){
    ws.flash=.7;ws.nextFlash=ws.age+9+random()*11;
   }
