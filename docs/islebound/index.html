@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#b8d6db">
 <title>ISLEBOUND · 手绘群岛漫游</title>
-<meta name="islebound-build" content="2026-11-17-github-pages-01">
+<meta name="islebound-build" content="2026-11-17-weather-v1">
 <style>
 :root{--ink:#254958;--muted:#577887;--paper:rgba(249,248,230,.82);--edge:rgba(47,85,92,.26);--accent:#d67d5e;--teal:#2b8b8b;--cream:#fffae7}
 *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden}body{background:#bcdde0;color:var(--ink);font-family:"Trebuchet MS","Segoe UI", "Microsoft YaHei",sans-serif;user-select:none}button{font:inherit;cursor:pointer;touch-action:manipulation}canvas#scene{position:fixed;inset:0;display:block;width:100%;height:100%}
@@ -30,21 +30,35 @@
 #error{position:fixed;z-index:10;inset:0;background:#f6f3e4;display:none;place-items:center;padding:25px;color:#3b5e67;text-align:center}#error.show{display:grid}
 @media(max-width:800px){#top{left:15px;right:15px;top:14px}.brand-mark{width:39px;height:39px}.brand .en{font-size:18px}.brand .cn{font-size:9px}.progress{margin-top:7px}#mini{top:92px;right:13px;width:153px;padding:7px}#mini.expanded{width:min(300px,calc(100vw - 20px))}.topright{gap:5px}.pencil-btn{padding:9px;font-size:11px}#status{left:13px;bottom:18px;gap:5px}.instrument{min-width:77px;padding:8px}.instrument .data{font-size:21px}.instrument .label{font-size:9px}#flightHint{display:none}#assist{bottom:85px;font-size:11px;padding:8px 10px}#notice{top:24%}.sheet{padding:26px 23px}.sheet h1{font-size:29px}.scene-label{font-size:10px;padding:5px 9px}#compassPanel{display:none}}
 @media(min-width:801px) and (pointer:coarse){#flightHint{display:none}}
+
+/* 水彩风天气卡片：紧凑、不遮挡飞行操作 */
+.weather-panel{position:absolute;z-index:4;right:34px;top:79px;width:272px;border:1.5px solid var(--edge);background:rgba(248,249,235,.94);border-radius:17px 11px 19px 12px;box-shadow:4px 6px 0 rgba(41,79,89,.13);padding:13px 14px;backdrop-filter:blur(12px);pointer-events:auto;transition:opacity .2s,transform .2s}
+.weather-panel.hidden{opacity:0;transform:translateY(-8px);pointer-events:none}
+.weather-title{display:flex;align-items:center;justify-content:space-between;color:#426777;font-size:12px;font-weight:bold;padding-bottom:9px;border-bottom:1px dashed #b5cac6}
+#weatherSummary{font-weight:normal;font-size:11px;color:#607e82}
+.weather-options{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:11px 0}
+.weather-options button{font-size:12px;font-weight:700;background:#f7f5e8;border:1px solid #bfd0c9;border-radius:9px 12px 8px 11px;padding:9px 5px;color:#496b72}
+.weather-options button.active{background:#cce6df;border-color:#5e9394;color:#275b69;box-shadow:1px 2px 0 #a7c9c3}
+.weather-auto{width:100%;text-align:left;border:1px dashed #91b2ac;background:#e4efe9;color:#416773;border-radius:9px;padding:9px 11px;font-size:12px;font-weight:700}
+.weather-auto[aria-pressed="true"]{background:#d3e7db}
+.weather-caption{font-size:10px;line-height:1.6;color:#6b8588;margin:9px 1px 0}
+@media(max-width:800px){.weather-panel{right:12px;top:110px;width:min(270px,calc(100vw - 24px))}.weather-options{gap:5px}.weather-options button{padding:8px 3px}}
 </style>
 </head>
 <body>
 <canvas id="scene" aria-label="Three.js 可交互的手绘群岛世界"></canvas><div id="vignette"></div>
 <div id="ui">
-  <div id="top"><div class="brand"><div class="brand-mark">✈</div><div><div class="en">ISLEBOUND</div><div class="cn">手 绘 群 岛 · 飞 行 日 记</div><div class="progress">已发现 <b id="found">0</b> / 4 座岛屿 · 已着陆 <b id="landings">0</b> / 4</div></div></div><div class="topright"><button id="journalBtn" class="pencil-btn">✎ 航行手帐</button><button id="cameraBtn" class="pencil-btn">◉ 视角 C</button><button id="helpBtn" class="pencil-btn">? 操作</button></div></div>
+  <div id="top"><div class="brand"><div class="brand-mark">✈</div><div><div class="en">ISLEBOUND</div><div class="cn">手 绘 群 岛 · 飞 行 日 记</div><div class="progress">已发现 <b id="found">0</b> / 4 座岛屿 · 已着陆 <b id="landings">0</b> / 4</div></div></div><div class="topright"><button id="journalBtn" class="pencil-btn">✎ 航行手帐</button><button id="cameraBtn" class="pencil-btn">◉ 视角 C</button><button id="helpBtn" class="pencil-btn">? 操作</button><button id="weatherBtn" class="pencil-btn" aria-expanded="false" aria-controls="weatherPanel" title="切换天气（T）">☀ 晴朗</button></div></div>
+  <div id="weatherPanel" class="weather-panel hidden"><div class="weather-title"><span>✦ 海上的天气</span><span id="weatherSummary">晴朗 · 微风</span></div><div id="weatherOptions" class="weather-options"></div><button id="weatherAuto" class="weather-auto" aria-pressed="true">↻ 自动变化：开启</button><div class="weather-caption">天气会逐渐过渡。按 T 快速切换，暴风雨会带来侧风，靠近机场仍可辅助降落。</div></div>
   <div id="mini"><div id="mapHead"><span>✧ 旅行地图</span><span>按 M 放大 ↗</span></div><canvas id="mapCanvas" width="390" height="286"></canvas><div id="mapFoot">未探索的岛屿藏在迷雾里 · 北 ↑</div></div>
   <div id="labels"></div><div id="crosshair"></div><div id="assist"></div>
   <div id="notice"><div class="notice-inner"><div id="noticeTitle">发现新岛屿</div><div id="noticeText">你的航海手帐添上了一页</div></div></div>
   <div id="status"><div class="instrument"><div class="label">空中速度</div><div class="data"><span id="speed">36</span><span class="unit"> kn</span></div><div class="line"><div class="fill" id="speedFill"></div></div></div><div class="instrument"><div class="label">离海高度</div><div class="data"><span id="alt">58</span><span class="unit"> m</span></div><div class="line"><div class="fill" id="altFill"></div></div></div><div class="instrument" id="compassPanel"><div class="label">航向</div><div id="compassHeading">N ↗</div></div></div>
   <div id="flightHint"><span class="kbd">W</span> <span class="kbd">S</span> 爬升/下降　<span class="kbd">A</span> <span class="kbd">D</span> 转向<br><span class="kbd">⇧</span> / <span class="kbd">Ctrl</span> 变速　<span class="kbd">E</span> 辅助降落　<span class="kbd">F</span> 起飞</div>
 </div>
-<div id="intro"><div class="sheet"><div class="scribble">a little journey above the sea ...</div><span class="little-plane">✈️</span><h1>把世界飞成一幅画</h1><p>驾驶一架小小的螺旋桨飞机，飞过会呼吸的海，寻找藏在云雾间的四座岛。每座岛都拥有自己的秘密、居民和跑道。</p><div class="keyrow"><span>W / S · 上下</span><span>A / D · 转弯</span><span>Shift · 加速</span><span>E · 辅助降落</span></div><button class="start-btn" id="startBtn" disabled style="opacity:.68;cursor:progress">正在绘制群岛…</button><p class="tiny">建议使用键盘驾驶 · 触屏可拖动转向、双击降落 · 无需登录</p></div></div>
+<div id="intro"><div class="sheet"><div class="scribble">a little journey above the sea ...</div><span class="little-plane">✈️</span><h1>把世界飞成一幅画</h1><p>驾驶一架小小的螺旋桨飞机，飞过会呼吸的海，寻找藏在云雾间的四座岛。每座岛都拥有自己的秘密、居民和跑道。</p><div class="keyrow"><span>W / S · 上下</span><span>A / D · 转弯</span><span>Shift · 加速</span><span>E · 辅助降落</span><span>T · 天气</span></div><button class="start-btn" id="startBtn" disabled style="opacity:.68;cursor:progress">正在绘制群岛…</button><p class="tiny">建议使用键盘驾驶 · 触屏可拖动转向、双击降落 · 无需登录</p></div></div>
 <div id="journal" class="hidden"><div class="sheet"><div class="scribble">my little island journal</div><h2 id="journalTitle">✎ 岛屿旅行手帐</h2><p style="font-size:12px;text-align:left;line-height:1.8;margin:0">靠近岛屿会盖上一枚发现章，在岛屿跑道落地会留下着陆章。下一页在海风里等你。</p><div id="journalList"></div><button id="journalClose" class="small-btn">继续飞行 ↗</button></div></div>
-<div id="help" class="hidden"><div class="sheet"><div class="scribble">flight notes · 航行须知</div><h2 id="helpTitle">小飞机驾驶指南</h2><div class="help-grid"><div><b>W / ↑</b> 抬头爬升</div><div><b>S / ↓</b> 低头下降</div><div><b>A / ←</b> 左转倾斜</div><div><b>D / →</b> 右转倾斜</div><div><b>Shift</b> 持续加速</div><div><b>Ctrl</b> 持续减速</div><div><b>E</b> 临近跑道辅助降落</div><div><b>F</b> 从岛上重新起飞</div><div><b>C / M</b> 切换视角 / 地图</div><div><b>P</b> 暂停 / 继续</div><div><b>触屏</b> 拖动海面转向、爬升</div><div><b>触屏双击</b> 辅助降落 / 起飞</div></div><p style="font-size:12px;margin:3px 0 8px">靠近任意岛屿后，寻找黄色跑道与迎风旗帜。辅助降落会自动对准跑道，适合悠闲探索，不必苦练飞行模拟。</p><button id="helpClose" class="small-btn">知道啦，出发！</button></div></div>
+<div id="help" class="hidden"><div class="sheet"><div class="scribble">flight notes · 航行须知</div><h2 id="helpTitle">小飞机驾驶指南</h2><div class="help-grid"><div><b>W / ↑</b> 抬头爬升</div><div><b>S / ↓</b> 低头下降</div><div><b>A / ←</b> 左转倾斜</div><div><b>D / →</b> 右转倾斜</div><div><b>Shift</b> 持续加速</div><div><b>Ctrl</b> 持续减速</div><div><b>E</b> 临近跑道辅助降落</div><div><b>F</b> 从岛上重新起飞</div><div><b>C / M</b> 切换视角 / 地图</div><div><b>P</b> 暂停 / 继续</div><div><b>T</b> 切换天气 / 自动模式</div><div><b>触屏</b> 拖动海面转向、爬升</div><div><b>触屏双击</b> 辅助降落 / 起飞</div></div><p style="font-size:12px;margin:3px 0 8px">靠近任意岛屿后，寻找黄色跑道与迎风旗帜。辅助降落会自动对准跑道，适合悠闲探索，不必苦练飞行模拟。</p><button id="helpClose" class="small-btn">知道啦，出发！</button></div></div>
 <div id="error"><div><h2>海风暂时没能吹起小飞机 ☁</h2><p id="errorMessage">Three.js 加载失败，请检查网络并刷新页面。</p></div></div>
 <script type="module">
 // 尝试两个公共 CDN；完整场景代码都在本 HTML 中，无构建工具要求。
@@ -68,10 +82,10 @@ renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.35;
 const scene=new THREE.Scene(); scene.background=new THREE.Color(0xc9e5ea);scene.fog=new THREE.FogExp2(0xc7dfe1,.00076);
 const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,3200);
-const sky=new THREE.Mesh(new THREE.SphereGeometry(2000,24,16),new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,vertexShader:`varying vec3 vP;void main(){vP=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,fragmentShader:`varying vec3 vP;void main(){float h=normalize(vP).y;vec3 a=vec3(.97,.79,.65);vec3 b=vec3(.71,.85,.89);vec3 c=vec3(.43,.67,.80);vec3 col=mix(a,b,smoothstep(-.15,.20,h));col=mix(col,c,smoothstep(.22,.95,h));gl_FragColor=vec4(col,1.);}`}));sky.frustumCulled=false;scene.add(sky);
-scene.add(new THREE.HemisphereLight(0xe9f9fb,0x888b70,2.35));
+const sky=new THREE.Mesh(new THREE.SphereGeometry(2000,24,16),new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,uniforms:{uCover:{value:0},uMist:{value:0},uStorm:{value:0},uFlash:{value:0}},vertexShader:`varying vec3 vP;void main(){vP=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,fragmentShader:`uniform float uCover;uniform float uMist;uniform float uStorm;uniform float uFlash;varying vec3 vP;void main(){float h=normalize(vP).y;vec3 a=vec3(.97,.79,.65);vec3 b=vec3(.71,.85,.89);vec3 c=vec3(.43,.67,.80);vec3 col=mix(a,b,smoothstep(-.15,.20,h));col=mix(col,c,smoothstep(.22,.95,h));vec3 overcast=mix(vec3(.67,.76,.77),vec3(.44,.59,.65),smoothstep(-.17,.83,h));vec3 tempest=mix(vec3(.43,.58,.63),vec3(.24,.38,.49),smoothstep(-.22,.87,h));col=mix(col,overcast,uCover*.70);col=mix(col,tempest,uStorm*.78);col=mix(col,vec3(.76,.85,.84),uMist*.67);col=mix(col,vec3(.90,.94,.94),uFlash*.66);gl_FragColor=vec4(col,1.);}`}));sky.frustumCulled=false;scene.add(sky);
+const hemiLight=new THREE.HemisphereLight(0xe9f9fb,0x888b70,2.35);scene.add(hemiLight);
 const sunLight=new THREE.DirectionalLight(0xffecd1,3.05);sunLight.position.set(-230,430,-290);sunLight.castShadow=true;sunLight.shadow.mapSize.set(1024,1024);sunLight.shadow.camera.left=-590;sunLight.shadow.camera.right=590;sunLight.shadow.camera.top=590;sunLight.shadow.camera.bottom=-590;sunLight.shadow.camera.near=1;sunLight.shadow.camera.far=1200;sunLight.shadow.bias=-.00015;scene.add(sunLight);
-const sunDisc=new THREE.Mesh(new THREE.SphereGeometry(68,24,20),new THREE.MeshBasicMaterial({color:0xffe8b8,fog:false}));sunDisc.position.set(-800,530,-1150);scene.add(sunDisc);
+const sunDisc=new THREE.Mesh(new THREE.SphereGeometry(68,24,20),new THREE.MeshBasicMaterial({color:0xffe8b8,fog:false,transparent:true,opacity:1,depthWrite:false}));sunDisc.position.set(-800,530,-1150);scene.add(sunDisc);
 const palette={outline:0x36565c,wood:0x967257,sand:0xe4c590,grass:0x9cbf83,grassDark:0x6f9c7e,stone:0x8c9890,white:0xfff5df,coral:0xdb866d,teal:0x67aeb0,ochre:0xe0ae68,blue:0x6a97aa};
 const matCache=new Map();function material(c,opts={}){const k=c+'_'+JSON.stringify(opts);if(!matCache.has(k))matCache.set(k,new THREE.MeshToonMaterial({color:c,...opts}));return matCache.get(k)}
 const outlineMat=material(palette.outline,{side:THREE.BackSide});
@@ -93,7 +107,7 @@ function sign(p,text,x,y,z,w=16){const group=new THREE.Group();group.position.se
 
 // 程序化海面：缓慢起伏的顶点、宽色带与细碎的水彩笔触。
 const seaGeo=new THREE.PlaneGeometry(3000,3000,130,130);seaGeo.rotateX(-Math.PI/2);
-const seaMat=new THREE.ShaderMaterial({uniforms:{uTime:{value:0},uCam:{value:new THREE.Vector3()}},vertexShader:`uniform float uTime;varying vec3 vP;varying float vWave;void main(){vec3 q=position;float a=sin(q.x*.039+uTime*.7)*cos(q.z*.034-uTime*.47);float b=sin((q.x+q.z)*.068-uTime*.94);q.y+=a*.55+b*.23;vWave=a;vP=q;gl_Position=projectionMatrix*modelViewMatrix*vec4(q,1.);}`,fragmentShader:`uniform float uTime;uniform vec3 uCam;varying vec3 vP;varying float vWave;float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}void main(){float n=sin(vP.x*.021+sin(vP.z*.016)*2.1+uTime*.11);float m=sin(vP.z*.043-vP.x*.018+uTime*.32);float streak=sin(vP.x*.27+sin(vP.z*.017)*9.-uTime*.24);vec3 base=mix(vec3(.22,.49,.56),vec3(.37,.65,.66),.5+.26*n+.12*m);base+=vec3(.06,.085,.074)*vWave;float sp=smoothstep(.90,.997,streak)*smoothstep(.30,.85,m);base+=vec3(.15,.18,.14)*sp*.38;float dist=length(vP.xz-uCam.xz);base=mix(base,vec3(.72,.86,.86),smoothstep(650.,1450.,dist)*.7);gl_FragColor=vec4(base,1.);}`});
+const seaMat=new THREE.ShaderMaterial({uniforms:{uTime:{value:0},uCam:{value:new THREE.Vector3()},uCover:{value:0},uStorm:{value:0},uRain:{value:0}},vertexShader:`uniform float uTime;uniform float uStorm;varying vec3 vP;varying float vWave;void main(){vec3 q=position;float a=sin(q.x*.039+uTime*.7)*cos(q.z*.034-uTime*.47);float b=sin((q.x+q.z)*.068-uTime*.94);q.y+=(a*.55+b*.23)*(1.+uStorm*.65);vWave=a;vP=q;gl_Position=projectionMatrix*modelViewMatrix*vec4(q,1.);}`,fragmentShader:`uniform float uTime;uniform vec3 uCam;uniform float uCover;uniform float uStorm;uniform float uRain;varying vec3 vP;varying float vWave;float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}void main(){float n=sin(vP.x*.021+sin(vP.z*.016)*2.1+uTime*.11);float m=sin(vP.z*.043-vP.x*.018+uTime*.32);float streak=sin(vP.x*.27+sin(vP.z*.017)*9.-uTime*.24);vec3 base=mix(vec3(.22,.49,.56),vec3(.37,.65,.66),.5+.26*n+.12*m);base+=vec3(.06,.085,.074)*vWave;float sp=smoothstep(.90,.997,streak)*smoothstep(.30,.85,m);base+=vec3(.15,.18,.14)*sp*.38;base=mix(base,vec3(.15,.35,.42),uCover*.37+uStorm*.25);float ripple=sin(length(fract(vP.xz*.11)-.5)*36.-uTime*8.);base+=vec3(.05,.075,.078)*max(0.,ripple)*uRain*.19;float dist=length(vP.xz-uCam.xz);base=mix(base,vec3(.72,.86,.86),smoothstep(650.,1450.,dist)*.7);gl_FragColor=vec4(base,1.);}`});
 const water=mesh(seaGeo,seaMat,scene,0,-.35,0,false);water.receiveShadow=false;
 function createSeaStrokes(){const V=[],C=[],I=[];let idx=0;const r=rng(477);for(let k=0;k<950;k++){const cx=range(-1350,1350,r),cz=range(-1350,1350,r);const rad=range(2,9,r),phase=range(-Math.PI,Math.PI,r);const count=7,thick=range(.07,.21,r);for(let i=0;i<=count;i++){let t=i/count,a=phase+t*range(.5,1.7,r);let px=cx+rad*Math.sin(a),pz=cz+rad*.33*Math.cos(a);V.push(px,.56,pz,px,.56+thick,pz+.19);let v=range(.64,.95,r);C.push(v,v,range(.76,.94,r),v,v,range(.76,.94,r));if(i<count){I.push(idx,idx+1,idx+2,idx+1,idx+3,idx+2)}idx+=2;}}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(V,3));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));g.setIndex(I);g.computeVertexNormals();const o=mesh(g,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.36,side:THREE.DoubleSide,depthWrite:false}),scene,0,0,0,false);o.receiveShadow=false;}createSeaStrokes();
 
@@ -395,6 +409,131 @@ function saveProgress(){try{const data={};for(const isl of ISLANDS)data[isl.id]=
 for(let i=0;i<31;i++){const a=range(0,Math.PI*2),ir=ISLANDS[Math.floor(random()*ISLANDS.length)];const radius=range(120,215),x=ir.x+Math.cos(a)*radius,z=ir.z+Math.sin(a)*radius;const b=blob(scene,i%3?0x9fb0a0:0xc5b39a,x,range(.0,2.7),z,range(3,8),range(1.2,4.2),range(2.5,7));b.castShadow=false;if(i%5===0){const tree=makeTree(scene,x,z,rng(i*32+18),'green',.38);tree.position.y=1.1;}}
 // 天空中的团状白云、海鸥。层次深度由透视产生。
 const clouds=[];for(let k=0;k<33;k++){const g=new THREE.Group();g.position.set(range(-1100,1100),range(90,230),range(-1050,1000));g.scale.setScalar(range(1.2,3.2));scene.add(g);for(let j=0;j<5;j++){const o=blob(g,j%3===0?0xf6efe0:0xeaf0eb,(j-2)*7,Math.sin(j*3)*1.8,Math.cos(j*2)*2.4,9,4.5+j%3,5.5);o.castShadow=false}clouds.push({g,drift:range(.45,1.5)})}
+
+// 动态手绘天气：单一逻辑状态机，所有气象效果平滑过渡，不依赖外部天气 API。
+function createWeatherSystem(){
+ const presets={
+  clear:{label:'晴朗',icon:'☀',cover:.05,mist:0,storm:0,rain:0,wind:1.2,angle:.4},
+  cloudy:{label:'多云',icon:'☁',cover:.58,mist:.08,storm:0,rain:0,wind:2.9,angle:.74},
+  rain:{label:'小雨',icon:'☂',cover:.79,mist:.19,storm:.09,rain:.63,wind:4.5,angle:1.1},
+  storm:{label:'暴风雨',icon:'⚡',cover:.99,mist:.37,storm:1,rain:1,wind:8.4,angle:1.38},
+  fog:{label:'海雾',icon:'≈',cover:.63,mist:1,storm:0,rain:0,wind:1.5,angle:-.85}
+ };
+ const order=['clear','cloudy','rain','storm','fog'];
+ const cycle=['cloudy','rain','cloudy','fog','clear','storm','rain','clear'];
+ const values={cover:.05,mist:0,storm:0,rain:0,wind:1.2,angle:.4};
+ const ws={mode:'clear',automatic:true,target:presets.clear,nextChange:65,age:0,step:0,flash:0,nextFlash:13,lastLabel:-2};
+ const dayCloud=new THREE.MeshToonMaterial({color:0xf0f0e7,roughness:1});
+ const shadedCloud=new THREE.MeshToonMaterial({color:0xe7efea,roughness:1});
+ const cDay=new THREE.Color(0xf0f0e7),cShade=new THREE.Color(0xe7efea);
+ const cGrey=new THREE.Color(0xb5c7c8),cStorm=new THREE.Color(0x708a93);
+ const cSun=new THREE.Color(0xffecd1),cRain=new THREE.Color(0xbfd4dc);
+ clouds.forEach(c=>{
+  c.baseScale=c.g.scale.x;
+  c.g.children.forEach((m,i)=>{if(m.isMesh)m.material=i%3===0?dayCloud:shadedCloud});
+ });
+ // 雨在相机附近的有限空间内循环，采用单个 LineSegments 合批，不逐滴创建对象。
+ const count=750,drops=[],rainPositions=new Float32Array(count*6),rainRandom=rng(19271117);
+ for(let i=0;i<count;i++)drops.push({x:(rainRandom()-.5)*225,y:(rainRandom()-.5)*190,z:(rainRandom()-.5)*225,len:1.35+rainRandom()*2.6,speed:.75+rainRandom()*.6});
+ const rainGeo=new THREE.BufferGeometry();rainGeo.setAttribute('position',new THREE.BufferAttribute(rainPositions,3).setUsage(THREE.DynamicDrawUsage));
+ const rainMat=new THREE.LineBasicMaterial({color:0xdceff0,transparent:true,opacity:0,depthWrite:false,depthTest:true});
+ const rainField=new THREE.LineSegments(rainGeo,rainMat);rainField.frustumCulled=false;rainField.visible=false;rainField.renderOrder=9;scene.add(rainField);
+ const btn=$('weatherBtn'),panel=$('weatherPanel'),opts=$('weatherOptions'),auto=$('weatherAuto');
+ const optionButtons={};
+ function refresh(){
+  const p=presets[ws.mode];
+  btn.textContent=p.icon+' '+p.label;
+  btn.title='天气：'+p.label+' · '+(ws.automatic?'自动变化':'手动选择')+' · 按 T 切换';
+  $('weatherSummary').textContent=p.label+' · 风 '+values.wind.toFixed(1)+' kn';
+  auto.textContent='↻ 自动变化：'+(ws.automatic?'开启':'关闭');
+  auto.setAttribute('aria-pressed',String(ws.automatic));
+  for(const key of order){const selected=key===ws.mode;optionButtons[key].classList.toggle('active',selected);optionButtons[key].setAttribute('aria-pressed',String(selected))}
+ }
+ function select(mode,manual=true){
+  if(!presets[mode])return false;
+  ws.mode=mode;ws.target=presets[mode];if(manual)ws.automatic=false;
+  ws.nextChange=ws.age+68;
+  refresh();return true;
+ }
+ for(const key of order){
+  const p=presets[key],b=document.createElement('button');b.type='button';b.textContent=p.icon+' '+p.label;b.setAttribute('aria-label','切换到'+p.label);b.onclick=()=>{select(key);panel.classList.add('hidden');btn.setAttribute('aria-expanded','false');showToast('天气：'+p.label,'海风与云层正在慢慢改变',2100)};
+  opts.appendChild(b);optionButtons[key]=b;
+ }
+ btn.onclick=()=>{
+  const opened=panel.classList.toggle('hidden')===false;
+  btn.setAttribute('aria-expanded',String(opened));
+ };
+ auto.onclick=()=>{
+  ws.automatic=!ws.automatic;ws.nextChange=ws.age+64;
+  refresh();showToast(ws.automatic?'自动天气已开启':'已改为手动天气',ws.automatic?'旅途中将遇见不同的天空':'按 T 可以切换五种天气',2300);
+ };
+ addEventListener('pointerdown',e=>{if(!panel.classList.contains('hidden')&&!panel.contains(e.target)&&e.target!==btn){panel.classList.add('hidden');btn.setAttribute('aria-expanded','false')}});
+ addEventListener('keydown',e=>{
+  if(e.code!=='KeyT'||e.repeat||e.ctrlKey||e.altKey||e.metaKey)return;
+  const next=order[(order.indexOf(ws.mode)+1)%order.length];select(next);
+  panel.classList.add('hidden');btn.setAttribute('aria-expanded','false');
+  showToast('天气切换 · '+presets[next].label,'使用天气按钮可开启自动轮换',2000);
+ });
+ // 侧风仅影响自由飞行，自动降落与起飞按既有轨迹执行。
+ function applyWind(dt,state,t){
+  const gust=1+Math.sin(t*.73)*.16+Math.sin(t*2.13+1.4)*.09;
+  const strength=values.wind*.34*gust;
+  state.x+=Math.sin(values.angle)*strength*dt;
+  state.z+=Math.cos(values.angle)*strength*dt;
+ }
+ function gustRoll(t){return values.storm*(Math.sin(t*2.6)*.017+Math.sin(t*5.7)*.014)}
+ function update(dt,time,state){
+  if(!state.paused && state.started){
+   ws.age+=dt;
+   if(ws.automatic && ws.age>=ws.nextChange){
+    select(cycle[ws.step++%cycle.length],false);
+    ws.nextChange=ws.age+62+random()*20;
+   }
+  }
+  for(const k of ['cover','mist','storm','rain','wind','angle'])values[k]=THREE.MathUtils.damp(values[k],ws.target[k],k==='angle'?.45:.40,dt);
+  const sunLoss=values.cover*.5+values.storm*.22+values.mist*.22;
+  hemiLight.intensity=2.35*(1-values.cover*.35-values.storm*.26-values.mist*.18);
+  sunLight.color.copy(cSun).lerp(cRain,Math.min(1,values.cover*.55+values.storm*.43));
+  sunLight.intensity=3.05*(1-sunLoss);
+  sunDisc.material.opacity=Math.max(0,.99-values.cover*.82-values.storm*.25-values.mist*.7);
+  sky.material.uniforms.uCover.value=values.cover;
+  sky.material.uniforms.uMist.value=values.mist;
+  sky.material.uniforms.uStorm.value=values.storm;
+  seaMat.uniforms.uCover.value=values.cover;
+  seaMat.uniforms.uStorm.value=values.storm;
+  seaMat.uniforms.uRain.value=values.rain;
+  scene.fog.density=.00076+values.mist*.0060+values.storm*.0018+values.rain*.00038;
+  scene.fog.color.setRGB(.78-values.storm*.30,.87-values.storm*.24,.88-values.storm*.19).lerp(new THREE.Color(0xc3d3d1),values.mist*.45);
+  dayCloud.color.copy(cDay).lerp(cGrey,values.cover*.54).lerp(cStorm,values.storm*.78);
+  shadedCloud.color.copy(cShade).lerp(cGrey,values.cover*.58).lerp(cStorm,values.storm*.80);
+  for(const c of clouds)c.g.scale.setScalar(c.baseScale*(1+values.cover*.10+values.storm*.10));
+  if(values.storm>.65 && state.started && ws.age>ws.nextFlash){
+   ws.flash=.7;ws.nextFlash=ws.age+9+random()*11;
+  }
+  ws.flash=Math.max(0,ws.flash-dt*5.4);
+  sky.material.uniforms.uFlash.value=ws.flash;
+  sunLight.intensity+=ws.flash*1.45;
+  // 雨丝密度随降雨级别变化，起点始终围绕摄像机而不是固定一块岛屿。
+  rainField.visible=values.rain>.025;
+  rainMat.opacity=Math.min(.59,values.rain*.49);
+  if(rainField.visible){
+   for(let i=0;i<count;i++){
+    const d=drops[i];d.y-=dt*(68+values.wind*3.8)*d.speed;d.x+=dt*values.wind*.16;
+    if(d.y< -100){d.y=85;d.x=(rainRandom()-.5)*220;d.z=(rainRandom()-.5)*220}
+    if(d.x>125)d.x=-125;
+    const j=i*6;rainPositions[j]=d.x;rainPositions[j+1]=d.y;rainPositions[j+2]=d.z;
+    rainPositions[j+3]=d.x-values.wind*.29;rainPositions[j+4]=d.y+d.len;rainPositions[j+5]=d.z+values.wind*.10;
+   }
+   rainGeo.attributes.position.needsUpdate=true;
+   rainField.position.copy(camera.position);
+  }
+  if(ws.age-ws.lastLabel>.5){ws.lastLabel=ws.age;refresh()}
+ }
+ refresh();
+ return {update,applyWind,gustRoll,select,cycle:()=>select(order[(order.indexOf(ws.mode)+1)%order.length]),state:ws,values,presets};
+}
+const weather=createWeatherSystem();
+
 const birds=[];for(let k=0;k<12;k++){const ir=ISLANDS[k%4],g=new THREE.Group();g.position.set(ir.x+range(-130,130),range(33,77),ir.z+range(-120,120));scene.add(g);line(g,[[-3,0,0],[-1.2,.55,0],[0,0,0],[1.2,.55,0],[3,0,0]],0x526c6f,.16);birds.push({g,anchor:g.position.clone(),phase:range(0,6.28)})}
 
 // 飞机翼展 13.6 单位，不随岛屿扩建而放大；现岛直径约 225–360 单位。螺旋桨、座舱、起落架均独立建模。
@@ -453,6 +592,7 @@ state.pitch=THREE.MathUtils.damp(state.pitch,pitch*.32,2.8,dt);
 state.bank=THREE.MathUtils.damp(state.bank,-turn*.43,3.5,dt);
 state.x+=Math.sin(state.yaw)*Math.cos(state.pitch)*state.speed*dt;
 state.z-=Math.cos(state.yaw)*Math.cos(state.pitch)*state.speed*dt;
+weather.applyWind(dt,state,elapsed);
 state.y+=Math.sin(state.pitch)*state.speed*dt*.82;
 let floor=5.6;for(const isl of ISLANDS){if(Math.hypot(state.x-isl.x,state.z-isl.z)<Math.max(isl.rx,isl.rz)*.8){floor=15.5;break}}if(state.y<floor){state.y=floor;state.pitch=Math.max(state.pitch,.05)}state.y=Math.min(state.y,230);
 }else if(state.mode==='landing'){
@@ -487,8 +627,8 @@ let sceneReady=false;
 const clock=new THREE.Clock();let elapsed=0,uiWait=0;
 function frame(){requestAnimationFrame(frame);const dt=Math.min(.05,clock.getDelta()),ad=state.paused?0:dt;if(state.started&&!state.paused&&!panelOpen){elapsed+=dt;updatePhysics(dt)}
 plane.position.set(state.x,state.y+(state.mode==='flight'?Math.sin(elapsed*4)*.09:0),state.z);body.rotation.order='YXZ';// 模型机头朝本地 -Z；Three.js 正向 Y 旋转会让机头向左，因此这里取 -yaw 与航迹一致。
-plane.rotation.set(state.pitch,-state.yaw,state.bank,'YXZ');prop.rotation.z+=ad*(state.mode==='ground'?3:state.speed*.85);
-for(let i=0;i<clouds.length;i++){clouds[i].g.position.x+=ad*clouds[i].drift;if(clouds[i].g.position.x>1230)clouds[i].g.position.x=-1230}
+plane.rotation.set(state.pitch,-state.yaw,state.bank+weather.gustRoll(elapsed),'YXZ');prop.rotation.z+=ad*(state.mode==='ground'?3:state.speed*.85);
+for(let i=0;i<clouds.length;i++){clouds[i].g.position.x+=ad*clouds[i].drift*(1+weather.values.wind*.13);if(clouds[i].g.position.x>1230)clouds[i].g.position.x=-1230}
 for(let i=0;i<birds.length;i++){const b=birds[i],t=elapsed*.55+b.phase;b.g.position.x=b.anchor.x+Math.cos(t)*23;b.g.position.z=b.anchor.z+Math.sin(t)*25;b.g.position.y=b.anchor.y+Math.sin(t*2)*3;b.g.rotation.y=-t-.4}
 ISLANDS[2].beacon.rotation.y+=ad*.52;
 for(const isl of ISLANDS)if(isl.windmills)for(const rotor of isl.windmills)rotor.rotation.z+=ad*.7;
@@ -496,14 +636,14 @@ for(const train of islandTrains){train.t=(train.t+ad*train.speed/train.curve.get
  const t=(train.t-i*.024+1)%1,q=train.curve.getPointAt(t),d=train.curve.getTangentAt(t),car=train.cars[i];car.position.set(q.x,q.y+.02,q.z);car.rotation.y=-Math.atan2(d.x,-d.z);
 }}
 seaMat.uniforms.uTime.value=elapsed;
-updateCamera(Math.min(dt,.05));uiWait+=dt;if(uiWait>.08){updateHUD();drawMap();updateLabels();uiWait=0}renderer.render(scene,camera)}
+updateCamera(Math.min(dt,.05));weather.update(ad,elapsed,state);uiWait+=dt;if(uiWait>.08){updateHUD();drawMap();updateLabels();uiWait=0}renderer.render(scene,camera)}
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.35))});
 frame();
 requestAnimationFrame(()=>requestAnimationFrame(()=>{
  sceneReady=true;const b=$('startBtn');b.disabled=false;b.style.opacity='';b.style.cursor='';b.textContent='开启群岛之旅　↗';
 }));
 // 给自动化测试与新岛开发提供可读的地面贴合/绘制批次指标。
-window.__ISLEBOUND_DEBUG={islands:ISLANDS,terrainHeight,renderer,scene,state};
+window.__ISLEBOUND_DEBUG={islands:ISLANDS,terrainHeight,renderer,scene,state,weather};
 </script>
 <script>
 // JS 模块加载或网络失败时给出友好提示，不留下空白屏幕。
