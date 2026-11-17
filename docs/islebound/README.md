@@ -71,6 +71,17 @@ node docs/islebound/tests/weather-regression.mjs
 
 回归测试：`node docs/islebound/tests/weather-regression.mjs`，新增雾混合范围断言，确保岛屿近景颜色不再被天气雾效吞没。
 
+
+## 岛屿标签稳定性修复（2026-11-17）
+
+**问题根因：** 之前的 `updateLabels()` 与 `updateHUD()/drawMap()` 一起被 `uiWait>.08` 限流，因此标签投影位置约每 80ms 才更新一次（12.5Hz），而相机每帧都在移动，标签出现明显跳帧。标签还在 `dist>430`、屏幕坐标越界时直接隐藏，再叠加 CSS `transition:opacity .25s`，造成闪烁和不一致的出现节奏。
+
+**修复：** 新的 `updateSceneLabels(dt)` 在 `updateCamera()` 后、每帧 `renderer.render()` 前执行，位置与摄像机同一帧更新。标签坐标使用 `translate3d()` 组合变换（不再低频修改 `left/top`），使用时间步长相关的指数衰减对透明度渐隐/渐现，且对视口边缘和最大可见距离分别使用平滑过渡；同时移除 CSS 对透明度的二次动画。机场降落提示保留原有 HUD 更新频率，不受影响。
+
+**回归：** `node docs/islebound/tests/label-regression.mjs` 会检查标签与相机在同一帧更新，并模拟 120 帧连续相机移动、渐显和切换近景视角隐藏标签。天气、飞机、降落逻辑均保持原状。
+
+本次版本标记：`2026-11-17-label-stability-v1`。固定博客入口仍为 `/PhotoGallery/islebound/`。
+
 ## 架构
 
 单文件静态网页；Three.js 通过 CDN 加载，场景在浏览器中程序化生成，无服务器端功能。岛屿配置保留在游戏的 `ISLANDS` 数组中，可扩展第五座及更多岛屿。

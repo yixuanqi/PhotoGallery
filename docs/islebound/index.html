@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#b8d6db">
 <title>ISLEBOUND · 手绘群岛漫游</title>
-<meta name="islebound-build" content="2026-11-17-weather-v3-color-safe-fog">
+<meta name="islebound-build" content="2026-11-17-label-stability-v1">
 <style>
 :root{--ink:#254958;--muted:#577887;--paper:rgba(249,248,230,.82);--edge:rgba(47,85,92,.26);--accent:#d67d5e;--teal:#2b8b8b;--cream:#fffae7}
 *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden}body{background:#bcdde0;color:var(--ink);font-family:"Trebuchet MS","Segoe UI", "Microsoft YaHei",sans-serif;user-select:none}button{font:inherit;cursor:pointer;touch-action:manipulation}canvas#scene{position:fixed;inset:0;display:block;width:100%;height:100%}
@@ -22,7 +22,7 @@
 #compassPanel{min-width:100px;text-align:center}#compassHeading{font:italic bold 27px Georgia,serif}
 #flightHint{position:absolute;right:34px;bottom:36px;max-width:310px;text-align:right;color:#315568;text-shadow:0 2px 6px rgba(255,255,255,.85);font-weight:700;font-size:12px;line-height:1.9}.kbd{display:inline-grid;place-items:center;padding:0 5px;min-width:22px;height:20px;border:1px solid rgba(40,72,84,.45);border-radius:5px;background:rgba(252,249,230,.7);font-size:10px;box-shadow:0 2px 0 rgba(39,71,80,.2)}
 #notice{position:absolute;top:22%;left:50%;transform:translate(-50%,-12px);min-width:240px;max-width:85vw;text-align:center;opacity:0;transition:opacity .4s,transform .4s;pointer-events:none}.notice-inner{display:inline-block;border-radius:22px 13px 20px 14px;background:rgba(255,251,229,.91);border:1px solid rgba(89,116,114,.3);padding:16px 29px;box-shadow:4px 5px 0 rgba(40,83,93,.12);backdrop-filter:blur(10px)}#notice.show{opacity:1;transform:translate(-50%,0)}#noticeTitle{font:italic bold 28px Georgia,"Microsoft YaHei",serif;letter-spacing:1px}#noticeText{font-size:12px;margin-top:6px;color:#617b82}
-#labels{position:absolute;inset:0;pointer-events:none}.scene-label{position:absolute;transform:translate(-50%,-50%);font-size:12px;font-weight:700;letter-spacing:1px;padding:7px 12px;background:rgba(255,249,224,.86);border:1.2px solid rgba(52,90,99,.32);border-radius:13px 9px 14px 9px;color:#2d5a66;box-shadow:2px 3px 0 rgba(54,102,104,.16);white-space:nowrap;transition:opacity .25s}.scene-label span{font-size:15px;margin-right:5px}
+#labels{position:absolute;inset:0;pointer-events:none}.scene-label{position:absolute;left:0;top:0;opacity:0;transform:translate3d(-50%,-50%,0);will-change:transform,opacity;font-size:12px;font-weight:700;letter-spacing:1px;padding:7px 12px;background:rgba(255,249,224,.86);border:1.2px solid rgba(52,90,99,.32);border-radius:13px 9px 14px 9px;color:#2d5a66;box-shadow:2px 3px 0 rgba(54,102,104,.16);white-space:nowrap;transition:none}.scene-label span{font-size:15px;margin-right:5px}
 #assist{position:absolute;left:50%;bottom:115px;transform:translateX(-50%);background:rgba(251,248,219,.83);padding:11px 18px;border:1.5px dashed rgba(51,97,97,.42);border-radius:17px;color:#2f6470;font-size:13px;font-weight:bold;white-space:nowrap;opacity:0;transition:opacity .3s;backdrop-filter:blur(6px)}#assist.show{opacity:1}
 #crosshair{position:absolute;left:50%;top:52%;width:12px;height:12px;transform:translate(-50%,-50%) rotate(45deg);border:1px solid rgba(255,253,236,.65);border-radius:3px;box-shadow:0 0 0 1px rgba(36,83,91,.1);opacity:.6}
 #intro,#journal,#help{position:fixed;inset:0;display:grid;place-items:center;background:rgba(34,73,85,.27);backdrop-filter:blur(7px);z-index:5;transition:opacity .35s;pointer-events:auto}#intro.hidden,#journal.hidden,#help.hidden{opacity:0;pointer-events:none}.sheet{width:min(470px,calc(100vw - 35px));background:#faf6e8;border:2px solid rgba(48,84,89,.55);border-radius:30px 22px 27px 18px;padding:33px 38px 31px;text-align:center;box-shadow:6px 8px 0 rgba(40,83,87,.16),0 20px 70px rgba(28,80,96,.18);position:relative}.sheet:before{content:"";position:absolute;inset:7px;border:1px dashed rgba(53,87,88,.24);border-radius:24px 18px 23px 16px;pointer-events:none}.sheet .scribble{font:italic 16px Georgia,serif;letter-spacing:2px;color:#b9826b;margin-bottom:10px}.sheet h1{font-family:Georgia,"Microsoft YaHei",serif;font-size:33px;letter-spacing:2px;margin:3px 0 9px}.sheet p{font-size:13px;line-height:2.1;color:#647f85;margin:10px auto 20px;max-width:325px}.sheet .little-plane{font-size:49px;display:block;margin:12px 0;transform:rotate(-24deg)}.start-btn{padding:13px 36px;font-size:15px;letter-spacing:3px;background:#df9473;color:#fffdf4;border:2px solid #9d6b58;border-radius:15px 20px 12px 19px;box-shadow:3px 4px 0 #bc7659;font-weight:bold;transition:transform .2s}.start-btn:hover{transform:translate(-1px,-2px)}.start-btn:active{transform:translate(2px,3px);box-shadow:1px 1px 0 #bc7659}.keyrow{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;margin:13px 0 21px;font-size:11px;color:#5c7b86}.keyrow>span{padding:5px 7px;border:1px dashed rgba(69,101,112,.32);border-radius:7px}.tiny{font-size:10px!important;opacity:.75;margin:14px 0 0!important}
@@ -692,9 +692,45 @@ if(!camInitialized){camera.position.copy(target);camTarget.copy(look);camInitial
 // 阴影相机跟着飞机移动，四座岛仍可保持空间比例。
 sunLight.position.set(state.x-230,400,state.z-260);sunLight.target.position.set(state.x,0,state.z);sunLight.target.updateMatrixWorld();}
 let camInitialized=false;
-const sceneLabels=ISLANDS.map(isl=>{const div=document.createElement('div');div.className='scene-label';div.innerHTML=`<span>${isl.icon}</span> ${isl.name}`;$('labels').appendChild(div);return div});
-function updateLabels(){for(let i=0;i<ISLANDS.length;i++){const isl=ISLANDS[i],el=sceneLabels[i];const dist=Math.hypot(state.x-isl.x,state.z-isl.z);if(dist>430||state.camera===2){el.style.opacity='0';continue}const pos=new THREE.Vector3(isl.x,isl.id==='light'?63:isl.id==='garden'?53:34,isl.z).project(camera);const visible=pos.z<1&&Math.abs(pos.x)<1&&Math.abs(pos.y)<1;el.style.opacity=visible?String(Math.min(.92,(430-dist)/90)):0;el.style.left=(pos.x*.5+.5)*innerWidth+'px';el.style.top=(-pos.y*.5+.5)*innerHeight+'px';}
-const {isl,dist}=nearestRunway();const assist=$('assist');if(state.mode==='flight'&&dist<isl.rx+110&&state.y<190&&state.started&&!panelOpen){assist.innerHTML=`<b>✈ ${isl.name}</b> 的机场在附近 · 按 <b>E</b> 辅助降落`;assist.classList.add('show')}else if(state.mode==='ground'){assist.innerHTML=`✦ 已在 ${state.ground.name} 停机 · 按 <b>F</b> 再次起飞`;assist.classList.add('show')}else if(state.mode==='landing'){assist.innerHTML='正在自动对准跑道 · 请欣赏沿途风景 ✧';assist.classList.add('show')}else assist.classList.remove('show');}
+// 岛屿名牌独立于 12.5Hz HUD 更新：与 WebGL 相机同一 requestAnimationFrame 投影。
+const sceneLabels=ISLANDS.map(isl=>{
+ const div=document.createElement('div');
+ div.className='scene-label';div.innerHTML=`<span>${isl.icon}</span> ${isl.name}`;
+ div.style.opacity='0';
+ $('labels').appendChild(div);
+ return div;
+});
+const labelAlphas=new Float32Array(ISLANDS.length);
+const labelWorld=new THREE.Vector3();
+function sceneLabelFade(t){t=THREE.MathUtils.clamp(t,0,1);return t*t*(3-2*t)}
+function updateSceneLabels(dt){
+ // Vector3.project(camera) uses matrixWorldInverse; update it BEFORE renderer.render().
+ camera.updateMatrixWorld();
+ const w=innerWidth,h=innerHeight;
+ // 植入的标记和 3D 场景同步逐帧运动；只对出现/消失的透明度作平滑，位置绝不延迟。
+ const fadeFactor=1-Math.exp(-Math.min(dt,.05)*7.5);
+ for(let i=0;i<ISLANDS.length;i++){
+  const isl=ISLANDS[i],label=sceneLabels[i];
+  const distance=Math.hypot(state.x-isl.x,state.z-isl.z);
+  let targetOpacity=0;
+  if(state.started&&!panelOpen&&state.camera!==2&&distance<480){
+   labelWorld.set(isl.x,isl.id==='light'?63:isl.id==='garden'?53:34,isl.z);
+   labelWorld.project(camera);
+   if(Number.isFinite(labelWorld.x)&&Number.isFinite(labelWorld.y)&&labelWorld.z>-1&&labelWorld.z<1){
+    const edgeX=sceneLabelFade((1-Math.abs(labelWorld.x))/.17);
+    const edgeY=sceneLabelFade((1-Math.abs(labelWorld.y))/.20);
+    const farFade=sceneLabelFade((480-distance)/105);
+    targetOpacity=.92*farFade*edgeX*edgeY;
+    // 单一 GPU 合成 transform，避免 left/top 低频跳帧和额外布局。
+    label.style.transform=`translate3d(${((labelWorld.x*.5+.5)*w).toFixed(2)}px,${((-labelWorld.y*.5+.5)*h).toFixed(2)}px,0) translate(-50%,-50%)`;
+   }
+  }
+  labelAlphas[i]+=(targetOpacity-labelAlphas[i])*fadeFactor;
+  if(Math.abs(labelAlphas[i]-targetOpacity)<.001)labelAlphas[i]=targetOpacity;
+  label.style.opacity=labelAlphas[i].toFixed(3);
+ }
+}
+function updateAssistHint(){const {isl,dist}=nearestRunway();const assist=$('assist');if(state.mode==='flight'&&dist<isl.rx+110&&state.y<190&&state.started&&!panelOpen){assist.innerHTML=`<b>✈ ${isl.name}</b> 的机场在附近 · 按 <b>E</b> 辅助降落`;assist.classList.add('show')}else if(state.mode==='ground'){assist.innerHTML=`✦ 已在 ${state.ground.name} 停机 · 按 <b>F</b> 再次起飞`;assist.classList.add('show')}else if(state.mode==='landing'){assist.innerHTML='正在自动对准跑道 · 请欣赏沿途风景 ✧';assist.classList.add('show')}else assist.classList.remove('show');}
 function drawMap(){const can=$('mapCanvas'),ctx=can.getContext('2d'),w=can.width,h=can.height;ctx.clearRect(0,0,w,h);let grd=ctx.createLinearGradient(0,0,0,h);grd.addColorStop(0,'#b3d5d4');grd.addColorStop(1,'#82b6bd');ctx.fillStyle=grd;ctx.fillRect(0,0,w,h);
 ctx.strokeStyle='rgba(241,250,236,.24)';ctx.lineWidth=1;for(let j=0;j<18;j++){ctx.beginPath();for(let i=0;i<=25;i++){let x=i*w/25,y=j*19-18+Math.sin(i*.9+j)*3.0;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke()}
 const minX=-540,maxX=720,minZ=-600,maxZ=650;const mapPt=(x,z)=>[(x-minX)/(maxX-minX)*w,(z-minZ)/(maxZ-minZ)*h];
@@ -716,7 +752,7 @@ for(const train of islandTrains){train.t=(train.t+ad*train.speed/train.curve.get
  const t=(train.t-i*.024+1)%1,q=train.curve.getPointAt(t),d=train.curve.getTangentAt(t),car=train.cars[i];car.position.set(q.x,q.y+.02,q.z);car.rotation.y=-Math.atan2(d.x,-d.z);
 }}
 seaMat.uniforms.uTime.value=elapsed;
-updateCamera(Math.min(dt,.05));weather.update(ad,elapsed,state);uiWait+=dt;if(uiWait>.08){updateHUD();drawMap();updateLabels();uiWait=0}renderer.render(scene,camera)}
+updateCamera(Math.min(dt,.05));weather.update(ad,elapsed,state);updateSceneLabels(dt);uiWait+=dt;if(uiWait>.08){updateHUD();drawMap();updateAssistHint();uiWait=0}renderer.render(scene,camera)}
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.35))});
 frame();
 requestAnimationFrame(()=>requestAnimationFrame(()=>{
