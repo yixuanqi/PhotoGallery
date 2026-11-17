@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#b8d6db">
 <title>ISLEBOUND · 手绘群岛漫游</title>
-<meta name="islebound-build" content="2026-11-17-prop-grounding-v2">
+<meta name="islebound-build" content="2026-11-17-islebound-v0.4">
 <style>
 :root{--ink:#254958;--muted:#577887;--paper:rgba(249,248,230,.82);--edge:rgba(47,85,92,.26);--accent:#d67d5e;--teal:#2b8b8b;--cream:#fffae7}
 *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden}body{background:#bcdde0;color:var(--ink);font-family:"Trebuchet MS","Segoe UI", "Microsoft YaHei",sans-serif;user-select:none}button{font:inherit;cursor:pointer;touch-action:manipulation}canvas#scene{position:fixed;inset:0;display:block;width:100%;height:100%}
@@ -44,6 +44,22 @@
 .weather-caption{font-size:10px;line-height:1.6;color:#6b8588;margin:9px 1px 0}
 @media(max-width:800px){.weather-panel{right:12px;top:110px;width:min(270px,calc(100vw - 24px))}.weather-options{gap:5px}.weather-options button{padding:8px 3px}}
 @media(max-width:560px){#top{gap:6px}.brand{max-width:130px;gap:7px}.brand-mark{display:none}.brand .en{font-size:15px;letter-spacing:1px}.brand .cn{letter-spacing:1px;font-size:8px}.progress{font-size:9px;line-height:1.4;margin-top:5px}.topright{max-width:196px;gap:4px;flex-wrap:wrap;justify-content:flex-end}.pencil-btn{font-size:10px;padding:6px 7px}#mini{top:114px}.weather-panel{top:105px}}
+
+/* V0.4: quiet island commissions and hand-drawn collectible postcards. */
+.quest-panel{position:absolute;left:50%;bottom:173px;transform:translateX(-50%);z-index:4;width:min(370px,calc(100vw - 26px));padding:13px 15px;border:1.5px solid #94b5aa;border-radius:15px 12px 17px 11px;background:rgba(250,248,230,.94);box-shadow:3px 5px 0 rgba(45,80,79,.13);backdrop-filter:blur(10px);text-align:center;pointer-events:auto}
+.quest-panel strong{display:block;font-size:14px;color:#375d65}.quest-panel p{margin:6px 0 10px;color:#5c8180;font-size:11px;line-height:1.6}
+.quest-panel button{border:1px solid #7fa6a1;border-radius:11px;background:#dcefe2;color:#365c67;font-weight:bold;font-size:12px;padding:8px 14px}
+.quest-tracker{position:absolute;left:25px;top:118px;z-index:3;background:rgba(252,250,233,.87);border:1px dashed rgba(69,119,111,.51);border-radius:12px 9px 14px 10px;max-width:288px;padding:10px 13px;line-height:1.7;font-size:11px;color:#577580;pointer-events:none}
+.quest-tracker strong{color:#335d68;font-size:12px}.quest-tracker span{display:block}
+.quest-panel.hidden,.quest-tracker.hidden{display:none}
+#journal .sheet{max-height:min(88vh,760px);overflow-y:auto}
+.postcard-art{position:relative;overflow:hidden;margin:10px 0 5px;height:88px;border:3px solid rgba(251,250,224,.87);box-shadow:2px 3px 0 rgba(55,90,91,.18);border-radius:6px;background:linear-gradient(155deg,#d6e6d7 0%,#aed4cf 55%,#e9d0a0 100%);display:flex;align-items:center;justify-content:center}
+.postcard-art.cat{background:linear-gradient(155deg,#f4c6c4,#b9d8dc 65%,#f7e3b1)}
+.postcard-art.locked{filter:grayscale(.82);opacity:.58}
+.postcard-art .art-symbol{font-size:43px;text-shadow:2px 4px 0 #fef5da;transform:rotate(-9deg)}
+.postcard-art .art-stamp{position:absolute;right:8px;bottom:7px;font-size:10px;color:#395f67;background:#fff3d5c9;border:1px dashed #8faea5;padding:3px 7px;border-radius:4px;transform:rotate(-8deg)}
+.postcard .reward{display:block;font-size:11px;font-weight:bold;color:#487e72;margin-top:5px}
+@media(max-width:800px){.quest-tracker{top:107px;left:10px;max-width:205px;padding:7px 9px;font-size:10px}.quest-panel{bottom:120px}}
 </style>
 </head>
 <body>
@@ -53,13 +69,15 @@
   <div id="weatherPanel" class="weather-panel hidden"><div class="weather-title"><span>✦ 海上的天气</span><span id="weatherSummary">晴朗 · 微风</span></div><div id="weatherOptions" class="weather-options"></div><button id="weatherAuto" class="weather-auto" aria-pressed="true">↻ 自动变化：开启</button><div class="weather-caption">天气会逐渐过渡。按 T 快速切换，暴风雨会带来侧风，靠近机场仍可辅助降落。</div></div>
   <div id="mini"><div id="mapHead"><span>✧ 旅行地图</span><span>按 M 放大 ↗</span></div><canvas id="mapCanvas" width="390" height="286"></canvas><div id="mapFoot">未探索的岛屿藏在迷雾里 · 北 ↑</div></div>
   <div id="labels"></div><div id="crosshair"></div><div id="assist"></div>
+  <div id="questPanel" class="quest-panel hidden" role="status"><strong id="questOfferTitle"></strong><p id="questOfferText"></p><button id="questAccept" type="button">接下委托 Q</button></div>
+  <div id="questTracker" class="quest-tracker hidden" aria-live="polite"><strong id="questTrackTitle"></strong><span id="questTrackText"></span></div>
   <div id="notice"><div class="notice-inner"><div id="noticeTitle">发现新岛屿</div><div id="noticeText">你的航海手帐添上了一页</div></div></div>
   <div id="status"><div class="instrument"><div class="label">空中速度</div><div class="data"><span id="speed">36</span><span class="unit"> kn</span></div><div class="line"><div class="fill" id="speedFill"></div></div></div><div class="instrument"><div class="label">离海高度</div><div class="data"><span id="alt">58</span><span class="unit"> m</span></div><div class="line"><div class="fill" id="altFill"></div></div></div><div class="instrument" id="compassPanel"><div class="label">航向</div><div id="compassHeading">N ↗</div></div></div>
   <div id="flightHint"><span class="kbd">W</span> <span class="kbd">S</span> 爬升/下降　<span class="kbd">A</span> <span class="kbd">D</span> 转向<br><span class="kbd">⇧</span> / <span class="kbd">Ctrl</span> 变速　<span class="kbd">E</span> 辅助降落　<span class="kbd">F</span> 起飞</div>
 </div>
-<div id="intro"><div class="sheet"><div class="scribble">a little journey above the sea ...</div><span class="little-plane">✈️</span><h1>把世界飞成一幅画</h1><p>驾驶一架小小的螺旋桨飞机，飞过会呼吸的海，寻找藏在云雾间的四座岛。每座岛都拥有自己的秘密、居民和跑道。</p><div class="keyrow"><span>W / S · 上下</span><span>A / D · 转弯</span><span>Shift · 加速</span><span>E · 辅助降落</span><span>T · 天气</span></div><button class="start-btn" id="startBtn" disabled style="opacity:.68;cursor:progress">正在绘制群岛…</button><p class="tiny">建议使用键盘驾驶 · 触屏可拖动转向、双击降落 · 无需登录</p></div></div>
-<div id="journal" class="hidden"><div class="sheet"><div class="scribble">my little island journal</div><h2 id="journalTitle">✎ 岛屿旅行手帐</h2><p style="font-size:12px;text-align:left;line-height:1.8;margin:0">靠近岛屿会盖上一枚发现章，在岛屿跑道落地会留下着陆章。下一页在海风里等你。</p><div id="journalList"></div><button id="journalClose" class="small-btn">继续飞行 ↗</button></div></div>
-<div id="help" class="hidden"><div class="sheet"><div class="scribble">flight notes · 航行须知</div><h2 id="helpTitle">小飞机驾驶指南</h2><div class="help-grid"><div><b>W / ↑</b> 抬头爬升</div><div><b>S / ↓</b> 低头下降</div><div><b>A / ←</b> 左转倾斜</div><div><b>D / →</b> 右转倾斜</div><div><b>Shift</b> 持续加速</div><div><b>Ctrl</b> 持续减速</div><div><b>E</b> 临近跑道辅助降落</div><div><b>F</b> 从岛上重新起飞</div><div><b>C / M</b> 切换视角 / 地图</div><div><b>P</b> 暂停 / 继续</div><div><b>T</b> 切换天气 / 自动模式</div><div><b>触屏</b> 拖动海面转向、爬升</div><div><b>触屏双击</b> 辅助降落 / 起飞</div></div><p style="font-size:12px;margin:3px 0 8px">靠近任意岛屿后，寻找黄色跑道与迎风旗帜。辅助降落会自动对准跑道，适合悠闲探索，不必苦练飞行模拟。</p><button id="helpClose" class="small-btn">知道啦，出发！</button></div></div>
+<div id="intro"><div class="sheet"><div class="scribble">a little journey above the sea ...</div><span class="little-plane">✈️</span><h1>把世界飞成一幅画</h1><p>驾驶一架小小的螺旋桨飞机，飞过会呼吸的海，寻找藏在云雾间的四座岛。每座岛都拥有自己的秘密、居民和跑道。</p><div class="keyrow"><span>W / S · 上下</span><span>A / D · 转弯</span><span>Shift · 加速</span><span>E · 降落</span><span>Q · 接任务</span><span>T · 天气</span></div><button class="start-btn" id="startBtn" disabled style="opacity:.68;cursor:progress">正在绘制群岛…</button><p class="tiny">建议使用键盘驾驶 · 触屏可拖动转向、双击降落 · 无需登录</p></div></div>
+<div id="journal" class="hidden"><div class="sheet"><div class="scribble">my little island journal</div><h2 id="journalTitle">✎ 岛屿旅行手帐</h2><p style="font-size:12px;text-align:left;line-height:1.8;margin:0">靠近岛屿会留下发现章；降落后接下居民的小委托，完成飞行探索还能收藏纪念明信片。</p><div id="journalList"></div><button id="journalClose" class="small-btn">继续飞行 ↗</button></div></div>
+<div id="help" class="hidden"><div class="sheet"><div class="scribble">flight notes · 航行须知</div><h2 id="helpTitle">小飞机驾驶指南</h2><div class="help-grid"><div><b>W / ↑</b> 抬头爬升</div><div><b>S / ↓</b> 低头下降</div><div><b>A / ←</b> 左转倾斜</div><div><b>D / →</b> 右转倾斜</div><div><b>Shift</b> 持续加速</div><div><b>Ctrl</b> 持续减速</div><div><b>E</b> 临近跑道辅助降落</div><div><b>F</b> 从岛上重新起飞</div><div><b>Q</b> 停机后接岛屿委托</div><div><b>C / M</b> 切换视角 / 地图</div><div><b>P</b> 暂停 / 继续</div><div><b>T</b> 切换天气 / 自动模式</div><div><b>触屏</b> 拖动海面转向、爬升</div><div><b>触屏双击</b> 辅助降落 / 起飞</div></div><p style="font-size:12px;margin:3px 0 8px">靠近任意岛屿后，寻找黄色跑道与迎风旗帜。辅助降落会自动对准跑道，适合悠闲探索，不必苦练飞行模拟。</p><button id="helpClose" class="small-btn">知道啦，出发！</button></div></div>
 <div id="error"><div><h2>海风暂时没能吹起小飞机 ☁</h2><p id="errorMessage">Three.js 加载失败，请检查网络并刷新页面。</p></div></div>
 <script type="module">
 // 尝试两个公共 CDN；完整场景代码都在本 HTML 中，无构建工具要求。
@@ -250,7 +268,7 @@ function instanceStaticIsland(isl){
  isl.drawAudit={countBefore,batches,instances};
 }
 
-function makeIsland(isl){const root=new THREE.Group();root.position.set(isl.x,0,isl.z);scene.add(root);isl.root=root;root.userData.island=isl;isl.discovered=false;isl.landed=false;
+function makeIsland(isl){const root=new THREE.Group();root.position.set(isl.x,0,isl.z);scene.add(root);isl.root=root;root.userData.island=isl;isl.discovered=false;isl.landed=false;isl.postcard=false;
 const ang=90,ringR=[1.08,1.025,.955,.84,.72,.54,.30,0],ringH=[-.8,.8,3.9,8.4,11.9,12.9,13.05,13.05];const v=[],colors=[],faces=[];
 const cols=[0xcbd1b1,0xd6b98c,0x998c72,0xa8a184,0x85a680,isl.color,isl.color,isl.color];
 for(let j=0;j<ringR.length;j++){for(let i=0;i<=ang;i++){const a=i/ang*Math.PI*2,noise=noiseAngle(a,isl.seed*.14),r=ringR[j]*noise;
@@ -480,11 +498,11 @@ for(const isl of ISLANDS)makeIsland(isl);
 // 航行手帐只保存在本机浏览器中，重新打开仍可继续探索。
 try {
   const stored=JSON.parse(localStorage.getItem('islebound_exploration_v1')||'{}');
-  for(const isl of ISLANDS){isl.discovered=!!stored[isl.id]?.discovered;isl.landed=!!stored[isl.id]?.landed;}
+  for(const isl of ISLANDS){isl.discovered=!!stored[isl.id]?.discovered;isl.landed=!!stored[isl.id]?.landed;isl.postcard=!!stored[isl.id]?.postcard;}
   $('found').textContent=ISLANDS.filter(x=>x.discovered).length;
   $('landings').textContent=ISLANDS.filter(x=>x.landed).length;
 } catch(err) { /* 某些隐私模式中 localStorage 不可用，不妨碍游戏。 */ }
-function saveProgress(){try{const data={};for(const isl of ISLANDS)data[isl.id]={discovered:isl.discovered,landed:isl.landed};localStorage.setItem('islebound_exploration_v1',JSON.stringify(data));}catch(err){}}
+function saveProgress(){try{const data={};for(const isl of ISLANDS)data[isl.id]={discovered:isl.discovered,landed:isl.landed,postcard:isl.postcard};localStorage.setItem('islebound_exploration_v1',JSON.stringify(data));}catch(err){}}
 // 漂浮离岛礁群，不对称地暗示未知世界还在外面。
 for(let i=0;i<31;i++){const a=range(0,Math.PI*2),ir=ISLANDS[Math.floor(random()*ISLANDS.length)];const radius=range(120,215),x=ir.x+Math.cos(a)*radius,z=ir.z+Math.sin(a)*radius;const b=blob(scene,i%3?0x9fb0a0:0xc5b39a,x,range(.0,2.7),z,range(3,8),range(1.2,4.2),range(2.5,7));b.castShadow=false;if(i%5===0){const tree=makeTree(scene,x,z,rng(i*32+18),'green',.38);tree.position.y=1.1;}}
 // 天空中的团状白云、海鸥。层次深度由透视产生。
@@ -662,7 +680,98 @@ plane.position.set(state.x,state.y,state.z);
 const keys={};const touchKeys={};let panelOpen=false;let toastTimeout=null;
 function showToast(title,subtitle='',duration=3000){$('noticeTitle').textContent=title;$('noticeText').textContent=subtitle;$('notice').classList.add('show');clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>$('notice').classList.remove('show'),duration)}
 function showPanel(id){$('intro').classList.add('hidden');$('help').classList.add('hidden');$('journal').classList.add('hidden');if(id){$(id).classList.remove('hidden');panelOpen=true;}else panelOpen=false;}
-function journalRender(){let html='';for(const isl of ISLANDS){html+=`<div class="postcard ${isl.discovered?'revealed':''}"><strong>${isl.discovered?isl.icon+' '+isl.name:'✧ 未知岛屿'}</strong><p>${isl.discovered?isl.desc:'这里藏着一段等待发现的故事……'}</p><small>${isl.landed?'✦ 已发现 · 已着陆':isl.discovered?'✦ 已发现 · 等待着陆':'○ 等待发现'}</small></div>`;}$('journalList').innerHTML=html}
+
+// V0.4 · 飞机漫游委托。任务严格以飞机飞行完成，不引入独立步行/复杂 UI。
+// 地标统一用岛屿 local x/z 定义，避免后续调整群岛布局时目标仍留在原地。
+const QUEST_DEFS={
+ dog:{title:'汪汪邮差 · 找回骨头徽章',intro:'狗狗邮差把骨头形的徽章落在小镇南边的骨头拱门了。起飞到那里，帮它找回来吧！',cardName:'汪汪邮差纪念卡',art:'🐕',hint:'起飞后往狗狗岛南边寻找金色骨头光环',dx:31,dz:-70,alt:43,radius:25},
+ cat:{title:'喵喵鱼市 · 找回风铃',intro:'鱼市的小猫正在等一枚发光的鱼形风铃。升空飞向樱花鱼市上方，把它带回来吧！',cardName:'樱花鱼市纪念卡',art:'🐈',hint:'起飞后寻找猫猫岛鱼市上空的粉色鱼形光环',dx:-80,dz:21,alt:42,radius:25}
+};
+let activeQuest=null;
+const questMarkers={};
+for(const [id,q] of Object.entries(QUEST_DEFS)){
+ const isl=ISLANDS.find(a=>a.id===id);
+ const group=new THREE.Group();
+ group.position.set(isl.x+q.dx,q.alt,isl.z+q.dz);
+ const isDog=id==='dog',accent=isDog?0xf4d28b:0xf4b2bf;
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(7,.42,7,28),new THREE.MeshBasicMaterial({color:accent,transparent:true,opacity:.88,depthWrite:false,side:THREE.DoubleSide}));
+ ring.rotation.y=.18;group.add(ring);
+ // 简单可辨认的手绘徽章：骨头两端圆球 / 鱼身与尾鳍。
+ if(isDog){
+  cube(group,0xf6db9f,0,0,0,3.5,1.1,.85,.18);
+  for(const x of [-1.8,1.8])for(const y of [-.7,.7])blob(group,0xfbe2ae,x,y,0,.79,.76,.67).castShadow=false;
+ }else{
+  blob(group,0xf8cad1,0,0,0,2.0,1.0,.65).castShadow=false;
+  const tail=cone(group,0xf6b9c2,2.8,0,0,.96,2.5,3);tail.rotation.z=-Math.PI/2;
+  blob(group,0x64838a,-1.2,.24,.57,.16,.16,.16).castShadow=false;
+ }
+ group.userData.quest=id;group.visible=false;scene.add(group);
+ questMarkers[id]=group;
+}
+function questTarget(isl){
+ const q=QUEST_DEFS[isl.id];return q?{x:isl.x+q.dx,y:q.alt,z:isl.z+q.dz}:null;
+}
+function refreshQuestUI(){
+ const grounded=state.started&&state.mode==='ground'&&state.ground;
+ const offer=grounded&&QUEST_DEFS[state.ground.id]&&!state.ground.postcard&&activeQuest!==state.ground.id;
+ $('questPanel').classList.toggle('hidden',!offer);
+ if(offer){const q=QUEST_DEFS[state.ground.id];$('questOfferTitle').textContent='✦ '+q.title;$('questOfferText').textContent=q.intro;}
+ const selected=activeQuest&&QUEST_DEFS[activeQuest]&&!ISLANDS.find(a=>a.id===activeQuest).postcard;
+ $('questTracker').classList.toggle('hidden',!selected);
+ if(selected){
+  const q=QUEST_DEFS[activeQuest],at=ISLANDS.find(a=>a.id===activeQuest),t=questTarget(at);
+  const d=Math.round(Math.hypot(state.x-t.x,state.z-t.z));
+  $('questTrackTitle').textContent='✧ '+q.title;
+  $('questTrackText').textContent=state.mode==='ground'?'按 F 起飞 · '+q.hint:q.hint+' · 距离 '+d+' m';
+ }
+ for(const [id,marker] of Object.entries(questMarkers))marker.visible=(activeQuest===id&&!ISLANDS.find(a=>a.id===id).postcard);
+}
+function acceptQuest(){
+ if(!state.started||state.mode!=='ground'||!state.ground||panelOpen)return false;
+ const isl=state.ground,q=QUEST_DEFS[isl.id];
+ if(!q||isl.postcard)return false;
+ activeQuest=isl.id;
+ refreshQuestUI();
+ showToast('收到委托 · '+q.title,'按 F 起飞，寻找岛上的彩色光环',3800);
+ return true;
+}
+$('questAccept').onclick=acceptQuest;
+function finishQuest(){
+ if(!activeQuest)return false;
+ const id=activeQuest,isl=ISLANDS.find(a=>a.id===id),q=QUEST_DEFS[id];
+ if(!isl||isl.postcard)return false;
+ isl.postcard=true;isl.discovered=true;saveProgress();
+ activeQuest=null;refreshQuestUI();
+ showToast('✉ 明信片已解锁！',q.cardName+' · 打开航行手帐收藏',4800);
+ return true;
+}
+function updateQuest(dt,time){
+ if(activeQuest){
+  const isl=ISLANDS.find(a=>a.id===activeQuest),target=questTarget(isl);
+  if(state.mode==='flight'&&state.started&&!state.paused&&!panelOpen){
+   if(Math.hypot(state.x-target.x,state.z-target.z)<QUEST_DEFS[activeQuest].radius&&Math.abs(state.y-target.y)<20)finishQuest();
+  }
+ }
+ for(const [id,marker] of Object.entries(questMarkers)){
+  if(marker.visible){
+   marker.rotation.y+=dt*.55;
+   marker.position.y=QUEST_DEFS[id].alt+Math.sin(time*2.1)*.6;
+  }
+ }
+}
+
+function journalRender(){
+ let html='';
+ for(const isl of ISLANDS){
+  const quest=QUEST_DEFS[isl.id];
+  const icon=isl.discovered?isl.icon+' '+isl.name:'✧ 未知岛屿';
+  const description=isl.discovered?isl.desc:'这里藏着一段等待发现的故事……';
+  const arrival=isl.landed?'✦ 已发现 · 已着陆':isl.discovered?'✦ 已发现 · 等待着陆':'○ 等待发现';
+  const art=quest?`<div class="postcard-art ${isl.id} ${isl.postcard?'':'locked'}"><span class="art-symbol">${quest.art}</span><span class="art-stamp">${isl.postcard?'已收藏 · '+quest.cardName:'尚未解锁'}</span></div><small class="reward">${isl.postcard?'✉ 已收藏纪念明信片':isl.landed?'停机后按 Q 接居民委托':'探索岛屿后解锁新故事'}</small>`:'';
+  html+=`<div class="postcard ${isl.discovered?'revealed':''}"><strong>${icon}</strong><p>${description}</p><small>${arrival}</small>${art}</div>`;
+ }
+ $('journalList').innerHTML=html;
+}
 $('startBtn').onclick=()=>{if(!sceneReady)return;state.started=true;showPanel(null);showToast('旅程开始了 ✈','沿着风的方向，去看看海的那一边吧',2800)};
 $('journalBtn').onclick=()=>{journalRender();showPanel('journal')};$('journalClose').onclick=()=>showPanel(null);
 $('helpBtn').onclick=()=>showPanel('help');$('helpClose').onclick=()=>showPanel(null);
@@ -680,7 +789,7 @@ canvas.addEventListener('dblclick',()=>{if(state.mode==='ground')beginTakeoff();
 function active(code){return !!(keys[code]||touchKeys[code])}function boolAny(...codes){return codes.some(active)}
 addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();keys[e.code]=true;if(e.repeat)return;
 if(e.code==='Escape'){if(panelOpen)showPanel(null);else{showPanel('help');journalRender()}return}
-if(e.code==='KeyE')startLanding();if(e.code==='KeyF')beginTakeoff();if(e.code==='KeyC')$('cameraBtn').click();if(e.code==='KeyM')$('mini').classList.toggle('expanded');if(e.code==='KeyH')showPanel('help');if(e.code==='KeyJ')$('journalBtn').click();if(e.code==='KeyP'){state.paused=!state.paused;showToast(state.paused?'已经暂停':'继续飞行',state.paused?'按 P 继续':'风又吹起来啦',1100)}});
+if(e.code==='KeyE')startLanding();if(e.code==='KeyQ')acceptQuest();if(e.code==='KeyF')beginTakeoff();if(e.code==='KeyC')$('cameraBtn').click();if(e.code==='KeyM')$('mini').classList.toggle('expanded');if(e.code==='KeyH')showPanel('help');if(e.code==='KeyJ')$('journalBtn').click();if(e.code==='KeyP'){state.paused=!state.paused;showToast(state.paused?'已经暂停':'继续飞行',state.paused?'按 P 继续':'风又吹起来啦',1100)}});
 addEventListener('keyup',e=>{keys[e.code]=false});addEventListener('blur',()=>{for(const k in keys)keys[k]=false;for(const k in touchKeys)touchKeys[k]=false});
 function nearestRunway(){let best=null,bestdist=1e9;for(const isl of ISLANDS){let d=Math.hypot(state.x-isl.runwayWorld.x,state.z-isl.runwayWorld.z);if(d<bestdist){best=isl;bestdist=d}}return {isl:best,dist:bestdist}}
 const ease=t=>t*t*(3-2*t);const smoothAngle=(a,b,t)=>a+Math.atan2(Math.sin(b-a),Math.cos(b-a))*t;
@@ -689,9 +798,9 @@ const runway=isl.runway,fw=new THREE.Vector3(Math.sin(runway.heading),0,-Math.co
 const target=isl.runwayWorld.clone().addScaledVector(fw,runway.length*.17);target.y=14.85;
 const approach=isl.runwayWorld.clone().addScaledVector(fw,-runway.length*.40);approach.y=24;
 state.mode='landing';state.approach={isl,duration:6.6,t:0,start:new THREE.Vector3(state.x,state.y,state.z),yaw:state.yaw,pitch:state.pitch,first:approach,end:target,fw};showToast(`正在前往${isl.name}跑道`,'自动对准航向 → 放下起落架 → 平稳着陆',3700)}
-function beginTakeoff(){if(state.mode!=='ground')return;const isl=state.ground;const a=isl.runway,fw=new THREE.Vector3(Math.sin(a.heading),0,-Math.cos(a.heading));const start=isl.runwayWorld.clone().addScaledVector(fw,-a.length*.36);start.y=14.85;const end=isl.runwayWorld.clone().addScaledVector(fw,a.length*.7);end.y=32;state.mode='takeoff';state.takeoff={isl,t:0,duration:3.8,start,end,fw};state.x=start.x;state.y=start.y;state.z=start.z;state.speed=12;state.yaw=a.heading;state.pitch=0;showToast('起飞！ ✈','下一站，往天空更远处飞去',2200)}
+function beginTakeoff(){if(state.mode!=='ground')return;const isl=state.ground;const a=isl.runway,fw=new THREE.Vector3(Math.sin(a.heading),0,-Math.cos(a.heading));const start=isl.runwayWorld.clone().addScaledVector(fw,-a.length*.36);start.y=14.85;const end=isl.runwayWorld.clone().addScaledVector(fw,a.length*.7);end.y=32;state.mode='takeoff';state.takeoff={isl,t:0,duration:3.8,start,end,fw};state.x=start.x;state.y=start.y;state.z=start.z;state.speed=12;state.yaw=a.heading;state.pitch=0;refreshQuestUI();showToast('起飞！ ✈','下一站，往天空更远处飞去',2200)}
 function markDiscover(isl){if(isl.discovered)return;isl.discovered=true;saveProgress();$('found').textContent=ISLANDS.filter(x=>x.discovered).length;showToast(`${isl.icon} 发现「${isl.name}」！`,isl.desc,3900);if(ISLANDS.every(x=>x.discovered))setTimeout(()=>showToast('四座岛屿，全部发现！','还有四座小机场，等待你的首次着陆 ✦',4300),4000)}
-function markLanding(isl){if(!isl.landed){isl.landed=true;saveProgress();$('landings').textContent=ISLANDS.filter(x=>x.landed).length;showToast('✧ 首次降落 · '+isl.name,'飞行手帐已收下这枚珍贵的着陆章',3800)}else showToast('平安着陆 · '+isl.name,'按 F 从跑道再次起飞',3300);}
+function markLanding(isl){if(!isl.landed){isl.landed=true;saveProgress();$('landings').textContent=ISLANDS.filter(x=>x.landed).length;showToast('✧ 首次降落 · '+isl.name,'飞行手帐已收下这枚珍贵的着陆章',3800)}else showToast('平安着陆 · '+isl.name,'按 F 再次起飞 · Q 接居民委托',3300);}
 function updatePhysics(dt){if(!state.started||state.paused||panelOpen)return;
 if(state.mode==='flight'){
 const turn=THREE.MathUtils.clamp((boolAny('KeyD','ArrowRight')?1:0)-(boolAny('KeyA','ArrowLeft')?1:0)+gesture.dx,-1,1),pitch=THREE.MathUtils.clamp((boolAny('KeyW','ArrowUp')?1:0)-(boolAny('KeyS','ArrowDown')?1:0)+gesture.dy,-1,1);
@@ -708,9 +817,9 @@ let floor=5.6;for(const isl of ISLANDS){if(Math.hypot(state.x-isl.x,state.z-isl.
 const a=state.approach;a.t=Math.min(1,a.t+dt/a.duration);const t=a.t;
 let pos;if(t<.73){const f=ease(t/.73);pos=new THREE.Vector3().lerpVectors(a.start,a.first,f);pos.y=THREE.MathUtils.lerp(a.start.y,24,ease(t/.73));state.speed=THREE.MathUtils.lerp(34,21,f)}else{const f=ease((t-.73)/.27);pos=new THREE.Vector3().lerpVectors(a.first,a.end,f);state.speed=THREE.MathUtils.lerp(21,0,f)}
 state.x=pos.x;state.y=pos.y;state.z=pos.z;state.yaw=smoothAngle(a.yaw,a.isl.runway.heading,ease(Math.min(1,t*1.9)));state.pitch=THREE.MathUtils.lerp(a.pitch,t<.73?-.1:0,ease(t));state.bank*=Math.exp(-4*dt);
-if(t>=1){state.mode='ground';state.ground=a.isl;state.y=14.85;state.speed=0;state.pitch=0;state.bank=0;markDiscover(a.isl);markLanding(a.isl)}
+if(t>=1){state.mode='ground';state.ground=a.isl;state.y=14.85;state.speed=0;state.pitch=0;state.bank=0;markDiscover(a.isl);markLanding(a.isl);refreshQuestUI()}
 }else if(state.mode==='takeoff'){
-const a=state.takeoff;a.t=Math.min(1,a.t+dt/a.duration);const t=a.t;const pos=new THREE.Vector3().lerpVectors(a.start,a.end,ease(t));pos.y=14.85+Math.pow(Math.max(0,(t-.38)/.62),1.5)*19;state.x=pos.x;state.y=pos.y;state.z=pos.z;state.speed=12+t*27;state.pitch=Math.max(0,(t-.35)*.16);state.bank=0;if(t>=1){state.mode='flight';state.y=33;state.speed=39;state.pitch=.08;state.ground=null}
+const a=state.takeoff;a.t=Math.min(1,a.t+dt/a.duration);const t=a.t;const pos=new THREE.Vector3().lerpVectors(a.start,a.end,ease(t));pos.y=14.85+Math.pow(Math.max(0,(t-.38)/.62),1.5)*19;state.x=pos.x;state.y=pos.y;state.z=pos.z;state.speed=12+t*27;state.pitch=Math.max(0,(t-.35)*.16);state.bank=0;if(t>=1){state.mode='flight';state.y=33;state.speed=39;state.pitch=.08;state.ground=null;refreshQuestUI()}
 }
 for(const isl of ISLANDS){if(Math.hypot(state.x-isl.x,state.z-isl.z)<Math.max(isl.rx,isl.rz)+45&&state.y<130)markDiscover(isl)}
 }
@@ -765,6 +874,14 @@ ctx.strokeStyle='rgba(241,250,236,.24)';ctx.lineWidth=1;for(let j=0;j<18;j++){ct
 const minX=-540,maxX=720,minZ=-600,maxZ=650;const mapPt=(x,z)=>[(x-minX)/(maxX-minX)*w,(z-minZ)/(maxZ-minZ)*h];
 for(const isl of ISLANDS){const [xx,yy]=mapPt(isl.x,isl.z),scale=w/(maxX-minX);ctx.save();ctx.translate(xx,yy);ctx.scale(isl.rx*scale,isl.rz*h/(maxZ-minZ));ctx.beginPath();for(let i=0;i<=33;i++){const a=i/33*Math.PI*2,ra=noiseAngle(a,isl.seed*.14);if(i===0)ctx.moveTo(Math.cos(a)*ra,Math.sin(a)*ra);else ctx.lineTo(Math.cos(a)*ra,Math.sin(a)*ra)}ctx.closePath();ctx.fillStyle=isl.discovered?'#c3c49a':'rgba(228,233,207,.45)';ctx.strokeStyle=isl.discovered?'#718d79':'rgba(225,241,223,.50)';ctx.lineWidth=.035;ctx.fill();ctx.stroke();ctx.restore();
 ctx.textAlign='center';ctx.font='bold 14px sans-serif';ctx.fillStyle=isl.discovered?'#44626a':'rgba(61,95,98,.56)';ctx.fillText(isl.discovered?isl.icon:'?',xx,yy+4);if(isl.discovered){ctx.font='bold 12px Microsoft YaHei, sans-serif';ctx.fillText(isl.name,xx,yy+24)}}
+if(activeQuest){
+ const a=ISLANDS.find(isl=>isl.id===activeQuest),q=QUEST_DEFS[activeQuest],target=questTarget(a);
+ const [gx,gy]=mapPt(target.x,target.z);
+ ctx.save();ctx.strokeStyle='#fff9ce';ctx.fillStyle='#dd9678';ctx.lineWidth=2.5;
+ ctx.beginPath();ctx.arc(gx,gy,7,0,Math.PI*2);ctx.fill();ctx.stroke();
+ ctx.font='bold 15px sans-serif';ctx.textAlign='center';ctx.fillText('✦',gx,gy-11);
+ ctx.restore();
+}
 const [px,py]=mapPt(state.x,state.z);ctx.save();ctx.translate(px,py);ctx.rotate(state.yaw);ctx.fillStyle='#df765c';ctx.strokeStyle='#fff6d9';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(0,-12);ctx.lineTo(7,9);ctx.lineTo(0,5);ctx.lineTo(-7,9);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
 function updateHUD(){ $('speed').textContent=String(Math.round(state.speed));$('alt').textContent=String(Math.max(0,Math.round(state.y)));$('speedFill').style.width=Math.round(state.speed/66*100)+'%';$('altFill').style.width=Math.min(100,state.y/200*100)+'%';const hd=(state.yaw*180/Math.PI+360)%360;const dirs=['N','NE','E','SE','S','SW','W','NW'];$('compassHeading').textContent=dirs[Math.round(hd/45)%8]+' '+Math.round(hd)+'°';}
 // 在入口卡片仍显示时进行首次 WebGL 绘制，确保真正开始飞行时 shader/纹理已上传。
@@ -781,14 +898,14 @@ for(const train of islandTrains){train.t=(train.t+ad*train.speed/train.curve.get
  const t=(train.t-i*.024+1)%1,q=train.curve.getPointAt(t),d=train.curve.getTangentAt(t),car=train.cars[i];car.position.set(q.x,q.y+.02,q.z);car.rotation.y=-Math.atan2(d.x,-d.z);
 }}
 seaMat.uniforms.uTime.value=elapsed;
-updateCamera(Math.min(dt,.05));weather.update(ad,elapsed,state);updateSceneLabels(dt);uiWait+=dt;if(uiWait>.08){updateHUD();drawMap();updateAssistHint();uiWait=0}renderer.render(scene,camera)}
+updateCamera(Math.min(dt,.05));weather.update(ad,elapsed,state);updateSceneLabels(dt);updateQuest(ad,elapsed);uiWait+=dt;if(uiWait>.08){updateHUD();drawMap();updateAssistHint();if(activeQuest)refreshQuestUI();uiWait=0}renderer.render(scene,camera)}
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.35))});
 frame();
 requestAnimationFrame(()=>requestAnimationFrame(()=>{
  sceneReady=true;const b=$('startBtn');b.disabled=false;b.style.opacity='';b.style.cursor='';b.textContent='开启群岛之旅　↗';
 }));
 // 给自动化测试与新岛开发提供可读的地面贴合/绘制批次指标。
-window.__ISLEBOUND_DEBUG={islands:ISLANDS,terrainHeight,renderer,scene,state,weather};
+window.__ISLEBOUND_DEBUG={islands:ISLANDS,terrainHeight,renderer,scene,state,weather,quests:QUEST_DEFS,getActiveQuest:()=>activeQuest,acceptQuest,finishQuest,questTarget,refreshQuestUI};
 </script>
 <script>
 // JS 模块加载或网络失败时给出友好提示，不留下空白屏幕。
