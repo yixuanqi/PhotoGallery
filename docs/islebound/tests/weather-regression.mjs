@@ -22,4 +22,37 @@ assert(html.includes("}else if(state.mode==='landing'){"),'assisted approach ret
 assert(html.includes("}else if(state.mode==='takeoff'){"),'takeoff retained');
 assert(html.includes("const turn=THREE.MathUtils.clamp((boolAny('KeyD','ArrowRight')?1:0)-(boolAny('KeyA','ArrowLeft')?1:0)"),'A/D steer direction retained');
 assert.equal((html.match(/id="weatherBtn"/g)||[]).length,1,'one weather button');
+
+// V2: Skies must be visibly different, not merely color-tinted static clouds.
+for(const token of ['float valueNoise(vec2 p)','float threshold=mix(.81,.25,clamp(uCover,0.,1.))',
+  'sky.material.uniforms.uTime.value=ws.age','cloudBanks=new THREE.InstancedMesh(sphereGeo,bankMat,216)',
+  'cloudBanks.visible=values.cover>.14','sunDisc.material.opacity=Math.max(0,.99-values.cover*1.65',
+  '2026-11-17-weather-v2-visible-clouds']){
+ assert(html.includes(token),'weather V2 missing: '+token);
+}
+function frac(x){return x-Math.floor(x);}
+function mix(a,b,t){return a+(b-a)*t;}
+function smooth(t){return t*t*(3-2*t);}
+function hash(x,y){return frac(Math.sin(x*127.1+y*311.7)*43758.5453);}
+function vnoise(x,y){const i=Math.floor(x),j=Math.floor(y),fx=smooth(frac(x)),fy=smooth(frac(y));return mix(mix(hash(i,j),hash(i+1,j),fx),mix(hash(i,j+1),hash(i+1,j+1),fx),fy);}
+function clamp(x,a=0,b=1){return Math.min(b,Math.max(a,x));}
+function smoothstep(a,b,x){return smooth(clamp((x-a)/(b-a)));}
+function coverage(c){
+ let tot=0,count=0;
+ for(let i=0;i<100;i++)for(let j=0;j<80;j++){
+  const theta=i/100*Math.PI*2,alt=.04+j/80*.83;
+  const dx=Math.cos(theta)*Math.cos(alt),dz=Math.sin(theta)*Math.cos(alt),dy=Math.sin(alt);
+  const x=dx*3+dy*1.6,y=dz*3+dy*.6;
+  const n=vnoise(x*1.45,y*1.45)*.56+vnoise(x*3.4,y*3.4)*.30+vnoise(x*7.1,y*7.1)*.14;
+  const thresh=mix(.81,.25,c);
+  tot+=smoothstep(thresh-.105,thresh+.06,n);count++;
+ }
+ return tot/count;
+}
+const sunny=coverage(.05),overcast=coverage(.77),rainy=coverage(.91),stormy=coverage(.99);
+assert(sunny<.1 && overcast>.7 && rainy>.85 && stormy>.9,
+ 'insufficient sky-coverage contrast: '+JSON.stringify({sunny,overcast,rainy,stormy}));
+assert(overcast>sunny+.6 && stormy>overcast+.12,'weather conditions insufficiently distinct');
+console.log('Cloud cover regression passed:', {sunny,overcast,rainy,stormy});
+
 console.log('Islebound weather regression passed: 5 presets, module parse, weather visuals, flight and landing hooks.');

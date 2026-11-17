@@ -26,7 +26,7 @@
 页面 `<head>` 包含 `<meta name="islebound-build" content="2026-11-17-github-pages-01">`。后续改版请更新该标记；开发者工具执行 `document.querySelector('meta[name="islebound-build"]')?.content` 可检查网页加载的是哪一版。
 
 
-## 动态天气 V1
+## 动态天气 V2（加强云层表现）
 
 天气为游戏内**程序化模拟**，不依赖现实天气 API，五种预设分别为：
 
