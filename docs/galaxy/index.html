@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f2ead8">
+<meta name="description" content="一座可以漫游的个人作品银河：手绘天体、桌面小玩具、音频实验与持续学习。每颗恒星，都收藏一段创造的旅程。">
+<title>星河手帐 · Yixuanqi 的创作宇宙</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" defer></script>
+<style>
+:root{--paper:#f2ead8;--paper2:#e7d8bb;--white:#fbf8ee;--ink:#32281f;--sub:#76634f;--line:#7f6548;--accent:#b95b37;--gold:#b08342;--blue:#416f83;--green:#688874;--panel:rgba(250,245,231,.94);--shadow:rgba(46,32,16,.16);--outline:rgba(69,51,35,.26);}
+:root[data-theme="night"]{--paper:#112333;--paper2:#172a3c;--white:#24384a;--ink:#f1e4c8;--sub:#b5b9b3;--line:#b0a88b;--accent:#f2ac6c;--gold:#e2c582;--blue:#9ccee1;--green:#add8bd;--panel:rgba(25,44,61,.94);--shadow:rgba(0,0,0,.25);--outline:rgba(222,207,178,.29);}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:'Noto Serif SC',Georgia,serif;background:var(--paper);color:var(--ink)}button,input{font:inherit}button{cursor:pointer}a{color:inherit}body{overflow:hidden;transition:background .45s,color .45s}::selection{background:rgba(185,91,55,.28)}
+#space{position:fixed;inset:0;z-index:0;touch-action:none}
+.paper-noise,.paper-vignette,.frame,.chart-lines{position:fixed;inset:0;pointer-events:none}
+.paper-noise{z-index:2;opacity:.23;background-image:repeating-linear-gradient(91deg,transparent 0,transparent 3px,rgba(63,45,29,.045) 4px),repeating-linear-gradient(0deg,transparent 0,transparent 7px,rgba(63,45,29,.025) 8px)}
+.paper-vignette{z-index:1;background:radial-gradient(ellipse at 51% 52%,transparent 16%,rgba(102,66,33,.10) 75%,rgba(68,38,13,.23) 100%)}
+:root[data-theme="night"] .paper-vignette{background:radial-gradient(ellipse at 50% 50%,transparent 25%,rgba(0,0,0,.28) 100%)}
+.frame{z-index:8;inset:13px;border:1.5px solid var(--outline);border-radius:17px 99px 17px 99px/99px 18px 99px 18px}
+.frame:after{content:"";position:absolute;inset:5px;border:1px dashed var(--outline);border-radius:90px 17px 90px 17px/17px 90px 17px 90px}
+.chart-lines{z-index:1;opacity:.26;background:linear-gradient(90deg,transparent 49.92%,var(--outline) 50%,transparent 50.08%),linear-gradient(0deg,transparent 49.92%,var(--outline) 50%,transparent 50.08%);mask-image:radial-gradient(ellipse at center,#000 0%,transparent 56%)}
+.corner{position:fixed;z-index:9;pointer-events:none;color:var(--line);font-family:'Caveat',cursive;font-size:26px;opacity:.65}.corner.nw{top:20px;left:25px}.corner.ne{top:20px;right:25px}.corner.sw{bottom:21px;left:25px}.corner.se{bottom:21px;right:25px}
+.hand{font-family:'Ma Shan Zheng','Caveat',cursive;font-weight:400}.en{font-family:'Caveat',cursive;letter-spacing:.03em}
+.topbar{position:fixed;z-index:35;left:42px;right:43px;top:30px;display:flex;align-items:start;justify-content:space-between;gap:16px;pointer-events:none}
+.logo-card,.top-actions>*{pointer-events:auto}.logo-card{display:flex;align-items:center;gap:13px;background:var(--panel);padding:11px 17px;border:1.5px solid var(--ink);border-radius:43% 8px 29px 10px/10px 35px 8px 32px;box-shadow:3px 4px 0 var(--outline),0 10px 35px var(--shadow);max-width:480px}
+.logo-mark{flex:none;width:48px;height:48px;border:1.5px solid var(--ink);border-radius:50%;background:var(--paper2);display:grid;place-items:center;color:var(--accent);font-size:32px}
+.logo-title{margin:0;font-size:25px;line-height:1.08;letter-spacing:.06em}.logo-sub{font-size:12px;color:var(--sub);margin:4px 0 0}
+.top-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:end}
+.ink-button{background:var(--panel);border:1.5px solid var(--ink);border-radius:22px 5px 19px 6px/5px 23px 5px 22px;box-shadow:2px 3px 0 var(--outline);color:var(--ink);padding:10px 15px;line-height:1.15;transition:transform .18s,background .18s,box-shadow .18s;white-space:nowrap;font-size:12px;font-weight:700}
+.ink-button:hover,.ink-button:focus-visible{transform:translate(-2px,-2px);box-shadow:4px 5px 0 var(--outline);outline:none}.ink-button.active{background:var(--accent);color:var(--white)}
+.tiny-cap{font-family:'Caveat',cursive;font-size:17px;letter-spacing:.03em}
+.intro{position:fixed;z-index:15;left:65px;top:180px;max-width:265px;pointer-events:none}
+.kicker{font-family:'Caveat',cursive;color:var(--accent);font-size:22px;letter-spacing:.07em}
+.intro h2{font-size:37px;line-height:1.45;letter-spacing:.08em;margin:4px 0 10px;font-weight:400}
+.intro p{font-size:12px;line-height:2.05;color:var(--sub);margin:0}
+.intro .divider-doodle{display:flex;align-items:center;gap:11px;color:var(--gold);margin:15px 0}.intro .divider-doodle:before,.intro .divider-doodle:after{content:"";height:1px;background:var(--outline);width:50px}
+#pins{position:fixed;z-index:19;inset:0;pointer-events:none}
+.star-pin{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;border:0;background:transparent;color:var(--ink);padding:0;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:112px;transition:opacity .2s,filter .2s;filter:drop-shadow(1px 2px 0 var(--shadow))}
+.star-pin.is-hidden{opacity:0;pointer-events:none}.star-pin .glyph{position:relative;width:60px;height:60px;display:grid;place-items:center;font-size:43px;color:var(--gold);text-shadow:0 0 15px rgba(176,131,66,.22);transition:transform .2s,color .2s}
+.star-pin .glyph:before{content:"";position:absolute;width:38px;height:38px;border:1px dashed currentColor;border-radius:50%;opacity:.45;transform:rotate(18deg)}
+.star-pin .label{max-width:160px;text-align:center;white-space:nowrap;padding:5px 9px 6px;border:1px solid var(--outline);border-radius:12px 3px 10px 3px;background:var(--panel);font-size:11px;font-weight:700;box-shadow:1px 2px 0 var(--outline)}
+.star-pin .hint{font-family:'Caveat',cursive;color:var(--sub);font-size:13px}
+.star-pin:hover .glyph,.star-pin:focus-visible .glyph,.star-pin.selected .glyph{transform:scale(1.18) rotate(14deg);color:var(--accent)}
+.star-pin.selected .label{border-color:var(--accent);color:var(--accent)}
+.star-pin:focus-visible{outline:2px dashed var(--accent);outline-offset:8px}
+.project-rail{position:fixed;z-index:31;left:40px;bottom:111px;width:242px;padding:15px;background:var(--panel);border:1.5px solid var(--ink);border-radius:10px 45px 12px 48px/40px 9px 48px 12px;box-shadow:3px 4px 0 var(--outline),0 14px 35px var(--shadow)}
+.rail-caption{display:flex;align-items:center;justify-content:space-between;border-bottom:1px dashed var(--outline);padding-bottom:9px;margin-bottom:10px;gap:10px;font-size:12px;font-weight:700}
+.rail-caption small{font-size:11px;color:var(--sub);font-weight:400}
+.rail-items{display:grid;gap:2px;max-height:200px;overflow-y:auto;scrollbar-color:var(--outline) transparent}
+.rail-item{border:0;background:transparent;border-radius:7px;width:100%;display:flex;align-items:center;gap:8px;padding:8px;text-align:left;color:var(--ink);font-size:11px}
+.rail-item:hover,.rail-item.active{background:rgba(180,136,73,.15)}
+.rail-dot{font-size:17px;color:var(--gold);width:20px}.rail-item span:last-child{flex:1}.rail-item small{color:var(--sub)}
+.rail-note{font-size:10px;line-height:1.8;color:var(--sub);border-top:1px dashed var(--outline);margin-top:9px;padding-top:8px}
+.detail{position:fixed;z-index:36;top:119px;right:43px;width:min(355px,calc(100vw - 64px));max-height:calc(100dvh - 226px);overflow:auto;padding:18px;background:var(--panel);border:2px solid var(--ink);border-radius:45px 9px 34px 11px/9px 42px 10px 41px;box-shadow:5px 7px 0 var(--outline),0 12px 38px var(--shadow);transform:translateX(calc(100% + 80px));opacity:0;pointer-events:none;transition:transform .35s,opacity .35s}
+.detail.show{transform:translateX(0);opacity:1;pointer-events:auto}
+.detail .tape{width:75px;height:17px;background:rgba(195,150,86,.42);position:absolute;top:1px;left:calc(50% - 38px);transform:rotate(-4deg)}
+.detail-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;border-bottom:1px dashed var(--outline);padding-bottom:9px}.detail-head span{font-size:12px;color:var(--accent);font-weight:700}.close{border:1px solid var(--outline);background:transparent;color:var(--ink);width:29px;height:29px;border-radius:50%;font-size:19px;line-height:1}
+.detail-illustration{height:155px;border:1px solid var(--ink);border-radius:10px;background:radial-gradient(ellipse at center,rgba(184,142,82,.15),transparent 70%);display:grid;place-items:center;position:relative;overflow:hidden}
+.detail-illustration:before{content:"";width:134px;height:134px;border:1px dashed var(--outline);border-radius:50%;position:absolute}
+.detail-illustration:after{content:"✦  •  ✧  •  ✦";font-family:'Caveat';font-size:21px;letter-spacing:.3em;color:var(--sub);position:absolute;bottom:8px}
+.detail-icon{font-size:75px;line-height:1;color:var(--gold);transform:rotate(-9deg);filter:drop-shadow(3px 4px 1px var(--shadow))}
+.detail h3{font-size:25px;font-weight:400;margin:13px 0 4px;line-height:1.4}.detail .english{font-family:'Caveat',cursive;font-size:18px;color:var(--sub)}
+.tag-row{display:flex;gap:5px;flex-wrap:wrap;margin:11px 0 12px}.tag{padding:5px 8px;border:1px solid var(--outline);border-radius:4px;font-size:10px;color:var(--sub)}
+.detail p{font-size:12px;line-height:1.95;margin:10px 0 15px}
+.actions{display:flex;flex-wrap:wrap;gap:8px}.actions a{flex:1;text-align:center;text-decoration:none;font-size:11px;padding:11px 9px;border:1.5px solid var(--ink);background:var(--paper2);border-radius:19px 4px 18px 5px;box-shadow:2px 3px 0 var(--outline);font-weight:700;white-space:nowrap}
+.actions a.secondary{background:transparent}
+.footnote{margin-top:15px;font-size:10px;color:var(--sub);border-top:1px dashed var(--outline);padding-top:10px;line-height:1.8}
+.bottom-bar{position:fixed;bottom:39px;left:50%;z-index:32;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:7px;background:var(--panel);border:1.5px solid var(--ink);border-radius:18px 55px 17px 55px/54px 16px 50px 17px;padding:9px 11px;box-shadow:3px 4px 0 var(--outline);max-width:calc(100vw - 88px)}
+.bottom-bar button{background:transparent;border:1px solid transparent;color:var(--ink);border-radius:8px;padding:8px 10px;font-size:11px;white-space:nowrap}
+.bottom-bar button:hover,.bottom-bar button.active{border-color:var(--outline);background:rgba(180,136,73,.16)}
+.bottom-divider{height:22px;width:1px;background:var(--outline);flex:none}
+.coordinates{position:fixed;bottom:34px;right:47px;z-index:17;text-align:right;color:var(--sub);font-size:10px;line-height:2;pointer-events:none}
+.scroll-tip{position:fixed;left:calc(50% - 78px);bottom:105px;width:156px;text-align:center;z-index:11;pointer-events:none;color:var(--sub);font-size:11px;opacity:.9}
+.journal{position:fixed;z-index:40;top:102px;bottom:102px;left:50%;transform:translate(-50%,25px);width:min(800px,calc(100vw - 70px));border:2px solid var(--ink);border-radius:15px 70px 20px 70px/60px 20px 60px 20px;padding:24px 29px;overflow:auto;background:var(--panel);box-shadow:7px 9px 0 var(--outline),0 24px 70px var(--shadow);opacity:0;pointer-events:none;transition:opacity .25s,transform .3s}
+.journal.show{transform:translate(-50%,0);opacity:1;pointer-events:auto}
+.journal-head{display:flex;gap:14px;align-items:start;justify-content:space-between;padding-bottom:12px;border-bottom:1px dashed var(--outline);margin-bottom:18px}
+.journal-head h2{font-weight:400;font-size:31px;margin:0}.journal-head p{font-size:11px;color:var(--sub);margin:5px 0}
+.paper-posts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.post{padding:18px;background:rgba(177,139,88,.09);border:1px solid var(--outline);border-radius:9px 28px 8px 25px;text-align:left;color:var(--ink)}
+.post:hover{background:rgba(177,139,88,.18)}.post small{font-size:10px;color:var(--accent)}.post h3{margin:8px 0 10px;font-size:17px;font-weight:600;line-height:1.5}.post p{font-size:11px;color:var(--sub);line-height:1.9;margin:0}
+.article{max-width:660px;margin:0 auto}.article h3{font-size:25px;font-weight:400;margin:6px 0 10px}.article .article-meta{font-size:11px;color:var(--accent);margin:0 0 18px}
+.article p{line-height:2.25;font-size:13px;margin:0 0 15px}.article-back{border:1px solid var(--outline);background:transparent;color:var(--ink);padding:6px 10px;border-radius:8px;margin-bottom:14px;font-size:11px}
+.about-copy{font-size:13px;line-height:2.3;max-width:650px}.about-copy h3{font-weight:400;font-size:23px}.about-copy a{text-decoration:underline;text-underline-offset:4px;color:var(--accent)}
+#fallback{position:fixed;z-index:26;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--panel);border:1px solid var(--outline);padding:14px 18px;display:none;text-align:center;max-width:300px;font-size:12px;line-height:1.9}
+body.no-webgl #fallback{display:block}
+@media(max-width:1120px){.intro{left:45px;top:160px;max-width:205px}.intro h2{font-size:28px}.project-rail{width:205px;left:35px}.coordinates{display:none}.scroll-tip{display:none}}
+@media(max-width:780px){.topbar{left:26px;right:25px;top:26px}.logo-card{padding:8px 10px;gap:8px}.logo-mark{width:36px;height:36px;font-size:24px}.logo-title{font-size:19px}.logo-sub{display:none}.top-actions{gap:5px}.top-actions .ink-button{padding:8px 9px;font-size:10px}.top-actions .desktop-only{display:none}.intro{top:110px;left:33px;max-width:190px}.intro h2{font-size:24px;margin-bottom:5px}.intro p{font-size:10px;line-height:1.8}.intro .kicker{font-size:17px}.project-rail{left:30px;bottom:104px;max-height:205px;width:172px;padding:9px}.rail-note{display:none}.rail-caption{font-size:10px}.rail-item{font-size:10px;padding:5px}.rail-items{max-height:126px}.bottom-bar{bottom:30px;padding:5px;gap:1px;max-width:calc(100vw - 50px)}.bottom-bar button{font-size:10px;padding:8px}.detail{right:28px;top:100px;max-height:calc(100dvh - 195px)}.journal{top:99px;bottom:92px;width:calc(100vw - 52px);padding:16px}.journal-head h2{font-size:25px}.star-pin .glyph{font-size:34px;width:43px;height:43px}.star-pin .glyph:before{width:29px;height:29px}.star-pin .label{font-size:10px;padding:4px 6px}.star-pin .hint{font-size:11px}.star-pin{min-width:88px}}
+@media(max-width:520px){.topbar{top:25px;left:25px;right:24px}.logo-title{font-size:17px}.logo-card{max-width:200px}.top-actions .ink-button{font-size:10px}.intro{top:111px;left:30px;max-width:172px}.intro h2{font-size:22px}.project-rail{left:27px;bottom:92px;width:158px}.rail-caption small{display:none}.bottom-bar button{padding:7px;font-size:10px}.bottom-bar .bottom-divider{display:none}.paper-posts{grid-template-columns:1fr}.detail{left:27px;right:27px;top:auto;bottom:95px;width:auto;max-height:55dvh}.detail-illustration{height:90px}.detail-icon{font-size:52px}.detail h3{font-size:21px}.star-pin .hint{display:none}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div id="space" aria-label="可交互的3D银河星图"></div>
+<div class="paper-noise"></div><div class="paper-vignette"></div><div class="chart-lines"></div><div class="frame"></div>
+<span class="corner nw">✧</span><span class="corner ne">✧</span><span class="corner sw">✧</span><span class="corner se">✧</span>
+<div id="pins" aria-label="项目星星"></div>
+<header class="topbar">
+  <div class="logo-card"><div class="logo-mark" aria-hidden="true">☾</div><div><h1 class="logo-title hand">星河手帐</h1><p class="logo-sub en">An Atlas of Little Creations · Yixuanqi</p></div></div>
+  <nav class="top-actions" aria-label="网站导航">
+    <button class="ink-button desktop-only" id="nav-home">✦ 银河全景</button>
+    <button class="ink-button" id="nav-journal">✎ 航行日志</button>
+    <button class="ink-button desktop-only" id="nav-about">☽ 关于</button>
+    <button class="ink-button" id="theme-toggle" aria-label="切换日夜画风">☀︎ 日夜</button>
+  </nav>
+</header>
+<section class="intro">
+  <div class="kicker">The little universe / No. 001</div>
+  <h2 class="hand">把每个作品，<br>都藏进一颗星。</h2>
+  <div class="divider-doodle">✦</div>
+  <p>这是一本可以漫游的创作手帐。<br>有些星星能直接进入体验，<br>有些藏着代码、实验和未完的故事。</p>
+</section>
+<nav class="project-rail" aria-label="作品目录">
+  <div class="rail-caption"><span>☷ 星体索引</span><small id="rail-counter">05 颗作品星</small></div>
+  <div id="rail-items" class="rail-items"></div>
+  <div class="rail-note">✧ 轻点星星查看作品 · 拖拽旋转银河<br>✧ 滚轮 / 双指缩放 · 从日志继续航行</div>
+</nav>
+<aside class="detail" id="detail" aria-live="polite" aria-label="作品信息">
+  <div class="tape"></div>
+  <div class="detail-head"><span id="detail-index">CHAPTER 01 · WEB</span><button class="close" id="detail-close" aria-label="关闭作品信息">×</button></div>
+  <div class="detail-illustration"><span class="detail-icon" id="detail-icon">✦</span></div>
+  <h3 class="hand" id="detail-title"></h3><span class="english" id="detail-en"></span>
+  <div class="tag-row" id="detail-tags"></div><p id="detail-description"></p>
+  <div class="actions" id="detail-actions"></div>
+  <div class="footnote" id="detail-foot"></div>
+</aside>
+<div class="scroll-tip">↔ 拖动银河，让星星缓缓转动</div>
+<div class="coordinates en">CELESTIAL ATLAS · VOL. I<br>52° N / A COLLECTION IN PROGRESS</div>
+<div id="fallback">星图需要 WebGL 与 Three.js 支持。<br>可以通过左侧的「星体索引」直接访问每个项目。</div>
+<footer class="bottom-bar" aria-label="项目类型筛选">
+  <button data-filter="all" class="active">✦ 全部星体</button><button data-filter="online">◉ 在线体验</button><button data-filter="download">⇩ 可下载</button><button data-filter="lab">✎ 实验与代码</button><span class="bottom-divider"></span><button id="reset-camera" title="重置视角">⟲ 归位</button>
+</footer>
+<section class="journal" id="journal" aria-label="航行日志" role="dialog" aria-modal="false" aria-hidden="true">
+  <div class="journal-head"><div><div class="kicker">From the logbook</div><h2 class="hand" id="journal-title">航行日志</h2><p id="journal-subtitle">不按时间排序的宇宙碎片 · 关于创造、技术与好奇心</p></div><button class="close" id="journal-close" aria-label="关闭日志">×</button></div>
+  <div id="journal-body"></div>
+</section>
+<script>
+(function(){
+'use strict';
+var PROJECTS=[
+  {id:'astra',index:'01',name:'手绘天体运行志',en:'Astra · Celestial Sketchbook',icon:'✺',category:'online',tags:['Three.js','3D 交互','浏览器体验'],desc:'一册可以转动的太阳系博物手帐。拖拽观测天体，切换水彩、蓝晒与手稿画风，探索星球和地球奇观。',note:'这是目前可以直接在网页里完整体验的一颗星。',x:10,z:2,y:.3,link:'../astra/',linkText:'↗ 立即进入体验',source:'https://github.com/yixuanqi/PhotoGallery/blob/main/docs/astra/index.html'},
+  {id:'cannon',index:'02',name:'桌面小炮',en:'Desktop Cannon · Tiny Desk Game',icon:'✹',category:'download',tags:['Windows','Tauri 2','桌面小玩具'],desc:'一门住在 Windows 桌面上的可爱小炮，面向轻松、有趣的桌面交互。最新公开 Release 提供安装包和免安装版。',note:'这是一款 Windows 程序，不能直接在网页里运行。',x:-8,z:10,y:.7,link:'https://github.com/yixuanqi/desktop_cannon_v01_app/releases/tag/v0.7.0',linkText:'⇩ 下载 Windows 版',source:'https://github.com/yixuanqi/desktop_cannon_v01_app'},
+  {id:'audioalgo',index:'03',name:'AudioAlgo Lab',en:'Audio Algorithm Laboratory',icon:'✧',category:'download',tags:['JUCE','音频算法','Windows'],desc:'一个用于音频算法可视化与实验的桌面平台，围绕算法处理链、听感验证与快速实验展开。公开版本提供 Windows 安装包。',note:'这是桌面音频工具，点击可前往公开版本下载页。',x:-14,z:-7,y:.6,link:'https://github.com/yixuanqi/audioalgo/releases/tag/v0.1.0',linkText:'⇩ 下载实验平台',source:'https://github.com/yixuanqi/audioalgo'},
+  {id:'learning',index:'04',name:'终身学习实验室',en:'Lifelong Learning Lab',icon:'✳',category:'lab',tags:['AI 研究','实验记录','GitHub'],desc:'将持续学习、遗忘、记忆与实验方法整理成可复现的工程研究。这里收藏的不只是结果，还有探索过程。',note:'实验室仓库可公开查看；研究仍在持续，页面不宣称已发表论文。',x:14,z:13,y:.7,link:'https://github.com/yixuanqi/lifelong-learning-lab',linkText:'↗ 查看研究仓库',source:null},
+  {id:'gallery',index:'05',name:'小笨相册',en:'PhotoGallery · Little Photo Companion',icon:'✴',category:'lab',tags:['Android','应用开发','开源代码'],desc:'相册应用的开发项目，也为这座银河和 Astra 网页提供了目前的 GitHub Pages 发布空间。',note:'目前提供源代码链接，不是网页在线体验版。',x:0,z:-18,y:.4,link:'https://github.com/yixuanqi/PhotoGallery',linkText:'↗ 查看项目代码',source:null}
+];
+var POSTS=[
+ {id:'welcome',no:'01 · 星河缘起',title:'为什么把个人主页画成一片银河？',summary:'一个项目一颗星。让作品不再只是简历上的一行文字。',paragraphs:['普通的作品集像一张排列整齐的清单。但我更喜欢手帐：它有空白、有涂改、有相互连接的线索，也允许故事继续生长。','所以这片银河并不追求天文学的严格比例。中心是好奇心，星星是一次次动手做出来的东西。能在浏览器运行的，点开就玩；需要安装的软件，找到它的下载页；尚在研究的项目，打开实验记录。','以后每做完一个项目，就点亮一颗新的星。文章也会从星际间慢慢长出来。']},
+ {id:'astra-note',no:'02 · 作品手记',title:'从一颗手绘星球到一整册天体运行志',summary:'Astra 的有趣之处，不止在 3D，还在“像一本旧书”。',paragraphs:['Astra 是一页可以旋转、缩放和点击的天体手帐。它用 Three.js 承载 3D 交互，再把水彩、钢笔排线和旧纸张的视觉语言铺在星球周围。','对我来说，最有意思的并不是把一颗球渲染得多逼真，而是让界面本身像一件手工制作的小作品。它不一定高效，却让探索的过程有了一点趣味。','这也是银河主页延续这套视觉语言的原因：星系像地图，项目像被收藏在地图上的小标本。']},
+ {id:'open-door',no:'03 · 制作原则',title:'点亮一颗星，应该能去到哪里？',summary:'区分在线体验、下载安装和实验代码，让入口说人话。',paragraphs:['如果一个页面可以直接在浏览器运行，就应该尽量提供“一键进入体验”的入口。Astra 就属于这一类。','有些作品天然是桌面应用，例如 Desktop Cannon 和 AudioAlgo。银河会清楚写明平台与安装方式，而不是让人以为点击后就能在网页上运行。','还有些项目更适合展示研究过程或源码。它们不需要硬做成游戏，仍然可以拥有自己的星位。']},
+];
+var root=document.documentElement;
+var theme=localStorage.getItem('galaxy-theme')==='night'?'night':'paper';root.dataset.theme=theme;
+var reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var selected=null,filter='all',scene,camera,renderer,controls,stars=[],pinMap={},galaxyParts=[],rings=[],sceneReady=false,raf=null;
+var colorSets={paper:{bg:0xf2ead8,speck:0x947b60,speck2:0xc4a676,orbit:0x866b50,star:0xb8873f,center:0xc8a06b},night:{bg:0x112333,speck:0xb9b3a0,speck2:0xa6c9d9,orbit:0x899caf,star:0xffce87,center:0xe2b979}};
+function byId(id){return document.getElementById(id)}
+function safeText(id,value){byId(id).textContent=value}
+function external(href){return !href.startsWith('../')&&!href.startsWith('#')}
+function addLink(parent,text,href,secondary){var a=document.createElement('a');a.textContent=text;a.href=href;if(external(href)){a.target='_blank';a.rel='noopener noreferrer'}if(secondary)a.className='secondary';parent.appendChild(a)}
+function buildIndex(){
+ var list=byId('rail-items');list.textContent='';
+ PROJECTS.forEach(function(p){
+   var btn=document.createElement('button');btn.type='button';btn.className='rail-item';btn.dataset.project=p.id;
+   var dot=document.createElement('span');dot.className='rail-dot';dot.textContent=p.icon;
+   var name=document.createElement('span');name.textContent=p.name;
+   var number=document.createElement('small');number.textContent=p.index;
+   btn.append(dot,name,number);btn.addEventListener('click',function(){openProject(p.id)});list.appendChild(btn);
+ });
+}
+function makePins(){
+ var layer=byId('pins');PROJECTS.forEach(function(p){
+   var btn=document.createElement('button');btn.type='button';btn.className='star-pin';btn.dataset.project=p.id;btn.title='探索 '+p.name;
+   var glyph=document.createElement('span');glyph.className='glyph';glyph.textContent=p.icon;
+   var label=document.createElement('span');label.className='label';label.textContent=p.name;
+   var hint=document.createElement('span');hint.className='hint';hint.textContent=p.category==='online'?'ENTER THE WORLD':p.category==='download'?'DESKTOP OBJECT':'RESEARCH & CODE';
+   btn.append(glyph,label,hint);
+   btn.addEventListener('click',function(e){e.stopPropagation();openProject(p.id)});
+   layer.appendChild(btn);pinMap[p.id]=btn;
+ });
+}
+function openProject(id){
+ var p=PROJECTS.find(function(v){return v.id===id});if(!p)return;
+ selected=id;closeJournal();byId('detail').classList.add('show');
+ safeText('detail-index','FIELD NOTE · '+p.index+' / '+p.category.toUpperCase());
+ safeText('detail-icon',p.icon);safeText('detail-title',p.name);safeText('detail-en',p.en);
+ safeText('detail-description',p.desc);safeText('detail-foot','✎ 星图记录：'+p.note);
+ var tags=byId('detail-tags');tags.textContent='';p.tags.forEach(function(t){var s=document.createElement('span');s.className='tag';s.textContent=t;tags.appendChild(s)});
+ var actions=byId('detail-actions');actions.textContent='';addLink(actions,p.linkText,p.link,false);
+ if(p.source)addLink(actions,'{ } 查看源代码',p.source,true);
+ document.querySelectorAll('[data-project]').forEach(function(el){el.classList.toggle('selected',el.dataset.project===id);el.classList.toggle('active',el.classList.contains('rail-item')&&el.dataset.project===id)});
+ if(controls){controls.autoRotate=false}
+ if(window.innerWidth<=520){byId('detail').scrollTop=0}
+}
+function closeDetail(){selected=null;byId('detail').classList.remove('show');document.querySelectorAll('[data-project]').forEach(function(el){el.classList.remove('selected','active')});if(controls&&!reduced)controls.autoRotate=true}
+function closeJournal(){byId('journal').classList.remove('show');byId('journal').setAttribute('aria-hidden','true')}
+function openJournal(mode){
+ closeDetail();var modal=byId('journal');modal.classList.add('show');modal.setAttribute('aria-hidden','false');
+ var body=byId('journal-body');body.textContent='';
+ safeText('journal-title',mode==='about'?'关于这座小宇宙':'航行日志');
+ safeText('journal-subtitle',mode==='about'?'个人作品 · 研究实验 · 一些慢慢生长的小想法':'不按时间排序的宇宙碎片 · 关于创造、技术与好奇心');
+ if(mode==='about'){
+  var d=document.createElement('div');d.className='about-copy';
+  var h=document.createElement('h3');h.className='hand';h.textContent='你好，这里是 Yixuanqi 的星图。';
+  var p1=document.createElement('p');p1.textContent='我喜欢把想法做成可以运行的小东西：有桌面工具、有互动网页，也有暂时还没有答案的实验。与其在主页上放一长串技能标签，我更希望每个项目都有自己的入口。';
+  var p2=document.createElement('p');p2.textContent='银河还会继续生长。你可以从左下角的星体索引找到所有作品，也可以拖动画面，自由点开任何一颗星。';
+  var p3=document.createElement('p');p3.textContent='更多公开项目可见：';var a=document.createElement('a');a.href='https://github.com/yixuanqi';a.target='_blank';a.rel='noopener noreferrer';a.textContent='github.com/yixuanqi';p3.appendChild(a);d.append(h,p1,p2,p3);body.appendChild(d);
+ }else{renderPosts()}
+}
+function renderPosts(){
+ var body=byId('journal-body');body.textContent='';var grid=document.createElement('div');grid.className='paper-posts';
+ POSTS.forEach(function(p){
+  var b=document.createElement('button');b.type='button';b.className='post';var meta=document.createElement('small');meta.textContent=p.no;
+  var title=document.createElement('h3');title.textContent=p.title;var intro=document.createElement('p');intro.textContent=p.summary;b.append(meta,title,intro);
+  b.addEventListener('click',function(){renderArticle(p.id)});grid.appendChild(b)
+ });body.appendChild(grid)
+}
+function renderArticle(id){
+ var post=POSTS.find(function(p){return p.id===id});if(!post)return;
+ var body=byId('journal-body');body.textContent='';var article=document.createElement('div');article.className='article';
+ var back=document.createElement('button');back.className='article-back';back.textContent='← 返回日志目录';back.addEventListener('click',renderPosts);
+ var h=document.createElement('h3');h.className='hand';h.textContent=post.title;var m=document.createElement('div');m.className='article-meta';m.textContent=post.no+' · 星河手帐 / 策展札记';
+ article.append(back,h,m);
+ post.paragraphs.forEach(function(para){var p=document.createElement('p');p.textContent=para;article.appendChild(p)});
+ body.appendChild(article);byId('journal').scrollTop=0;
+}
+function setFilter(v){
+ filter=v;document.querySelectorAll('[data-filter]').forEach(function(btn){btn.classList.toggle('active',btn.dataset.filter===filter)});
+ var shown=PROJECTS.filter(function(p){return filter==='all'||p.category===filter});
+ safeText('rail-counter',String(shown.length).padStart(2,'0')+' 颗作品星');
+ document.querySelectorAll('[data-project]').forEach(function(el){var p=PROJECTS.find(function(x){return x.id===el.dataset.project});el.style.display=(filter==='all'||p.category===filter)?'':'none'});
+ if(selected&&!shown.some(function(p){return p.id===selected}))closeDetail()
+}
+function makeGalaxy(){
+ var wrap=byId('space');
+ if(typeof THREE==='undefined'||!THREE.OrbitControls){document.body.classList.add('no-webgl');return}
+ try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'default'});renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.6));renderer.setSize(window.innerWidth,window.innerHeight);renderer.setClearAlpha(0);wrap.appendChild(renderer.domElement)}
+ catch(e){document.body.classList.add('no-webgl');return}
+ scene=new THREE.Scene();
+ camera=new THREE.PerspectiveCamera(42,window.innerWidth/window.innerHeight,.1,240);camera.position.set(4,37,45);camera.lookAt(0,0,0);
+ controls=new THREE.OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.055;controls.enablePan=false;controls.minDistance=24;controls.maxDistance=95;controls.minPolarAngle=.30;controls.maxPolarAngle=1.55;controls.autoRotate=!reduced;controls.autoRotateSpeed=.16;
+ var count=window.innerWidth<650?1600:3500;var positions=[],sizes=[],dust=[];
+ // Four loose hand-inked spiral arms. The galaxy is illustrative, not a scientific scale model.
+ for(var i=0;i<count;i++){
+  var arm=i%4,r=2.5+Math.pow(Math.random(),.68)*31;
+  var a=arm*Math.PI/2+r*.22+(Math.random()-.5)*(.32+r*.012);
+  var x=r*Math.cos(a),z=r*Math.sin(a),y=(Math.random()-.5)*(.3+r*.022);
+  positions.push(x,y,z);sizes.push(Math.random());
+ }
+ var geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+ var cloud=new THREE.Points(geo,new THREE.PointsMaterial({color:colorSets[theme].speck,size:.13,sizeAttenuation:true,transparent:true,opacity:.64,depthWrite:false}));scene.add(cloud);galaxyParts.push(cloud);
+ // Bright flecks cluster toward the core, like uneven ink granulation.
+ var flecks=[];for(var j=0;j<850;j++){var r2=Math.pow(Math.random(),1.4)*16,a2=Math.random()*Math.PI*2;flecks.push(Math.cos(a2)*r2,(Math.random()-.5)*.65,Math.sin(a2)*r2)}
+ var coreG=new THREE.BufferGeometry();coreG.setAttribute('position',new THREE.Float32BufferAttribute(flecks,3));
+ var core=new THREE.Points(coreG,new THREE.PointsMaterial({color:colorSets[theme].speck2,size:.12,transparent:true,opacity:.61,depthWrite:false}));scene.add(core);galaxyParts.push(core);
+ // Dashed pencil circles suggest an old astronomy notebook.
+ [8,17,25,34].forEach(function(radius){
+  var pts=[];for(var k=0;k<240;k++){var a=k/239*Math.PI*2;pts.push(new THREE.Vector3(Math.cos(a)*radius,-.15,Math.sin(a)*radius))}
+  var g=new THREE.BufferGeometry().setFromPoints(pts);
+  var line=new THREE.LineLoop(g,new THREE.LineDashedMaterial({color:colorSets[theme].orbit,dashSize:.24,gapSize:.22,transparent:true,opacity:.18}));
+  line.computeLineDistances();scene.add(line);rings.push(line);
+ });
+ PROJECTS.forEach(function(p){
+  var group=new THREE.Group();group.position.set(p.x,p.y,p.z);
+  var sphere=new THREE.Mesh(new THREE.SphereGeometry(.36,12,10),new THREE.MeshBasicMaterial({color:colorSets[theme].star}));group.add(sphere);
+  var halo=new THREE.Mesh(new THREE.RingGeometry(.7,.735,48),new THREE.MeshBasicMaterial({color:colorSets[theme].star,side:THREE.DoubleSide,transparent:true,opacity:.7}));halo.rotation.x=-Math.PI/2;group.add(halo);
+  var cross=new THREE.Group();var pts=[new THREE.Vector3(-.9,0,0),new THREE.Vector3(.9,0,0),new THREE.Vector3(0,0,-.9),new THREE.Vector3(0,0,.9)];
+  for(var t=0;t<4;t+=2){var gg=new THREE.BufferGeometry().setFromPoints([pts[t],pts[t+1]]);var line=new THREE.Line(gg,new THREE.LineBasicMaterial({color:colorSets[theme].star,transparent:true,opacity:.55}));cross.add(line)}
+  group.add(cross);group.userData={projectId:p.id,orb:halo,sphere:sphere};scene.add(group);stars.push(group);
+ });
+ sceneReady=true;renderer.domElement.addEventListener('click',onSceneClick);
+ window.addEventListener('resize',resize);
+ animate();
+}
+function onSceneClick(event){
+ if(!sceneReady)return;
+ var rect=renderer.domElement.getBoundingClientRect();
+ var ndc=new THREE.Vector2(((event.clientX-rect.left)/rect.width)*2-1,-((event.clientY-rect.top)/rect.height)*2+1);
+ var ray=new THREE.Raycaster();ray.setFromCamera(ndc,camera);var hit=[],s=[];
+ stars.forEach(function(g){s.push(g.userData.sphere)});
+ hit=ray.intersectObjects(s,false);if(hit.length){var object=hit[0].object;var found=stars.find(function(g){return g.userData.sphere===object});if(found)openProject(found.userData.projectId)}
+}
+function animate(){
+ raf=requestAnimationFrame(animate);
+ if(!sceneReady)return;
+ controls.update();
+ var time=performance.now()*.001;
+ stars.forEach(function(g,i){
+  var p=PROJECTS[i];var el=pinMap[p.id];var pos=new THREE.Vector3();g.getWorldPosition(pos);pos.y+=1.6;
+  pos.project(camera);var x=(pos.x*.5+.5)*window.innerWidth,y=(-pos.y*.5+.5)*window.innerHeight;
+  el.style.left=x+'px';el.style.top=y+'px';
+  var projectedInside=pos.z<1&&x>-50&&x<window.innerWidth+50&&y>-50&&y<window.innerHeight+50;
+  el.classList.toggle('is-hidden',!projectedInside);
+  var pulse=1+(reduced?0:Math.sin(time*1.5+i*1.8)*.13);
+  g.userData.orb.scale.set(pulse,pulse,pulse);
+  g.userData.sphere.scale.setScalar(p.id===selected?1.38:1);
+ });
+ renderer.render(scene,camera);
+}
+function resize(){
+ if(!sceneReady)return;camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);
+}
+function resetCamera(){
+ closeDetail();closeJournal();if(controls){controls.reset();camera.position.set(4,37,45);controls.target.set(0,0,0);controls.update();controls.autoRotate=!reduced}
+ setFilter('all')
+}
+function setTheme(){
+ theme=theme==='paper'?'night':'paper';root.dataset.theme=theme;
+ try{localStorage.setItem('galaxy-theme',theme)}catch(e){}
+ if(sceneReady){
+  var cs=colorSets[theme];galaxyParts[0].material.color.setHex(cs.speck);galaxyParts[1].material.color.setHex(cs.speck2);
+  rings.forEach(function(r){r.material.color.setHex(cs.orbit)});
+  stars.forEach(function(g){g.userData.sphere.material.color.setHex(cs.star);g.userData.orb.material.color.setHex(cs.star);g.children[2].children.forEach(function(l){l.material.color.setHex(cs.star)})})
+ }
+ byId('theme-toggle').textContent=theme==='paper'?'☀︎ 日夜':'☾ 日夜';
+}
+function bind(){
+ byId('detail-close').addEventListener('click',closeDetail);
+ byId('nav-journal').addEventListener('click',function(){openJournal('journal')});
+ byId('nav-about').addEventListener('click',function(){openJournal('about')});
+ byId('nav-home').addEventListener('click',resetCamera);
+ byId('journal-close').addEventListener('click',closeJournal);
+ byId('theme-toggle').addEventListener('click',setTheme);
+ byId('reset-camera').addEventListener('click',resetCamera);
+ document.querySelectorAll('[data-filter]').forEach(function(el){el.addEventListener('click',function(){setFilter(el.dataset.filter)})});
+ document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeJournal();closeDetail()}});
+}
+buildIndex();makePins();bind();makeGalaxy();setFilter('all');
+})();
+</script>
+</body></html>
