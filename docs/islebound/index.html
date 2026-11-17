@@ -903,7 +903,14 @@ function updateHUD(){ $('speed').textContent=String(Math.round(state.speed));$('
 // 在入口卡片仍显示时进行首次 WebGL 绘制，确保真正开始飞行时 shader/纹理已上传。
 let sceneReady=false;
 const clock=new THREE.Clock();let elapsed=0,uiWait=0;
-function frame(){requestAnimationFrame(frame);const dt=Math.min(.05,clock.getDelta()),ad=state.paused?0:dt;if(state.started&&!state.paused&&!panelOpen){elapsed+=dt;updatePhysics(dt)}
+function frame(){requestAnimationFrame(frame);
+ const wallDt=clock.getDelta(),dt=Math.min(.05,wallDt),ad=state.paused?0:dt;
+ if(state.started&&!state.paused&&!panelOpen){
+  // Free flight uses bounded integration; assisted landing/takeoff use elapsed wall time
+  // so a 6.6s landing does not take 30s on low-FPS software-rendered machines.
+  const flightDt=(state.mode==='landing'||state.mode==='takeoff')?Math.min(wallDt,.35):dt;
+  elapsed+=flightDt;updatePhysics(flightDt);
+ }
 plane.position.set(state.x,state.y+(state.mode==='flight'?Math.sin(elapsed*4)*.09:0),state.z);body.rotation.order='YXZ';// 模型机头朝本地 -Z；Three.js 正向 Y 旋转会让机头向左，因此这里取 -yaw 与航迹一致。
 plane.rotation.set(state.pitch,-state.yaw,state.bank+weather.gustRoll(elapsed),'YXZ');prop.rotation.z+=ad*(state.mode==='ground'?3:state.speed*.85);
 for(let i=0;i<clouds.length;i++){clouds[i].g.position.x+=ad*clouds[i].drift*(1+weather.values.wind*.13);if(clouds[i].g.position.x>1230)clouds[i].g.position.x=-1230}
