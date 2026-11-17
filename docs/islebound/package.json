@@ -1,0 +1,15 @@
+{
+  "name": "islebound-visual-qa",
+  "private": true,
+  "version": "0.4.0",
+  "type": "module",
+  "scripts": {
+    "test:visual": "playwright test --config ./tests/playwright.config.mjs",
+    "test:logic": "node ./tests/quest-regression.mjs && node ./tests/label-regression.mjs && node ./tests/weather-regression.mjs && node ./tests/prop-grounding-regression.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "pngjs": "7.0.0",
+    "three": "0.170.0"
+  }
+}
