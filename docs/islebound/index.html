@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#b8d6db">
 <title>ISLEBOUND · 手绘群岛漫游</title>
-<meta name="islebound-build" content="2026-11-17-weather-v2-visible-clouds">
+<meta name="islebound-build" content="2026-11-17-weather-v3-color-safe-fog">
 <style>
 :root{--ink:#254958;--muted:#577887;--paper:rgba(249,248,230,.82);--edge:rgba(47,85,92,.26);--accent:#d67d5e;--teal:#2b8b8b;--cream:#fffae7}
 *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden}body{background:#bcdde0;color:var(--ink);font-family:"Trebuchet MS","Segoe UI", "Microsoft YaHei",sans-serif;user-select:none}button{font:inherit;cursor:pointer;touch-action:manipulation}canvas#scene{position:fixed;inset:0;display:block;width:100%;height:100%}
@@ -81,7 +81,7 @@ const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerP
 renderer.setPixelRatio(Math.min(devicePixelRatio,1.35)); renderer.setSize(innerWidth,innerHeight);
 renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.35;
-const scene=new THREE.Scene(); scene.background=new THREE.Color(0xc9e5ea);scene.fog=new THREE.FogExp2(0xc7dfe1,.00076);
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0xc9e5ea);scene.fog=new THREE.Fog(0xc7dfe1,850,2600);
 const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,3200);
 const sky=new THREE.Mesh(new THREE.SphereGeometry(2000,32,20),new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,uniforms:{uCover:{value:0},uMist:{value:0},uStorm:{value:0},uRain:{value:0},uFlash:{value:0},uTime:{value:0}},vertexShader:`varying vec3 vP;
 void main(){
@@ -464,15 +464,15 @@ const clouds=[];for(let k=0;k<33;k++){const g=new THREE.Group();g.position.set(r
 // 动态手绘天气：单一逻辑状态机，所有气象效果平滑过渡，不依赖外部天气 API。
 function createWeatherSystem(){
  const presets={
-  clear:{label:'晴朗',icon:'☀',cover:.05,mist:0,storm:0,rain:0,wind:1.2,angle:.4},
-  cloudy:{label:'多云',icon:'☁',cover:.77,mist:.075,storm:0,rain:0,wind:2.9,angle:.74},
-  rain:{label:'小雨',icon:'☂',cover:.91,mist:.19,storm:.10,rain:.70,wind:4.5,angle:1.1},
-  storm:{label:'暴风雨',icon:'⚡',cover:.99,mist:.37,storm:1,rain:1,wind:8.4,angle:1.38},
-  fog:{label:'海雾',icon:'≈',cover:.69,mist:1,storm:0,rain:0,wind:1.5,angle:-.85}
+  clear:{label:'晴朗',icon:'☀',cover:.05,mist:0,storm:0,rain:0,wind:1.2,angle:.4,fogNear:850,fogFar:2600},
+  cloudy:{label:'多云',icon:'☁',cover:.77,mist:.075,storm:0,rain:0,wind:2.9,angle:.74,fogNear:560,fogFar:1950},
+  rain:{label:'小雨',icon:'☂',cover:.91,mist:.19,storm:.10,rain:.70,wind:4.5,angle:1.1,fogNear:410,fogFar:1350},
+  storm:{label:'暴风雨',icon:'⚡',cover:.99,mist:.37,storm:1,rain:1,wind:8.4,angle:1.38,fogNear:310,fogFar:1050},
+  fog:{label:'海雾',icon:'≈',cover:.69,mist:1,storm:0,rain:0,wind:1.5,angle:-.85,fogNear:165,fogFar:710}
  };
  const order=['clear','cloudy','rain','storm','fog'];
  const cycle=['cloudy','rain','cloudy','fog','clear','storm','rain','clear'];
- const values={cover:.05,mist:0,storm:0,rain:0,wind:1.2,angle:.4};
+ const values={cover:.05,mist:0,storm:0,rain:0,wind:1.2,angle:.4,fogNear:850,fogFar:2600};
  const ws={mode:'clear',automatic:true,target:presets.clear,nextChange:65,age:0,step:0,flash:0,nextFlash:13,lastLabel:-2};
  const dayCloud=new THREE.MeshToonMaterial({color:0xf0f0e7,roughness:1});
  const shadedCloud=new THREE.MeshToonMaterial({color:0xe7efea,roughness:1});
@@ -560,7 +560,7 @@ function createWeatherSystem(){
     ws.nextChange=ws.age+62+random()*20;
    }
   }
-  for(const k of ['cover','mist','storm','rain','wind','angle'])values[k]=THREE.MathUtils.damp(values[k],ws.target[k],k==='angle'?.75:1.5,dt);
+  for(const k of ['cover','mist','storm','rain','wind','angle','fogNear','fogFar'])values[k]=THREE.MathUtils.damp(values[k],ws.target[k],k==='angle'?.75:1.5,dt);
   const sunLoss=Math.min(.93,values.cover*.76+values.storm*.20+values.mist*.20);
   hemiLight.intensity=2.35*(1-values.cover*.48-values.storm*.22-values.mist*.15);
   sunLight.color.copy(cSun).lerp(cRain,Math.min(1,values.cover*.55+values.storm*.43));
@@ -574,8 +574,11 @@ function createWeatherSystem(){
   seaMat.uniforms.uCover.value=values.cover;
   seaMat.uniforms.uStorm.value=values.storm;
   seaMat.uniforms.uRain.value=values.rain;
-  scene.fog.density=.00076+values.mist*.0060+values.storm*.0018+values.rain*.00038;
-  scene.fog.color.setRGB(.78-values.storm*.30,.87-values.storm*.24,.88-values.storm*.19).lerp(fogColor,values.mist*.45);
+  // Three.js FogExp2 at 0.005+ made nearby (300-unit) island colors >90% fog-colored.
+  // Linear fog protects the runway / trees / houses while retaining distant atmospheric depth.
+  scene.fog.near=Math.max(145,values.fogNear);
+  scene.fog.far=Math.max(scene.fog.near+450,values.fogFar);
+  scene.fog.color.setRGB(.74-values.storm*.22,.83-values.storm*.27,.85-values.storm*.25).lerp(fogColor,values.mist*.45);
   dayCloud.color.copy(cDay).lerp(cGrey,values.cover*.54).lerp(cStorm,values.storm*.78);
   shadedCloud.color.copy(cShade).lerp(cGrey,values.cover*.58).lerp(cStorm,values.storm*.80);
   for(const c of clouds)c.g.scale.setScalar(c.baseScale*(1+values.cover*.10+values.storm*.10));
