@@ -271,7 +271,7 @@ for(let i=0;i<195;i++){const xx=range(-isl.rx*.70,isl.rx*.70,ir),zz=range(-isl.r
 groundIslandDecor(isl);instanceStaticIsland(isl);
 return root}
 function clearForRunway(isl,x,z,margin=7){const h=isl.runway.heading,dx=x-isl.runway.x,dz=z-isl.runway.z;const rel=rotLocal(dx,dz,-h);return Math.abs(rel.x)<10+margin&&Math.abs(rel.z)<isl.runway.length*.5+margin}
-function nearFeature(isl,x,z){const places={dog:[[-37,-25],[-30,29],[0,-35],[-6,-70]],cat:[[28,-24],[31,20],[-32,-27]],light:[[-28,-16],[-25,22]],garden:[[31,32],[28,-31],[-32,35]]}[isl.id];return places.some(p=>(p[0]-x)**2+(p[1]-z)**2<240)}
+function nearFeature(isl,x,z){const places={dog:[[-37,-25],[-30,29],[0,-35],[31,-70]],cat:[[28,-24],[31,20],[-32,-27]],light:[[-28,-16],[-25,22]],garden:[[31,32],[28,-31],[-32,35]]}[isl.id];return places.some(p=>(p[0]-x)**2+(p[1]-z)**2<240)}
 function makeRunway(root,isl){const a=isl.runway,rr=new THREE.Group();rr.position.set(a.x,13.32,a.z);rr.rotation.y=a.heading;root.add(rr);isl.runwayGroup=rr;isl.runwayWorld=landPos(isl,a.x,a.z,15.0);isl.heading=a.heading;
 // 草坪航空小站，跑道宽度与飞机翼展匹配（18 : 12.6）。
 cube(rr,0x8a9f8e,0,-.17,0,23,.30,a.length+5);cube(rr,0xdabf93,0,.02,0,18,.18,a.length);
@@ -358,7 +358,7 @@ surfaceDisc(p,0xe1c69b,-32,13.16,-16,16,.23);for(let i=0;i<4;i++){const a=i*Math
 house(p,-43,27,0xe9c698,0xc76b5d,1.24);house(p,-30,34,0xead8bc,0x779d9e,1.02);house(p,-51,-12,0xf0dba8,0xd69c65,1.05);house(p,-10,-36,0xe6e4cd,0xb07867,.95,'dog-cottage');
 makeDog(p,-34,-16,0xc18e61,2.1);makeDog(p,-55,13,0xe4ca9f,1.1);makeDog(p,-6,29,0xa87d6b,.93);makeDog(p,-35,42,0xd9d2ba,.75);
 // 雕刻骨头：两端圆球 + 中间拱桥，具有可辨认的剪影。
-const b=new THREE.Group();b.position.set(-6,13,-70);p.add(b);line(b,[[-5,0,0],[-4,5,0],[-2,10,0],[2,10,0],[4,5,0],[5,0,0]],0xf6e6c9,1.55);for(let a of [-5,5])for(let h of [0,1.2])blob(b,0xf6e6c9,a,h,0,1.7,1.7,1.8);
+const b=new THREE.Group();b.position.set(31,13,-70);p.add(b);line(b,[[-5,0,0],[-4,5,0],[-2,10,0],[2,10,0],[4,5,0],[5,0,0]],0xf6e6c9,1.55);for(let a of [-5,5])for(let h of [0,1.2])blob(b,0xf6e6c9,a,h,0,1.7,1.7,1.8);
 sign(p,'WOOF TOWN',-48,20,9,19);
 // 码头木桩、太阳伞、玩具骨头和爪印。
 for(let i=0;i<5;i++){let x=-59+i*3.0;cube(p,0x9c846c,x,13.5,51,2.4,.65,12);cylinder(p,0x9d8160,x,11,56,.62,.7,5)}
