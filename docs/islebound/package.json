@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test:visual": "playwright test --config ./tests/playwright.config.mjs",
-    "test:logic": "node ./tests/quest-regression.mjs && node ./tests/label-regression.mjs && node ./tests/weather-regression.mjs && node ./tests/prop-grounding-regression.mjs"
+    "test:logic": "node ./tests/quest-regression.mjs && node ./tests/label-regression.mjs && node ./tests/weather-regression.mjs && node ./tests/prop-grounding-regression.mjs && node ./tests/animal-regression.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.56.1",

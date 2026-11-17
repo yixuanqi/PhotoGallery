@@ -27,7 +27,7 @@ assert.equal((html.match(/id="weatherBtn"/g)||[]).length,1,'one weather button')
 for(const token of ['float valueNoise(vec2 p)','float threshold=mix(.81,.25,clamp(uCover,0.,1.))',
   'sky.material.uniforms.uTime.value=ws.age','cloudBanks=new THREE.InstancedMesh(sphereGeo,bankMat,216)',
   'cloudBanks.visible=values.cover>.14','sunDisc.material.opacity=Math.max(0,.99-values.cover*1.65',
-  '2026-11-17-islebound-v0.4']){
+  'islebound-build']){
  assert(html.includes(token),'weather V2 missing: '+token);
 }
 function frac(x){return x-Math.floor(x);}

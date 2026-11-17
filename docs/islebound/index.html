@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#b8d6db">
 <title>ISLEBOUND · 手绘群岛漫游</title>
-<meta name="islebound-build" content="2026-11-17-islebound-v0.4">
+<meta name="islebound-build" content="2026-11-17-animal-redesign-v1">
 <style>
 :root{--ink:#254958;--muted:#577887;--paper:rgba(249,248,230,.82);--edge:rgba(47,85,92,.26);--accent:#d67d5e;--teal:#2b8b8b;--cream:#fffae7}
 *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden}body{background:#bcdde0;color:var(--ink);font-family:"Trebuchet MS","Segoe UI", "Microsoft YaHei",sans-serif;user-select:none}button{font:inherit;cursor:pointer;touch-action:manipulation}canvas#scene{position:fixed;inset:0;display:block;width:100%;height:100%}
@@ -311,12 +311,94 @@ if(style==='dog-cottage'){
  cube(h,0xa77e70,2.65,8.54,-.65,1.55,.34,1.58);
 }
 for(let i=0;i<3;i++)blob(h,0x648d7c,-3.6+i*.8,.4,3.5,.55,.7,.55);return h}
-function makeDog(p,x,z,color=0xc18e61,s=1){const g=new THREE.Group();g.position.set(x,13.25,z);g.scale.setScalar(s);p.add(g);blob(g,color,0,1.8,0,1.1,1.5,1.55);blob(g,color,0,3.35,-.72,1.22,1.13,1.09);blob(g,0xf6ddbd,0,2.94,-1.67,.70,.53,.52);blob(g,0x554e46,0,3.2,-2.12,.30,.24,.25);
-for(let a of [-1,1]){const ear=blob(g,color===0xddd5bd?0x9d816d:0x946b57,a*.9,3.95,-.53,.40,.82,.31);ear.rotation.z=a*.38;blob(g,0x2b454b,a*.46,3.51,-1.54,.15,.17,.10);blob(g,0xe8d1ac,a*.65,.61,-.92,.48,.64,.7)}
-const t=line(g,[[.72,2.35,1.1],[1.45,2.86,1.75],[1.73,3.55,1.67]],color,.3);g.userData.tail=t;return g}
-function makeCat(p,x,z,color=0xd0b9a0,s=1){const g=new THREE.Group();g.position.set(x,13.05,z);g.scale.setScalar(s);p.add(g);blob(g,color,0,1.25,0,.83,1.16,.82);blob(g,color,-.50,.32,-.42,.34,.43,.41);blob(g,color,.50,.32,-.42,.34,.43,.41);blob(g,color,0,2.8,-.2,1.05,.93,.88);
-for(let side of [-1,1]){const ear=cone(g,color,side*.74,3.79,-.12,.47,.95,3);ear.rotation.z=-side*.15;blob(g,0x3c5152,side*.45,2.97,-1.01,.13,.17,.12);for(let i=-1;i<=1;i++)line(g,[[side*.28,2.48,-1.05],[side*1.4,2.43+i*.2,-1.09]],0xe1d6bc,.035)}
-blob(g,0x9f7674,0,2.62,-1.08,.17,.13,.10);line(g,[[.43,1.3,.65],[1.6,1.27,.7],[1.7,1.9,.1],[1.3,2.35,-.15]],color,.19);return g}
+// Q 版岛屿居民，全部使用共享低模几何和 Toon 材质；面部朝 -Z。
+// 特别处理背面轮廓：猫尾从身后向外侧上扬，狗耳自然下垂，不再像尖锥/手臂。
+function animalTint(hex,lightness){return new THREE.Color(hex).offsetHSL(0,0,lightness).getHex()}
+const earOutline=new THREE.Shape();
+earOutline.moveTo(-.34,-.06);earOutline.lineTo(.02,1.05);earOutline.lineTo(.34,-.06);earOutline.closePath();
+const earInlay=new THREE.Shape();
+earInlay.moveTo(-.20,.05);earInlay.lineTo(.02,.76);earInlay.lineTo(.20,.05);earInlay.closePath();
+const catOuterEarGeo=new THREE.ExtrudeGeometry(earOutline,{depth:.21,bevelEnabled:true,bevelThickness:.025,bevelSize:.025,bevelSegments:1});
+const catInnerEarGeo=new THREE.ExtrudeGeometry(earInlay,{depth:.055,bevelEnabled:false});
+function makeCat(p,x,z,color=0xd0b9a0,s=1){
+ const g=new THREE.Group();g.position.set(x,13.05,z);g.scale.setScalar(s);g.userData.animal='cat';p.add(g);
+ const black=color===0x5d6665;
+ const furShadow=animalTint(color,black?-.075:-.105);
+ const furLight=animalTint(color,black?.16:.095);
+ const cheek=black?0xb8c6bb:0xf6e4d7;
+ const inner=black?0xc4909a:0xdb9997;
+ const noseColor=black?0xc78791:0xb8797c;
+ // 一体的梨形坐姿 + 明确分开的前爪、后腿。
+ blob(g,furShadow,0,1.08,.24,.95,1.0,.86);
+ blob(g,color,0,1.61,-.20,.79,1.06,.74);
+ blob(g,furLight,0,1.47,-.81,.47,.66,.17); // 领口毛色
+ for(const side of [-1,1]){
+  blob(g,color,side*.75,.77,.53,.38,.67,.59); // 坐着时的两侧后腿
+  blob(g,furShadow,side*.47,.83,-.55,.23,.68,.27); // 站立前腿
+  blob(g,furLight,side*.47,.25,-.74,.31,.23,.42); // 前爪贴地
+  blob(g,furLight,side*.77,.23,.80,.32,.22,.42); // 后爪贴地
+ }
+ // 脸部在正面形成清晰的猫形轮廓，而非“大圆球头 + 两个长锥”。
+ blob(g,color,0,2.76,-.28,1.05,.88,.87);
+ blob(g,furLight,0,2.21,-.54,.66,.35,.45); // 下巴 / 颈部连接
+ for(const side of [-1,1]){
+  const ear=mesh(catOuterEarGeo,material(color),g,side*.67,3.24,-.44);
+  ear.rotation.z=-side*.12;
+  const pink=mesh(catInnerEarGeo,material(inner),g,side*.67,3.28,-.50,false);
+  pink.rotation.z=-side*.12;
+  blob(g,0x31494a,side*.36,2.84,-1.11,.135,.165,.095); // 眼睛
+  blob(g,0xfff6e4,side*.33,2.91,-1.20,.045,.052,.03).castShadow=false;
+  blob(g,cheek,side*.22,2.45,-1.13,.28,.22,.20); // 圆润腮帮
+  blob(g,inner,side*.76,2.46,-.92,.17,.12,.045).castShadow=false;
+  for(const q of [-1,1]){
+   line(g,[[side*.30,2.43,-1.29],[side*.77,2.43+q*.13,-1.24]],furLight,.022).castShadow=false;
+  }
+ }
+ const n=cone(g,noseColor,0,2.43,-1.36,.115,.18,3);n.rotation.z=Math.PI;
+ line(g,[[0,2.32,-1.36],[-.14,2.24,-1.32]],0x886c69,.018).castShadow=false;
+ line(g,[[0,2.32,-1.36],[.14,2.24,-1.32]],0x886c69,.018).castShadow=false;
+ // 尾巴只从背后伸出，保持在 +Z 并突出身体右侧；旧版绕到面部像“第三只手”。
+ const tail=line(g,[[.74,1.16,.71],[1.43,1.12,1.02],[1.88,1.61,1.12],[1.85,2.26,1.14],[1.53,2.54,1.17]],furShadow,.235);
+ blob(g,furLight,1.53,2.54,1.17,.245,.245,.245);
+ g.userData.tail=tail;
+ return g;
+}
+function makeDog(p,x,z,color=0xc18e61,s=1){
+ const g=new THREE.Group();g.position.set(x,13.05,z);g.scale.setScalar(s);g.userData.animal='dog';p.add(g);
+ const dark=animalTint(color,-.12),light=animalTint(color,.13);
+ const earColor=color===0xd9d2ba?0x998272:animalTint(color,-.20);
+ // 与猫咪统一的 Q 版体量，但狗是前倾四足、圆短口鼻、垂耳。
+ blob(g,color,0,1.42,.25,1.08,1.05,1.2);
+ blob(g,light,0,1.46,-.66,.63,.85,.50); // 胸口
+ for(const side of [-1,1]){
+  blob(g,color,side*.70,.73,.64,.38,.60,.41);
+  blob(g,dark,side*.65,.76,-.63,.31,.71,.37);
+  blob(g,light,side*.65,.22,-.88,.38,.22,.43); // 前爪
+  blob(g,light,side*.72,.23,.92,.38,.24,.40); // 后爪
+ }
+ blob(g,color,0,2.56,-.45,1.04,.92,.87);
+ blob(g,light,0,2.13,-.79,.72,.41,.44);
+ // 垂耳从头部侧后方下垂，和猫的三角立耳形成鲜明对比。
+ for(const side of [-1,1]){
+  const ear=blob(g,earColor,side*.97,2.55,-.31,.43,.73,.32);
+  ear.rotation.z=side*.40;
+  blob(g,0x304443,side*.37,2.66,-1.22,.14,.16,.08);
+  blob(g,0xfff6df,side*.34,2.73,-1.28,.046,.046,.027).castShadow=false;
+  blob(g,light,side*.27,2.29,-1.20,.43,.28,.34);
+ }
+ blob(g,0x564b45,0,2.42,-1.51,.27,.21,.16); // 狗鼻
+ line(g,[[0,2.19,-1.43],[0,2.07,-1.38],[-.12,2.0,-1.34]],0x7a6760,.027).castShadow=false;
+ line(g,[[0,2.07,-1.38],[.13,2.0,-1.34]],0x7a6760,.027).castShadow=false;
+ // 小围巾/项圈 + 圆牌，有自己的居民身份但不会夸张抢镜。
+ const collar=blob(g,0xb97d69,0,1.94,-.61,.71,.19,.61);
+ collar.castShadow=false;
+ blob(g,0xf0c879,0,1.86,-1.19,.20,.20,.09);
+ // 狗尾偏短，从背后向上卷，不穿过脑袋。
+ const tail=line(g,[[-.61,1.54,1.0],[-1.06,1.80,1.46],[-1.20,2.19,1.62],[-.99,2.48,1.52]],dark,.24);
+ blob(g,color,-.99,2.48,1.52,.25,.25,.25);
+ g.userData.tail=tail;
+ return g;
+}
 
 // --- 二期景观：微缩铁路、岛屿海岬地标与主题游乐建筑 ---
 const islandTrains=[];
@@ -400,7 +482,7 @@ function makeTorii(p,x,z){const g=new THREE.Group();g.position.set(x,13,z);p.add
 function makeCatIsland(p,isl,r){
 // 贴海而建的猫町：鱼市、樱花庭院、猫神社与灯笼步道。
 house(p,33,-30,0xf5d5ba,0x7e8e91,1.45,'pagoda');house(p,28,25,0xf6dbbc,0xbb7274,1.10,'pagoda');house(p,-35,-27,0xeed7b8,0x9a9ca3,1.16);house(p,39,5,0xe8d5c0,0x6f9b91,.74);
-makeCat(p,-25,14,0xe6cfb1,1.9);makeCat(p,13,-29,0x5d6665,1.6);makeCat(p,48,-10,0xdf9e86,1.04);makeCat(p,-44,24,0xf0e2c8,1.03);makeCat(p,7,38,0xb8a29a,.93);
+makeCat(p,-25,14,0xe6cfb1,1.56);makeCat(p,13,-29,0x5d6665,1.38);makeCat(p,48,-10,0xdf9e86,1.04);makeCat(p,-44,24,0xf0e2c8,1.03);makeCat(p,7,38,0xb8a29a,.93);
 makeTorii(p,-31,-5);makeTree(p,-48,39,r,'pink',1.3);makeTree(p,8,-37,r,'pink',1.0);makeTree(p,49,-33,r,'pink',.82);
 for(let i=0;i<8;i++){const x=-45+(i%4)*8,z=34+Math.floor(i/4)*5;surfaceDisc(p,0xe6d1b3,x,13.13,z,1.7,.24);blob(p,i%2?0xe9bcb0:0xd8aea2,x,13.73,z,1.4,.7,.6)}
 for(let i=0;i<7;i++){const x=-31+i*7;cube(p,0x927761,x,13.10,48,4.7,.38,3.5);blob(p,0xbaccc7,x,13.34,47,1,.12,.5)}
@@ -430,7 +512,7 @@ catCottage(p,-92,-52,0xf2d9bc,1.4);catCottage(p,-113,39,0xedd5c7,1.12);catCottag
 marketStand(p,-91,11,0xe8a5a2);marketStand(p,-75,31,0x9cb6ac);marketStand(p,55,74,0xebbf96);
 fishSculpture(p,-80,-72,1.45,0x76a5aa);fishSculpture(p,-119,74,.73,0xd6a6a2);
 // 猫抓柱上打盹的小猫，海岸石板路旁是鱼形灯与樱花树。
-const scratch=new THREE.Group();scratch.position.set(-104,13,73);p.add(scratch);cylinder(scratch,0xd0b58f,0,6,0,1.6,1.8,12);surfaceDisc(scratch,0xe8d6b7,0,12.4,0,6.5,1.0);const sleepy=makeCat(scratch,0,0,0xe7c6af,.76);sleepy.position.y=12.95; // 平台上沿为 12.9，前爪略微嵌入，避免猫咪错误落在柱脚
+const scratch=new THREE.Group();scratch.position.set(-104,13,73);p.add(scratch);cylinder(scratch,0xd0b58f,0,6,0,1.6,1.8,12);surfaceDisc(scratch,0xe8d6b7,0,12.4,0,6.5,1.0);const sleepy=makeCat(scratch,0,0,0xe7c6af,.76);sleepy.position.y=12.87; // 平台上沿为 12.9，新版前爪底部约 +0.02，整体嵌入约 0.01
 for(let j=0;j<10;j++){const xx=-126+j*9,zz=89+Math.sin(j*.68)*7;surfaceDisc(p,0xd5bdad,xx,13.12,zz,2.2,.16)}
 for(const [x,z] of [[-112,-76],[-64,91],[105,-58],[112,71],[-35,88]])makeTree(p,x,z,r,'pink',.9);
 makeCat(p,-94,-26,0xf1cbb1,1.25);makeCat(p,-76,73,0x8c9295,1.08);makeCat(p,113,-9,0xe2b2a6,1.1);
@@ -943,9 +1025,26 @@ function setVisualTestView(islandId,weatherId='clear'){
  updateCamera(.016);camera.updateMatrixWorld();
  return true;
 }
+// 猫狗模型专用近景验收（仅 visualTest=1）：正面和背面都可截图，检查耳朵和尾巴轮廓。
+function setAnimalPreview(kind='cat',view='front'){
+ if(!visualQA||!['cat','dog'].includes(kind)||!['front','back'].includes(view))return false;
+ const isl=ISLANDS.find(i=>i.id===kind);
+ const position=kind==='cat'?new THREE.Vector3(isl.x-25,13.05,isl.z+14):
+  new THREE.Vector3(isl.x-34,13.05,isl.z-16);
+ const scale=kind==='cat'?1.56:2.1;
+ const look=position.clone().add(new THREE.Vector3(0,2.25*scale,0));
+ const from=look.clone().add(new THREE.Vector3(5.2,6.0,(view==='front'?-1:1)*17.5));
+ fixedVisualCamera={position:from,target:look};
+ state.started=true;state.paused=true;state.mode='flight';
+ state.x=position.x;state.y=55;state.z=position.z;
+ plane.visible=false;showPanel(null);weather.force('clear');
+ $('ui').style.visibility='hidden';
+ updateCamera(.016);camera.updateMatrixWorld();
+ return true;
+}
 window.__ISLEBOUND_DEBUG={
  islands:ISLANDS,terrainHeight,renderer,scene,state,weather,quests:QUEST_DEFS,
- getActiveQuest:()=>activeQuest,acceptQuest,finishQuest,questTarget,refreshQuestUI,setVisualTestView,
+ getActiveQuest:()=>activeQuest,acceptQuest,finishQuest,questTarget,refreshQuestUI,setVisualTestView,setAnimalPreview,
  isReady:()=>sceneReady,version:document.querySelector('meta[name="islebound-build"]')?.content
 };
 </script>

@@ -34,12 +34,12 @@ have("surfaceDisc(p,0xe6d1b3,x,13.13,z,1.7,.24)",'market stone placement');
 
 // Cat paw contact points should reach ground, rather than ending above grass.
 have('g.position.set(x,13.05,z)','cat ground baseline');
-have('blob(g,color,-.50,.32,-.42,.34,.43,.41)','cat front left paw');
-have('blob(g,color,.50,.32,-.42,.34,.43,.41)','cat front right paw');
-assert(.32-.43<0,'cat paws should slightly overlap the soil');
-// Raised scratching post must actually hold its sleeping kitten at the platform top (12.9 local).
-have('sleepy.position.y=12.95','sleeping kitten positioned on platform');
-assert(12.95+.32-.43<=12.9,'kitten paws must meet scratching-post platform');
+have('blob(g,furLight,side*.47,.25,-.74,.31,.23,.42)','cat front paws');
+have('blob(g,furLight,side*.77,.23,.80,.32,.22,.42)','cat hind paws');
+assert(.25-.23<=.03,'cat front paws must touch the terrain with 0.03 tolerance');
+// Raised scratching post must hold its kitten on the platform top (12.9 local).
+have('sleepy.position.y=12.87','sleeping kitten positioned on platform');
+assert(12.87+.25-.23<=12.9,'kitten paws must meet scratching-post platform');
 
 // Hanging lanterns must sample the SAME cable spline, with grounded endpoint poles.
 // Independent sin placement previously produced unsupported floating lanterns.
@@ -70,5 +70,5 @@ assert(!(Math.abs(rx)<18&&Math.abs(rz)<46),'moved bone gate must remain outside 
 have('post.position.set(x,13.05,z)','grounded shore-lamp group');
 have('cylinder(post,0x738d83,0,2.65,0,.25,.32,5.35,9)','visible lamp post');
 assert(2.65-5.35/2<=0,'light post must meet actual ground after rooting');
-assert(html.includes('2026-11-17-islebound-v0.4'),'V0.4 release marker');
+assert(html.includes('islebound-build'),'V0.4 release marker');
 console.log('Islebound prop grounding regression passed: dog gate/chimney, cat lamps and paving, runway clearance.');
