@@ -54,6 +54,110 @@
 @media(max-width:950px){.intro{left:33px;top:123px;max-width:175px}.intro h2{font-size:25px}.status{display:none}.bottom{justify-content:center}.card{top:105px;right:23px;bottom:105px}}
 @media(max-width:640px){.top{left:23px;right:23px;top:22px}.brand{padding:8px}.brand h1{font-size:19px}.brand p{display:none}.symbol{width:31px;height:31px;font-size:22px}.nav{max-width:196px;gap:4px}.nav .btn{font-size:10px;padding:7px}.intro{top:107px;left:28px;max-width:160px}.intro h2{font-size:20px}.intro p{font-size:10px}.bottom{bottom:24px;left:24px;right:24px}.controls{padding:4px}.controls .btn{font-size:9px;padding:7px}.controls input{width:50px}.label strong{font-size:10px;padding:4px 6px}.label small{display:none}.card{left:24px;right:24px;width:auto;top:auto;bottom:93px;max-height:55dvh}.illustration{height:82px}.illustration span{font-size:49px}.card h2{font-size:22px}#drawer{left:22px;top:84px;bottom:94px;width:min(310px,calc(100vw - 44px))}#journal{top:85px;bottom:94px;padding:17px}.posts{grid-template-columns:1fr}#hint{bottom:88px;font-size:9px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition-duration:.01ms!important}}
+
+/* V3.1 — handwritten star-chart details, instead of browser-default links/scrollbars */
+:root {
+  --scroll-thumb: rgba(224,194,143,.47);
+  --scroll-thumb-hover: rgba(237,202,144,.78);
+}
+:root[data-theme="paper"] {
+  --scroll-thumb: rgba(123,86,51,.40);
+  --scroll-thumb-hover: rgba(123,86,51,.68);
+}
+.card, .panel {
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+  scrollbar-color:var(--scroll-thumb) transparent;
+}
+.card::-webkit-scrollbar, .panel::-webkit-scrollbar { width:6px; height:6px; }
+.card::-webkit-scrollbar-track, .panel::-webkit-scrollbar-track {
+  background:transparent;
+  margin-block:14px;
+}
+.card::-webkit-scrollbar-thumb, .panel::-webkit-scrollbar-thumb {
+  background:var(--scroll-thumb);
+  border-radius:20px;
+  border:1px solid transparent;
+  background-clip:padding-box;
+}
+.card::-webkit-scrollbar-thumb:hover, .panel::-webkit-scrollbar-thumb:hover {
+  background:var(--scroll-thumb-hover);
+}
+.card::-webkit-scrollbar-corner, .panel::-webkit-scrollbar-corner { background:transparent; }
+.card::-webkit-scrollbar-button, .panel::-webkit-scrollbar-button { display:none; width:0; height:0; }
+.card-head {
+  position:sticky;
+  top:-19px;
+  z-index:2;
+  padding-top:8px;
+  padding-bottom:12px;
+  margin-top:-8px;
+  background:var(--pane);
+  backdrop-filter:blur(12px);
+}
+.card-actions { margin-top:18px; gap:9px; }
+.card-actions a,
+.card-actions a:link,
+.card-actions a:visited {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:43px;
+  padding:10px 12px;
+  color:var(--ink);
+  font-family:'Noto Serif SC',Georgia,serif;
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.035em;
+  line-height:1.5;
+  text-decoration:none;
+  text-shadow:none;
+  border:1px solid var(--line);
+  background:rgba(173,142,99,.10);
+  border-radius:14px 5px 13px 5px/5px 14px 5px 13px;
+  transition:background-color .2s,border-color .2s,box-shadow .2s,transform .2s,color .2s;
+}
+.card-actions a.primary,
+.card-actions a.primary:link,
+.card-actions a.primary:visited {
+  min-height:49px;
+  color:var(--ink);
+  border-color:rgba(232,194,137,.68);
+  background:linear-gradient(145deg,rgba(217,174,106,.31),rgba(186,136,76,.14));
+  box-shadow:inset 0 1px rgba(255,240,207,.12);
+  font-size:12px;
+  font-weight:700;
+}
+.card-actions a:hover,
+.card-actions a:focus-visible {
+  color:var(--gold);
+  border-color:var(--gold);
+  background:rgba(213,169,105,.19);
+  transform:translateY(-1px);
+  box-shadow:0 3px 14px rgba(0,0,0,.12);
+}
+.card-actions a.primary:hover,
+.card-actions a.primary:focus-visible {
+  color:var(--ink);
+  background:rgba(225,180,110,.42);
+  border-color:var(--gold);
+}
+.card-actions a:active { transform:translateY(1px); }
+.card-actions a:focus-visible { outline:2px solid var(--gold); outline-offset:3px; }
+:root[data-theme="paper"] .card-actions a.primary,
+:root[data-theme="paper"] .card-actions a.primary:link,
+:root[data-theme="paper"] .card-actions a.primary:visited {
+  border-color:rgba(154,105,59,.68);
+  background:linear-gradient(145deg,rgba(185,132,73,.25),rgba(196,150,92,.12));
+}
+@media(max-width:640px){
+  .card-head { top:-19px; }
+  .card-actions a { min-height:42px; font-size:10px; }
+  .card-actions a.primary { min-height:46px; font-size:11px; }
+}
+
 </style>
 </head><body>
 <div id="scene"></div><div id="vignette"></div><div id="frame"></div><div id="labels"></div>
@@ -114,6 +218,7 @@ function makeIndex(){
 }
 function showCard(i){
  let p=PROJECTS[i];selected=i;hidePanels();
+ el('card').scrollTop=0; // Always start a newly selected planet at the top of its dossier.
  el('card').classList.add('show');setText('number','STAR '+p.index+' / 06 · '+p.category.toUpperCase());
  setText('art',p.icon);setText('name',p.name);setText('latin',p.en);setText('desc',p.desc);setText('note','✎ 航行手记：'+p.note);
  let tags=el('tags');tags.textContent='';p.tags.forEach(t=>{let s=document.createElement('span');s.textContent=t;tags.appendChild(s)});
