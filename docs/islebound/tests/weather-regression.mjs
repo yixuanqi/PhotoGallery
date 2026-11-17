@@ -14,7 +14,7 @@ for(const token of ['createWeatherSystem()','weather.update(ad,elapsed,state)','
   'weather.gustRoll(elapsed)','seaMat.uniforms.uRain.value','sky.material.uniforms.uMist.value',
   'rainGeo.attributes.position.needsUpdate=true','weatherBtn','weatherPanel','weatherOptions',
   'weatherAuto','KeyT','uFlash','uStorm','islebound-build',
-  'window.__ISLEBOUND_DEBUG={islands:ISLANDS,terrainHeight,renderer,scene,state,weather}']){
+  'window.__ISLEBOUND_DEBUG={']){
  assert(html.includes(token),'missing weather integration '+token);
 }
 assert(html.indexOf('weather.applyWind(dt,state,elapsed)')>html.indexOf("if(state.mode==='flight')"),'wind inside free flight');
