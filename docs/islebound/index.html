@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#b8d6db">
 <title>ISLEBOUND · 手绘群岛漫游</title>
-<meta name="islebound-build" content="2026-11-17-label-stability-v1">
+<meta name="islebound-build" content="2026-11-17-prop-grounding-v2">
 <style>
 :root{--ink:#254958;--muted:#577887;--paper:rgba(249,248,230,.82);--edge:rgba(47,85,92,.26);--accent:#d67d5e;--teal:#2b8b8b;--cream:#fffae7}
 *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden}body{background:#bcdde0;color:var(--ink);font-family:"Trebuchet MS","Segoe UI", "Microsoft YaHei",sans-serif;user-select:none}button{font:inherit;cursor:pointer;touch-action:manipulation}canvas#scene{position:fixed;inset:0;display:block;width:100%;height:100%}
@@ -271,7 +271,7 @@ for(let i=0;i<195;i++){const xx=range(-isl.rx*.70,isl.rx*.70,ir),zz=range(-isl.r
 groundIslandDecor(isl);instanceStaticIsland(isl);
 return root}
 function clearForRunway(isl,x,z,margin=7){const h=isl.runway.heading,dx=x-isl.runway.x,dz=z-isl.runway.z;const rel=rotLocal(dx,dz,-h);return Math.abs(rel.x)<10+margin&&Math.abs(rel.z)<isl.runway.length*.5+margin}
-function nearFeature(isl,x,z){const places={dog:[[-37,-25],[-30,29],[0,-35]],cat:[[28,-24],[31,20],[-32,-27]],light:[[-28,-16],[-25,22]],garden:[[31,32],[28,-31],[-32,35]]}[isl.id];return places.some(p=>(p[0]-x)**2+(p[1]-z)**2<240)}
+function nearFeature(isl,x,z){const places={dog:[[-37,-25],[-30,29],[0,-35],[-6,-70]],cat:[[28,-24],[31,20],[-32,-27]],light:[[-28,-16],[-25,22]],garden:[[31,32],[28,-31],[-32,35]]}[isl.id];return places.some(p=>(p[0]-x)**2+(p[1]-z)**2<240)}
 function makeRunway(root,isl){const a=isl.runway,rr=new THREE.Group();rr.position.set(a.x,13.32,a.z);rr.rotation.y=a.heading;root.add(rr);isl.runwayGroup=rr;isl.runwayWorld=landPos(isl,a.x,a.z,15.0);isl.heading=a.heading;
 // 草坪航空小站，跑道宽度与飞机翼展匹配（18 : 12.6）。
 cube(rr,0x8a9f8e,0,-.17,0,23,.30,a.length+5);cube(rr,0xdabf93,0,.02,0,18,.18,a.length);
@@ -287,11 +287,16 @@ const pad=surfaceDisc(rr,0xf6dfb6,-14,.19,a.length*.40,3.7,.23);const cross=mate
 function makeTree(p,x,z,r,theme='green',size=1){const group=new THREE.Group();group.position.set(x,13,z);group.scale.setScalar(size);p.add(group);cylinder(group,0x8d7055,0,3.2,0,.65,1.05,6.4);for(let k=0;k<4;k++){const a=k*2.4,rr=k%2?2.3:1.2;const c=theme==='pink'?[0xf1b1ae,0xf6c4c0,0xe5a8bb]:theme==='gold'?[0xd7b976,0xedcb85,0xaec1a0]:[0x81ab88,0x98bc8d,0xb5c99b];blob(group,c[k%3],Math.sin(a)*rr,7.3+(k%2)*1.4,Math.cos(a)*rr,3.8,3.3,3.6)}return group}
 function house(p,x,z,col=0xf1d6a4,roof=0xd4866a,sz=1,style='cottage'){const h=new THREE.Group();h.position.set(x,13,z);h.scale.setScalar(sz);p.add(h);cube(h,0xb8bba0,0,-.42,0,8.2,.88,7.2);cube(h,col,0,2.35,0,7,4.7,6,0,true);cube(h,0x8d7366,0,1.55,3.04,1.6,3.1,.16);for(let s of [-1,1]){cube(h,0x9dbdc0,s*2.15,3.2,3.07,1.35,1.4,.15);cube(h,0xf6e3bd,s*2.15,3.2,3.18,.12,1.2,.11);cube(h,0xf6e3bd,s*2.15,3.2,3.18,1.2,.12,.11)}
 if(style==='pagoda'){cube(h,roof,0,5.25,0,9.1,.75,8.2);cube(h,roof,0,6.15,0,6.4,.8,5.5);cone(h,roof,0,7.25,0,4,2.4,4).rotation.y=Math.PI/4}else{const sh=new THREE.Shape();sh.moveTo(-4.2,0);sh.lineTo(0,3.5);sh.lineTo(4.2,0);sh.closePath();const g=new THREE.ExtrudeGeometry(sh,{depth:6.9,bevelEnabled:false});const m=mesh(g,material(roof),h,0,4.55,-3.45);m.rotation.y=0; /* 正立三角屋顶的正面朝向 +Z */}
+if(style==='dog-cottage'){
+ // 真正属于房屋的小烟囱：底部嵌入右侧屋脊坡面，不能和骨头拱门相交。
+ cube(h,0xf0e7d9,2.65,7.14,-.65,1.18,2.70,1.22);
+ cube(h,0xa77e70,2.65,8.54,-.65,1.55,.34,1.58);
+}
 for(let i=0;i<3;i++)blob(h,0x648d7c,-3.6+i*.8,.4,3.5,.55,.7,.55);return h}
 function makeDog(p,x,z,color=0xc18e61,s=1){const g=new THREE.Group();g.position.set(x,13.25,z);g.scale.setScalar(s);p.add(g);blob(g,color,0,1.8,0,1.1,1.5,1.55);blob(g,color,0,3.35,-.72,1.22,1.13,1.09);blob(g,0xf6ddbd,0,2.94,-1.67,.70,.53,.52);blob(g,0x554e46,0,3.2,-2.12,.30,.24,.25);
 for(let a of [-1,1]){const ear=blob(g,color===0xddd5bd?0x9d816d:0x946b57,a*.9,3.95,-.53,.40,.82,.31);ear.rotation.z=a*.38;blob(g,0x2b454b,a*.46,3.51,-1.54,.15,.17,.10);blob(g,0xe8d1ac,a*.65,.61,-.92,.48,.64,.7)}
 const t=line(g,[[.72,2.35,1.1],[1.45,2.86,1.75],[1.73,3.55,1.67]],color,.3);g.userData.tail=t;return g}
-function makeCat(p,x,z,color=0xd0b9a0,s=1){const g=new THREE.Group();g.position.set(x,13.2,z);g.scale.setScalar(s);p.add(g);blob(g,color,0,1.25,0,.83,1.16,.82);blob(g,color,0,2.8,-.2,1.05,.93,.88);
+function makeCat(p,x,z,color=0xd0b9a0,s=1){const g=new THREE.Group();g.position.set(x,13.05,z);g.scale.setScalar(s);p.add(g);blob(g,color,0,1.25,0,.83,1.16,.82);blob(g,color,-.50,.32,-.42,.34,.43,.41);blob(g,color,.50,.32,-.42,.34,.43,.41);blob(g,color,0,2.8,-.2,1.05,.93,.88);
 for(let side of [-1,1]){const ear=cone(g,color,side*.74,3.79,-.12,.47,.95,3);ear.rotation.z=-side*.15;blob(g,0x3c5152,side*.45,2.97,-1.01,.13,.17,.12);for(let i=-1;i<=1;i++)line(g,[[side*.28,2.48,-1.05],[side*1.4,2.43+i*.2,-1.09]],0xe1d6bc,.035)}
 blob(g,0x9f7674,0,2.62,-1.08,.17,.13,.10);line(g,[[.43,1.3,.65],[1.6,1.27,.7],[1.7,1.9,.1],[1.3,2.35,-.15]],color,.19);return g}
 
@@ -350,10 +355,10 @@ function gardenGreenhouse(p,x,z,s=1){const g=new THREE.Group();g.position.set(x,
 function makeDogIsland(p,isl,r){
 // 一条小镇主街贯穿狗屋群、骨头拱门和热闹的广场。
 surfaceDisc(p,0xe1c69b,-32,13.16,-16,16,.23);for(let i=0;i<4;i++){const a=i*Math.PI*.5;blob(p,0xd8ab84,-32+Math.cos(a)*8,13.43,-16+Math.sin(a)*8,2,1.0,2)}
-house(p,-43,27,0xe9c698,0xc76b5d,1.24);house(p,-30,34,0xead8bc,0x779d9e,1.02);house(p,-51,-12,0xf0dba8,0xd69c65,1.05);house(p,-10,-36,0xe6e4cd,0xb07867,.95);
+house(p,-43,27,0xe9c698,0xc76b5d,1.24);house(p,-30,34,0xead8bc,0x779d9e,1.02);house(p,-51,-12,0xf0dba8,0xd69c65,1.05);house(p,-10,-36,0xe6e4cd,0xb07867,.95,'dog-cottage');
 makeDog(p,-34,-16,0xc18e61,2.1);makeDog(p,-55,13,0xe4ca9f,1.1);makeDog(p,-6,29,0xa87d6b,.93);makeDog(p,-35,42,0xd9d2ba,.75);
 // 雕刻骨头：两端圆球 + 中间拱桥，具有可辨认的剪影。
-const b=new THREE.Group();b.position.set(-6,13, -36);p.add(b);line(b,[[-5,0,0],[-4,5,0],[-2,10,0],[2,10,0],[4,5,0],[5,0,0]],0xf6e6c9,1.55);for(let a of [-5,5])for(let h of [0,1.2])blob(b,0xf6e6c9,a,h,0,1.7,1.7,1.8);
+const b=new THREE.Group();b.position.set(-6,13,-70);p.add(b);line(b,[[-5,0,0],[-4,5,0],[-2,10,0],[2,10,0],[4,5,0],[5,0,0]],0xf6e6c9,1.55);for(let a of [-5,5])for(let h of [0,1.2])blob(b,0xf6e6c9,a,h,0,1.7,1.7,1.8);
 sign(p,'WOOF TOWN',-48,20,9,19);
 // 码头木桩、太阳伞、玩具骨头和爪印。
 for(let i=0;i<5;i++){let x=-59+i*3.0;cube(p,0x9c846c,x,13.5,51,2.4,.65,12);cylinder(p,0x9d8160,x,11,56,.62,.7,5)}
@@ -379,11 +384,26 @@ function makeCatIsland(p,isl,r){
 house(p,33,-30,0xf5d5ba,0x7e8e91,1.45,'pagoda');house(p,28,25,0xf6dbbc,0xbb7274,1.10,'pagoda');house(p,-35,-27,0xeed7b8,0x9a9ca3,1.16);house(p,39,5,0xe8d5c0,0x6f9b91,.74);
 makeCat(p,-25,14,0xe6cfb1,1.9);makeCat(p,13,-29,0x5d6665,1.6);makeCat(p,48,-10,0xdf9e86,1.04);makeCat(p,-44,24,0xf0e2c8,1.03);makeCat(p,7,38,0xb8a29a,.93);
 makeTorii(p,-31,-5);makeTree(p,-48,39,r,'pink',1.3);makeTree(p,8,-37,r,'pink',1.0);makeTree(p,49,-33,r,'pink',.82);
-for(let i=0;i<8;i++){const x=-45+(i%4)*8,z=34+Math.floor(i/4)*5;surfaceDisc(p,0xe6d1b3,x,13.35,z,1.7,.24);blob(p,i%2?0xe9bcb0:0xd8aea2,x,14.15,z,1.4,.7,.6)}
-for(let i=0;i<7;i++){const x=-31+i*7;cube(p,0x927761,x,14,48,4.7,1.25,3.5);blob(p,0xbaccc7,x,14.7,47,1,.25,.5)}
-// 串灯：沿着鱼市吊着摇晃的小灯笼。
-line(p,[[-50,20,18],[-25,22,26],[0,21,19],[25,20,25]],0x8e8b77,.08);
-for(let i=0;i<8;i++){const x=-47+i*9;const l=blob(p,i%2?0xf0bfaa:0xf9daa0,x,20.4,19+Math.sin(i*.8)*3,.74,1.2,.75);l.castShadow=false}
+for(let i=0;i<8;i++){const x=-45+(i%4)*8,z=34+Math.floor(i/4)*5;surfaceDisc(p,0xe6d1b3,x,13.13,z,1.7,.24);blob(p,i%2?0xe9bcb0:0xd8aea2,x,13.73,z,1.4,.7,.6)}
+for(let i=0;i<7;i++){const x=-31+i*7;cube(p,0x927761,x,13.10,48,4.7,.38,3.5);blob(p,0xbaccc7,x,13.34,47,1,.12,.5)}
+// 鱼市悬挂灯串：从跑道上方移开。所有灯按真实绳索样条采样，
+ // 同一父节点/世界坐标，不能像旧版那样用独立 sin 坐标造成“空中漂浮的蛋”。
+ const catStringLights=new THREE.Group();catStringLights.userData.keepWorldHeight=true;p.add(catStringLights);
+ const cablePts=[[-105,19.7,17],[-81,20.5,21],[-57,19.6,28],[-37,19.8,33]];
+ const cableCurve=new THREE.CatmullRomCurve3(cablePts.map(q=>new THREE.Vector3(...q)));
+ line(catStringLights,cablePts,0x897f71,.13);
+ for(const endpoint of [cablePts[0],cablePts[cablePts.length-1]]){
+  const [x,y,z]=endpoint,ground=terrainHeight(isl,x,z)??13.05;
+  const postH=y-ground;
+  cylinder(catStringLights,0x856d64,x,ground+postH*.5,z,.19,.25,postH,9);
+  blob(catStringLights,0xf2d6ac,x,y,z,.30,.29,.30).castShadow=false;
+ }
+ for(let i=0;i<8;i++){
+  const q=cableCurve.getPoint((i+.5)/8);
+  cylinder(catStringLights,0x9a8770,q.x,q.y-.64,q.z,.10,.10,1.30,7);
+  const bulb=blob(catStringLights,i%2?0xf0bfaa:0xf9daa0,q.x,q.y-1.8,q.z,.72,.85,.69);
+  bulb.castShadow=false;
+ }
 sign(p,'MEOW MARKET',30,18,-1,20);
 // 喵喵海岸线：会跑的小火车、猫耳路灯塔、鱼骨艺术品、猫爬架与鱼市分街。
 miniTrain(p,80,21,34,44,'cat');trainStation(p,90,-33,'PURR EXPRESS',0xd99c9f);
@@ -393,11 +413,20 @@ marketStand(p,-91,11,0xe8a5a2);marketStand(p,-75,31,0x9cb6ac);marketStand(p,55,7
 fishSculpture(p,-80,-72,1.45,0x76a5aa);fishSculpture(p,-119,74,.73,0xd6a6a2);
 // 猫抓柱上打盹的小猫，海岸石板路旁是鱼形灯与樱花树。
 const scratch=new THREE.Group();scratch.position.set(-104,13,73);p.add(scratch);cylinder(scratch,0xd0b58f,0,6,0,1.6,1.8,12);surfaceDisc(scratch,0xe8d6b7,0,12.4,0,6.5,1.0);const sleepy=makeCat(scratch,0,0,0xe7c6af,.76);sleepy.position.y=.2;
-for(let j=0;j<10;j++){const xx=-126+j*9,zz=89+Math.sin(j*.68)*7;surfaceDisc(p,0xd5bdad,xx,13.30,zz,2.2,.16)}
+for(let j=0;j<10;j++){const xx=-126+j*9,zz=89+Math.sin(j*.68)*7;surfaceDisc(p,0xd5bdad,xx,13.12,zz,2.2,.16)}
 for(const [x,z] of [[-112,-76],[-64,91],[105,-58],[112,71],[-35,88]])makeTree(p,x,z,r,'pink',.9);
 makeCat(p,-94,-26,0xf1cbb1,1.25);makeCat(p,-76,73,0x8c9295,1.08);makeCat(p,113,-9,0xe2b2a6,1.1);
 // 手工小鱼灯沿曲线布置，细节可从低空辨认。
-for(let j=0;j<9;j++){const x=54+j*6,z=87+Math.sin(j*.8)*4;const lan=blob(p,0xf3dba7,x,19,z,.65,1.1,.6);lan.castShadow=false;cylinder(p,0x8e9583,x,15.5,z,.10,.10,6)}
+for(let j=0;j<9;j++){
+ const x=54+j*6,z=87+Math.sin(j*.8)*4;
+ // 一根完整可辨认的立杆直接扎进地面，顶端是装饰灯罩，不是悬空小蛋。
+ const post=new THREE.Group();post.position.set(x,13.05,z);p.add(post);
+ cylinder(post,0x738d83,0,2.65,0,.25,.32,5.35,9);
+ cylinder(post,0xa99c80,0,5.36,0,.74,.74,.26,10);
+ const lantern=blob(post,0xf3dba7,0,5.95,0,.66,.82,.66);
+ lantern.castShadow=false;
+ blob(post,0xa98572,0,6.82,0,.33,.15,.35).castShadow=false;
+}
 }
 function boat(p,x,z,rz=0,s=1){const g=new THREE.Group();g.position.set(x,.9,z);g.rotation.y=rz;g.scale.setScalar(s);p.add(g);blob(g,0xb2a18a,0,0,0,4.5,.72,2);cube(g,0xf3e8d0,0,.65,0,4.2,.38,2.2);cylinder(g,0x96755d,0,3,0,.1,.14,5);const sail=new THREE.Shape();sail.moveTo(.1,0);sail.lineTo(.1,4.7);sail.lineTo(3.3,0);sail.closePath();const flag=mesh(new THREE.ShapeGeometry(sail),new THREE.MeshBasicMaterial({color:0xf2e5c9,side:THREE.DoubleSide}),g,0,1,.0);flag.rotation.y=Math.PI/2;return g}
 function makeLighthouseIsland(p,isl,r){
