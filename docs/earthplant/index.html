@@ -1,0 +1,2939 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>手绘航海志 · 3D 可交互绘本地球</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: 手写体与衬线体 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Three.js r128 & OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        :root {
+            --bg-paper: #f4ecd8;
+            --ink-primary: #2b2118;
+            --ink-secondary: #5c4938;
+            --accent-color: #c85a32;
+            --card-bg: rgba(251, 246, 234, 0.94);
+            --border-ink: #3a2e21;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Noto Serif SC', serif;
+            color: var(--ink-primary);
+            background-color: var(--bg-paper);
+            transition: background-color 0.6s ease;
+        }
+
+        .font-hand {
+            font-family: 'Ma Shan Zheng', 'Caveat', cursive, serif;
+        }
+
+        .font-en-hand {
+            font-family: 'Caveat', cursive, serif;
+        }
+
+        /* 全屏动态背景渐变与暗角 */
+        #bg-backdrop {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            transition: background 0.7s ease;
+            background: radial-gradient(circle at 50% 48%, #fbf6ea 0%, #eadbc0 65%, #d3be9c 100%);
+        }
+
+        /* 暗角墨水边框（无全屏混合遮罩，避免半屏阴影分界线） */
+        #sketch-frame {
+            position: fixed;
+            inset: 10px;
+            pointer-events: none;
+            z-index: 21;
+            border: 2px solid var(--border-ink);
+            border-radius: 18px 255px 15px 255px / 255px 15px 225px 15px;
+            background: transparent;
+        }
+
+        #sketch-frame::after {
+            content: '';
+            position: absolute;
+            inset: 4px;
+            border: 1px dashed var(--ink-secondary);
+            border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+            opacity: 0.55;
+        }
+
+        /* 手绘不规则卡片与按钮边框（禁用 backdrop-filter 与 mix-blend-mode 防止半屏合成层阴影） */
+        .sketch-box {
+            background: #fbf6ea;
+            border: 2px solid var(--border-ink);
+            border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+            box-shadow: 4px 5px 0px var(--border-ink), 0 8px 20px rgba(43, 33, 24, 0.10);
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+            transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        /* UI 浮动外层容器严格透明且自适应尺寸 */
+        .ui-float-container {
+            background: transparent !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            mix-blend-mode: normal !important;
+            width: fit-content;
+            height: auto;
+            pointer-events: none;
+        }
+
+        .sketch-btn {
+            background: #fdf9f0;
+            border: 2px solid var(--border-ink);
+            border-radius: 255px 25px 225px 25px / 25px 225px 25px 255px;
+            box-shadow: 2px 3px 0px var(--border-ink);
+            color: var(--ink-primary);
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease;
+            cursor: pointer;
+        }
+
+        .sketch-btn:hover {
+            transform: translate(-1px, -2px);
+            box-shadow: 4px 5px 0px var(--border-ink);
+            background: #fffdf9;
+        }
+
+        .sketch-btn:active {
+            transform: translate(1px, 1px);
+            box-shadow: 1px 1px 0px var(--border-ink);
+        }
+
+        .sketch-btn.active {
+            background: var(--accent-color);
+            color: #fffdf9;
+            border-color: var(--border-ink);
+        }
+
+        /* 胶带装饰效果 */
+        .washi-tape {
+            position: absolute;
+            width: 86px;
+            height: 24px;
+            background: rgba(226, 195, 139, 0.65);
+            border-left: 2px dashed rgba(92, 73, 56, 0.35);
+            border-right: 2px dashed rgba(92, 73, 56, 0.35);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+            transform: rotate(-4deg);
+            pointer-events: none;
+        }
+
+        /* 3D 地标投影 2D 标签 */
+        .landmark-pin {
+            position: absolute;
+            transform: translate(-50%, -100%);
+            pointer-events: auto;
+            cursor: pointer;
+            transition: opacity 0.25s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 12;
+        }
+
+        .landmark-pin:hover {
+            transform: translate(-50%, -108%) scale(1.12);
+            z-index: 18;
+        }
+
+        .landmark-pin.hidden-back {
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(-50%, -90%) scale(0.75);
+        }
+
+        .landmark-pin-badge {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 9px 3px 6px;
+            background: #fdf9f0;
+            border: 2px solid #2b2118;
+            border-radius: 18px 255px 15px 255px / 255px 15px 225px 15px;
+            box-shadow: 2px 3px 0px #2b2118;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+            color: #2b2118;
+        }
+
+        .landmark-pin.selected .landmark-pin-badge {
+            background: #c85a32;
+            color: #fffdf9;
+            transform: scale(1.08);
+        }
+
+        .landmark-pin-stem {
+            width: 2px;
+            height: 12px;
+            background: #2b2118;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .landmark-pin-stem::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: -3px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #c85a32;
+            border: 1.5px solid #2b2118;
+        }
+
+        /* 自定义滑块样式 */
+        input[type=range].sketch-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        input[type=range].sketch-slider::-webkit-slider-runnable-track {
+            height: 8px;
+            background: #e5d7be;
+            border: 1.5px solid #2b2118;
+            border-radius: 8px;
+        }
+
+        input[type=range].sketch-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            border: 2px solid #2b2118;
+            box-shadow: 1px 2px 0px #2b2118;
+            margin-top: -6px;
+            transition: transform 0.15s ease;
+        }
+
+        input[type=range].sketch-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+
+        /* 邮戳动画 */
+        @keyframes stampPop {
+            0% { transform: scale(2.2) rotate(-25deg); opacity: 0; }
+            70% { transform: scale(0.92) rotate(-12deg); opacity: 1; }
+            100% { transform: scale(1) rotate(-14deg); opacity: 0.88; }
+        }
+
+        .stamp-badge {
+            animation: stampPop 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        /* 排线背景装饰纹理 */
+        .hatch-pattern {
+            background-image: repeating-linear-gradient(
+                -45deg,
+                rgba(43, 33, 24, 0.05),
+                rgba(43, 33, 24, 0.05) 1px,
+                transparent 1px,
+                transparent 6px
+            );
+        }
+
+        /* 航线起点与终点标签特殊样式 */
+        .landmark-pin.route-origin .landmark-pin-badge {
+            background: #2e6f5e;
+            color: #fffdf9;
+            border-color: #1f1712;
+        }
+
+        .landmark-pin.route-dest .landmark-pin-badge {
+            background: #c85a32;
+            color: #fffdf9;
+            border-color: #1f1712;
+        }
+
+        /* 手绘风下拉框 */
+        .sketch-select {
+            background: #fdf9f0;
+            border: 2px solid var(--border-ink);
+            border-radius: 12px 185px 12px 185px / 185px 12px 165px 12px;
+            box-shadow: 2px 2px 0px var(--border-ink);
+            padding: 4px 8px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--ink-primary);
+            outline: none;
+            cursor: pointer;
+        }
+
+        /* 跟随视角飞行 HUD 边框呼吸提示 */
+        @keyframes hudPulse {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-2px); }
+        }
+        .follow-hud-badge {
+            animation: hudPulse 2.4s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 背景渐变层 -->
+    <div id="bg-backdrop"></div>
+
+    <!-- Three.js 3D 容器 -->
+    <div id="canvas-container" class="fixed inset-0 z-10"></div>
+
+    <!-- 2D 地标投影锚点容器 -->
+    <div id="pins-container" class="fixed inset-0 pointer-events-none z-15 overflow-hidden"></div>
+
+    <!-- 手绘外框与四角装饰 -->
+    <div id="sketch-frame">
+        <!-- 左上角手绘罗盘花饰 -->
+        <svg class="absolute top-3 left-3 w-10 h-10 opacity-45" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M8 56 V20 C8 12 12 8 20 8 H56" stroke-linecap="round"/>
+            <path d="M14 44 V22 C14 16 16 14 22 14 H44" stroke-linecap="round" stroke-dasharray="3 3"/>
+            <circle cx="18" cy="18" r="3" fill="currentColor"/>
+        </svg>
+        <!-- 右上角手绘花饰 -->
+        <svg class="absolute top-3 right-3 w-10 h-10 opacity-45 transform scale-x-[-1]" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M8 56 V20 C8 12 12 8 20 8 H56" stroke-linecap="round"/>
+            <path d="M14 44 V22 C14 16 16 14 22 14 H44" stroke-linecap="round" stroke-dasharray="3 3"/>
+            <circle cx="18" cy="18" r="3" fill="currentColor"/>
+        </svg>
+        <!-- 左下角手绘花饰 -->
+        <svg class="absolute bottom-3 left-3 w-10 h-10 opacity-45 transform scale-y-[-1]" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M8 56 V20 C8 12 12 8 20 8 H56" stroke-linecap="round"/>
+            <circle cx="18" cy="18" r="3" fill="currentColor"/>
+        </svg>
+        <!-- 右下角手绘花饰 -->
+        <svg class="absolute bottom-3 right-3 w-10 h-10 opacity-45 transform scale-[-1]" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M8 56 V20 C8 12 12 8 20 8 H56" stroke-linecap="round"/>
+            <circle cx="18" cy="18" r="3" fill="currentColor"/>
+        </svg>
+    </div>
+
+    <!-- 左上角：手帐标题签（独立透明容器） -->
+    <header class="fixed top-5 left-6 z-30 ui-float-container">
+        <div class="sketch-box px-5 py-3 pointer-events-auto relative hatch-pattern max-w-md">
+            <div class="washi-tape -top-3 left-8"></div>
+            <div class="flex items-center gap-3">
+                <!-- 手绘羽毛笔与地球徽章 -->
+                <div class="w-11 h-11 rounded-full border-2 border-[#2b2118] bg-[#efe3c8] flex items-center justify-center shrink-0 shadow-inner">
+                    <svg class="w-7 h-7 text-[#2b2118]" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="18" cy="18" r="11" />
+                        <ellipse cx="18" cy="18" rx="5.5" ry="11" />
+                        <line x1="7" y1="18" x2="29" y2="18" />
+                        <path d="M9 12.5 C13 14 23 14 27 12.5" />
+                        <path d="M9 23.5 C13 22 23 22 27 23.5" />
+                        <path d="M25 5 L31 11 M29 4 C29 4 33 7 27 13" stroke="#c85a32" stroke-width="2"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-hand text-2xl sm:text-3xl tracking-wider text-[#2b2118] leading-none">手绘博物航海志</h1>
+                        <span id="theme-pill" class="text-[11px] font-bold px-2 py-0.5 rounded-full border border-[#2b2118] bg-[#e6d5b8] text-[#2b2118]">水彩绘本</span>
+                    </div>
+                    <p class="text-xs text-[#5c4938] mt-1 font-en-hand text-base tracking-wide">
+                        Atlas Orbis Terrarum · 拖拽旋转地球 · 点击图钉翻阅手帐
+                    </p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 右上角：收集印章进度与快捷动作（独立透明容器） -->
+    <nav class="fixed top-5 right-6 z-30 ui-float-container">
+        <div class="flex items-center gap-2.5 pointer-events-auto flex-wrap justify-end">
+            <div class="sketch-box px-3.5 py-2 flex items-center gap-2.5 text-xs sm:text-sm">
+                <svg class="w-5 h-5 text-[#c85a32]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L15 8L21 9L16.5 14L18 20L12 17L6 20L7.5 14L3 9L9 8L12 2Z" stroke-linejoin="round"/>
+                </svg>
+                <span>足迹印章：<strong id="stamp-count" class="text-[#c85a32] font-bold">0 / 8</strong></span>
+            </div>
+
+            <!-- 快捷切换第三人称纸飞机跟随视角 -->
+            <button id="btn-follow-cam-top" class="sketch-btn px-3.5 py-2 flex items-center gap-1.5 text-xs sm:text-sm font-bold" title="切换纸飞机第三人称跟随视角">
+                <span>🎥 纸飞机跟随视角</span>
+            </button>
+
+            <button id="btn-random-landmark" class="sketch-btn px-3.5 py-2 flex items-center gap-1.5 text-xs sm:text-sm font-bold" title="随机漫游到一处地标">
+                <svg class="w-4 h-4 text-[#c85a32]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <circle cx="12" cy="12" r="9"/>
+                    <polygon points="15.5 8.5 13.5 13.5 8.5 15.5 10.5 10.5 15.5 8.5" fill="currentColor"/>
+                </svg>
+                <span>随机探索地标</span>
+            </button>
+
+            <button id="btn-reset-camera" class="sketch-btn p-2" title="重置自由视角">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                    <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/>
+                    <path d="M3 3v5h5"/>
+                </svg>
+            </button>
+        </div>
+    </nav>
+
+    <!-- 左侧：手绘航线规划与纸飞机巡航控制台（独立透明容器） -->
+    <section id="cruise-panel" class="fixed left-6 top-28 z-30 ui-float-container">
+        <div class="sketch-box p-4 pointer-events-auto relative hatch-pattern w-[310px] sm:w-[335px] max-w-[calc(100vw-3rem)]">
+            <div class="washi-tape -top-3 right-10"></div>
+
+            <!-- 面板标题与折叠开关 -->
+            <div class="flex items-center justify-between border-b-2 border-dashed border-[#5c4938]/40 pb-2 mb-3">
+                <div class="flex items-center gap-2">
+                    <span class="w-7 h-7 rounded-full border-2 border-[#2b2118] bg-[#c85a32] text-[#fffdf9] flex items-center justify-center text-sm">✈️</span>
+                    <div>
+                        <h2 class="font-hand text-xl text-[#2b2118] leading-none">航线测绘与纸飞机巡航</h2>
+                        <span class="text-[10px] text-[#5c4938] font-en-hand">Great-Circle Route & Origami Flight</span>
+                    </div>
+                </div>
+                <button id="btn-collapse-cruise" class="sketch-btn px-2 py-0.5 text-xs font-bold" title="收起/展开巡航面板">▾</button>
+            </div>
+
+            <div id="cruise-panel-body" class="space-y-3">
+                <!-- 起点与终点选择器 -->
+                <div class="bg-[#fdfaf2]/90 border border-[#5c4938]/35 rounded-lg p-2.5 space-y-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-bold px-2 py-0.5 rounded bg-[#2e6f5e] text-white shrink-0">起点</span>
+                        <select id="select-origin" class="sketch-select flex-1"></select>
+                    </div>
+
+                    <div class="flex items-center justify-between gap-1.5">
+                        <button id="btn-pick-mode" class="sketch-btn flex-1 py-1 text-xs font-bold flex items-center justify-center gap-1" title="开启后直接点击地球上的两个地标即可生成航线">
+                            <span>📍 球面点选两地: 关</span>
+                        </button>
+                        <button id="btn-swap-route" class="sketch-btn px-2.5 py-1 text-xs font-bold" title="交换起点与终点返航">
+                            ⇄ 返航
+                        </button>
+                        <button id="btn-random-route" class="sketch-btn px-2.5 py-1 text-xs font-bold" title="随机生成一条环球航线">
+                            🎲 随机
+                        </button>
+                    </div>
+
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-bold px-2 py-0.5 rounded bg-[#c85a32] text-white shrink-0">终点</span>
+                        <select id="select-dest" class="sketch-select flex-1"></select>
+                    </div>
+                </div>
+
+                <!-- 大圆航线距离与实时遥测仪表盘 -->
+                <div class="bg-[#f7eedb] border-2 border-[#2b2118] rounded-lg p-2.5 shadow-inner">
+                    <div class="flex items-baseline justify-between border-b border-dashed border-[#5c4938]/40 pb-1.5 mb-1.5">
+                        <span class="text-xs font-bold text-[#5c4938]">📏 球面大圆航程:</span>
+                        <div>
+                            <strong id="route-distance" class="font-en-hand text-2xl font-bold text-[#c85a32]">8,214</strong>
+                            <span class="text-xs font-bold text-[#2b2118]">km</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-1.5 text-[11px] text-[#3a2e21]">
+                        <div class="bg-[#fdfaf2]/80 px-2 py-1 rounded border border-[#5c4938]/20">
+                            <span class="text-[#5c4938] block">预计巡航耗时</span>
+                            <strong id="route-duration" class="font-mono text-xs">09h 40m</strong>
+                        </div>
+                        <div class="bg-[#fdfaf2]/80 px-2 py-1 rounded border border-[#5c4938]/20">
+                            <span class="text-[#5c4938] block">巡航高度 / 航向</span>
+                            <strong id="plane-telemetry" class="font-mono text-xs">11.2km · 308°</strong>
+                        </div>
+                    </div>
+                    <div class="mt-1.5 text-[11px] font-mono text-[#5c4938] flex items-center justify-between">
+                        <span>✈️ 当前坐标:</span>
+                        <span id="plane-coords" class="font-bold text-[#2b2118]">45.12°N, 62.40°E</span>
+                    </div>
+                </div>
+
+                <!-- 航程进度条（支持拖拽定格）与飞行控制 -->
+                <div class="space-y-1.5">
+                    <div class="flex items-center justify-between text-xs font-bold">
+                        <span>航程进度 (<span id="route-progress-text">0%</span>)</span>
+                        <span id="pick-hint-badge" class="text-[11px] text-[#c85a32] font-normal">拖动滑块可手动巡航</span>
+                    </div>
+                    <input id="slider-flight-progress" type="range" min="0" max="1000" value="0" class="sketch-slider w-full">
+
+                    <div class="flex items-center gap-1.5 pt-1">
+                        <button id="btn-flight-play" class="sketch-btn active px-3 py-1.5 text-xs font-bold flex-1 flex items-center justify-center gap-1">
+                            <span>⏸ 巡航飞行中</span>
+                        </button>
+                        <button id="btn-flight-speed" class="sketch-btn px-2.5 py-1.5 text-xs font-bold font-mono" title="切换纸飞机飞行速度倍率">
+                            1.0x
+                        </button>
+                        <button id="btn-clear-route" class="sketch-btn px-2.5 py-1.5 text-xs font-bold" title="显示或隐藏航线与纸飞机">
+                            👁️ 航线
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 第三人称跟随视角主开关与机位切换 -->
+                <div class="pt-1 border-t-2 border-dashed border-[#5c4938]/40 flex items-center gap-1.5">
+                    <button id="btn-follow-cam" class="sketch-btn flex-1 py-2 text-xs font-bold flex items-center justify-center gap-1.5">
+                        <span>🎥 开启第三人称跟随视角</span>
+                    </button>
+                    <button id="btn-cam-FOV" class="sketch-btn px-2.5 py-2 text-xs font-bold" title="切换跟随相机远近机位">
+                        近景掠飞
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 跟随视角顶部飞行状态提示条 -->
+    <div id="follow-cam-banner" class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
+        <div class="sketch-box px-4 py-1.5 flex items-center gap-3 bg-[#fdf9f0]/95 follow-hud-badge">
+            <span class="text-xs font-bold text-[#c85a32] flex items-center gap-1">
+                ✈️ 第三人称纸飞机跟随巡航中
+            </span>
+            <span id="banner-route-label" class="text-xs font-bold text-[#2b2118] border-l border-[#5c4938]/40 pl-2">
+                万里长城 ➔ 埃菲尔铁塔
+            </span>
+            <button id="btn-exit-follow" class="sketch-btn px-2 py-0.5 text-[11px] font-bold bg-[#c85a32] text-white">
+                退出跟随 ✕
+            </button>
+        </div>
+    </div>
+
+    <!-- 右侧：手绘旅行手帐详情卡片（点击地标时展开） -->
+    <aside id="journal-card" class="fixed right-6 top-24 bottom-28 w-[340px] sm:w-[375px] max-w-[calc(100vw-3rem)] z-30 pointer-events-auto transition-all duration-500 transform translate-x-[120%] opacity-0 flex flex-col">
+        <div class="sketch-box flex-1 flex flex-col p-5 relative overflow-y-auto hatch-pattern">
+            <!-- 顶部牛皮纸胶带 -->
+            <div class="washi-tape -top-3 left-1/2 -translate-x-1/2"></div>
+
+            <!-- 关闭与编号栏 -->
+            <div class="flex items-center justify-between border-b-2 border-dashed border-[#5c4938]/40 pb-2.5 mb-3">
+                <div class="flex items-center gap-2">
+                    <span id="card-index" class="font-en-hand text-xl font-bold text-[#c85a32]">No.01</span>
+                    <span id="card-region" class="text-xs px-2 py-0.5 border border-[#2b2118] rounded bg-[#efe3c8] font-semibold">东亚 · 历史奇观</span>
+                </div>
+                <button id="btn-close-card" class="w-7 h-7 rounded-full border-2 border-[#2b2118] flex items-center justify-center hover:bg-[#2b2118] hover:text-[#fdf9f0] transition-colors">
+                    ✕
+                </button>
+            </div>
+
+            <!-- 手绘插画画框区 -->
+            <div class="relative w-full h-40 rounded-lg border-2 border-[#2b2118] bg-[#f8f1e0] mb-3.5 flex items-center justify-center overflow-hidden shadow-inner p-3">
+                <div id="card-svg-art" class="w-full h-full flex items-center justify-center"></div>
+                <!-- 邮戳图层 -->
+                <div id="card-stamp-mark" class="hidden absolute right-3 bottom-2 px-2.5 py-1 border-2 border-[#b93829] text-[#b93829] rounded font-hand text-base tracking-widest uppercase pointer-events-none select-none bg-[#fdf9f0]/80">
+                    ✓ 已勘探 · VISITED
+                </div>
+            </div>
+
+            <!-- 地标标题与经纬度 -->
+            <div class="mb-3">
+                <h2 id="card-title" class="font-hand text-3xl text-[#2b2118] leading-tight">万里长城</h2>
+                <div class="flex items-center gap-2 text-xs text-[#5c4938] mt-1 font-mono">
+                    <svg class="w-3.5 h-3.5 text-[#c85a32] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 21s-7-6.5-7-12a7 7 0 1 1 14 0c0 5.5-7 12-7 12z"/>
+                        <circle cx="12" cy="9" r="2.5"/>
+                    </svg>
+                    <span id="card-coords">40.43° N, 116.57° E</span>
+                    <span>·</span>
+                    <span id="card-climate">温带季风山岳</span>
+                </div>
+            </div>
+
+            <!-- 手帐正文笔记 -->
+            <div class="flex-1 bg-[#fdfaf2]/80 border border-[#5c4938]/30 rounded-lg p-3.5 mb-3 text-sm leading-relaxed text-[#36291e] relative">
+                <p id="card-desc" class="mb-2.5"></p>
+                <div class="border-t border-dashed border-[#5c4938]/40 pt-2 mt-2 text-xs text-[#5c4938]">
+                    <strong class="text-[#c85a32]">✎ 绘图师手记：</strong>
+                    <span id="card-sketch-note"></span>
+                </div>
+            </div>
+
+            <!-- 底部操作：打卡盖章 & 上一个/下一个 -->
+            <div class="flex items-center justify-between gap-2 pt-1">
+                <button id="btn-prev-landmark" class="sketch-btn px-3 py-1.5 text-xs font-bold flex items-center gap-1">
+                    ← 上一处
+                </button>
+                <button id="btn-stamp-landmark" class="sketch-btn flex-1 py-1.5 text-xs font-bold bg-[#ead8b8] flex items-center justify-center gap-1.5">
+                    <span>💮 加盖手帐印章</span>
+                </button>
+                <button id="btn-next-landmark" class="sketch-btn px-3 py-1.5 text-xs font-bold flex items-center gap-1">
+                    下一处 →
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 底部：牛皮纸手帐控制面板（独立透明容器） -->
+    <footer class="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 ui-float-container w-full max-w-5xl px-4">
+        <div class="sketch-box px-4 py-3 pointer-events-auto w-full flex flex-wrap items-center justify-between gap-3 hatch-pattern">
+            <!-- 1. 视觉主题切换 -->
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="text-xs font-bold text-[#5c4938] mr-1 flex items-center gap-1">
+                    <svg class="w-4 h-4 text-[#c85a32]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+                    </svg>
+                    画风主题:
+                </span>
+                <button data-theme="watercolor" class="theme-btn sketch-btn active px-3 py-1 text-xs font-bold">
+                    🎨 水彩绘本风
+                </button>
+                <button data-theme="ink" class="theme-btn sketch-btn px-3 py-1 text-xs font-bold">
+                    ✒️ 钢笔素描风
+                </button>
+                <button data-theme="nautical" class="theme-btn sketch-btn px-3 py-1 text-xs font-bold">
+                    🧭 复古航海图
+                </button>
+            </div>
+
+            <!-- 2. 太阳光照角度调节（观察昼夜素描排线过渡） -->
+            <div class="flex items-center gap-2 bg-[#fdf9f0]/90 px-3 py-1.5 rounded-full border border-[#2b2118]">
+                <svg class="w-4 h-4 text-[#c85a32] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="4"/>
+                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+                </svg>
+                <span class="text-xs font-bold whitespace-nowrap">晨昏排线光照:</span>
+                <input id="slider-sun" type="range" min="0" max="360" value="45" class="sketch-slider w-24 sm:w-28">
+                <span id="sun-angle-label" class="text-[11px] font-mono w-9 text-right text-[#5c4938]">045°</span>
+            </div>
+
+            <!-- 3. 场景元素开关 -->
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <button id="toggle-clouds" class="sketch-btn active px-2.5 py-1 text-xs font-bold flex items-center gap-1">
+                    ☁️ 立体云层
+                </button>
+                <button id="toggle-rings" class="sketch-btn active px-2.5 py-1 text-xs font-bold flex items-center gap-1">
+                    🪐 天球仪环
+                </button>
+                <button id="toggle-pins" class="sketch-btn active px-2.5 py-1 text-xs font-bold flex items-center gap-1">
+                    📍 手绘地标
+                </button>
+                <button id="toggle-rotate" class="sketch-btn active px-2.5 py-1 text-xs font-bold flex items-center gap-1">
+                    🔄 自动自转
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 应用主逻辑 -->
+    <script>
+        /***********************************************************************
+         * 1. 手绘主题配色配置与地标数据库
+         ***********************************************************************/
+        const THEMES = {
+            watercolor: {
+                name: '水彩绘本',
+                bgGradient: 'radial-gradient(circle at 50% 48%, #fbf7ec 0%, #DFECE6 58%, #bad1c8 100%)',
+                accent: '#c85a32',
+                oceanBase: '#b8dce0',
+                oceanDeep: '#89bec6',
+                oceanShallow: '#d7efe9',
+                landFill: '#d8dfc0',
+                landWarm: '#e6cfa8',
+                landForest: '#9bb892',
+                landHighland: '#cfa882',
+                antarcticaFill: '#eef5f6',
+                inkColor: '#2b231d',
+                gridColor: 'rgba(56, 78, 84, 0.25)',
+                waveColor: 'rgba(54, 102, 117, 0.42)',
+                hatchDensity: 0.68,
+                paperTint: new THREE.Color('#fbf7ec'),
+                shadowInk: new THREE.Color('#27323a'),
+                warmLight: new THREE.Color('#fff9eb'),
+                cloudColor: new THREE.Color('#fffdf8'),
+                ringColor: new THREE.Color('#4a3c31'),
+                showSeaMonsters: false,
+                rhumbLines: false
+            },
+            ink: {
+                name: '钢笔素描',
+                bgGradient: 'radial-gradient(circle at 50% 48%, #f8f2e4 0%, #e5d8be 65%, #c7b595 100%)',
+                accent: '#593e2b',
+                oceanBase: '#efe5cf',
+                oceanDeep: '#e2d4b7',
+                oceanShallow: '#f6eedc',
+                landFill: '#f9f3e6',
+                landWarm: '#ede0c7',
+                landForest: '#dfcfb2',
+                landHighland: '#d4c19f',
+                antarcticaFill: '#fbf7ef',
+                inkColor: '#1f1712',
+                gridColor: 'rgba(35, 25, 18, 0.28)',
+                waveColor: 'rgba(35, 25, 18, 0.45)',
+                hatchDensity: 1.0,
+                paperTint: new THREE.Color('#f5ebd6'),
+                shadowInk: new THREE.Color('#1c140f'),
+                warmLight: new THREE.Color('#fbf4e6'),
+                cloudColor: new THREE.Color('#f7efe0'),
+                ringColor: new THREE.Color('#241a12'),
+                showSeaMonsters: false,
+                rhumbLines: true
+            },
+            nautical: {
+                name: '复古航海图',
+                bgGradient: 'radial-gradient(circle at 50% 48%, #f3e3c3 0%, #dfc496 62%, #b89461 100%)',
+                accent: '#9e3b24',
+                oceanBase: '#e4cca0',
+                oceanDeep: '#d4b580',
+                oceanShallow: '#eedbb6',
+                landFill: '#d9b882',
+                landWarm: '#cda369',
+                landForest: '#b89a67',
+                landHighland: '#b58350',
+                antarcticaFill: '#ead8b3',
+                inkColor: '#362010',
+                gridColor: 'rgba(92, 48, 20, 0.36)',
+                waveColor: 'rgba(82, 49, 24, 0.48)',
+                hatchDensity: 0.85,
+                paperTint: new THREE.Color('#edd6ad'),
+                shadowInk: new THREE.Color('#2d190b'),
+                warmLight: new THREE.Color('#ffefd2'),
+                cloudColor: new THREE.Color('#f7e8c9'),
+                ringColor: new THREE.Color('#693b18'),
+                showSeaMonsters: true,
+                rhumbLines: true
+            }
+        };
+
+        // 8 个精选世界地标及手绘 SVG 插画
+        const LANDMARKS = [
+            {
+                id: 'greatwall',
+                index: 'No.01',
+                name: '万里长城',
+                region: '东亚 · 华夏奇观',
+                lat: 40.43,
+                lon: 116.57,
+                coordsText: '40.43° N, 116.57° E',
+                climate: '燕山山脉 · 温带季风',
+                desc: '蜿蜒于崇山峻岭之间的古代巨型防御工程。在手绘地图上，它如同一条顺着山脊起伏的墨色苍龙，烽火台在晨昏排线光影中次第点亮。',
+                sketchNote: '山脊采用双层墨线勾勒，城垛处使用细密垂直排线表现砖石古朴质感。',
+                svg: `<svg viewBox="0 0 260 130" class="w-full h-full" fill="none" stroke="#2b2118" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="215" cy="32" r="16" fill="#e59866" stroke="none" opacity="0.65"/>
+                    <path d="M10 115 L55 65 L95 92 L150 42 L205 85 L250 55" stroke="#8ba888" stroke-width="3" fill="#d5e0c5" opacity="0.5"/>
+                    <path d="M15 105 Q65 55 115 78 T220 45" stroke-width="10" stroke="#d9c29c"/>
+                    <path d="M15 105 Q65 55 115 78 T220 45" stroke-width="2.2" stroke="#2b2118"/>
+                    <rect x="98" y="52" width="28" height="26" fill="#dfd0b2" stroke="#2b2118" stroke-width="2"/>
+                    <path d="M95 52 H101 V47 H107 V52 H113 V47 H119 V52 H129" />
+                    <rect x="108" y="62" width="8" height="10" rx="4" fill="#2b2118"/>
+                    <rect x="198" y="28" width="22" height="20" fill="#dfd0b2" stroke="#2b2118" stroke-width="2"/>
+                    <path d="M196 28 H202 V24 H208 V28 H214 V24 H220 V28" />
+                </svg>`
+            },
+            {
+                id: 'pyramids',
+                index: 'No.02',
+                name: '吉萨金字塔群',
+                region: '北非 · 古埃及文明',
+                lat: 29.97,
+                lon: 31.13,
+                coordsText: '29.97° N, 31.13° E',
+                climate: '撒哈拉北缘 · 热带沙漠',
+                desc: '屹立于尼罗河西岸金色沙海中的几何奇迹。胡夫金字塔与狮身人面像在烈日下投射出棱角分明的三角暗部，是练习钢笔交叉排线光影的绝佳范本。',
+                sketchNote: '背光面采用 45° 与 135° 双重交叉排线（Cross-hatching），沙丘以点彩表现颗粒感。',
+                svg: `<svg viewBox="0 0 260 130" class="w-full h-full" fill="none" stroke="#2b2118" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="52" cy="34" r="14" fill="#df7a47" opacity="0.55" stroke="none"/>
+                    <path d="M8 108 Q80 92 160 105 T252 100" fill="#ecd5a7" stroke="none"/>
+                    <polygon points="45,102 105,36 155,102" fill="#e9c88b"/>
+                    <polygon points="105,36 155,102 128,105" fill="#b89258"/>
+                    <line x1="112" y1="50" x2="135" y2="98" stroke-width="1"/>
+                    <line x1="118" y1="62" x2="144" y2="98" stroke-width="1"/>
+                    <polygon points="135,104 185,50 230,104" fill="#dfbe82"/>
+                    <polygon points="185,50 230,104 206,106" fill="#a8824a"/>
+                    <path d="M8 108 Q80 92 160 105 T252 100" stroke="#2b2118" stroke-width="2"/>
+                </svg>`
+            },
+            {
+                id: 'amazon',
+                index: 'No.03',
+                name: '亚马孙热带雨林',
+                region: '南美 · 地球之肺',
+                lat: -3.46,
+                lon: -62.21,
+                coordsText: '03.46° S, 62.21° W',
+                climate: '赤道雨林 · 湿润多雨',
+                desc: '横跨南美大陆的浩瀚绿色迷宫，蜿蜒曲折的亚马孙河干支流如同大地叶脉。水彩晕染在这里展现出浓郁的翡翠绿与群青河道交织的生机。',
+                sketchNote: '使用连绵的圆弧笔触描绘雨林树冠，河道两侧留白以展现水彩湿画法的呼吸感。',
+                svg: `<svg viewBox="0 0 260 130" class="w-full h-full" fill="none" stroke="#2b2118" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="15" y="15" width="230" height="100" rx="8" fill="#cde0c1" stroke="none"/>
+                    <path d="M20 98 C75 95, 70 55, 130 62 C185 68, 175 30, 240 28" stroke="#7fb5be" stroke-width="16" fill="none"/>
+                    <path d="M20 98 C75 95, 70 55, 130 62 C185 68, 175 30, 240 28" stroke="#2b2118" stroke-width="2" stroke-dasharray="6 4" fill="none"/>
+                    <circle cx="58" cy="48" r="14" fill="#7aa36f"/>
+                    <circle cx="74" cy="52" r="11" fill="#8fb382"/>
+                    <line x1="58" y1="62" x2="58" y2="75"/>
+                    <circle cx="185" cy="82" r="15" fill="#7aa36f"/>
+                    <circle cx="202" cy="85" r="12" fill="#8fb382"/>
+                    <line x1="185" y1="97" x2="185" y2="110"/>
+                </svg>`
+            },
+            {
+                id: 'fuji',
+                index: 'No.04',
+                name: '富士山与浮世海浪',
+                region: '东亚 · 日本列岛',
+                lat: 35.36,
+                lon: 138.72,
+                coordsText: '35.36° N, 138.72° E',
+                climate: '本州岛 · 火山锥地貌',
+                desc: '终年积雪的对称火山锥与翻涌的太平洋海浪相映成趣。在绘本视角下，山巅白雪采用留白技法，山麓则点缀着淡雅的樱色与青松。',
+                sketchNote: '借鉴葛饰北斋版画线条，山体斜坡采用顺应等高线的弧形排线。',
+                svg: `<svg viewBox="0 0 260 130" class="w-full h-full" fill="none" stroke="#2b2118" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="130" cy="45" r="28" fill="#d96b43" opacity="0.45" stroke="none"/>
+                    <path d="M25 110 Q95 95 114 38 H146 Q165 95 235 110 Z" fill="#6f8fa6"/>
+                    <path d="M114 38 H146 L160 66 L145 58 L136 68 L126 57 L115 67 L102 64 Z" fill="#fffdf8"/>
+                    <path d="M15 112 Q45 98 75 112 T135 112 T195 112 T245 112" stroke="#2b2118" stroke-width="2.2" fill="#b7d7dc"/>
+                </svg>`
+            },
+            {
+                id: 'eiffel',
+                index: 'No.05',
+                name: '埃菲尔铁塔',
+                region: '西欧 · 塞纳河畔',
+                lat: 48.85,
+                lon: 2.29,
+                coordsText: '48.85° N, 02.29° E',
+                climate: '西欧平原 · 温带海洋性',
+                desc: '耸立在巴黎战神广场的钢铁蕾丝镂空建筑。用精细的钢笔针管笔勾勒其桁架结构，搭配塞纳河畔柔和的水彩梧桐树影，充满浪漫速写气息。',
+                sketchNote: '使用细密的网格交叉线表现铁塔金属桁架，天空辅以轻盈的淡彩云朵。',
+                svg: `<svg viewBox="0 0 260 130" class="w-full h-full" fill="none" stroke="#2b2118" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="130" cy="68" r="46" fill="#e9dcc0" stroke="none"/>
+                    <path d="M130 12 L130 22 M125 22 H135 L142 62 H118 Z" fill="#c7956d"/>
+                    <path d="M115 62 H145 L154 88 H106 Z" fill="#b8845c"/>
+                    <path d="M102 88 H158 L172 116 H146 C144 98 116 98 114 116 H88 Z" fill="#a6734c"/>
+                    <line x1="70" y1="116" x2="190" y2="116" stroke-width="2.5"/>
+                </svg>`
+            },
+            {
+                id: 'antarctica',
+                index: 'No.06',
+                name: '南极极地冰川',
+                region: '南极洲 · 白色大陆',
+                lat: -74.0,
+                lon: 15.0,
+                coordsText: '74.00° S, 15.00° E',
+                climate: '极地冰原 · 极昼极夜',
+                desc: '地球最南端的静谧冰封世界。高耸的桌状冰山与浮冰在深邃的南大洋中漂流，航海图常在此处绘有古老的指南针玫瑰与极光线条。',
+                sketchNote: '冰山切面采用冷调青蓝水彩晕染，辅以利落的垂直短排线表现冰壁断层。',
+                svg: `<svg viewBox="0 0 260 130" class="w-full h-full" fill="none" stroke="#2b2118" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="10" y="88" width="240" height="30" fill="#7aa6b8" stroke="none"/>
+                    <polygon points="35,90 65,38 92,62 122,26 162,90" fill="#eef7f8"/>
+                    <polygon points="122,26 162,90 198,52 222,90" fill="#cbe3e8"/>
+                    <line x1="15" y1="90" x2="245" y2="90" stroke-width="2.5"/>
+                    <line x1="45" y1="102" x2="95" y2="102" stroke="#fff" stroke-width="2"/>
+                    <line x1="145" y1="108" x2="205" y2="108" stroke="#fff" stroke-width="2"/>
+                </svg>`
+            },
+            {
+                id: 'grandcanyon',
+                index: 'No.07',
+                name: '科罗拉多大峡谷',
+                region: '北美 · 红岩层峦',
+                lat: 36.10,
+                lon: -112.11,
+                coordsText: '36.10° N, 112.11° W',
+                climate: '科罗拉多高原 · 干旱峡谷',
+                desc: '亿万年河水切割出的地球年轮。赤红与赭石色的水平岩层在夕阳下呈现出丰富的色彩阶梯，是水彩与排线结合最具表现力的自然地貌。',
+                sketchNote: '横向分层晕染赭石、焦糖与茜素红，峡谷深处使用浓墨重排线拉开空间纵深。',
+                svg: `<svg viewBox="0 0 260 130" class="w-full h-full" fill="none" stroke="#2b2118" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 35 H85 L105 70 L122 108 H12 Z" fill="#d47a4c"/>
+                    <path d="M248 35 H172 L152 70 L135 108 H248 Z" fill="#b85d35"/>
+                    <line x1="15" y1="55" x2="95" y2="55"/>
+                    <line x1="15" y1="78" x2="108" y2="78"/>
+                    <line x1="162" y1="55" x2="245" y2="55"/>
+                    <line x1="148" y1="78" x2="245" y2="78"/>
+                    <path d="M122 108 Q130 92 135 108" fill="#6faab5"/>
+                </svg>`
+            },
+            {
+                id: 'sydney',
+                index: 'No.08',
+                name: '悉尼海港与大堡礁',
+                region: '大洋洲 · 南十字星下',
+                lat: -33.85,
+                lon: 151.21,
+                coordsText: '33.85° S, 151.21° E',
+                climate: '南太平洋西岸 · 亚热带海湾',
+                desc: '洁白的风帆建筑静立于湛蓝海湾之畔，不远处的珊瑚海在手绘航海图上布满了波浪短线与远航帆船的航迹。',
+                sketchNote: '白帆壳体保留水彩纸本色高光，海面采用古典航海图的平行波纹线刻画。',
+                svg: `<svg viewBox="0 0 260 130" class="w-full h-full" fill="none" stroke="#2b2118" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M45 92 Q60 40 95 52 Q82 72 88 92 Z" fill="#fffdf7"/>
+                    <path d="M82 92 Q102 32 142 46 Q126 70 132 92 Z" fill="#f7f2e4"/>
+                    <path d="M128 92 Q152 48 182 64 Q170 78 172 92 Z" fill="#efe6d2"/>
+                    <rect x="35" y="92" width="165" height="8" fill="#c7ab82"/>
+                    <path d="M15 108 Q50 100 85 108 T155 108 T235 108" stroke="#3c6e78" stroke-width="2"/>
+                </svg>`
+            }
+        ];
+
+        /***********************************************************************
+         * 2. 大陆手绘多边形地理轮廓数据 (经纬度坐标点列: [lon, lat])
+         *    结合分形手绘抖动算法，生成高辨识度且充满手绘不规则韵味的世界地图
+         ***********************************************************************/
+        const CONTINENT_POLYGONS = [
+            {
+                name: 'NorthAmerica',
+                colorType: 'landForest',
+                points: [
+                    [-166,65],[-152,60],[-140,60],[-130,54],[-124,48],[-122,37],[-115,30],[-105,20],
+                    [-90,16],[-82,9],[-77,9],[-81,18],[-88,21],[-97,26],[-90,29],[-82,25],[-80,32],
+                    [-75,36],[-70,42],[-62,46],[-55,52],[-64,60],[-78,62],[-85,68],[-105,70],[-130,70],[-160,70]
+                ]
+            },
+            {
+                name: 'Greenland',
+                colorType: 'antarcticaFill',
+                points: [[-52,60],[-42,60],[-22,70],[-18,80],[-42,83],[-60,76],[-55,68]]
+            },
+            {
+                name: 'SouthAmerica',
+                colorType: 'landForest',
+                points: [
+                    [-78,10],[-72,12],[-60,8],[-50,0],[-35,-6],[-38,-16],[-42,-23],[-52,-33],
+                    [-64,-42],[-68,-54],[-74,-50],[-72,-36],[-70,-18],[-78,-5],[-80,2]
+                ]
+            },
+            {
+                name: 'Europe',
+                colorType: 'landFill',
+                points: [
+                    [-9,37],[-9,43],[-2,44],[-4,48],[2,51],[8,54],[10,58],[5,62],[14,68],[28,71],
+                    [42,67],[58,68],[60,55],[48,46],[38,45],[29,41],[24,37],[16,40],[14,45],[9,43],[3,42],[-5,36]
+                ]
+            },
+            {
+                name: 'UK',
+                colorType: 'landFill',
+                points: [[-6,50],[-5,55],[-2,58],[1,52],[-2,50]]
+            },
+            {
+                name: 'Africa',
+                colorType: 'landWarm',
+                points: [
+                    [-17,15],[-12,26],[-6,35],[10,37],[12,33],[32,31],[38,22],[43,12],[51,11],
+                    [41,-3],[40,-15],[34,-26],[26,-34],[18,-34],[14,-22],[12,-6],[8,4],[-8,5],[-15,10]
+                ]
+            },
+            {
+                name: 'Madagascar',
+                colorType: 'landForest',
+                points: [[44,-25],[48,-25],[50,-13],[46,-16]]
+            },
+            {
+                name: 'Asia',
+                colorType: 'landHighland',
+                points: [
+                    [30,41],[35,32],[38,22],[48,13],[59,22],[67,24],[73,18],[78,8],[82,16],[89,22],
+                    [96,16],[100,2],[104,1],[109,13],[108,21],[118,24],[122,31],[120,39],[128,36],
+                    [132,43],[141,52],[158,52],[172,62],[178,67],[140,73],[105,76],[75,72],[60,68],[58,52],[46,44]
+                ]
+            },
+            {
+                name: 'Japan',
+                colorType: 'landForest',
+                points: [[131,32],[136,34],[141,38],[144,43],[140,42],[135,36],[130,33]]
+            },
+            {
+                name: 'Indonesia',
+                colorType: 'landForest',
+                points: [[96,5],[105,-6],[115,-8],[120,-5],[112,1],[102,2]]
+            },
+            {
+                name: 'NewGuinea',
+                colorType: 'landForest',
+                points: [[132,-2],[141,-3],[149,-8],[142,-9],[134,-5]]
+            },
+            {
+                name: 'Australia',
+                colorType: 'landWarm',
+                points: [
+                    [114,-22],[122,-16],[131,-12],[136,-15],[142,-11],[150,-22],[153,-28],[149,-37],
+                    [140,-38],[131,-32],[121,-34],[115,-34],[113,-26]
+                ]
+            },
+            {
+                name: 'NewZealand',
+                colorType: 'landForest',
+                points: [[167,-45],[173,-41],[178,-37],[175,-43],[169,-46]]
+            },
+            {
+                name: 'Antarctica',
+                colorType: 'antarcticaFill',
+                points: [
+                    [-180,-72],[-140,-74],[-100,-72],[-62,-64],[-45,-73],[-10,-70],[30,-69],
+                    [75,-68],[120,-67],[162,-72],[180,-72],[180,-90],[-180,-90]
+                ]
+            }
+        ];
+
+        /***********************************************************************
+         * 3. 离屏 Canvas 程序化生成高分辨率手绘地球贴图
+         ***********************************************************************/
+        function seededRandom(seed) {
+            let x = Math.sin(seed) * 10000;
+            return x - Math.floor(x);
+        }
+
+        // 经纬度转贴图 UV 像素坐标
+        function lonLatToXY(lon, lat, width, height) {
+            const x = ((lon + 180) / 360) * width;
+            const y = ((90 - lat) / 180) * height;
+            return [x, y];
+        }
+
+        // 对大陆多边形进行分形细分抖动，产生真实手绘海岸线
+        function subdivideHandDrawnPolygon(pts, iterations = 3, roughness = 3.2, seedOffset = 1) {
+            let current = pts.slice();
+            for (let it = 0; it < iterations; it++) {
+                const next = [];
+                const scale = roughness / Math.pow(1.75, it);
+                for (let i = 0; i < current.length; i++) {
+                    const p1 = current[i];
+                    const p2 = current[(i + 1) % current.length];
+                    next.push(p1);
+                    // 不对极地底边做抖动
+                    if (Math.abs(p1[1]) > 85 && Math.abs(p2[1]) > 85) continue;
+                    const midLon = (p1[0] + p2[0]) * 0.5;
+                    const midLat = (p1[1] + p2[1]) * 0.5;
+                    const r1 = (seededRandom(i * 31.7 + it * 101 + seedOffset) - 0.5) * scale;
+                    const r2 = (seededRandom(i * 73.3 + it * 211 + seedOffset) - 0.5) * scale * 0.75;
+                    next.push([midLon + r1, Math.max(-89, Math.min(89, midLat + r2))]);
+                }
+                current = next;
+            }
+            return current;
+        }
+
+        // 在地图上绘制手绘小山脉图标 (^^^)
+        function drawHandMountains(ctx, cx, cy, count, scale, inkColor) {
+            ctx.save();
+            ctx.strokeStyle = inkColor;
+            ctx.lineWidth = 2.0 * scale;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            for (let i = 0; i < count; i++) {
+                const ox = cx + (i - (count - 1) / 2) * 18 * scale;
+                const oy = cy + (i % 2 === 0 ? -3 : 4) * scale;
+                const h = (11 + (i % 2) * 4) * scale;
+                const w = 12 * scale;
+                // 山峰主轮廓
+                ctx.beginPath();
+                ctx.moveTo(ox - w, oy + h * 0.5);
+                ctx.lineTo(ox, oy - h * 0.5);
+                ctx.lineTo(ox + w, oy + h * 0.5);
+                ctx.stroke();
+                // 背光侧山体排线
+                ctx.beginPath();
+                for (let k = 1; k <= 3; k++) {
+                    const t = k / 4;
+                    ctx.moveTo(ox, oy - h * 0.5 + t * h);
+                    ctx.lineTo(ox + w * t * 0.85, oy - h * 0.5 + t * h + 3 * scale);
+                }
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        // 绘制复古航海图罗盘玫瑰
+        function drawCompassRose(ctx, cx, cy, radius, inkColor, accentColor) {
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.strokeStyle = inkColor;
+            ctx.lineWidth = 1.6;
+            // 外圈刻度环
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 0.86, 0, Math.PI * 2);
+            ctx.stroke();
+            // 八角星指针
+            for (let i = 0; i < 8; i++) {
+                ctx.save();
+                ctx.rotate((i * Math.PI) / 4);
+                const len = i % 2 === 0 ? radius * 0.96 : radius * 0.65;
+                const w = radius * 0.16;
+                // 左半亮面
+                ctx.beginPath();
+                ctx.moveTo(0, -len);
+                ctx.lineTo(-w, 0);
+                ctx.lineTo(0, 0);
+                ctx.closePath();
+                ctx.fillStyle = i === 0 ? accentColor : '#fdf8ec';
+                ctx.fill();
+                ctx.stroke();
+                // 右半暗面墨色
+                ctx.beginPath();
+                ctx.moveTo(0, -len);
+                ctx.lineTo(w, 0);
+                ctx.lineTo(0, 0);
+                ctx.closePath();
+                ctx.fillStyle = inkColor;
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            }
+            ctx.restore();
+        }
+
+        // 绘制手绘古帆船与海怪装饰
+        function drawVintageShip(ctx, x, y, scale, inkColor) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            ctx.strokeStyle = inkColor;
+            ctx.fillStyle = '#fdf6e6';
+            ctx.lineWidth = 2;
+            // 船体
+            ctx.beginPath();
+            ctx.moveTo(-22, 6);
+            ctx.quadraticCurveTo(0, 16, 22, 6);
+            ctx.lineTo(16, 16);
+            ctx.lineTo(-16, 16);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            // 桅杆与鼓起风帆
+            ctx.beginPath();
+            ctx.moveTo(0, 6);
+            ctx.lineTo(0, -24);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(0, -20);
+            ctx.quadraticCurveTo(16, -10, 2, 2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(-2, -16);
+            ctx.quadraticCurveTo(-15, -8, -2, 2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // 主函数：生成指定主题的 2048x1024 手绘地球 Canvas 贴图
+        function generateHandDrawnEarthCanvas(themeKey) {
+            const theme = THEMES[themeKey];
+            const width = 2048;
+            const height = 1024;
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+
+            // 1. 海洋底色与水彩/羊皮纸晕染斑块
+            const oceanGrad = ctx.createLinearGradient(0, 0, 0, height);
+            oceanGrad.addColorStop(0, theme.oceanShallow);
+            oceanGrad.addColorStop(0.25, theme.oceanBase);
+            oceanGrad.addColorStop(0.5, theme.oceanDeep);
+            oceanGrad.addColorStop(0.75, theme.oceanBase);
+            oceanGrad.addColorStop(1, theme.oceanShallow);
+            ctx.fillStyle = oceanGrad;
+            ctx.fillRect(0, 0, width, height);
+
+            // 海洋高明度柔和亮斑（避免产生深色污渍）
+            for (let i = 0; i < 60; i++) {
+                const bx = seededRandom(i * 19.3) * width;
+                const by = (0.12 + seededRandom(i * 47.7) * 0.76) * height;
+                const br = 60 + seededRandom(i * 83.1) * 140;
+                const g = ctx.createRadialGradient(bx, by, br * 0.1, bx, by, br);
+                g.addColorStop(0, theme.oceanShallow);
+                g.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.save();
+                ctx.globalAlpha = 0.18;
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.arc(bx, by, br, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // 2. 古典手绘经纬网格与航海放射方位线 (Rhumb Lines)
+            ctx.save();
+            ctx.strokeStyle = theme.gridColor;
+            ctx.lineWidth = 1.5;
+            // 纬线（避开南北极点极区，防止极点纹理汇聚发黑）
+            for (let lat = -60; lat <= 60; lat += 15) {
+                const y = ((90 - lat) / 180) * height;
+                ctx.beginPath();
+                ctx.setLineDash(lat === 0 ? [12, 6] : [5, 7]);
+                ctx.lineWidth = lat === 0 ? 2.2 : 1.2;
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+            // 经线（截断在南北纬 72° 之间，避免在北极点/南极点汇集成黑点）
+            const poleMarginY = ((90 - 72) / 180) * height;
+            for (let lon = -180; lon <= 180; lon += 15) {
+                const x = ((lon + 180) / 360) * width;
+                ctx.beginPath();
+                ctx.setLineDash([5, 7]);
+                ctx.moveTo(x, poleMarginY);
+                ctx.lineTo(x, height - poleMarginY);
+                ctx.stroke();
+            }
+            // 航海放射线 (Portolan Rhumb Lines)
+            if (theme.rhumbLines) {
+                ctx.setLineDash([]);
+                ctx.lineWidth = 0.85;
+                const hubs = [[width * 0.28, height * 0.52], [width * 0.76, height * 0.58], [width * 0.48, height * 0.38]];
+                hubs.forEach(([hx, hy]) => {
+                    for (let a = 0; a < 16; a++) {
+                        const ang = (a * Math.PI) / 8;
+                        ctx.beginPath();
+                        ctx.moveTo(hx, hy);
+                        ctx.lineTo(hx + Math.cos(ang) * 700, Math.max(poleMarginY, Math.min(height - poleMarginY, hy + Math.sin(ang) * 700)));
+                        ctx.stroke();
+                    }
+                });
+            }
+            ctx.restore();
+
+            // 3. 海洋手绘波浪短线 (~ ~)
+            ctx.save();
+            ctx.strokeStyle = theme.waveColor;
+            ctx.lineWidth = 1.8;
+            ctx.lineCap = 'round';
+            for (let i = 0; i < 220; i++) {
+                const wx = seededRandom(i * 113.1) * width;
+                const wy = (0.16 + seededRandom(i * 227.9) * 0.68) * height;
+                const wLen = 14 + seededRandom(i * 59.3) * 16;
+                ctx.beginPath();
+                ctx.moveTo(wx - wLen, wy);
+                ctx.quadraticCurveTo(wx - wLen * 0.5, wy - 4, wx, wy);
+                ctx.quadraticCurveTo(wx + wLen * 0.5, wy + 4, wx + wLen, wy);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            // 4. 绘制手绘大陆轮廓、海岸线多层涟漪、内陆明亮水彩与轻柔排线
+            CONTINENT_POLYGONS.forEach((continent, cIdx) => {
+                const subPts = subdivideHandDrawnPolygon(continent.points, 3, 2.8, cIdx * 17 + 5);
+                const pixelPts = subPts.map(([lon, lat]) => lonLatToXY(lon, lat, width, height));
+
+                // 4.1 海岸外圈浅水波纹线 (双层平行描边)
+                [8, 4].forEach((offsetWidth, idx) => {
+                    ctx.save();
+                    ctx.beginPath();
+                    pixelPts.forEach(([x, y], i) => {
+                        if (i === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    });
+                    ctx.closePath();
+                    ctx.strokeStyle = theme.waveColor;
+                    ctx.lineWidth = offsetWidth * 2;
+                    ctx.globalAlpha = idx === 0 ? 0.18 : 0.32;
+                    ctx.lineJoin = 'round';
+                    ctx.stroke();
+                    ctx.restore();
+                });
+
+                // 4.2 大陆内部填充与高明度柔光水彩晕染（严禁产生深灰暗斑）
+                ctx.save();
+                ctx.beginPath();
+                pixelPts.forEach(([x, y], i) => {
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                });
+                ctx.closePath();
+                ctx.fillStyle = theme[continent.colorType] || theme.landFill;
+                ctx.fill();
+                ctx.clip();
+
+                // 大陆内部仅使用明亮暖黄与浅草绿柔光色块（透明度严格控制在 0.03~0.06）
+                const brightTints = ['#fff6db', '#f3e5be', '#dce8ca'];
+                for (let b = 0; b < 12; b++) {
+                    const pt = pixelPts[(b * 7) % pixelPts.length];
+                    const r = 65 + seededRandom(cIdx * 50 + b) * 120;
+                    const grad = ctx.createRadialGradient(pt[0], pt[1], 5, pt[0], pt[1], r);
+                    grad.addColorStop(0, brightTints[b % brightTints.length]);
+                    grad.addColorStop(1, 'rgba(255,255,255,0)');
+                    ctx.globalAlpha = themeKey === 'watercolor' ? 0.055 : 0.035;
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(pt[0], pt[1], r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // 海岸内侧温暖浅赭石色晕染（替代原先发黑的深色粗描边）
+                ctx.globalAlpha = 0.14;
+                ctx.strokeStyle = '#c89e68';
+                ctx.lineWidth = 8;
+                ctx.stroke();
+
+                // 钢笔斜向细排线纹理
+                ctx.globalAlpha = themeKey === 'ink' ? 0.16 : 0.07;
+                ctx.strokeStyle = theme.inkColor;
+                ctx.lineWidth = 1.0;
+                for (let hLine = -height; hLine < width + height; hLine += 13) {
+                    ctx.beginPath();
+                    ctx.moveTo(hLine, 0);
+                    ctx.lineTo(hLine - height * 0.65, height);
+                    ctx.stroke();
+                }
+                ctx.restore();
+
+                // 4.3 双重手绘钢笔墨水主轮廓线（错位抖动模拟手绘复线）
+                for (let pass = 0; pass < 2; pass++) {
+                    ctx.save();
+                    ctx.beginPath();
+                    pixelPts.forEach(([x, y], i) => {
+                        const jx = pass === 1 ? (seededRandom(i * 19 + cIdx) - 0.5) * 2.6 : 0;
+                        const jy = pass === 1 ? (seededRandom(i * 37 + cIdx) - 0.5) * 2.6 : 0;
+                        if (i === 0) ctx.moveTo(x + jx, y + jy);
+                        else ctx.lineTo(x + jx, y + jy);
+                    });
+                    ctx.closePath();
+                    ctx.strokeStyle = theme.inkColor;
+                    ctx.lineWidth = pass === 0 ? 2.8 : 1.2;
+                    ctx.globalAlpha = pass === 0 ? 0.88 : 0.52;
+                    ctx.lineJoin = 'round';
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            });
+
+            // 5. 绘制各大洲标志性手绘山脉群 (安第斯、喜马拉雅、落基山、阿尔卑斯等)
+            const mountainRanges = [
+                { lon: 86, lat: 30, count: 5, scale: 1.3 },   // 喜马拉雅山脉
+                { lon: -110, lat: 44, count: 4, scale: 1.1 }, // 落基山脉
+                { lon: -70, lat: -22, count: 4, scale: 1.1 }, // 安第斯山脉
+                { lon: 10, lat: 46, count: 3, scale: 0.95 },  // 阿尔卑斯山脉
+                { lon: 37, lat: -3, count: 3, scale: 1.0 }    // 东非高原山脉
+            ];
+            mountainRanges.forEach(m => {
+                const [mx, my] = lonLatToXY(m.lon, m.lat, width, height);
+                drawHandMountains(ctx, mx, my, m.count, m.scale, theme.inkColor);
+            });
+
+            // 6. 绘制罗盘玫瑰与复古帆船装饰
+            const [compassX1, compassY1] = lonLatToXY(-140, -15, width, height);
+            drawCompassRose(ctx, compassX1, compassY1, 56, theme.inkColor, theme.accent);
+
+            const [compassX2, compassY2] = lonLatToXY(75, -28, width, height);
+            drawCompassRose(ctx, compassX2, compassY2, 46, theme.inkColor, theme.accent);
+
+            // 海洋手绘古帆船
+            const shipCoords = [[-38, 22], [160, 18], [-115, -35], [62, -12]];
+            shipCoords.forEach(([slon, slat]) => {
+                const [sx, sy] = lonLatToXY(slon, slat, width, height);
+                drawVintageShip(ctx, sx, sy, theme.showSeaMonsters ? 1.15 : 0.85, theme.inkColor);
+            });
+
+            return canvas;
+        }
+
+        /***********************************************************************
+         * 5. Three.js 场景、自定义手绘排线 GLSL 着色器与 3D 装饰元素初始化
+         ***********************************************************************/
+        let scene, camera, renderer, controls;
+        let earthGroup, earthMesh, earthOutlineMesh;
+        let cloudsGroup, astrolabeGroup, moonGroup, pins3DGroup;
+        let earthUniforms;
+        let currentTheme = 'watercolor';
+        let autoRotate = true;
+        let showClouds = true;
+        let showRings = true;
+        let showPins = true;
+        let sunAngleDeg = 45;
+        let selectedLandmarkId = null;
+        const visitedStamps = new Set();
+
+        // 相机平滑聚焦动画状态
+        let cameraTween = null;
+
+        // 航线绘制与纸飞机巡航状态
+        let routeGroup = null;
+        let paperPlaneGroup = null;
+        let wakeTrailPoints = [];
+        let wakeTrailMesh = null;
+        let routeCurve = null;
+        let routeDashLine = null;
+        let routeOriginId = 'greatwall';
+        let routeDestId = 'eiffel';
+        let routeVisible = true;
+        let flightPlaying = true;
+        let flightSpeedMultiplier = 1.0;
+        let flightProgress = 0.08; // 0.0 ~ 1.0
+        let followCameraActive = false;
+        let followCamCloseMode = true; // true: 近景贴地掠飞, false: 广角高空伴飞
+        let routePickMode = false; // 球面点击两处地标连线模式
+        let nextPickSlot = 'origin'; // 'origin' | 'dest'
+        let routeTotalDistanceKm = 0;
+
+        // 经纬度转 3D 球面坐标
+        function latLonToVector3(lat, lon, radius) {
+            const phi = (90 - lat) * (Math.PI / 180);
+            const theta = (lon + 180) * (Math.PI / 180);
+            const x = -(radius * Math.sin(phi) * Math.cos(theta));
+            const z = radius * Math.sin(phi) * Math.sin(theta);
+            const y = radius * Math.cos(phi);
+            return new THREE.Vector3(x, y, z);
+        }
+        // 自定义手绘地球 GLSL 着色器（含卡通色阶、3D 实时动态交叉排线暗部、边缘墨水描边、无极点汇聚伪影）
+        const earthVertexShader = `
+            varying vec2 vUv;
+            varying vec3 vNormal;
+            varying vec3 vLocalPos;
+            varying vec3 vViewPosition;
+
+            void main() {
+                vUv = uv;
+                vLocalPos = normalize(position);
+                vNormal = normalize(normalMatrix * normal);
+                vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                vViewPosition = -mvPosition.xyz;
+                gl_Position = projectionMatrix * mvPosition;
+            }
+        `;
+
+        const earthFragmentShader = `
+            uniform sampler2D uMap;
+            uniform vec3 uSunDir;
+            uniform vec3 uPaperTint;
+            uniform vec3 uShadowInk;
+            uniform vec3 uWarmLight;
+            uniform float uHatchDensity;
+            uniform float uTime;
+
+            varying vec2 vUv;
+            varying vec3 vNormal;
+            varying vec3 vLocalPos;
+            varying vec3 vViewPosition;
+
+            // 2D 伪随机噪点函数
+            float hash(vec2 p) {
+                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+            }
+
+            void main() {
+                vec4 texColor = texture2D(uMap, vUv);
+                vec3 viewDir = normalize(vViewPosition);
+                vec3 normal = normalize(vNormal);
+
+                // 计算太阳光照强度（柔和过渡，避免在大陆中部形成突兀黑块）
+                float ndotl = dot(normal, normalize(uSunDir));
+
+                // 卡通阶梯化光影 (Toon Stepping)
+                float lightStep = smoothstep(-0.35, 0.25, ndotl);
+                float deepShadow = smoothstep(-0.08, -0.55, ndotl);
+                float midShadow = smoothstep(0.15, -0.22, ndotl);
+
+                // 使用球面纬度余弦修正排线频率，彻底消除南北极点 UV 放射状汇聚黑影
+                float latFactor = sin(clamp(vUv.y, 0.05, 0.95) * 3.14159265);
+                float poleFade = smoothstep(0.48, 0.36, abs(vUv.y - 0.5));
+                vec2 hatchUV = vec2(vUv.x * 280.0 * latFactor, vUv.y * 150.0);
+                float wobble = sin(hatchUV.x * 0.25 + hatchUV.y * 0.25) * 1.2;
+
+                // 第一层 45° 排线 (晨昏过渡带)
+                float hatch1 = step(0.32, sin((hatchUV.x + hatchUV.y) * 1.85 + wobble));
+                // 第二层 -45° 交叉排线 (背光深暗部)
+                float hatch2 = step(0.28, sin((hatchUV.x - hatchUV.y) * 1.85 - wobble));
+                // 第三层 水平密集排线 (极暗部)
+                float hatch3 = step(0.35, sin(hatchUV.y * 2.6 + wobble));
+
+                float inkMask = 0.0;
+                if (midShadow > 0.05) {
+                    inkMask = max(inkMask, (1.0 - hatch1) * midShadow * 0.48 * uHatchDensity);
+                }
+                if (deepShadow > 0.05) {
+                    inkMask = max(inkMask, (1.0 - hatch2) * deepShadow * 0.65 * uHatchDensity);
+                }
+                if (ndotl < -0.42) {
+                    float coreDark = smoothstep(-0.42, -0.80, ndotl);
+                    inkMask = max(inkMask, (1.0 - hatch3) * coreDark * 0.72 * uHatchDensity);
+                }
+                inkMask *= poleFade;
+
+                // 合成纸张暖光与背光底色
+                vec3 baseColor = texColor.rgb;
+                vec3 litColor = mix(baseColor * 0.88 * uPaperTint, baseColor * uWarmLight, lightStep);
+
+                // 叠加钢笔排线墨色
+                vec3 finalColor = mix(litColor, uShadowInk, clamp(inkMask, 0.0, 0.78));
+
+                // 边缘 Fresnel 手绘墨水轮廓晕染
+                float fresnel = 1.0 - max(dot(viewDir, normal), 0.0);
+                float rimWobble = sin(vLocalPos.x * 40.0 + vLocalPos.y * 40.0 + uTime * 1.5) * 0.025;
+                float inkEdge = smoothstep(0.78 + rimWobble, 0.92 + rimWobble, fresnel);
+                finalColor = mix(finalColor, uShadowInk, inkEdge * 0.88);
+
+                // 微小纸张颗粒感
+                float grain = (hash(vLocalPos.xy * 400.0) - 0.5) * 0.025;
+                finalColor += grain;
+
+                gl_FragColor = vec4(finalColor, 1.0);
+            }
+        `;
+
+        // 3D 背面扩张墨水描边着色器 (Inverted Hull Outline with Hand-drawn Wobble)
+        const outlineVertexShader = `
+            uniform float uThickness;
+            uniform float uTime;
+            varying vec2 vUv;
+
+            void main() {
+                vUv = uv;
+                // 手绘笔触粗细随机起伏
+                float wobble = sin(position.x * 9.0 + position.y * 11.0 + uTime * 2.0) * 0.22
+                             + cos(position.z * 13.0 - uTime * 1.5) * 0.15;
+                vec3 displaced = position + normal * (uThickness * (1.0 + wobble));
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
+            }
+        `;
+
+        const outlineFragmentShader = `
+            uniform vec3 uInkColor;
+            void main() {
+                gl_FragColor = vec4(uInkColor, 1.0);
+            }
+        `;
+
+        function initThreeScene() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+
+            camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 200);
+            camera.position.set(0, 1.6, 8.8);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            // 阻尼顺滑 OrbitControls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.055;
+            controls.enablePan = false;
+            controls.minDistance = 4.3;
+            controls.maxDistance = 15.5;
+            controls.rotateSpeed = 0.65;
+
+            // 主地球容器组
+            earthGroup = new THREE.Group();
+            scene.add(earthGroup);
+
+            // 生成初始水彩手绘贴图
+            const initialCanvas = generateHandDrawnEarthCanvas(currentTheme);
+            const earthTexture = new THREE.CanvasTexture(initialCanvas);
+            earthTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            earthTexture.needsUpdate = true;
+
+            const themeCfg = THEMES[currentTheme];
+            earthUniforms = {
+                uMap: { value: earthTexture },
+                uSunDir: { value: new THREE.Vector3(1, 0.4, 0.8).normalize() },
+                uPaperTint: { value: themeCfg.paperTint },
+                uShadowInk: { value: themeCfg.shadowInk },
+                uWarmLight: { value: themeCfg.warmLight },
+                uHatchDensity: { value: themeCfg.hatchDensity },
+                uTime: { value: 0 }
+            };
+
+            // 1. 地球本体网格 (Radius = 2.45)
+            const earthGeo = new THREE.SphereGeometry(2.45, 96, 96);
+            const earthMat = new THREE.ShaderMaterial({
+                vertexShader: earthVertexShader,
+                fragmentShader: earthFragmentShader,
+                uniforms: earthUniforms
+            });
+            earthMesh = new THREE.Mesh(earthGeo, earthMat);
+            earthGroup.add(earthMesh);
+
+            // 2. 地球外圈手绘墨水描边壳 (Inverted Hull)
+            const outlineGeo = new THREE.SphereGeometry(2.45, 64, 64);
+            const outlineMat = new THREE.ShaderMaterial({
+                vertexShader: outlineVertexShader,
+                fragmentShader: outlineFragmentShader,
+                uniforms: {
+                    uThickness: { value: 0.036 },
+                    uTime: { value: 0 },
+                    uInkColor: { value: themeCfg.shadowInk }
+                },
+                side: THREE.BackSide
+            });
+            earthOutlineMesh = new THREE.Mesh(outlineGeo, outlineMat);
+            earthGroup.add(earthOutlineMesh);
+
+            // 3. 创建立体手绘云朵群
+            createHandDrawnClouds();
+
+            // 4. 创建复古黄铜/墨水天球仪外环 (Astrolabe Rings)
+            createAstrolabeRings();
+
+            // 5. 创建远景手绘月球、虚线轨道与星星群
+            createMoonAndStars();
+
+            // 6. 创建 8 个手绘 3D 地标图钉与 2D 投影标签
+            createLandmarkPins();
+
+            // 7. 创建手绘大圆航线与 3D 折纸飞机巡航系统
+            initFlightRouteSystem();
+
+            // 更新太阳角度
+            updateSunDirection(sunAngleDeg);
+
+            // 监听窗口尺寸变化
+            window.addEventListener('resize', onWindowResize);
+
+            // 监听地球上的 3D 图钉点击 (Raycaster)
+            setupRaycasterInteraction();
+
+            // 当用户手动拖拽 OrbitControls 时，如果处于跟随视角则自动平滑退出或允许观察
+            controls.addEventListener('start', () => {
+                if (cameraTween) cameraTween = null;
+            });
+        }
+
+        /***********************************************************************
+         * 6. 构建环绕地球的立体手绘云朵群 (带墨水描边的蓬松团簇)
+         ***********************************************************************/
+        function createHandDrawnClouds() {
+            cloudsGroup = new THREE.Group();
+            earthGroup.add(cloudsGroup);
+
+            const themeCfg = THEMES[currentTheme];
+            const cloudFillMat = new THREE.MeshToonMaterial({
+                color: themeCfg.cloudColor,
+                transparent: true,
+                opacity: 0.94
+            });
+            const cloudInkMat = new THREE.MeshBasicMaterial({
+                color: themeCfg.shadowInk,
+                side: THREE.BackSide
+            });
+
+            // 添加环境光与平行光供云朵和 3D 图钉使用
+            const ambientLight = new THREE.AmbientLight(0xfff8e7, 0.78);
+            scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0xfff3d6, 0.65);
+            dirLight.position.set(5, 3, 5);
+            scene.add(dirLight);
+            scene.userData.dirLight = dirLight;
+
+            const cloudPositions = [
+                { lat: 25, lon: -45, scale: 1.0, speed: 0.12 },
+                { lat: -15, lon: 85, scale: 1.15, speed: 0.09 },
+                { lat: 48, lon: 145, scale: 0.9, speed: 0.14 },
+                { lat: -38, lon: -125, scale: 1.05, speed: 0.11 },
+                { lat: 12, lon: 18, scale: 0.88, speed: 0.13 },
+                { lat: 56, lon: -10, scale: 0.92, speed: 0.10 },
+                { lat: -22, lon: -15, scale: 0.95, speed: 0.12 },
+                { lat: 5, lon: -155, scale: 1.1, speed: 0.08 }
+            ];
+
+            cloudPositions.forEach((cfg, idx) => {
+                const singleCloud = new THREE.Group();
+                // 每朵云由 4 个错落球体拼合成蓬松绘本云朵
+                const puffs = [
+                    { x: 0, y: 0, z: 0, r: 0.14 },
+                    { x: 0.11, y: -0.02, z: 0.02, r: 0.105 },
+                    { x: -0.11, y: -0.02, z: -0.01, r: 0.10 },
+                    { x: 0.04, y: 0.05, z: -0.03, r: 0.09 }
+                ];
+
+                puffs.forEach(p => {
+                    const geo = new THREE.SphereGeometry(p.r, 14, 14);
+                    const mesh = new THREE.Mesh(geo, cloudFillMat);
+                    mesh.position.set(p.x, p.y, p.z);
+                    singleCloud.add(mesh);
+
+                    // 墨水描边外壳
+                    const outGeo = new THREE.SphereGeometry(p.r * 1.13, 12, 12);
+                    const outMesh = new THREE.Mesh(outGeo, cloudInkMat);
+                    outMesh.position.set(p.x, p.y, p.z);
+                    singleCloud.add(outMesh);
+                });
+
+                const altitude = 2.68 + (idx % 3) * 0.06;
+                const pos = latLonToVector3(cfg.lat, cfg.lon, altitude);
+                singleCloud.position.copy(pos);
+                singleCloud.lookAt(new THREE.Vector3(0, 0, 0));
+                singleCloud.scale.setScalar(cfg.scale);
+
+                singleCloud.userData = {
+                    lat: cfg.lat,
+                    lon: cfg.lon,
+                    altitude,
+                    speed: cfg.speed
+                };
+
+                cloudsGroup.add(singleCloud);
+            });
+
+            cloudsGroup.userData = { cloudFillMat, cloudInkMat };
+        }
+
+        /***********************************************************************
+         * 7. 构建古典天球仪外环与手绘刻度环 (Astrolabe Rings)
+         ***********************************************************************/
+        function createAstrolabeRings() {
+            astrolabeGroup = new THREE.Group();
+            scene.add(astrolabeGroup);
+
+            const themeCfg = THEMES[currentTheme];
+            const ringMat = new THREE.MeshBasicMaterial({
+                color: themeCfg.ringColor,
+                transparent: true,
+                opacity: 0.65
+            });
+            const dashLineMat = new THREE.LineDashedMaterial({
+                color: themeCfg.ringColor,
+                dashSize: 0.16,
+                gapSize: 0.10,
+                transparent: true,
+                opacity: 0.55
+            });
+
+            // 1. 赤道主刻度环
+            const eqRingGeo = new THREE.TorusGeometry(3.12, 0.014, 12, 120);
+            const eqRing = new THREE.Mesh(eqRingGeo, ringMat);
+            eqRing.rotation.x = Math.PI / 2;
+            eqRing.rotation.y = 0.18;
+            astrolabeGroup.add(eqRing);
+
+            // 在赤道环上添加手绘刻度短线
+            const ticksGeo = new THREE.BufferGeometry();
+            const tickPositions = [];
+            for (let i = 0; i < 72; i++) {
+                const ang = (i / 72) * Math.PI * 2;
+                const rInner = 3.13;
+                const rOuter = i % 6 === 0 ? 3.25 : 3.19;
+                tickPositions.push(
+                    Math.cos(ang) * rInner, 0, Math.sin(ang) * rInner,
+                    Math.cos(ang) * rOuter, 0, Math.sin(ang) * rOuter
+                );
+            }
+            ticksGeo.setAttribute('position', new THREE.Float32BufferAttribute(tickPositions, 3));
+            const ticksLines = new THREE.LineSegments(ticksGeo, new THREE.LineBasicMaterial({
+                color: themeCfg.ringColor,
+                transparent: true,
+                opacity: 0.5
+            }));
+            ticksLines.rotation.z = 0.18;
+            astrolabeGroup.add(ticksLines);
+
+            // 2. 黄道倾斜虚线环
+            const eclipticPts = [];
+            for (let i = 0; i <= 128; i++) {
+                const a = (i / 128) * Math.PI * 2;
+                eclipticPts.push(new THREE.Vector3(Math.cos(a) * 3.38, Math.sin(a) * 0.95, Math.sin(a) * 3.25));
+            }
+            const eclipticGeo = new THREE.BufferGeometry().setFromPoints(eclipticPts);
+            const eclipticLine = new THREE.Line(eclipticGeo, dashLineMat);
+            eclipticLine.computeLineDistances();
+            astrolabeGroup.add(eclipticLine);
+
+            // 3. 子午线立环与南北极轴心装饰针
+            const meridianGeo = new THREE.TorusGeometry(3.28, 0.012, 12, 120);
+            const meridianRing = new THREE.Mesh(meridianGeo, ringMat);
+            meridianRing.rotation.y = Math.PI / 4;
+            astrolabeGroup.add(meridianRing);
+
+            astrolabeGroup.userData = { ringMat, dashLineMat, ticksLines };
+        }
+
+        /***********************************************************************
+         * 8. 构建远景手绘月球、虚线轨道与手绘星辰
+         ***********************************************************************/
+        function createMoonAndStars() {
+            moonGroup = new THREE.Group();
+            scene.add(moonGroup);
+
+            // 生成手绘陨石坑月球贴图
+            const mCanvas = document.createElement('canvas');
+            mCanvas.width = 256;
+            mCanvas.height = 128;
+            const mCtx = mCanvas.getContext('2d');
+            mCtx.fillStyle = '#efe5ce';
+            mCtx.fillRect(0, 0, 256, 128);
+            mCtx.strokeStyle = '#2b2118';
+            mCtx.lineWidth = 2;
+            // 手绘环形山与排线
+            const craters = [[60, 45, 16], [130, 70, 22], [195, 42, 14], [95, 95, 11], [170, 92, 15]];
+            craters.forEach(([cx, cy, cr]) => {
+                mCtx.beginPath();
+                mCtx.arc(cx, cy, cr, 0, Math.PI * 2);
+                mCtx.fillStyle = '#dfd0b2';
+                mCtx.fill();
+                mCtx.stroke();
+            });
+            // 排线暗调
+            mCtx.strokeStyle = 'rgba(43,33,24,0.25)';
+            mCtx.lineWidth = 1.2;
+            for (let i = 0; i < 256; i += 6) {
+                mCtx.beginPath();
+                mCtx.moveTo(i, 0);
+                mCtx.lineTo(i - 40, 128);
+                mCtx.stroke();
+            }
+
+            const moonTex = new THREE.CanvasTexture(mCanvas);
+            const moonGeo = new THREE.SphereGeometry(0.36, 32, 32);
+            const moonMat = new THREE.MeshBasicMaterial({ map: moonTex });
+            const moonMesh = new THREE.Mesh(moonGeo, moonMat);
+
+            // 月球墨水描边
+            const moonOutGeo = new THREE.SphereGeometry(0.39, 24, 24);
+            const moonOutMat = new THREE.MeshBasicMaterial({ color: 0x2b2118, side: THREE.BackSide });
+            const moonOutline = new THREE.Mesh(moonOutGeo, moonOutMat);
+            moonMesh.add(moonOutline);
+
+            moonMesh.position.set(4.5, 1.1, -1.8);
+            moonGroup.add(moonMesh);
+            moonGroup.userData.moonMesh = moonMesh;
+
+            // 远景手绘星辰纸片与十字星芒
+            const starCanvas = document.createElement('canvas');
+            starCanvas.width = 64;
+            starCanvas.height = 64;
+            const sCtx = starCanvas.getContext('2d');
+            sCtx.strokeStyle = '#3a2e21';
+            sCtx.fillStyle = '#f8e6a0';
+            sCtx.lineWidth = 3;
+            sCtx.beginPath();
+            sCtx.moveTo(32, 4);
+            sCtx.quadraticCurveTo(32, 32, 60, 32);
+            sCtx.quadraticCurveTo(32, 32, 32, 60);
+            sCtx.quadraticCurveTo(32, 32, 4, 32);
+            sCtx.quadraticCurveTo(32, 32, 32, 4);
+            sCtx.fill();
+            sCtx.stroke();
+
+            const starTex = new THREE.CanvasTexture(starCanvas);
+            const starSpriteMat = new THREE.SpriteMaterial({
+                map: starTex,
+                transparent: true,
+                opacity: 0.72
+            });
+
+            for (let i = 0; i < 42; i++) {
+                const sprite = new THREE.Sprite(starSpriteMat);
+                const r = 10 + Math.random() * 12;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = (Math.random() - 0.5) * Math.PI * 0.85;
+                sprite.position.set(
+                    r * Math.cos(phi) * Math.cos(theta),
+                    r * Math.sin(phi),
+                    r * Math.cos(phi) * Math.sin(theta)
+                );
+                const s = 0.18 + Math.random() * 0.26;
+                sprite.scale.set(s, s, 1);
+                scene.add(sprite);
+            }
+        }
+
+        /***********************************************************************
+         * 9. 创建地球表面 3D 图钉与 2D 交互标签系统
+         ***********************************************************************/
+        const pinElements = [];
+
+        function createLandmarkPins() {
+            pins3DGroup = new THREE.Group();
+            earthGroup.add(pins3DGroup);
+
+            const pinsContainer = document.getElementById('pins-container');
+            pinsContainer.innerHTML = '';
+
+            const pinHeadMat = new THREE.MeshToonMaterial({ color: 0xc85a32 });
+            const pinInkMat = new THREE.MeshBasicMaterial({ color: 0x2b2118, side: THREE.BackSide });
+            const stemMat = new THREE.MeshBasicMaterial({ color: 0x2b2118 });
+
+            LANDMARKS.forEach((lm) => {
+                // 3D 图钉实体 (附着在球面上)
+                const pinNode = new THREE.Group();
+                const surfacePos = latLonToVector3(lm.lat, lm.lon, 2.46);
+                const normalDir = surfacePos.clone().normalize();
+
+                // 针杆
+                const stemGeo = new THREE.CylinderGeometry(0.012, 0.012, 0.18, 8);
+                const stemMesh = new THREE.Mesh(stemGeo, stemMat);
+                stemMesh.position.y = 0.09;
+                pinNode.add(stemMesh);
+
+                // 圆头图钉帽
+                const headGeo = new THREE.SphereGeometry(0.055, 16, 16);
+                const headMesh = new THREE.Mesh(headGeo, pinHeadMat.clone());
+                headMesh.position.y = 0.19;
+                headMesh.userData = { landmarkId: lm.id };
+                pinNode.add(headMesh);
+
+                const headOutGeo = new THREE.SphereGeometry(0.068, 12, 12);
+                const headOutMesh = new THREE.Mesh(headOutGeo, pinInkMat);
+                headOutMesh.position.y = 0.19;
+                pinNode.add(headOutMesh);
+
+                // 对齐球面法线方向
+                pinNode.position.copy(surfacePos);
+                pinNode.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normalDir);
+
+                pins3DGroup.add(pinNode);
+
+                // 创建对应的 2D 浮动标签 DOM
+                const domEl = document.createElement('div');
+                domEl.className = 'landmark-pin';
+                domEl.dataset.id = lm.id;
+                domEl.innerHTML = `
+                    <div class="landmark-pin-badge">
+                        <span class="text-[#c85a32] font-en-hand text-sm">${lm.index}</span>
+                        <span>${lm.name}</span>
+                    </div>
+                    <div class="landmark-pin-stem"></div>
+                `;
+                domEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    handleLandmarkSelection(lm.id);
+                });
+                pinsContainer.appendChild(domEl);
+
+                pinElements.push({
+                    landmark: lm,
+                    pinNode,
+                    headMesh,
+                    domEl,
+                    localAnchor: latLonToVector3(lm.lat, lm.lon, 2.66)
+                });
+            });
+        }
+
+        // 每帧更新 2D 地标标签在屏幕上的投影坐标与背面遮挡隐藏
+        function updateProjectedPins() {
+            if (!showPins) return;
+
+            const halfW = window.innerWidth * 0.5;
+            const halfH = window.innerHeight * 0.5;
+            const camPos = camera.position.clone();
+
+            pinElements.forEach(item => {
+                // 计算世界空间位置与表面法线
+                const worldPos = item.localAnchor.clone().applyMatrix4(earthGroup.matrixWorld);
+                const worldNormal = worldPos.clone().normalize();
+                const toCam = camPos.clone().sub(worldPos).normalize();
+
+                // 判断是否在地球正面可见区域
+                const facingDot = worldNormal.dot(toCam);
+                if (facingDot < 0.18) {
+                    item.domEl.classList.add('hidden-back');
+                    return;
+                }
+
+                // 投影到屏幕坐标
+                const ndc = worldPos.clone().project(camera);
+                if (ndc.z > 1) {
+                    item.domEl.classList.add('hidden-back');
+                    return;
+                }
+
+                item.domEl.classList.remove('hidden-back');
+                const screenX = (ndc.x * halfW) + halfW;
+                const screenY = -(ndc.y * halfH) + halfH;
+                item.domEl.style.left = `${screenX}px`;
+                item.domEl.style.top = `${screenY}px`;
+            });
+        }
+
+        // 支持直接点击 3D 图钉模型
+        function setupRaycasterInteraction() {
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+            let pointerDownPos = { x: 0, y: 0 };
+
+            renderer.domElement.addEventListener('pointerdown', (e) => {
+                pointerDownPos = { x: e.clientX, y: e.clientY };
+            });
+
+            renderer.domElement.addEventListener('pointerup', (e) => {
+                const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+                if (dist > 6 || !showPins) return; // 区分拖拽与点击
+
+                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+
+                const clickableHeads = pinElements.map(p => p.headMesh);
+                const intersects = raycaster.intersectObjects(clickableHeads, false);
+                if (intersects.length > 0) {
+                    const lmId = intersects[0].object.userData.landmarkId;
+                    if (lmId) handleLandmarkSelection(lmId);
+                }
+            });
+        }
+
+        /***********************************************************************
+         * 9.5 航线绘制、球面大圆测距与 3D 折纸飞机巡航系统
+         ***********************************************************************/
+        // 球面坐标反解经纬度（用于实时显示纸飞机当前经纬度）
+        function vector3ToLatLon(vec) {
+            const v = vec.clone().normalize();
+            const phi = Math.acos(Math.max(-1, Math.min(1, v.y)));
+            const lat = 90 - (phi * 180) / Math.PI;
+            const theta = Math.atan2(v.z, -v.x);
+            let lon = (theta * 180) / Math.PI - 180;
+            if (lon < -180) lon += 360;
+            if (lon > 180) lon -= 360;
+            return { lat, lon };
+        }
+
+        // Haversine 公式计算地球两地大圆真实距离 (km) 与初始方位角
+        function computeGreatCircleMetrics(lat1, lon1, lat2, lon2) {
+            const R = 6371; // 地球平均半径 km
+            const toRad = Math.PI / 180;
+            const dLat = (lat2 - lat1) * toRad;
+            const dLon = (lon2 - lon1) * toRad;
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const distanceKm = Math.round(R * c);
+
+            // 计算航向角 Bearing
+            const y = Math.sin(dLon) * Math.cos(lat2 * toRad);
+            const x = Math.cos(lat1 * toRad) * Math.sin(lat2 * toRad) -
+                      Math.sin(lat1 * toRad) * Math.cos(lat2 * toRad) * Math.cos(dLon);
+            const brng = ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+
+            return { distanceKm, bearing: Math.round(brng) };
+        }
+
+        // 构建 3D 手绘折纸飞机模型 (Origami Paper Airplane Mesh + 钢笔墨水折痕线)
+        function createOrigamiPaperAirplane() {
+            const group = new THREE.Group();
+
+            // 折纸飞机几何顶点（机头朝向 +Z，机背法线朝向 +Y）
+            const positions = new Float32Array([
+                // 左主翼面 (Nose -> Left Wingtip -> Left Wing Rear)
+                0, 0.02, 0.22,    -0.19, 0.04, -0.14,   -0.025, 0.03, -0.11,
+                // 右主翼面 (Nose -> Right Wing Rear -> Right Wingtip)
+                0, 0.02, 0.22,     0.025, 0.03, -0.11,   0.19, 0.04, -0.14,
+                // 左中折腹板 (Nose -> Left Wing Rear -> Bottom Keel)
+                0, 0.02, 0.22,    -0.025, 0.03, -0.11,   0, -0.045, -0.13,
+                // 右中折腹板 (Nose -> Bottom Keel -> Right Wing Rear)
+                0, 0.02, 0.22,     0, -0.045, -0.13,     0.025, 0.03, -0.11
+            ]);
+
+            const planeGeo = new THREE.BufferGeometry();
+            planeGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            planeGeo.computeVertexNormals();
+
+            const paperMat = new THREE.MeshToonMaterial({
+                color: 0xfdf8ec,
+                side: THREE.DoubleSide
+            });
+            const planeMesh = new THREE.Mesh(planeGeo, paperMat);
+            group.add(planeMesh);
+
+            // 手绘红色机翼装饰条纹
+            const stripePositions = new Float32Array([
+                0, 0.022, 0.16,   -0.14, 0.037, -0.09,  -0.11, 0.036, -0.10,
+                0, 0.022, 0.16,    0.11, 0.036, -0.10,   0.14, 0.037, -0.09
+            ]);
+            const stripeGeo = new THREE.BufferGeometry();
+            stripeGeo.setAttribute('position', new THREE.BufferAttribute(stripePositions, 3));
+            const stripeMat = new THREE.MeshBasicMaterial({
+                color: 0xc85a32,
+                side: THREE.DoubleSide
+            });
+            group.add(new THREE.Mesh(stripeGeo, stripeMat));
+
+            // 折纸钢笔墨水轮廓线与折痕线
+            const edgeCoords = new Float32Array([
+                // 左翼外框
+                0, 0.021, 0.22,  -0.19, 0.041, -0.14,
+                -0.19, 0.041, -0.14,  -0.025, 0.031, -0.11,
+                -0.025, 0.031, -0.11,  0, 0.021, 0.22,
+                // 右翼外框
+                0, 0.021, 0.22,   0.19, 0.041, -0.14,
+                0.19, 0.041, -0.14,   0.025, 0.031, -0.11,
+                0.025, 0.031, -0.11,   0, 0.021, 0.22,
+                // 底部龙骨折线
+                0, 0.021, 0.22,   0, -0.046, -0.13,
+                -0.025, 0.031, -0.11,  0, -0.046, -0.13,
+                0.025, 0.031, -0.11,   0, -0.046, -0.13
+            ]);
+            const edgeGeo = new THREE.BufferGeometry();
+            edgeGeo.setAttribute('position', new THREE.BufferAttribute(edgeCoords, 3));
+            const edgeMat = new THREE.LineBasicMaterial({ color: 0x1f1712, linewidth: 2 });
+            const edgeLines = new THREE.LineSegments(edgeGeo, edgeMat);
+            group.add(edgeLines);
+
+            group.scale.setScalar(1.15);
+            return group;
+        }
+
+        // 初始化航线组与纸飞机
+        function initFlightRouteSystem() {
+            routeGroup = new THREE.Group();
+            earthGroup.add(routeGroup);
+
+            paperPlaneGroup = createOrigamiPaperAirplane();
+            earthGroup.add(paperPlaneGroup);
+
+            // 创建纸飞机尾迹虚线
+            const wakeGeo = new THREE.BufferGeometry();
+            const wakeMat = new THREE.LineDashedMaterial({
+                color: 0xc85a32,
+                dashSize: 0.05,
+                gapSize: 0.035,
+                transparent: true,
+                opacity: 0.8
+            });
+            wakeTrailMesh = new THREE.Line(wakeGeo, wakeMat);
+            earthGroup.add(wakeTrailMesh);
+
+            // 初始化下拉框选项
+            const originSelect = document.getElementById('select-origin');
+            const destSelect = document.getElementById('select-dest');
+            if (originSelect && destSelect) {
+                originSelect.innerHTML = '';
+                destSelect.innerHTML = '';
+                LANDMARKS.forEach(lm => {
+                    const opt1 = new Option(`${lm.index} ${lm.name}`, lm.id);
+                    const opt2 = new Option(`${lm.index} ${lm.name}`, lm.id);
+                    originSelect.add(opt1);
+                    destSelect.add(opt2);
+                });
+                originSelect.value = routeOriginId;
+                destSelect.value = routeDestId;
+            }
+
+            buildGreatCircleRoute(routeOriginId, routeDestId);
+        }
+
+        // 根据起点与终点地标构建球面大圆抛物弧线、地面投影线与航点光环
+        function buildGreatCircleRoute(originId, destId) {
+            const originLm = LANDMARKS.find(l => l.id === originId);
+            const destLm = LANDMARKS.find(l => l.id === destId);
+            if (!originLm || !destLm) return;
+
+            routeOriginId = originId;
+            routeDestId = destId;
+
+            // 同步 UI 下拉框与顶部横幅
+            const originSelect = document.getElementById('select-origin');
+            const destSelect = document.getElementById('select-dest');
+            if (originSelect) originSelect.value = originId;
+            if (destSelect) destSelect.value = destId;
+            const bannerLabel = document.getElementById('banner-route-label');
+            if (bannerLabel) {
+                bannerLabel.textContent = `${originLm.name} ➔ ${destLm.name}`;
+            }
+
+            // 更新 2D 图钉起点/终点高亮样式
+            pinElements.forEach(item => {
+                item.domEl.classList.toggle('route-origin', item.landmark.id === originId);
+                item.domEl.classList.toggle('route-dest', item.landmark.id === destId);
+            });
+
+            // 清理旧航线网格
+            while (routeGroup.children.length > 0) {
+                const child = routeGroup.children[0];
+                if (child.geometry) child.geometry.dispose();
+                routeGroup.remove(child);
+            }
+            wakeTrailPoints = [];
+
+            // 计算球面起止单位向量与夹角
+            const earthRadius = 2.45;
+            const vStart = latLonToVector3(originLm.lat, originLm.lon, 1.0).normalize();
+            const vEnd = latLonToVector3(destLm.lat, destLm.lon, 1.0).normalize();
+            let omega = Math.acos(Math.max(-1, Math.min(1, vStart.dot(vEnd))));
+
+            // 若起点终点相同，给一个环绕小圈
+            if (omega < 0.05) omega = 0.25;
+
+            // 根据大圆跨度决定拱起最大高度 (确保越过山脉与立体云层)
+            const maxArcBoost = 0.28 + (omega / Math.PI) * 0.55;
+            const segments = 90;
+            const arcPoints = [];
+            const groundPoints = [];
+
+            for (let i = 0; i <= segments; i++) {
+                const t = i / segments;
+                // 球面线性插值 (Slerp)
+                let dirVec;
+                if (Math.sin(omega) > 0.001) {
+                    const w1 = Math.sin((1 - t) * omega) / Math.sin(omega);
+                    const w2 = Math.sin(t * omega) / Math.sin(omega);
+                    dirVec = vStart.clone().multiplyScalar(w1).add(vEnd.clone().multiplyScalar(w2)).normalize();
+                } else {
+                    dirVec = vStart.clone().lerp(vEnd, t).normalize();
+                }
+
+                // 抛物线高度轮廓 + 细微手绘笔触抖动
+                const sinProfile = Math.sin(t * Math.PI);
+                const handJitter = Math.sin(t * 45.0) * 0.004;
+                const rArc = earthRadius + 0.05 + sinProfile * maxArcBoost + handJitter;
+
+                arcPoints.push(dirVec.clone().multiplyScalar(rArc));
+                groundPoints.push(dirVec.clone().multiplyScalar(earthRadius + 0.012));
+            }
+
+            routeCurve = new THREE.CatmullRomCurve3(arcPoints);
+
+            // 1. 主手绘墨水虚线空中航线
+            const curveSamplePts = routeCurve.getPoints(140);
+            const arcGeo = new THREE.BufferGeometry().setFromPoints(curveSamplePts);
+            const arcMat = new THREE.LineDashedMaterial({
+                color: 0xc85a32,
+                dashSize: 0.11,
+                gapSize: 0.06,
+                linewidth: 2
+            });
+            routeDashLine = new THREE.Line(arcGeo, arcMat);
+            routeDashLine.computeLineDistances();
+            routeGroup.add(routeDashLine);
+
+            // 2. 双重手绘墨线伴随描边（营造钢笔手绘复线感）
+            const inkSubGeo = new THREE.BufferGeometry().setFromPoints(
+                curveSamplePts.map((p, idx) => p.clone().multiplyScalar(1 + Math.sin(idx * 0.7) * 0.003))
+            );
+            const inkSubMat = new THREE.LineDashedMaterial({
+                color: 0x2b2118,
+                dashSize: 0.05,
+                gapSize: 0.09,
+                transparent: true,
+                opacity: 0.65
+            });
+            const inkSubLine = new THREE.Line(inkSubGeo, inkSubMat);
+            inkSubLine.computeLineDistances();
+            routeGroup.add(inkSubLine);
+
+            // 3. 地球表面投影轨迹暗线
+            const groundGeo = new THREE.BufferGeometry().setFromPoints(groundPoints);
+            const groundMat = new THREE.LineDashedMaterial({
+                color: 0x2b2118,
+                dashSize: 0.04,
+                gapSize: 0.05,
+                transparent: true,
+                opacity: 0.35
+            });
+            const groundLine = new THREE.Line(groundGeo, groundMat);
+            groundLine.computeLineDistances();
+            routeGroup.add(groundLine);
+
+            // 4. 航线中途手绘高度标尺立柱与小圆环
+            [0.25, 0.5, 0.75].forEach(pct => {
+                const ptSky = routeCurve.getPointAt(pct);
+                const ptGnd = ptSky.clone().normalize().multiplyScalar(earthRadius + 0.01);
+                const pillarGeo = new THREE.BufferGeometry().setFromPoints([ptGnd, ptSky]);
+                const pillarMat = new THREE.LineBasicMaterial({
+                    color: 0x2b2118,
+                    transparent: true,
+                    opacity: 0.35
+                });
+                routeGroup.add(new THREE.Line(pillarGeo, pillarMat));
+
+                // 空中航点小墨环
+                const ringGeo = new THREE.RingGeometry(0.035, 0.05, 16);
+                const ringMat = new THREE.MeshBasicMaterial({
+                    color: pct === 0.5 ? 0xc85a32 : 0x2b2118,
+                    side: THREE.DoubleSide
+                });
+                const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+                ringMesh.position.copy(ptSky);
+                const tangent = routeCurve.getTangentAt(pct).normalize();
+                ringMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), tangent);
+                routeGroup.add(ringMesh);
+            });
+
+            // 5. 起点与终点手绘靶心罗盘环
+            [
+                { lm: originLm, color: 0x2e6f5e },
+                { lm: destLm, color: 0xc85a32 }
+            ].forEach(({ lm, color }) => {
+                const pos = latLonToVector3(lm.lat, lm.lon, earthRadius + 0.018);
+                const normal = pos.clone().normalize();
+                const markerRingGeo = new THREE.RingGeometry(0.08, 0.11, 24);
+                const markerRingMat = new THREE.MeshBasicMaterial({
+                    color,
+                    side: THREE.DoubleSide
+                });
+                const markerRing = new THREE.Mesh(markerRingGeo, markerRingMat);
+                markerRing.position.copy(pos);
+                markerRing.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
+                routeGroup.add(markerRing);
+            });
+
+            // 6. 计算真实大圆距离与预计耗时并更新面板
+            const metrics = computeGreatCircleMetrics(originLm.lat, originLm.lon, destLm.lat, destLm.lon);
+            routeTotalDistanceKm = metrics.distanceKm;
+            document.getElementById('route-distance').textContent = metrics.distanceKm.toLocaleString();
+
+            const totalHours = metrics.distanceKm / 850;
+            const hrs = Math.floor(totalHours);
+            const mins = Math.max(5, Math.round((totalHours - hrs) * 60));
+            document.getElementById('route-duration').textContent =
+                `${String(hrs).padStart(2, '0')}h ${String(mins).padStart(2, '0')}m`;
+
+            // 更新纸飞机初始位置
+            updatePaperPlaneTransform(flightProgress, 0);
+        }
+
+        // 更新纸飞机在球面大圆航线上的位置、切线朝向、侧倾姿态与尾迹
+        function updatePaperPlaneTransform(t, elapsedTime) {
+            if (!routeCurve || !paperPlaneGroup) return;
+
+            const clampedT = Math.max(0.001, Math.min(0.999, t));
+            const posLocal = routeCurve.getPointAt(clampedT);
+            const tangentLocal = routeCurve.getTangentAt(clampedT).normalize();
+            const normalUp = posLocal.clone().normalize();
+
+            // 手绘纸飞机轻盈上下微幅浮动与摇摆
+            const bobOffset = Math.sin(elapsedTime * 5.0) * 0.012;
+            const finalLocalPos = posLocal.clone().addScaledVector(normalUp, bobOffset);
+            paperPlaneGroup.position.copy(finalLocalPos);
+
+            // 构建飞机正交坐标系：+Z 沿航线切线向前，+Y 沿球面法线向上
+            const rightVec = new THREE.Vector3().crossVectors(normalUp, tangentLocal).normalize();
+            const correctedUp = new THREE.Vector3().crossVectors(tangentLocal, rightVec).normalize();
+
+            const rotMatrix = new THREE.Matrix4();
+            rotMatrix.makeBasis(rightVec, correctedUp, tangentLocal);
+            paperPlaneGroup.quaternion.setFromRotationMatrix(rotMatrix);
+
+            // 叠加纸飞机随气流轻微左右侧倾 (Roll)
+            const bankAngle = Math.sin(elapsedTime * 3.2) * 0.14;
+            paperPlaneGroup.rotateZ(bankAngle);
+
+            // 记录并更新纸飞机尾迹虚线 (保留最近 35 个采样点)
+            if (flightPlaying && routeVisible) {
+                const lastPt = wakeTrailPoints[wakeTrailPoints.length - 1];
+                if (!lastPt || lastPt.distanceTo(finalLocalPos) > 0.03) {
+                    wakeTrailPoints.push(finalLocalPos.clone());
+                    if (wakeTrailPoints.length > 35) wakeTrailPoints.shift();
+                    if (wakeTrailPoints.length >= 2) {
+                        wakeTrailMesh.geometry.dispose();
+                        wakeTrailMesh.geometry = new THREE.BufferGeometry().setFromPoints(wakeTrailPoints);
+                        wakeTrailMesh.computeLineDistances();
+                    }
+                }
+            }
+
+            // 更新仪表盘实时经纬度、巡航高度与进度
+            const { lat, lon } = vector3ToLatLon(posLocal);
+            const latStr = `${Math.abs(lat).toFixed(1)}°${lat >= 0 ? 'N' : 'S'}`;
+            const lonStr = `${Math.abs(lon).toFixed(1)}°${lon >= 0 ? 'E' : 'W'}`;
+            const coordsEl = document.getElementById('plane-coords');
+            if (coordsEl) coordsEl.textContent = `${latStr}, ${lonStr}`;
+
+            const altKm = ((posLocal.length() - 2.45) * 28).toFixed(1);
+            const headingDeg = Math.round(((Math.atan2(tangentLocal.x, tangentLocal.z) * 180) / Math.PI + 360) % 360);
+            const teleEl = document.getElementById('plane-telemetry');
+            if (teleEl) teleEl.textContent = `${altKm}km · ${String(headingDeg).padStart(3, '0')}°`;
+
+            const pctInt = Math.round(clampedT * 100);
+            const progText = document.getElementById('route-progress-text');
+            if (progText) progText.textContent = `${pctInt}%`;
+            const progSlider = document.getElementById('slider-flight-progress');
+            if (progSlider && document.activeElement !== progSlider) {
+                progSlider.value = Math.round(clampedT * 1000);
+            }
+        }
+
+        // 处理地标点击：支持“球面点选航线模式”与“常规详情卡片浏览模式”
+        function handleLandmarkSelection(landmarkId) {
+            if (routePickMode) {
+                playPaperSound(420);
+                if (nextPickSlot === 'origin') {
+                    routeOriginId = landmarkId;
+                    if (routeOriginId === routeDestId) {
+                        const alt = LANDMARKS.find(l => l.id !== routeOriginId);
+                        if (alt) routeDestId = alt.id;
+                    }
+                    nextPickSlot = 'dest';
+                    document.getElementById('pick-hint-badge').textContent = '已选起点，请再点击终点地标';
+                } else {
+                    if (landmarkId !== routeOriginId) {
+                        routeDestId = landmarkId;
+                    }
+                    nextPickSlot = 'origin';
+                    document.getElementById('pick-hint-badge').textContent = '航线已生成！可继续点击重选';
+                }
+                flightProgress = 0.02;
+                wakeTrailPoints = [];
+                buildGreatCircleRoute(routeOriginId, routeDestId);
+                focusOnLandmark(landmarkId);
+            } else {
+                focusOnLandmark(landmarkId);
+            }
+        }
+
+        // 切换第三人称纸飞机跟随视角 (Follow Cam)
+        function setFollowCameraMode(enabled) {
+            followCameraActive = enabled;
+            playPaperSound(enabled ? 440 : 300);
+
+            if (enabled) {
+                cameraTween = null;
+                flightPlaying = true;
+                updatePlayButtonUI();
+                // 确保航线与纸飞机可见
+                if (!routeVisible) toggleRouteVisibility(true);
+            } else {
+                // 退出跟随视角时，恢复 OrbitControls 目标到球心(0,0,0)
+                controls.target.set(0, 0, 0);
+                const dir = camera.position.clone().normalize();
+                cameraTween = {
+                    startPos: camera.position.clone(),
+                    endPos: dir.multiplyScalar(8.5),
+                    progress: 0,
+                    duration: 0.85
+                };
+            }
+
+            // 同步按钮与横幅状态
+            const btnMain = document.getElementById('btn-follow-cam');
+            const btnTop = document.getElementById('btn-follow-cam-top');
+            const banner = document.getElementById('follow-cam-banner');
+
+            if (btnMain) {
+                btnMain.classList.toggle('active', enabled);
+                btnMain.innerHTML = enabled
+                    ? '<span>🌍 切换回自由环绕视角</span>'
+                    : '<span>🎥 开启第三人称跟随视角</span>';
+            }
+            if (btnTop) {
+                btnTop.classList.toggle('active', enabled);
+                btnTop.innerHTML = enabled
+                    ? '<span>🌍 退出跟随视角</span>'
+                    : '<span>🎥 纸飞机跟随视角</span>';
+            }
+            if (banner) {
+                banner.classList.toggle('hidden', !enabled);
+            }
+        }
+
+        function updatePlayButtonUI() {
+            const btnPlay = document.getElementById('btn-flight-play');
+            if (!btnPlay) return;
+            btnPlay.classList.toggle('active', flightPlaying);
+            btnPlay.innerHTML = flightPlaying
+                ? '<span>⏸ 巡航飞行中</span>'
+                : '<span>▶️ 继续起飞</span>';
+        }
+
+        function toggleRouteVisibility(forceState) {
+            routeVisible = typeof forceState === 'boolean' ? forceState : !routeVisible;
+            if (routeGroup) routeGroup.visible = routeVisible;
+            if (paperPlaneGroup) paperPlaneGroup.visible = routeVisible;
+            if (wakeTrailMesh) wakeTrailMesh.visible = routeVisible;
+            const btnClear = document.getElementById('btn-clear-route');
+            if (btnClear) btnClear.classList.toggle('active', routeVisible);
+        }
+
+        /***********************************************************************
+         * 10. 聚焦地标相机平滑过渡 & 旅行手帐详情卡片渲染
+         ***********************************************************************/
+        function playPaperSound(freq = 320) {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+                const ctx = new AudioCtx();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(freq * 1.35, ctx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.04, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.09);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.09);
+            } catch (err) {
+                // 忽略音频上下文限制
+            }
+        }
+
+        function focusOnLandmark(landmarkId) {
+            const lm = LANDMARKS.find(item => item.id === landmarkId);
+            if (!lm) return;
+
+            // 若当前处于纸飞机跟随视角，点击地标查看详情时自动退出跟随视角以聚焦地标
+            if (followCameraActive) {
+                setFollowCameraMode(false);
+            }
+
+            selectedLandmarkId = landmarkId;
+            playPaperSound(340);
+
+            // 高亮选中的 2D 标签与 3D 图钉
+            pinElements.forEach(item => {
+                const isSel = item.landmark.id === landmarkId;
+                item.domEl.classList.toggle('selected', isSel);
+                item.headMesh.material.color.setHex(isSel ? 0xd93829 : 0xc85a32);
+                item.pinNode.scale.setScalar(isSel ? 1.35 : 1.0);
+            });
+
+            // 计算地标在当前世界空间中的方向，并平滑飞行相机到该地标正前方偏左视角（为右侧手帐卡片留出构图空间）
+            const localPos = latLonToVector3(lm.lat, lm.lon, 1.0);
+            const worldDir = localPos.clone().applyQuaternion(earthGroup.quaternion).normalize();
+
+            // 稍微向右侧偏移相机角度，使地球上的目标点位于屏幕中央偏左
+            const upVec = new THREE.Vector3(0, 1, 0);
+            const rightVec = new THREE.Vector3().crossVectors(upVec, worldDir).normalize();
+            const targetCamDir = worldDir.clone().addScaledVector(rightVec, -0.18).normalize();
+            const targetDist = 6.6;
+            const targetCamPos = targetCamDir.multiplyScalar(targetDist);
+
+            cameraTween = {
+                startPos: camera.position.clone(),
+                endPos: targetCamPos,
+                progress: 0,
+                duration: 1.05
+            };
+
+            // 更新并展开右侧手帐卡片
+            renderJournalCard(lm);
+        }
+
+        function renderJournalCard(lm) {
+            const card = document.getElementById('journal-card');
+            document.getElementById('card-index').textContent = lm.index;
+            document.getElementById('card-region').textContent = lm.region;
+            document.getElementById('card-title').textContent = lm.name;
+            document.getElementById('card-coords').textContent = lm.coordsText;
+            document.getElementById('card-climate').textContent = lm.climate;
+            document.getElementById('card-desc').textContent = lm.desc;
+            document.getElementById('card-sketch-note').textContent = lm.sketchNote;
+            document.getElementById('card-svg-art').innerHTML = lm.svg;
+
+            const stampMark = document.getElementById('card-stamp-mark');
+            const stampBtn = document.getElementById('btn-stamp-landmark');
+            if (visitedStamps.has(lm.id)) {
+                stampMark.classList.remove('hidden');
+                stampMark.classList.add('stamp-badge');
+                stampBtn.innerHTML = '<span>✓ 已收录至手帐</span>';
+            } else {
+                stampMark.classList.add('hidden');
+                stampMark.classList.remove('stamp-badge');
+                stampBtn.innerHTML = '<span>💮 加盖手帐印章</span>';
+            }
+
+            card.classList.remove('translate-x-[120%]', 'opacity-0');
+        }
+
+        function closeJournalCard() {
+            const card = document.getElementById('journal-card');
+            card.classList.add('translate-x-[120%]', 'opacity-0');
+            selectedLandmarkId = null;
+            pinElements.forEach(item => {
+                item.domEl.classList.remove('selected');
+                item.headMesh.material.color.setHex(0xc85a32);
+                item.pinNode.scale.setScalar(1.0);
+            });
+        }
+
+        /***********************************************************************
+         * 11. 主题切换与太阳光照控制
+         ***********************************************************************/
+        function switchTheme(themeKey) {
+            if (!THEMES[themeKey]) return;
+            currentTheme = themeKey;
+            const cfg = THEMES[themeKey];
+            playPaperSound(280);
+
+            // 更新背景与主题标签
+            document.getElementById('bg-backdrop').style.background = cfg.bgGradient;
+            document.documentElement.style.setProperty('--accent-color', cfg.accent);
+            document.getElementById('theme-pill').textContent = cfg.name;
+
+            // 重新生成对应风格的手绘地球贴图
+            const newCanvas = generateHandDrawnEarthCanvas(themeKey);
+            const newTex = new THREE.CanvasTexture(newCanvas);
+            newTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            newTex.needsUpdate = true;
+
+            if (earthUniforms.uMap.value) earthUniforms.uMap.value.dispose();
+            earthUniforms.uMap.value = newTex;
+            earthUniforms.uPaperTint.value.copy(cfg.paperTint);
+            earthUniforms.uShadowInk.value.copy(cfg.shadowInk);
+            earthUniforms.uWarmLight.value.copy(cfg.warmLight);
+            earthUniforms.uHatchDensity.value = cfg.hatchDensity;
+
+            // 更新外轮廓与云朵、天球仪环颜色
+            earthOutlineMesh.material.uniforms.uInkColor.value.copy(cfg.shadowInk);
+            cloudsGroup.userData.cloudFillMat.color.copy(cfg.cloudColor);
+            cloudsGroup.userData.cloudInkMat.color.copy(cfg.shadowInk);
+            astrolabeGroup.userData.ringMat.color.copy(cfg.ringColor);
+            astrolabeGroup.userData.dashLineMat.color.copy(cfg.ringColor);
+            astrolabeGroup.userData.ticksLines.material.color.copy(cfg.ringColor);
+
+            // 高亮当前主题按钮
+            document.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.theme === themeKey);
+            });
+        }
+
+        function updateSunDirection(angleDeg) {
+            sunAngleDeg = angleDeg;
+            const rad = (angleDeg * Math.PI) / 180;
+            const sunVec = new THREE.Vector3(Math.cos(rad), 0.32, Math.sin(rad)).normalize();
+            if (earthUniforms) {
+                earthUniforms.uSunDir.value.copy(sunVec);
+            }
+            if (scene && scene.userData.dirLight) {
+                scene.userData.dirLight.position.copy(sunVec.clone().multiplyScalar(8));
+            }
+            document.getElementById('sun-angle-label').textContent = `${String(Math.round(angleDeg)).padStart(3, '0')}°`;
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        /***********************************************************************
+         * 12. 绑定所有 UI 控制事件
+         ***********************************************************************/
+        function bindUIEvents() {
+            // 主题切换按钮
+            document.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    switchTheme(btn.dataset.theme);
+                });
+            });
+
+            // 太阳角度滑块
+            const sunSlider = document.getElementById('slider-sun');
+            sunSlider.addEventListener('input', (e) => {
+                updateSunDirection(parseFloat(e.target.value));
+            });
+
+            // 开关：立体云层
+            const btnClouds = document.getElementById('toggle-clouds');
+            btnClouds.addEventListener('click', () => {
+                showClouds = !showClouds;
+                cloudsGroup.visible = showClouds;
+                btnClouds.classList.toggle('active', showClouds);
+                playPaperSound(360);
+            });
+
+            // 开关：天球仪外环
+            const btnRings = document.getElementById('toggle-rings');
+            btnRings.addEventListener('click', () => {
+                showRings = !showRings;
+                astrolabeGroup.visible = showRings;
+                btnRings.classList.toggle('active', showRings);
+                playPaperSound(360);
+            });
+
+            // 开关：手绘地标图钉
+            const btnPins = document.getElementById('toggle-pins');
+            btnPins.addEventListener('click', () => {
+                showPins = !showPins;
+                pins3DGroup.visible = showPins;
+                document.getElementById('pins-container').style.display = showPins ? 'block' : 'none';
+                btnPins.classList.toggle('active', showPins);
+                playPaperSound(360);
+            });
+
+            // 开关：自动自转
+            const btnRotate = document.getElementById('toggle-rotate');
+            btnRotate.addEventListener('click', () => {
+                autoRotate = !autoRotate;
+                btnRotate.classList.toggle('active', autoRotate);
+                playPaperSound(360);
+            });
+
+            // 随机探索地标按钮
+            document.getElementById('btn-random-landmark').addEventListener('click', () => {
+                const pool = LANDMARKS.filter(l => l.id !== selectedLandmarkId);
+                const pick = pool[Math.floor(Math.random() * pool.length)];
+                focusOnLandmark(pick.id);
+            });
+
+            // 重置视角按钮
+            document.getElementById('btn-reset-camera').addEventListener('click', () => {
+                closeJournalCard();
+                cameraTween = {
+                    startPos: camera.position.clone(),
+                    endPos: new THREE.Vector3(0, 1.6, 8.8),
+                    progress: 0,
+                    duration: 0.9
+                };
+                playPaperSound(260);
+            });
+
+            // 详情卡片内按钮
+            document.getElementById('btn-close-card').addEventListener('click', closeJournalCard);
+
+            document.getElementById('btn-prev-landmark').addEventListener('click', () => {
+                const idx = LANDMARKS.findIndex(l => l.id === selectedLandmarkId);
+                const prevIdx = (idx - 1 + LANDMARKS.length) % LANDMARKS.length;
+                focusOnLandmark(LANDMARKS[prevIdx].id);
+            });
+
+            document.getElementById('btn-next-landmark').addEventListener('click', () => {
+                const idx = LANDMARKS.findIndex(l => l.id === selectedLandmarkId);
+                const nextIdx = (idx + 1) % LANDMARKS.length;
+                focusOnLandmark(LANDMARKS[nextIdx].id);
+            });
+
+            // 盖章打卡互动
+            document.getElementById('btn-stamp-landmark').addEventListener('click', () => {
+                if (!selectedLandmarkId) return;
+                visitedStamps.add(selectedLandmarkId);
+                document.getElementById('stamp-count').textContent = `${visitedStamps.size} / ${LANDMARKS.length}`;
+                const stampMark = document.getElementById('card-stamp-mark');
+                stampMark.classList.remove('hidden');
+                stampMark.classList.remove('stamp-badge');
+                void stampMark.offsetWidth; // 触发重绘播放盖章动画
+                stampMark.classList.add('stamp-badge');
+                document.getElementById('btn-stamp-landmark').innerHTML = '<span>✓ 已收录至手帐</span>';
+                playPaperSound(480);
+            });
+
+            // ========= 航线规划与纸飞机巡航面板事件绑定 =========
+            // 折叠/展开巡航面板
+            const btnCollapseCruise = document.getElementById('btn-collapse-cruise');
+            const cruiseBody = document.getElementById('cruise-panel-body');
+            btnCollapseCruise.addEventListener('click', () => {
+                const isHidden = cruiseBody.classList.toggle('hidden');
+                btnCollapseCruise.textContent = isHidden ? '▸' : '▾';
+                playPaperSound(300);
+            });
+
+            // 起点/终点下拉框切换
+            document.getElementById('select-origin').addEventListener('change', (e) => {
+                const newOrigin = e.target.value;
+                if (newOrigin === routeDestId) {
+                    routeDestId = routeOriginId;
+                }
+                flightProgress = 0.02;
+                buildGreatCircleRoute(newOrigin, routeDestId);
+                playPaperSound(350);
+            });
+
+            document.getElementById('select-dest').addEventListener('change', (e) => {
+                const newDest = e.target.value;
+                if (newDest === routeOriginId) {
+                    routeOriginId = routeDestId;
+                }
+                flightProgress = 0.02;
+                buildGreatCircleRoute(routeOriginId, newDest);
+                playPaperSound(350);
+            });
+
+            // 球面点选两地连线模式开关
+            const btnPickMode = document.getElementById('btn-pick-mode');
+            btnPickMode.addEventListener('click', () => {
+                routePickMode = !routePickMode;
+                nextPickSlot = 'origin';
+                btnPickMode.classList.toggle('active', routePickMode);
+                btnPickMode.innerHTML = routePickMode
+                    ? '<span>📍 点选模式: 请点选起点</span>'
+                    : '<span>📍 球面点选两地: 关</span>';
+                document.getElementById('pick-hint-badge').textContent = routePickMode
+                    ? '请点击地球上的地标图钉'
+                    : '拖动滑块可手动巡航';
+                playPaperSound(380);
+            });
+
+            // 交换起点与终点（返航）
+            document.getElementById('btn-swap-route').addEventListener('click', () => {
+                const tmp = routeOriginId;
+                routeOriginId = routeDestId;
+                routeDestId = tmp;
+                flightProgress = 1.0 - flightProgress;
+                buildGreatCircleRoute(routeOriginId, routeDestId);
+                playPaperSound(390);
+            });
+
+            // 随机航线生成
+            document.getElementById('btn-random-route').addEventListener('click', () => {
+                const idx1 = Math.floor(Math.random() * LANDMARKS.length);
+                let idx2 = Math.floor(Math.random() * (LANDMARKS.length - 1));
+                if (idx2 >= idx1) idx2++;
+                flightProgress = 0.02;
+                buildGreatCircleRoute(LANDMARKS[idx1].id, LANDMARKS[idx2].id);
+                playPaperSound(410);
+            });
+
+            // 手动拖动航程进度条
+            const flightSlider = document.getElementById('slider-flight-progress');
+            flightSlider.addEventListener('input', (e) => {
+                flightProgress = parseFloat(e.target.value) / 1000;
+                wakeTrailPoints = [];
+                updatePaperPlaneTransform(flightProgress, clock.getElapsedTime());
+            });
+
+            // 暂停 / 继续巡航飞行
+            document.getElementById('btn-flight-play').addEventListener('click', () => {
+                flightPlaying = !flightPlaying;
+                updatePlayButtonUI();
+                playPaperSound(340);
+            });
+
+            // 飞行速度倍率切换 (0.5x -> 1.0x -> 2.0x)
+            const speedBtn = document.getElementById('btn-flight-speed');
+            const speeds = [0.5, 1.0, 2.0];
+            speedBtn.addEventListener('click', () => {
+                const idx = (speeds.indexOf(flightSpeedMultiplier) + 1) % speeds.length;
+                flightSpeedMultiplier = speeds[idx];
+                speedBtn.textContent = `${flightSpeedMultiplier.toFixed(1)}x`;
+                playPaperSound(370);
+            });
+
+            // 显示/隐藏航线与纸飞机
+            const btnClearRoute = document.getElementById('btn-clear-route');
+            btnClearRoute.classList.add('active');
+            btnClearRoute.addEventListener('click', () => {
+                toggleRouteVisibility();
+                playPaperSound(310);
+            });
+
+            // 第三人称跟随视角开关（面板按钮、顶部按钮、退出横幅按钮）
+            document.getElementById('btn-follow-cam').addEventListener('click', () => {
+                setFollowCameraMode(!followCameraActive);
+            });
+            document.getElementById('btn-follow-cam-top').addEventListener('click', () => {
+                setFollowCameraMode(!followCameraActive);
+            });
+            document.getElementById('btn-exit-follow').addEventListener('click', () => {
+                setFollowCameraMode(false);
+            });
+
+            // 切换跟随视角远近机位（近景掠飞 / 广角伴飞）
+            const btnCamFov = document.getElementById('btn-cam-FOV');
+            btnCamFov.addEventListener('click', () => {
+                followCamCloseMode = !followCamCloseMode;
+                btnCamFov.textContent = followCamCloseMode ? '近景掠飞' : '广角伴飞';
+                if (!followCameraActive) setFollowCameraMode(true);
+                else playPaperSound(360);
+            });
+        }
+
+        /***********************************************************************
+         * 13. 主渲染循环 (Animation Loop)
+         ***********************************************************************/
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = Math.min(clock.getDelta(), 0.1);
+            const elapsed = clock.getElapsedTime();
+
+            // 更新着色器时间用于手绘线条呼吸微动
+            if (earthUniforms) {
+                earthUniforms.uTime.value = elapsed;
+            }
+            if (earthOutlineMesh) {
+                earthOutlineMesh.material.uniforms.uTime.value = elapsed;
+            }
+
+            // 地球自动缓慢自转（未处于相机飞行过渡、未打开地标卡片且未处于跟随视角时）
+            if (autoRotate && !cameraTween && !selectedLandmarkId && !followCameraActive) {
+                earthGroup.rotation.y += delta * 0.11;
+            }
+
+            // 更新纸飞机沿大圆航线巡航运动
+            if (routeCurve && routeVisible) {
+                if (flightPlaying) {
+                    // 根据航线总长度自适应角速度，保证不同航程下飞行节奏舒适
+                    const baseSpeed = 0.055 * flightSpeedMultiplier;
+                    flightProgress += delta * baseSpeed;
+                    if (flightProgress >= 1.0) {
+                        flightProgress = 0.005;
+                        wakeTrailPoints = [];
+                    }
+                }
+                updatePaperPlaneTransform(flightProgress, elapsed);
+            }
+
+            // 第三人称纸飞机跟随相机平滑插值 (Follow Camera Mode)
+            if (followCameraActive && routeCurve && paperPlaneGroup) {
+                const clampedT = Math.max(0.002, Math.min(0.995, flightProgress));
+                const localPlanePos = paperPlaneGroup.position.clone();
+                const localTangent = routeCurve.getTangentAt(clampedT).normalize();
+                const localNormal = localPlanePos.clone().normalize();
+
+                // 转换到世界空间
+                const worldPlanePos = localPlanePos.clone().applyMatrix4(earthGroup.matrixWorld);
+                const worldTangent = localTangent.clone().transformDirection(earthGroup.matrixWorld).normalize();
+                const worldNormal = localNormal.clone().transformDirection(earthGroup.matrixWorld).normalize();
+
+                // 计算尾随相机理想世界坐标：位于纸飞机后方 + 沿球面法线向上抬升
+                const backDist = followCamCloseMode ? 0.82 : 1.75;
+                const upDist = followCamCloseMode ? 0.36 : 0.85;
+                const desiredCamPos = worldPlanePos.clone()
+                    .addScaledVector(worldTangent, -backDist)
+                    .addScaledVector(worldNormal, upDist);
+
+                // 视线注视纸飞机前方航线点，带来掠过手绘大陆与云层的沉浸感
+                const lookAheadPos = worldPlanePos.clone()
+                    .addScaledVector(worldTangent, 0.55)
+                    .addScaledVector(worldNormal, -0.06);
+
+                camera.position.lerp(desiredCamPos, Math.min(1, delta * 5.5));
+                controls.target.lerp(lookAheadPos, Math.min(1, delta * 6.5));
+            } else if (!followCameraActive) {
+                // 自由视角下缓慢将旋转中心归位至球心
+                controls.target.lerp(new THREE.Vector3(0, 0, 0), Math.min(1, delta * 5.0));
+            }
+
+            // 立体手绘云朵独立漂移运动
+            if (showClouds && cloudsGroup) {
+                cloudsGroup.children.forEach((cloud, i) => {
+                    cloud.userData.lon += delta * cloud.userData.speed * 12;
+                    const newPos = latLonToVector3(cloud.userData.lat, cloud.userData.lon, cloud.userData.altitude);
+                    cloud.position.copy(newPos);
+                    cloud.lookAt(new THREE.Vector3(0, 0, 0));
+                    // 细微上下浮动
+                    cloud.scale.setScalar(0.95 + Math.sin(elapsed * 1.5 + i) * 0.05);
+                });
+            }
+
+            // 天球仪外环与远景月球缓慢公转
+            if (showRings && astrolabeGroup) {
+                astrolabeGroup.rotation.y -= delta * 0.04;
+                astrolabeGroup.rotation.z = Math.sin(elapsed * 0.3) * 0.06;
+            }
+            if (moonGroup) {
+                moonGroup.rotation.y += delta * 0.06;
+                moonGroup.userData.moonMesh.rotation.y += delta * 0.25;
+            }
+
+            // 平滑相机飞行聚焦插值
+            if (cameraTween) {
+                cameraTween.progress += delta / cameraTween.duration;
+                if (cameraTween.progress >= 1) {
+                    camera.position.copy(cameraTween.endPos);
+                    cameraTween = null;
+                } else {
+                    // Cubic ease-in-out
+                    const t = cameraTween.progress;
+                    const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+                    camera.position.lerpVectors(cameraTween.startPos, cameraTween.endPos, ease);
+                }
+            }
+
+            controls.update();
+            updateProjectedPins();
+            renderer.render(scene, camera);
+        }
+
+        // 页面加载完成后启动
+        window.onload = function () {
+            initThreeScene();
+            bindUIEvents();
+            animate();
+        };
+    </script>
+</body>
+</html>
