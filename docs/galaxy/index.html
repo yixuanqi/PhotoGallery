@@ -391,8 +391,8 @@ function layout(){
  var w=galaxyWidth,h=galaxyHeight;
  var small=w<650;
  // Negative margins keep the logbook and project index from obscuring the heart of the sky.
- return {cx:w*(small?.60:(w<1050?.58:.55)),cy:h*(small?.47:.54),
-  s:Math.max(.53,Math.min(1.24,Math.min(w/1320,h/760)))*galaxyZoom};
+ return {cx:w*(small?.53:(w<1050?.58:.55)),cy:h*(small?.47:.54),
+  s:(small?Math.max(.39,Math.min(.48,w/880)):Math.max(.53,Math.min(1.24,Math.min(w/1320,h/760))))*galaxyZoom};
 }
 function worldToScreen(x,z){
  var l=layout(),ax=x*21,az=z*21*.70,co=Math.cos(galaxySpin),si=Math.sin(galaxySpin);
@@ -436,8 +436,16 @@ function renderGalaxy(){
  // Project pins never default to 0,0 — including when WebGL is unavailable.
  PROJECTS.forEach(function(p){
   var q=worldToScreen(p.x,p.z),el=pinMap[p.id];
+  if(w<650)q.x=Math.max(64,Math.min(w-64,q.x));
+  // A faint watercolor halo makes each project star visibly part of the galaxy.
+  var halo=g.createRadialGradient(q.x,q.y,2,q.x,q.y,40);
+  if(theme==='night'){halo.addColorStop(0,'rgba(255,213,139,.28)');halo.addColorStop(1,'rgba(255,213,139,0)')}
+  else{halo.addColorStop(0,'rgba(195,128,60,.2)');halo.addColorStop(1,'rgba(195,128,60,0)')}
+  g.fillStyle=halo;g.beginPath();g.arc(q.x,q.y,40,0,Math.PI*2);g.fill();
+  g.strokeStyle=theme==='night'?'rgba(237,210,166,.4)':'rgba(112,85,57,.36)';g.lineWidth=.8;
+  g.beginPath();g.arc(q.x,q.y,25,0,Math.PI*2);g.stroke();
   el.style.left=q.x+'px';el.style.top=q.y+'px';
-  el.classList.toggle('is-hidden',q.x<45||q.x>w-40||q.y<105||q.y>h-82);
+  el.classList.toggle('is-hidden',q.x<35||q.x>w-30||q.y<104||q.y>h-79);
  });
 }
 function animate(ts){
