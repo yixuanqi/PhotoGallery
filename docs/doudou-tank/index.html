@@ -1,0 +1,3037 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>治愈绘本风 3D 萌系坦克履带与楼梯斜坡物理仿真</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    :root {
+      --cream-bg: rgba(255, 250, 240, 0.92);
+      --cream-sub: #f6ebd8;
+      --cocoa-ink: #4a3728;
+      --cocoa-muted: #7d6552;
+      --leaf-green: #629c54;
+      --berry-coral: #e06d53;
+      --honey-gold: #eba83a;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: linear-gradient(180deg, #cbeaf6 0%, #eef7e8 55%, #f9f1de 100%);
+      color: var(--cocoa-ink);
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Rounded Mplus 1c", sans-serif;
+    }
+
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* Warm storybook frame vignette */
+    .paper-vignette {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+      box-shadow: inset 0 0 65px rgba(125, 95, 65, 0.16);
+      border: 8px solid rgba(255, 251, 242, 0.55);
+      border-radius: 18px;
+    }
+
+    /* Cozy Rounded Storybook Card */
+    .sketch-panel {
+      background: var(--cream-bg);
+      border: 2.5px solid var(--cocoa-ink);
+      border-radius: 16px;
+      box-shadow: 0 5px 0px rgba(74, 55, 40, 0.85), 0 10px 20px rgba(74, 55, 40, 0.12);
+      backdrop-filter: blur(6px);
+      padding: 11px 13px;
+      pointer-events: auto;
+    }
+
+    /* Cute Pill Button */
+    .sketch-btn {
+      appearance: none;
+      background: #fffdf8;
+      color: var(--cocoa-ink);
+      border: 2px solid var(--cocoa-ink);
+      border-radius: 11px;
+      box-shadow: 0 3px 0px var(--cocoa-ink);
+      padding: 6px 11px;
+      font-size: 12px;
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      transition: transform 0.1s ease, background-color 0.12s ease, box-shadow 0.1s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+
+    .sketch-btn:hover {
+      background: #fff3d6;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 0px var(--cocoa-ink);
+    }
+
+    .sketch-btn:active,
+    .sketch-btn.active {
+      background: var(--leaf-green);
+      color: #ffffff;
+      transform: translateY(2px);
+      box-shadow: 0 1px 0px var(--cocoa-ink);
+    }
+
+    .sketch-btn.accent-active {
+      background: var(--berry-coral);
+      color: #ffffff;
+      border-color: var(--cocoa-ink);
+    }
+
+    /* Left Panel: Fixed 272px */
+    .left-dock {
+      position: fixed;
+      left: 16px;
+      top: 16px;
+      width: 272px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    /* Right Panel: Fixed 282px */
+    .right-dock {
+      position: fixed;
+      right: 16px;
+      top: 16px;
+      width: 282px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    /* Top Center Scenario Bar */
+    .top-center-dock {
+      position: fixed;
+      left: 300px;
+      right: 310px;
+      top: 16px;
+      z-index: 10;
+      display: flex;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .top-center-inner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 8px 12px;
+    }
+
+    /* Bottom Center Driving & Legend Bar */
+    .bottom-center-dock {
+      position: fixed;
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      z-index: 10;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px dashed rgba(74, 55, 40, 0.2);
+      padding-bottom: 6px;
+      margin-bottom: 8px;
+    }
+
+    .panel-title {
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.2px;
+    }
+
+    .panel-sub {
+      font-size: 10px;
+      color: var(--cocoa-muted);
+      font-weight: 700;
+    }
+
+    .cam-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .cam-grid .sketch-btn {
+      justify-content: space-between;
+      padding: 6px 9px;
+    }
+
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .telemetry-box {
+      background: var(--cream-sub);
+      border: 1.5px solid rgba(74, 55, 40, 0.35);
+      border-radius: 10px;
+      padding: 5px 2px;
+      text-align: center;
+    }
+
+    .telemetry-label {
+      font-size: 10px;
+      color: var(--cocoa-muted);
+      font-weight: 700;
+    }
+
+    .telemetry-val {
+      font-size: 13px;
+      font-weight: 900;
+      font-family: "JetBrains Mono", Consolas, monospace;
+      margin-top: 1px;
+    }
+
+    .susp-chart-box {
+      background: var(--cream-sub);
+      border: 1.5px solid rgba(74, 55, 40, 0.35);
+      border-radius: 10px;
+      padding: 6px 8px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .susp-side-bars {
+      height: 36px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 4px;
+      padding-top: 4px;
+    }
+
+    .susp-bar {
+      flex: 1;
+      background: var(--berry-coral);
+      border: 1px solid var(--cocoa-ink);
+      border-radius: 4px 4px 2px 2px;
+      min-height: 5px;
+      transition: height 0.06s linear;
+    }
+
+    .susp-bar.right-bar {
+      background: var(--leaf-green);
+    }
+
+    .insight-note {
+      font-size: 11px;
+      line-height: 1.45;
+      color: var(--cocoa-ink);
+      background: #fff6e3;
+      border: 1.5px dashed rgba(74, 55, 40, 0.45);
+      border-radius: 10px;
+      padding: 7px 9px;
+    }
+
+    .control-row-box {
+      background: var(--cream-sub);
+      border: 1.5px solid rgba(74, 55, 40, 0.35);
+      border-radius: 10px;
+      padding: 7px 9px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .slider-group {
+      margin-bottom: 9px;
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11.5px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .mono {
+      font-family: "JetBrains Mono", Consolas, monospace;
+    }
+
+    input[type="range"].sketch-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 8px;
+      background: #e9dac3;
+      border: 2px solid var(--cocoa-ink);
+      border-radius: 99px;
+      outline: none;
+      margin: 0;
+    }
+
+    input[type="range"].sketch-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      background: var(--honey-gold);
+      border: 2px solid var(--cocoa-ink);
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 2px 0px var(--cocoa-ink);
+    }
+
+    .badge-status {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 99px;
+      background: var(--leaf-green);
+      color: #fff;
+      border: 1.5px solid var(--cocoa-ink);
+    }
+
+    .legend-dot {
+      display: inline-block;
+      width: 12px;
+      height: 4px;
+      border-radius: 2px;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+
+    @media (max-width: 980px) {
+      .top-center-dock {
+        left: 16px;
+        right: 16px;
+        top: auto;
+        bottom: 68px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- 3D WebGL Canvas -->
+  <div id="canvas-container"></div>
+  <div class="paper-vignette"></div>
+
+  <!-- TOP CENTER BAR: Cozy Courtyard Proving Ground Switcher -->
+  <nav class="top-center-dock">
+    <div class="sketch-panel top-center-inner">
+      <button id="scene-btn-1" class="sketch-btn active" onclick="selectScenario(1)">
+        🌿 [1] 青石庭院阶梯
+      </button>
+      <button id="scene-btn-2" class="sketch-btn" onclick="selectScenario(2)">
+        🪵 [2] 高阶木梯与跳台
+      </button>
+      <button id="scene-btn-3" class="sketch-btn" onclick="selectScenario(3)">
+        🌻 [3] 风车山丘连续斜坡
+      </button>
+      <button id="scene-btn-4" class="sketch-btn" onclick="selectScenario(4)">
+        🍄 [4] 交错原木波浪路
+      </button>
+    </div>
+  </nav>
+
+  <!-- LEFT PANEL: Camera Presets & Suspension Telemetry -->
+  <aside class="left-dock">
+    <div class="sketch-panel">
+      <div class="panel-header">
+        <span class="panel-title">🎥 绘本观察视角</span>
+        <span class="panel-sub">左键旋转 / 滚轮缩放</span>
+      </div>
+      <div class="cam-grid">
+        <button id="cam-btn-closeup" class="sketch-btn active" onclick="setCameraMode('closeup')">
+          <span>履带爬梯微距</span>
+          <span class="mono" style="opacity:0.75;font-size:10px;">C1</span>
+        </button>
+        <button id="cam-btn-orbit" class="sketch-btn" onclick="setCameraMode('orbit')">
+          <span>庭院全景环绕</span>
+          <span class="mono" style="opacity:0.75;font-size:10px;">C2</span>
+        </button>
+        <button id="cam-btn-side" class="sketch-btn" onclick="setCameraMode('side')">
+          <span>绘本正侧跟拍</span>
+          <span class="mono" style="opacity:0.75;font-size:10px;">C3</span>
+        </button>
+        <button id="cam-btn-follow" class="sketch-btn" onclick="setCameraMode('follow')">
+          <span>车尾追随驾驶</span>
+          <span class="mono" style="opacity:0.75;font-size:10px;">C4</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="sketch-panel">
+      <div class="panel-header">
+        <span class="panel-title">🐤 豆豆号姿态与扭杆行程</span>
+        <span id="telemetry-status" class="badge-status">阶梯架桥中</span>
+      </div>
+
+      <div class="telemetry-grid">
+        <div class="telemetry-box">
+          <div class="telemetry-label">俯仰 Pitch</div>
+          <div id="hud-pitch" class="telemetry-val">+0.0°</div>
+        </div>
+        <div class="telemetry-box">
+          <div class="telemetry-label">横滚 Roll</div>
+          <div id="hud-roll" class="telemetry-val">+0.0°</div>
+        </div>
+        <div class="telemetry-box">
+          <div class="telemetry-label">车速 Speed</div>
+          <div id="hud-speed" class="telemetry-val">0.0 m/s</div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--cocoa-muted);font-weight:700;margin-bottom:3px;">
+        <span>左侧 1~6 号负重轮 (珊瑚红)</span>
+        <span>右侧 1~6 号轮 (草绿)</span>
+      </div>
+      <div class="susp-chart-box">
+        <div id="susp-bars-left" class="susp-side-bars"></div>
+        <div id="susp-bars-right" class="susp-side-bars" style="border-left:1.5px dashed rgba(74,55,40,0.25);padding-left:8px;"></div>
+      </div>
+
+      <div id="physics-insight-box" class="insight-note">
+        <strong>🌱 履带爬梯小百科：</strong>前导轮上扬履带段先搭上青石台阶棱角，履带张紧力将台阶支撑力分摊给相邻负重轮，圆滚滚的豆豆号也不会卡住！
+      </div>
+    </div>
+  </aside>
+
+  <!-- RIGHT PANEL: Physics Tuning & Action Controls -->
+  <aside class="right-dock">
+    <div class="sketch-panel">
+      <div class="panel-header">
+        <span class="panel-title">🔧 悬挂与履带软硬调校</span>
+        <a href="javascript:void(0)" onclick="resetPhysicsParams()" style="font-size:11px;color:var(--cocoa-muted);font-weight:700;text-decoration:underline;">恢复默认</a>
+      </div>
+
+      <!-- Force Vectors Toggle -->
+      <div class="control-row-box">
+        <div>
+          <div style="font-size:12px;font-weight:800;">✨ 履带受力与包络辅助线</div>
+          <div style="font-size:10px;color:var(--cocoa-muted);">支撑力 N / 牵引力 / 台阶包络线</div>
+        </div>
+        <button id="toggle-vectors-btn" class="sketch-btn active" onclick="toggleForceVectors()">显示中</button>
+      </div>
+
+      <!-- Slow Motion Toggle -->
+      <div class="control-row-box">
+        <div>
+          <div style="font-size:12px;font-weight:800;">⏱️ 慢动作微距观察</div>
+          <div style="font-size:10px;color:var(--cocoa-muted);">看清每一块履带板咬合台阶</div>
+        </div>
+        <div style="display:flex;gap:4px;">
+          <button id="time-btn-1" class="sketch-btn active mono" onclick="setTimeScale(1.0)">1.0x</button>
+          <button id="time-btn-03" class="sketch-btn mono" onclick="setTimeScale(0.3)">0.3x</button>
+        </div>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <span>扭杆弹簧刚度 (k)</span>
+          <span id="val-stiffness" class="mono">95 kN/m</span>
+        </div>
+        <input id="slider-stiffness" type="range" min="45" max="160" value="95" class="sketch-slider"
+          oninput="updatePhysicsParam('stiffness', this.value)" />
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <span>减振阻尼系数 (c)</span>
+          <span id="val-damping" class="mono">14.0 kN·s/m</span>
+        </div>
+        <input id="slider-damping" type="range" min="4" max="28" value="14" class="sketch-slider"
+          oninput="updatePhysicsParam('damping', this.value)" />
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <span>履带预紧与架桥张力 (T)</span>
+          <span id="val-tension" class="mono">85%</span>
+        </div>
+        <input id="slider-tension" type="range" min="30" max="130" value="85" class="sketch-slider"
+          oninput="updatePhysicsParam('tension', this.value)" />
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <span>主动轮爬坡扭矩 (Torque)</span>
+          <span id="val-torque" class="mono">1.20x</span>
+        </div>
+        <input id="slider-torque" type="range" min="60" max="175" value="120" class="sketch-slider"
+          oninput="updatePhysicsParam('torque', this.value)" />
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;">
+        <button class="sketch-btn" style="background:#ffe6dc;padding:7px 6px;" onclick="fireMainGun()">
+          🎉 发射彩弹后坐 (F)
+        </button>
+        <button class="sketch-btn" style="padding:7px 6px;" onclick="resetTankAtCurrentScenario()">
+          ↺ 回到起点 (R)
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- BOTTOM CENTER BAR: Manual Driving Keys & Auto-Climb Cruise -->
+  <footer class="bottom-center-dock">
+    <div class="sketch-panel" style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:7px 12px;">
+      <button id="auto-drive-btn" class="sketch-btn accent-active" onclick="toggleAutoDrive()">
+        🐤 自动爬梯巡航: 开启
+      </button>
+      <span style="width:1.5px;height:18px;background:rgba(74,55,40,0.22);margin:0 2px;"></span>
+      <button id="key-w" class="sketch-btn mono"
+        onmousedown="setTouchControl('forward', true)" onmouseup="setTouchControl('forward', false)" onmouseleave="setTouchControl('forward', false)"
+        ontouchstart="setTouchControl('forward', true); event.preventDefault();" ontouchend="setTouchControl('forward', false)">
+        W / ↑ 前进
+      </button>
+      <button id="key-s" class="sketch-btn mono"
+        onmousedown="setTouchControl('backward', true)" onmouseup="setTouchControl('backward', false)" onmouseleave="setTouchControl('backward', false)"
+        ontouchstart="setTouchControl('backward', true); event.preventDefault();" ontouchend="setTouchControl('backward', false)">
+        S / ↓ 倒车
+      </button>
+      <button id="key-a" class="sketch-btn mono"
+        onmousedown="setTouchControl('left', true)" onmouseup="setTouchControl('left', false)" onmouseleave="setTouchControl('left', false)"
+        ontouchstart="setTouchControl('left', true); event.preventDefault();" ontouchend="setTouchControl('left', false)">
+        ↺ A / ← 左转
+      </button>
+      <button id="key-d" class="sketch-btn mono"
+        onmousedown="setTouchControl('right', true)" onmouseup="setTouchControl('right', false)" onmouseleave="setTouchControl('right', false)"
+        ontouchstart="setTouchControl('right', true); event.preventDefault();" ontouchend="setTouchControl('right', false)">
+        ↻ D / → 右转
+      </button>
+      <span style="width:1.5px;height:18px;background:rgba(74,55,40,0.22);margin:0 2px;"></span>
+      <div style="font-size:11px;font-weight:700;display:flex;align-items:center;gap:10px;padding:0 4px;">
+        <span><i class="legend-dot" style="background:#469c56;"></i>支撑力 N</span>
+        <span><i class="legend-dot" style="background:#e05a47;"></i>牵引力 Ft</span>
+        <span><i class="legend-dot" style="background:#eba83a;"></i>履带包络线</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // ============================================================================
+    // 1. COZY GHIBLI / STORYBOOK PALETTE & SOFT PAINTED TEXTURES
+    // ============================================================================
+    const PALETTE = {
+      skyBg: 0xd8eff6,
+      cocoaInk: 0x4a3728,
+      forceNormal: 0x469c56,
+      forceTraction: 0xe05a47,
+      envelopeGold: 0xeba83a
+    };
+
+    function createPaintedBrushTexture(baseHex, warmTintHex,highlightHex) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = baseHex;
+      ctx.fillRect(0, 0, 256, 256);
+
+      // Soft watercolor / gouache sponge dabs (no harsh wireframe lines!)
+      for (let i = 0; i < 85; i++) {
+        const x = Math.random() * 256;
+        const y = Math.random() * 256;
+        const r = 10 + Math.random() * 28;
+        ctx.fillStyle = i % 2 === 0 ? warmTintHex : highlightHex;
+        ctx.globalAlpha = 0.08 + Math.random() * 0.06;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1.0;
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      return tex;
+    }
+
+    function createToonGradientTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 4;
+      canvas.height = 1;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#8b7d70';
+      ctx.fillRect(0, 0, 1, 1);
+      ctx.fillStyle = '#c9bfb2';
+      ctx.fillRect(1, 0, 1, 1);
+      ctx.fillStyle = '#f2ece1';
+      ctx.fillRect(2, 0, 1, 1);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(3, 0, 1, 1);
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.minFilter = THREE.NearestFilter;
+      tex.magFilter = THREE.NearestFilter;
+      return tex;
+    }
+
+    const TOON_GRADIENT = createToonGradientTexture();
+
+    const TEXTURES = {
+      meadow: createPaintedBrushTexture('#7ec464', '#6ab052', '#98d879'),
+      soil: createPaintedBrushTexture('#c88b5b', '#b37648', '#dba172'),
+      tankSage: createPaintedBrushTexture('#78a665', '#649152', '#92bf7e'),
+      tankCream: createPaintedBrushTexture('#faefd9', '#ebd9b9', '#fffdf7'),
+      tankCoral: createPaintedBrushTexture('#e66f55', '#cf5840', '#f78c74'),
+      tankYellow: createPaintedBrushTexture('#f4bd47', '#df9f28', '#ffd573'),
+      woodWarm: createPaintedBrushTexture('#b87c4c', '#9e6437', '#ce9363'),
+      stoneWarm: createPaintedBrushTexture('#e5dccb', '#d1c5b0', '#f5efe4'),
+      stoneMoss: createPaintedBrushTexture('#cbbfa9', '#9ab57a', '#dfd6c5'),
+      trackCocoa: createPaintedBrushTexture('#594639', '#45352a', '#6e5849')
+    };
+
+    function makeStorybookMat(mapOrColor, isColor) {
+      if (isColor) {
+        return new THREE.MeshToonMaterial({
+          color: mapOrColor,
+          gradientMap: TOON_GRADIENT
+        });
+      }
+      return new THREE.MeshToonMaterial({
+        map: mapOrColor,
+        gradientMap: TOON_GRADIENT
+      });
+    }
+
+    const MATERIALS = {
+      meadowGrass: makeStorybookMat(TEXTURES.meadow),
+      earthCliff: makeStorybookMat(TEXTURES.soil),
+      hullSage: makeStorybookMat(TEXTURES.tankSage),
+      hullCream: makeStorybookMat(TEXTURES.tankCream),
+      accentCoral: makeStorybookMat(TEXTURES.tankCoral),
+      accentYellow: makeStorybookMat(TEXTURES.tankYellow),
+      woodWarm: makeStorybookMat(TEXTURES.woodWarm),
+      stairStone: makeStorybookMat(TEXTURES.stoneWarm),
+      stairMoss: makeStorybookMat(TEXTURES.stoneMoss),
+      trackShoe: makeStorybookMat(TEXTURES.trackCocoa),
+      wheelRubber: makeStorybookMat(0x4d4036, true),
+      wheelHub: makeStorybookMat(TEXTURES.tankYellow),
+      duckYellow: makeStorybookMat(0xffd438, true),
+      duckBeak: makeStorybookMat(0xff772b, true),
+      treeFoliage1: makeStorybookMat(0x63ad53, true),
+      treeFoliage2: makeStorybookMat(0x82c464, true),
+      treeFoliageSakura: makeStorybookMat(0xf7a8b8, true),
+      cloudWhite: new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0xfff8ee, emissiveIntensity: 0.25 }),
+      headlightGlow: new THREE.MeshBasicMaterial({ color: 0xfff099 }),
+      inkLine: new THREE.LineBasicMaterial({ color: PALETTE.cocoaInk, transparent: true, opacity: 0.36 }),
+      forceNormalLine: new THREE.LineBasicMaterial({ color: PALETTE.forceNormal, linewidth: 2 }),
+      forceTractionLine: new THREE.LineBasicMaterial({ color: PALETTE.forceTraction, linewidth: 2 }),
+      envelopeLine: new THREE.LineBasicMaterial({ color: PALETTE.envelopeGold, linewidth: 2 })
+    };
+
+    /**
+     * Wraps a geometry in a warm storybook MeshToonMaterial with subtle cocoa silhouette creases
+     * (using a high 45-degree threshold so rounded shapes stay clean & cute without wireframe clutter).
+     */
+    function createSketchedMesh(geometry, material, edgeThreshold, castShadow, receiveShadow) {
+      if (edgeThreshold === undefined) edgeThreshold = 45;
+      if (castShadow === undefined) castShadow = true;
+      if (receiveShadow === undefined) receiveShadow = true;
+
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.castShadow = castShadow;
+      mesh.receiveShadow = receiveShadow;
+
+      if (edgeThreshold < 90) {
+        const edgesGeo = new THREE.EdgesGeometry(geometry, edgeThreshold);
+        const line = new THREE.LineSegments(edgesGeo, MATERIALS.inkLine);
+        mesh.add(line);
+      }
+      return mesh;
+    }
+
+    // ============================================================================
+    // 2. ANALYTICAL & VISUAL PROVING GROUND TERRAIN (4 STATIONS)
+    // ============================================================================
+    const terrainBoxes = []; // { minX, maxX, minZ, maxZ, height }
+    const terrainRamps = []; // { minX, maxX, minZ, maxZ, hStart, hEnd }
+    const terrainLogs = [];  // { cx, minZ, maxZ, radius }
+    const terrainCylinders = []; // { cx, cz, radius, height }
+    const terrainObstacles = []; // { cx, cz, radius, minY, maxY, treeRef }
+
+    function registerBox(cx, cz, lenX, widthZ, height) {
+      if (height <= 0) return;
+      terrainBoxes.push({
+        minX: cx - lenX * 0.5,
+        maxX: cx + lenX * 0.5,
+        minZ: cz - widthZ * 0.5,
+        maxZ: cz + widthZ * 0.5,
+        height: height
+      });
+    }
+
+    function registerRamp(minX, maxX, cz, widthZ, hStart, hEnd) {
+      terrainRamps.push({
+        minX: minX,
+        maxX: maxX,
+        minZ: cz - widthZ * 0.5,
+        maxZ: cz + widthZ * 0.5,
+        hStart: hStart,
+        hEnd: hEnd
+      });
+    }
+
+    function registerLog(cx, cz, widthZ, radius) {
+      terrainLogs.push({
+        cx: cx,
+        minZ: cz - widthZ * 0.5,
+        maxZ: cz + widthZ * 0.5,
+        radius: radius
+      });
+    }
+
+    function registerCylinderPlatform(cx, cz, radius, height) {
+      terrainCylinders.push({
+        cx: cx,
+        cz: cz,
+        radius: radius,
+        height: height
+      });
+    }
+
+    function registerSolidObstacle(cx, cz, radius, minY, maxY, treeRef) {
+      terrainObstacles.push({
+        cx: cx,
+        cz: cz,
+        radius: radius,
+        minY: minY !== undefined ? minY : -1.0,
+        maxY: maxY !== undefined ? maxY : 8.0,
+        treeRef: treeRef || null
+      });
+    }
+
+    function getTerrainHeightRaw(x, z) {
+      let maxH = 0.0;
+      const bevel = 0.055; // Rounded stair-nose bevel for smooth climbing
+
+      for (let i = 0; i < terrainBoxes.length; i++) {
+        const b = terrainBoxes[i];
+        if (x >= b.minX - bevel && x <= b.maxX + bevel && z >= b.minZ - bevel && z <= b.maxZ + bevel) {
+          let fx = 1.0;
+          if (x < b.minX) fx = Math.max(0, 1 - (b.minX - x) / bevel);
+          else if (x > b.maxX) fx = Math.max(0, 1 - (x - b.maxX) / bevel);
+
+          let fz = 1.0;
+          if (z < b.minZ) fz = Math.max(0, 1 - (b.minZ - z) / bevel);
+          else if (z > b.maxZ) fz = Math.max(0, 1 - (z - b.maxZ) / bevel);
+
+          const h = b.height * Math.min(fx, fz);
+          if (h > maxH) maxH = h;
+        }
+      }
+
+      for (let i = 0; i < terrainRamps.length; i++) {
+        const r = terrainRamps[i];
+        if (x >= r.minX && x <= r.maxX && z >= r.minZ && z <= r.maxZ) {
+          const t = (x - r.minX) / (r.maxX - r.minX);
+          const h = r.hStart + t * (r.hEnd - r.hStart);
+          if (h > maxH) maxH = h;
+        }
+      }
+
+      for (let i = 0; i < terrainLogs.length; i++) {
+        const l = terrainLogs[i];
+        if (z >= l.minZ && z <= l.maxZ) {
+          const dx = x - l.cx;
+          if (Math.abs(dx) <= l.radius) {
+            const h = Math.sqrt(Math.max(0, l.radius * l.radius - dx * dx));
+            if (h > maxH) maxH = h;
+          }
+        }
+      }
+
+      for (let i = 0; i < terrainCylinders.length; i++) {
+        const c = terrainCylinders[i];
+        const dist = Math.hypot(x - c.cx, z - c.cz);
+        if (dist <= c.radius + bevel) {
+          const f = dist <= c.radius ? 1.0 : Math.max(0, 1 - (dist - c.radius) / bevel);
+          const h = c.height * f;
+          if (h > maxH) maxH = h;
+        }
+      }
+
+      return maxH;
+    }
+
+    function getTerrainAt(x, z) {
+      const h = getTerrainHeightRaw(x, z);
+      const eps = 0.04;
+      const hx1 = getTerrainHeightRaw(x + eps, z);
+      const hx0 = getTerrainHeightRaw(x - eps, z);
+      const hz1 = getTerrainHeightRaw(x, z + eps);
+      const hz0 = getTerrainHeightRaw(x, z - eps);
+
+      const dhdx = (hx1 - hx0) / (2 * eps);
+      const dhdz = (hz1 - hz0) / (2 * eps);
+
+      let nx = -dhdx;
+      let ny = 1.0;
+      let nz = -dhdz;
+      const len = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+      nx /= len;
+      ny /= len;
+      nz /= len;
+
+      return { height: h, nx: nx, ny: ny, nz: nz };
+    }
+
+    // ============================================================================
+    // 3. THREE.JS SCENE, RENDERER & COZY GHIBLI COURTYARD DIORAMA
+    // ============================================================================
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(PALETTE.skyBg);
+    scene.fog = new THREE.FogExp2(PALETTE.skyBg, 0.0085);
+
+    const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 220);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    renderer.setClearColor(PALETTE.skyBg, 1);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    // Warm Golden-Hour Sunlight + Sky/Meadow Hemisphere Light
+    const hemiLight = new THREE.HemisphereLight(0xfffdf2, 0x99bd78, 0.72);
+    scene.add(hemiLight);
+
+    const dirLight = new THREE.DirectionalLight(0xfff2d6, 0.75);
+    dirLight.position.set(20, 36, 22);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    dirLight.shadow.camera.near = 4;
+    dirLight.shadow.camera.far = 95;
+    const dCam = 26;
+    dirLight.shadow.camera.left = -dCam;
+    dirLight.shadow.camera.right = dCam;
+    dirLight.shadow.camera.top = dCam;
+    dirLight.shadow.camera.bottom = -dCam;
+    dirLight.shadow.bias = -0.0005;
+    scene.add(dirLight);
+    scene.add(dirLight.target);
+
+    const animatedScenery = {
+      clouds: [],
+      trees: [],
+      windmillBlades: null
+    };
+
+    function createWoodenSignpost(titleText, subText, x, y, z) {
+      // Place signpost well outside the 4.6m driving lane so tank never touches the board
+      const signZ = z - 3.35;
+      const signGroup = new THREE.Group();
+      signGroup.position.set(x, 0, signZ);
+      // Slight cozy angle facing the approaching tank & camera
+      signGroup.rotation.y = 0.18;
+
+      // Solid wooden post anchored into the ground
+      const postHeight = y + 0.15;
+      const postGeo = new THREE.CylinderGeometry(0.11, 0.14, postHeight, 10);
+      const postMesh = createSketchedMesh(postGeo, MATERIALS.woodWarm, 60);
+      postMesh.position.set(0, postHeight * 0.5, 0);
+      signGroup.add(postMesh);
+
+      // Cute stone collar at the base of the signpost
+      const baseStone = createSketchedMesh(new THREE.CylinderGeometry(0.26, 0.32, 0.22, 10), MATERIALS.stairStone, 60);
+      baseStone.position.set(0, 0.11, 0);
+      signGroup.add(baseStone);
+
+      // 3D Wooden Frame Board (replaces 2D camera-facing Sprite so it NEVER billboards through the tank!)
+      const boardW = 3.45;
+      const boardH = 0.96;
+      const boardFrame = createSketchedMesh(
+        new THREE.BoxGeometry(boardW + 0.14, boardH + 0.14, 0.12),
+        MATERIALS.woodWarm,
+        45
+      );
+      boardFrame.position.set(0, y + 0.22, 0);
+      signGroup.add(boardFrame);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 144;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#fff8e8';
+      ctx.strokeStyle = '#4a3728';
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.roundRect(8, 8, 496, 128, 20);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#4a3728';
+      ctx.font = 'bold 30px "PingFang SC", "Microsoft YaHei", sans-serif';
+      ctx.fillText(titleText, 24, 58);
+
+      ctx.fillStyle = '#7d6552';
+      ctx.font = 'bold 20px "PingFang SC", "Microsoft YaHei", sans-serif';
+      ctx.fillText(subText, 24, 104);
+
+      const tex = new THREE.CanvasTexture(canvas);
+      const faceMat = new THREE.MeshBasicMaterial({ map: tex });
+      const faceGeo = new THREE.PlaneGeometry(boardW, boardH);
+
+      const frontFace = new THREE.Mesh(faceGeo, faceMat);
+      frontFace.position.set(0, y + 0.22, 0.068);
+      signGroup.add(frontFace);
+
+      const backFace = new THREE.Mesh(faceGeo, faceMat);
+      backFace.rotation.y = Math.PI;
+      backFace.position.set(0, y + 0.22, -0.068);
+      signGroup.add(backFace);
+
+      scene.add(signGroup);
+
+      // Register physical collision for the signpost pillar
+      registerSolidObstacle(x, signZ, 0.42, 0, y + 1.0, null);
+    }
+
+    function createWedgeMesh(minX, maxX, cz, widthZ, hStart, hEnd, material) {
+      const shape = new THREE.Shape();
+      shape.moveTo(minX, 0);
+      shape.lineTo(maxX, 0);
+      shape.lineTo(maxX, hEnd);
+      shape.lineTo(minX, hStart);
+      shape.closePath();
+
+      const geo = new THREE.ExtrudeGeometry(shape, {
+        steps: 1,
+        depth: widthZ,
+        bevelEnabled: false
+      });
+      geo.translate(0, 0, cz - widthZ * 0.5);
+      return createSketchedMesh(geo, material, 40);
+    }
+
+    function createStorybookTree(x, z, scale, foliageMat) {
+      const group = new THREE.Group();
+      const groundY = getTerrainHeightRaw(x, z);
+      group.position.set(x, groundY, z);
+      group.scale.set(scale, scale, scale);
+
+      const trunkGeo = new THREE.CylinderGeometry(0.18, 0.28, 1.2, 10);
+      const trunk = createSketchedMesh(trunkGeo, MATERIALS.woodWarm, 95);
+      trunk.position.y = 0.6;
+      group.add(trunk);
+
+      // Cute exposed root mound so tree sits firmly on the meadow
+      const rootMound = createSketchedMesh(new THREE.CylinderGeometry(0.32, 0.46, 0.22, 10), MATERIALS.woodWarm, 95);
+      rootMound.position.y = 0.11;
+      group.add(rootMound);
+
+      // Puffy clustered storybook canopy spheres
+      const puffs = [
+        { x: 0, y: 1.65, z: 0, r: 0.92 },
+        { x: 0.52, y: 1.42, z: 0.32, r: 0.68 },
+        { x: -0.48, y: 1.45, z: -0.25, r: 0.72 },
+        { x: -0.22, y: 1.38, z: 0.52, r: 0.64 },
+        { x: 0.25, y: 2.15, z: -0.12, r: 0.62 }
+      ];
+      for (let i = 0; i < puffs.length; i++) {
+        const p = puffs[i];
+        const sph = createSketchedMesh(new THREE.SphereGeometry(p.r, 14, 12), foliageMat, 95);
+        sph.position.set(p.x, p.y, p.z);
+        group.add(sph);
+      }
+
+      scene.add(group);
+      const treeObj = { group: group, phase: Math.random() * Math.PI * 2, hitShake: 0 };
+      animatedScenery.trees.push(treeObj);
+
+      // Register solid physical trunk/canopy collision so tank never clips through trees!
+      registerSolidObstacle(x, z, 0.85 * scale, groundY - 0.5, groundY + 3.5 * scale, treeObj);
+    }
+
+    function createPuffyCloud(x, y, z, scale, speed) {
+      const group = new THREE.Group();
+      group.position.set(x, y, z);
+      group.scale.set(scale, scale, scale);
+
+      const lobes = [
+        { x: 0, y: 0, z: 0, r: 1.3 },
+        { x: 1.1, y: -0.15, z: 0.1, r: 0.95 },
+        { x: -1.05, y: -0.2, z: -0.1, r: 0.9 },
+        { x: 0.4, y: 0.45, z: -0.2, r: 0.85 }
+      ];
+      for (let i = 0; i < lobes.length; i++) {
+        const l = lobes[i];
+        const m = new THREE.Mesh(new THREE.SphereGeometry(l.r, 12, 10), MATERIALS.cloudWhite);
+        m.position.set(l.x, l.y, l.z);
+        group.add(m);
+      }
+      scene.add(group);
+      animatedScenery.clouds.push({ group: group, speed: speed });
+    }
+
+    function createStorybookWindmill(x, topY, z) {
+      const group = new THREE.Group();
+      group.position.set(x, 0, z);
+
+      // Solid Stone & Grass Terraced Hill Foundation all the way down to y = 0 (Fixes floating windmill in Fig 1!)
+      const lowerHillGeo = new THREE.CylinderGeometry(2.35, 2.85, topY * 0.62, 16);
+      const lowerHill = createSketchedMesh(lowerHillGeo, MATERIALS.earthCliff, 55);
+      lowerHill.position.y = (topY * 0.62) * 0.5;
+      group.add(lowerHill);
+
+      const upperStoneGeo = new THREE.CylinderGeometry(1.95, 2.25, topY * 0.42, 16);
+      const upperStone = createSketchedMesh(upperStoneGeo, MATERIALS.stairStone, 55);
+      upperStone.position.y = topY - (topY * 0.42) * 0.5;
+      group.add(upperStone);
+
+      const grassCapGeo = new THREE.CylinderGeometry(2.02, 2.02, 0.14, 16);
+      const grassCap = createSketchedMesh(grassCapGeo, MATERIALS.meadowGrass, 55);
+      grassCap.position.y = topY + 0.02;
+      group.add(grassCap);
+
+      // Cute tapered tower embedded slightly (-0.08m) into the stone terrace so zero gap is ever visible
+      const towerHeight = 3.68;
+      const tower = createSketchedMesh(new THREE.CylinderGeometry(0.95, 1.38, towerHeight, 12), MATERIALS.hullCream, 60);
+      tower.position.y = topY + towerHeight * 0.5 - 0.08;
+      group.add(tower);
+
+      // Wooden doorway on the windmill tower
+      const door = createSketchedMesh(new THREE.BoxGeometry(0.52, 0.85, 0.12), MATERIALS.woodWarm, 45);
+      door.position.set(0, topY + 0.42, 1.32);
+      group.add(door);
+
+      // Conical roof
+      const roof = createSketchedMesh(new THREE.ConeGeometry(1.25, 1.28, 12), MATERIALS.accentCoral, 60);
+      roof.position.y = topY + towerHeight + 0.48;
+      group.add(roof);
+
+      // Spinning wooden sails
+      const bladesGroup = new THREE.Group();
+      bladesGroup.position.set(0, topY + 3.05, 1.08);
+      const hub = createSketchedMesh(new THREE.CylinderGeometry(0.22, 0.22, 0.35, 10).rotateX(Math.PI / 2), MATERIALS.woodWarm, 60);
+      bladesGroup.add(hub);
+
+      for (let i = 0; i < 4; i++) {
+        const armWrap = new THREE.Group();
+        armWrap.rotation.z = (i * Math.PI) / 2;
+        const spar = createSketchedMesh(new THREE.BoxGeometry(0.10, 2.3, 0.08), MATERIALS.woodWarm, 45);
+        spar.position.y = 1.15;
+        armWrap.add(spar);
+
+        const sail = createSketchedMesh(new THREE.BoxGeometry(0.46, 1.75, 0.03), MATERIALS.hullCream, 45);
+        sail.position.set(0.24, 1.32, 0.03);
+        armWrap.add(sail);
+        bladesGroup.add(armWrap);
+      }
+      group.add(bladesGroup);
+      animatedScenery.windmillBlades = bladesGroup;
+      scene.add(group);
+
+      // Register both terrain height and solid obstacle collision for the windmill hill & tower
+      registerCylinderPlatform(x, z, 2.05, topY);
+      registerSolidObstacle(x, z, 1.55, topY - 0.2, topY + 5.0, null);
+      registerSolidObstacle(x, z, 2.55, -0.5, topY - 0.15, null);
+    }
+
+    function buildProvingGround() {
+      const groundGroup = new THREE.Group();
+
+      // Lush Floating Meadow Diorama Island
+      const islandTopGeo = new THREE.CylinderGeometry(48, 48, 0.8, 48);
+      const islandTop = createSketchedMesh(islandTopGeo, MATERIALS.meadowGrass, 60, false, true);
+      islandTop.position.set(10, -0.4, 5);
+      groundGroup.add(islandTop);
+
+      const islandCliffGeo = new THREE.CylinderGeometry(47.2, 41, 4.5, 36);
+      const islandCliff = createSketchedMesh(islandCliffGeo, MATERIALS.earthCliff, 60, false, false);
+      islandCliff.position.set(10, -3.0, 5);
+      groundGroup.add(islandCliff);
+
+      // Subtle warm garden tile grid on the meadow
+      const gridHelper = new THREE.GridHelper(64, 32, 0x649e4d, 0x6fb057);
+      gridHelper.position.set(10, 0.005, 5);
+      gridHelper.material.transparent = true;
+      gridHelper.material.opacity = 0.25;
+      groundGroup.add(gridHelper);
+
+      const laneWidth = 4.6;
+
+      // ----------------------------------------------------------------------
+      // STATION [1] (z = 0): MOSSY COBBLESTONE COURTYARD STAIRS (8 Steps Up & Down)
+      // ----------------------------------------------------------------------
+      const l1Z = 0.0;
+      const stepCount1 = 8;
+      const riser1 = 0.18;
+      const tread1 = 0.58;
+      const startX1 = 2.6;
+
+      for (let i = 0; i < stepCount1; i++) {
+        const h = (i + 1) * riser1;
+        const cx = startX1 + i * tread1 + tread1 * 0.5;
+        registerBox(cx, l1Z, tread1, laneWidth, h);
+
+        const stepGeo = new THREE.BoxGeometry(tread1, h, laneWidth);
+        const mat = i % 2 === 0 ? MATERIALS.stairStone : MATERIALS.stairMoss;
+        const stepMesh = createSketchedMesh(stepGeo, mat, 42);
+        stepMesh.position.set(cx, h * 0.5, l1Z);
+        groundGroup.add(stepMesh);
+      }
+
+      const platLen1 = 4.0;
+      const platH1 = stepCount1 * riser1;
+      const platCX1 = startX1 + stepCount1 * tread1 + platLen1 * 0.5;
+      registerBox(platCX1, l1Z, platLen1, laneWidth, platH1);
+      const platMesh1 = createSketchedMesh(new THREE.BoxGeometry(platLen1, platH1, laneWidth), MATERIALS.stairStone, 42);
+      platMesh1.position.set(platCX1, platH1 * 0.5, l1Z);
+      groundGroup.add(platMesh1);
+
+      const descStart1 = platCX1 + platLen1 * 0.5;
+      for (let i = 0; i < stepCount1; i++) {
+        const h = (stepCount1 - i) * riser1;
+        const cx = descStart1 + i * tread1 + tread1 * 0.5;
+        registerBox(cx, l1Z, tread1, laneWidth, h);
+
+        const stepGeo = new THREE.BoxGeometry(tread1, h, laneWidth);
+        const mat = i % 2 === 0 ? MATERIALS.stairMoss : MATERIALS.stairStone;
+        const stepMesh = createSketchedMesh(stepGeo, mat, 42);
+        stepMesh.position.set(cx, h * 0.5, l1Z);
+        groundGroup.add(stepMesh);
+      }
+
+      createWoodenSignpost(
+        '🌿 [1] 青石庭院 8 级阶梯',
+        '台阶高 0.18m | 观察履带包络与多轮连续架桥',
+        startX1 + 0.8, 1.35, l1Z
+      );
+
+      // ----------------------------------------------------------------------
+      // STATION [2] (z = -9.5): STEEP TIMBER STEPS (0.29m Riser) & TRENCH BRIDGE
+      // ----------------------------------------------------------------------
+      const l2Z = -9.5;
+      const stepCount2 = 5;
+      const riser2 = 0.29;
+      const tread2 = 0.80;
+      const startX2 = 2.6;
+
+      for (let i = 0; i < stepCount2; i++) {
+        const h = (i + 1) * riser2;
+        const cx = startX2 + i * tread2 + tread2 * 0.5;
+        registerBox(cx, l2Z, tread2, laneWidth, h);
+
+        const stepMesh = createSketchedMesh(
+          new THREE.BoxGeometry(tread2, h, laneWidth),
+          i % 2 === 0 ? MATERIALS.woodWarm : MATERIALS.stairStone,
+          42
+        );
+        stepMesh.position.set(cx, h * 0.5, l2Z);
+        groundGroup.add(stepMesh);
+      }
+
+      const deck1Len = 3.4;
+      const deckH2 = stepCount2 * riser2;
+      const deck1CX = startX2 + stepCount2 * tread2 + deck1Len * 0.5;
+      registerBox(deck1CX, l2Z, deck1Len, laneWidth, deckH2);
+      const deck1Mesh = createSketchedMesh(new THREE.BoxGeometry(deck1Len, deckH2, laneWidth), MATERIALS.stairStone, 42);
+      deck1Mesh.position.set(deck1CX, deckH2 * 0.5, l2Z);
+      groundGroup.add(deck1Mesh);
+
+      const trenchGap = 1.25;
+      const deck2Len = 3.6;
+      const deck2CX = deck1CX + deck1Len * 0.5 + trenchGap + deck2Len * 0.5;
+      registerBox(deck2CX, l2Z, deck2Len, laneWidth, deckH2);
+      const deck2Mesh = createSketchedMesh(new THREE.BoxGeometry(deck2Len, deckH2, laneWidth), MATERIALS.stairStone, 42);
+      deck2Mesh.position.set(deck2CX, deckH2 * 0.5, l2Z);
+      groundGroup.add(deck2Mesh);
+
+      const exitMinX2 = deck2CX + deck2Len * 0.5;
+      const exitMaxX2 = exitMinX2 + 4.5;
+      registerRamp(exitMinX2, exitMaxX2, l2Z, laneWidth, deckH2, 0.0);
+      groundGroup.add(createWedgeMesh(exitMinX2, exitMaxX2, l2Z, laneWidth, deckH2, 0.0, MATERIALS.woodWarm));
+
+      createWoodenSignpost(
+        '🪵 [2] 高阶木梯与 1.25m 跳台壕沟',
+        '台阶高 0.29m | 前导轮仰角强攻 + 履带张力跨越壕沟',
+        startX2 + 0.8, 1.35, l2Z
+      );
+
+      // ----------------------------------------------------------------------
+      // STATION [3] (z = +9.5): WINDMILL HILL SLOPES (15° -> 28°) & CREST
+      // ----------------------------------------------------------------------
+      const l3Z = 9.5;
+      registerRamp(2.2, 6.4, l3Z, laneWidth, 0.0, 1.15);
+      groundGroup.add(createWedgeMesh(2.2, 6.4, l3Z, laneWidth, 0.0, 1.15, MATERIALS.stairMoss));
+
+      registerBox(7.4, l3Z, 2.0, laneWidth, 1.15);
+      const midPlat = createSketchedMesh(new THREE.BoxGeometry(2.0, 1.15, laneWidth), MATERIALS.stairStone, 42);
+      midPlat.position.set(7.4, 1.15 * 0.5, l3Z);
+      groundGroup.add(midPlat);
+
+      registerRamp(8.4, 12.2, l3Z, laneWidth, 1.15, 3.05);
+      groundGroup.add(createWedgeMesh(8.4, 12.2, l3Z, laneWidth, 1.15, 3.05, MATERIALS.stairMoss));
+
+      registerBox(13.1, l3Z, 1.8, laneWidth, 3.05);
+      const topPlat = createSketchedMesh(new THREE.BoxGeometry(1.8, 3.05, laneWidth), MATERIALS.stairStone, 42);
+      topPlat.position.set(13.1, 3.05 * 0.5, l3Z);
+      groundGroup.add(topPlat);
+
+      registerRamp(14.0, 20.2, l3Z, laneWidth, 3.05, 0.0);
+      groundGroup.add(createWedgeMesh(14.0, 20.2, l3Z, laneWidth, 3.05, 0.0, MATERIALS.stairMoss));
+
+      createWoodenSignpost(
+        '🌻 [3] 风车山丘 15°~31° 连续斜坡',
+        '坡顶折角包络贴合 | 攀爬重心转移与俯仰阻尼',
+        3.2, 1.35, l3Z
+      );
+
+      // ----------------------------------------------------------------------
+      // STATION [4] (z = +19.0): STAGGERED STEPPING STONES & LOG WAVE ROAD
+      // ----------------------------------------------------------------------
+      const l4Z = 19.0;
+      const halfW = laneWidth * 0.48;
+
+      for (let i = 0; i < 6; i++) {
+        const isLeft = i % 2 === 0;
+        const cx = 2.8 + i * 1.45;
+        const cz = l4Z + (isLeft ? -halfW * 0.52 : halfW * 0.52);
+        const h = 0.23 + (i % 3) * 0.07;
+
+        registerBox(cx, cz, 1.15, halfW, h);
+        registerBox(cx - 0.65, cz, 0.35, halfW, h * 0.5);
+        registerBox(cx + 0.65, cz, 0.35, halfW, h * 0.5);
+
+        const mainBlock = createSketchedMesh(
+          new THREE.BoxGeometry(1.15, h, halfW),
+          isLeft ? MATERIALS.stairMoss : MATERIALS.stairStone,
+          42
+        );
+        mainBlock.position.set(cx, h * 0.5, cz);
+        groundGroup.add(mainBlock);
+
+        const foreStep = createSketchedMesh(new THREE.BoxGeometry(0.35, h * 0.5, halfW), MATERIALS.stairStone, 42);
+        foreStep.position.set(cx - 0.65, h * 0.25, cz);
+        groundGroup.add(foreStep);
+
+        const aftStep = createSketchedMesh(new THREE.BoxGeometry(0.35, h * 0.5, halfW), MATERIALS.stairStone, 42);
+        aftStep.position.set(cx + 0.65, h * 0.25, cz);
+        groundGroup.add(aftStep);
+      }
+
+      for (let i = 0; i < 5; i++) {
+        const logX = 12.8 + i * 1.15;
+        const radius = 0.24;
+        registerLog(logX, l4Z, laneWidth, radius);
+
+        const logGeo = new THREE.CylinderGeometry(radius, radius, laneWidth, 20);
+        logGeo.rotateX(Math.PI / 2);
+        const logMesh = createSketchedMesh(logGeo, MATERIALS.woodWarm, 80);
+        logMesh.position.set(logX, 0.0, l4Z);
+        groundGroup.add(logMesh);
+      }
+
+      createWoodenSignpost(
+        '🍄 [4] 交错踏脚石与原木波浪路',
+        '左右 12 根独立扭杆摆臂行程差 | 车身横滚减震',
+        3.2, 1.35, l4Z
+      );
+
+      // ----------------------------------------------------------------------
+      // STORYBOOK TREES, WINDMILL, WOODEN FENCES, WILDFLOWERS & FLOATING CLOUDS
+      // ----------------------------------------------------------------------
+      createStorybookWindmill(13.1, 3.05, l3Z - 3.85);
+
+      const treeCoords = [
+        { x: -5.5, z: -5.2, s: 1.25, m: MATERIALS.treeFoliage1 },
+        { x: -6.2, z: 5.0,  s: 1.4,  m: MATERIALS.treeFoliage2 },
+        { x: -4.8, z: 14.5, s: 1.15, m: MATERIALS.treeFoliageSakura },
+        { x: 9.0,  z: -4.8, s: 1.1,  m: MATERIALS.treeFoliage2 },
+        { x: 18.5, z: -4.5, s: 1.35, m: MATERIALS.treeFoliageSakura },
+        { x: 22.5, z: 4.5,  s: 1.3,  m: MATERIALS.treeFoliage1 },
+        { x: 23.0, z: 14.2, s: 1.2,  m: MATERIALS.treeFoliage2 },
+        { x: 8.5,  z: 24.0, s: 1.35, m: MATERIALS.treeFoliage1 },
+        { x: 16.5, z: 24.2, s: 1.15, m: MATERIALS.treeFoliageSakura }
+      ];
+      for (let i = 0; i < treeCoords.length; i++) {
+        const t = treeCoords[i];
+        createStorybookTree(t.x, t.z, t.s, t.m);
+      }
+
+      // Scattered cute meadow wildflowers
+      const flowerColors = [0xff766b, 0xffd24c, 0xffffff, 0xff9ec6];
+      const flowerGeo = new THREE.SphereGeometry(0.09, 6, 6);
+      for (let i = 0; i < 95; i++) {
+        const fx = -12 + Math.random() * 42;
+        const fz = -16 + Math.random() * 42;
+        if (Math.abs(fz - 0) < 2.9 || Math.abs(fz + 9.5) < 2.9 || Math.abs(fz - 9.5) < 2.9 || Math.abs(fz - 19) < 2.9) continue;
+        const flMat = new THREE.MeshBasicMaterial({ color: flowerColors[i % flowerColors.length] });
+        const fl = new THREE.Mesh(flowerGeo, flMat);
+        fl.position.set(fx, 0.08, fz);
+        groundGroup.add(fl);
+      }
+
+      // Puffy floating sky clouds
+      createPuffyCloud(-8, 12, -18, 1.8, 0.35);
+      createPuffyCloud(10, 14, -22, 2.3, 0.25);
+      createPuffyCloud(26, 11.5, -14, 1.6, 0.40);
+      createPuffyCloud(6, 13.5, 29, 2.1, 0.30);
+      createPuffyCloud(24, 12.5, 27, 1.7, 0.32);
+
+      scene.add(groundGroup);
+    }
+
+    buildProvingGround();
+
+    // ============================================================================
+    // 4. CUTE CHUBBY TANK ("豆豆号") MODEL + FIXED LEFT/RIGHT COORDINATES
+    //    NOTE ON COORDINATES:
+    //    Tank Forward = +X, Tank Up = +Y.
+    //    Therefore:
+    //      LEFT side of the tank  = -Z  (zOffset = -TANK_SPECS.trackCenterZ)
+    //      RIGHT side of the tank = +Z  (zOffset = +TANK_SPECS.trackCenterZ)
+    // ============================================================================
+    const TANK_SPECS = {
+      hullLength: 4.3,
+      hullWidth: 1.78,
+      trackCenterZ: 1.14,
+      trackWidth: 0.48,
+      wheelRadius: 0.31,
+      sprocketRadius: 0.33,
+      idlerRadius: 0.29,
+      rollerRadius: 0.12,
+      pivotY: -0.14,
+      armLength: 0.36,
+      restWheelY: -0.52,
+      wheelX: [1.38, 0.83, 0.28, -0.28, -0.83, -1.38],
+      idlerPos: { x: 2.08, y: -0.08 },
+      sprocketPos: { x: -2.06, y: -0.04 },
+      rollerPos: [
+        { x: 1.05, y: 0.16 },
+        { x: 0.0,  y: 0.16 },
+        { x: -1.05, y: 0.16 }
+      ],
+      linksPerSide: 44
+    };
+
+    const tankRoot = new THREE.Group();
+    scene.add(tankRoot);
+
+    const hullVisualGroup = new THREE.Group();
+    tankRoot.add(hullVisualGroup);
+
+    const turretGroup = new THREE.Group();
+    turretGroup.position.set(-0.08, 0.42, 0);
+    hullVisualGroup.add(turretGroup);
+
+    const gunPitchGroup = new THREE.Group();
+    gunPitchGroup.position.set(0.72, 0.28, 0);
+    turretGroup.add(gunPitchGroup);
+
+    let barrelRecoilMesh = null;
+    let duckMascotGroup = null;
+    let antennaSpringGroup = null;
+    let exhaustTipLocal = new THREE.Vector3(-1.95, 0.86, -0.56);
+
+    // FIXED: Left assembly is at -Z, Right assembly is at +Z!
+    const sideAssemblies = {
+      left: {
+        zOffset: -TANK_SPECS.trackCenterZ,
+        swingArms: [],
+        roadWheels: [],
+        sprocket: null,
+        idler: null,
+        rollers: [],
+        trackShoes: [],
+        trackDistance: 0,
+        trackSpeed: 0,
+        sprocketAngle: 0
+      },
+      right: {
+        zOffset: +TANK_SPECS.trackCenterZ,
+        swingArms: [],
+        roadWheels: [],
+        sprocket: null,
+        idler: null,
+        rollers: [],
+        trackShoes: [],
+        trackDistance: 0,
+        trackSpeed: 0,
+        sprocketAngle: 0
+      }
+    };
+
+    function createRoadWheelMesh(radius, width, isIdler) {
+      const group = new THREE.Group();
+      const tireGeo = new THREE.CylinderGeometry(radius, radius, width, 20);
+      tireGeo.rotateX(Math.PI / 2);
+      group.add(createSketchedMesh(tireGeo, MATERIALS.wheelRubber, 85));
+
+      const rimGeo = new THREE.CylinderGeometry(radius * 0.62, radius * 0.62, width + 0.02, 16);
+      rimGeo.rotateX(Math.PI / 2);
+      group.add(createSketchedMesh(rimGeo, isIdler ? MATERIALS.accentCoral : MATERIALS.wheelHub, 85));
+
+      // Cute hubcap bolt & rotation indicator bar
+      const barMesh = createSketchedMesh(
+        new THREE.BoxGeometry(radius * 1.1, 0.07, width + 0.04),
+        MATERIALS.hullCream,
+        50
+      );
+      group.add(barMesh);
+      return group;
+    }
+
+    function createSprocketMesh(radius, width) {
+      const group = new THREE.Group();
+      const coreGeo = new THREE.CylinderGeometry(radius * 0.82, radius * 0.82, width, 16);
+      coreGeo.rotateX(Math.PI / 2);
+      group.add(createSketchedMesh(coreGeo, MATERIALS.accentYellow, 85));
+
+      const teethCount = 10;
+      for (let i = 0; i < teethCount; i++) {
+        const ang = (i / teethCount) * Math.PI * 2;
+        const tooth = createSketchedMesh(
+          new THREE.BoxGeometry(0.11, 0.08, width * 0.90),
+          MATERIALS.trackShoe,
+          50
+        );
+        tooth.position.set(Math.cos(ang) * (radius * 0.92), Math.sin(ang) * (radius * 0.92), 0);
+        tooth.rotation.z = ang + Math.PI / 2;
+        group.add(tooth);
+      }
+      return group;
+    }
+
+    function createTrackShoeTemplate(trackWidth) {
+      const group = new THREE.Group();
+      // Plump rounded-look pad
+      const plate = createSketchedMesh(
+        new THREE.BoxGeometry(0.165, 0.042, trackWidth),
+        MATERIALS.trackShoe,
+        50
+      );
+      group.add(plate);
+
+      // Golden-ochre ground-gripping cleat
+      const grouser = createSketchedMesh(
+        new THREE.BoxGeometry(0.055, 0.038, trackWidth * 0.92),
+        MATERIALS.accentYellow,
+        50
+      );
+      grouser.position.set(0, -0.034, 0);
+      group.add(grouser);
+
+      // Inner guide horn
+      const horn = createSketchedMesh(
+        new THREE.BoxGeometry(0.06, 0.065, 0.05),
+        MATERIALS.trackShoe,
+        50
+      );
+      horn.position.set(0, 0.045, 0);
+      group.add(horn);
+
+      return group;
+    }
+
+    function buildTankModel() {
+      // 1. Plump, Rounded Storybook Hull (with beveled ExtrudeGeometry for soft toy-like edges!)
+      const hullShape = new THREE.Shape();
+      hullShape.moveTo(-1.95, -0.20);
+      hullShape.lineTo(1.52, -0.20);
+      hullShape.quadraticCurveTo(2.24, -0.05, 2.18, 0.24);
+      hullShape.quadraticCurveTo(2.05, 0.48, 1.45, 0.48);
+      hullShape.lineTo(-1.78, 0.48);
+      hullShape.quadraticCurveTo(-2.18, 0.45, -2.15, 0.12);
+      hullShape.closePath();
+
+      const hullGeo = new THREE.ExtrudeGeometry(hullShape, {
+        steps: 1,
+        depth: TANK_SPECS.hullWidth - 0.16,
+        bevelEnabled: true,
+        bevelThickness: 0.09,
+        bevelSize: 0.08,
+        bevelSegments: 4
+      });
+      hullGeo.translate(0, 0, -(TANK_SPECS.hullWidth - 0.16) * 0.5);
+      hullVisualGroup.add(createSketchedMesh(hullGeo, MATERIALS.hullSage, 52));
+
+      // Cream decorative stripe & top deck
+      const deckPlate = createSketchedMesh(
+        new THREE.BoxGeometry(3.0, 0.09, 1.56),
+        MATERIALS.hullCream,
+        45
+      );
+      deckPlate.position.set(-0.12, 0.48, 0);
+      hullVisualGroup.add(deckPlate);
+
+      // Cute Rounded Side Fenders with Coral Bumper Caps
+      [-1, 1].forEach(function (s) {
+        const zSide = s * (TANK_SPECS.trackCenterZ - 0.02);
+        const fender = createSketchedMesh(
+          new THREE.BoxGeometry(4.32, 0.075, 0.44),
+          MATERIALS.hullCream,
+          45
+        );
+        fender.position.set(0.0, 0.34, zSide);
+        hullVisualGroup.add(fender);
+
+        // Front & Rear rounded fender caps
+        const frontCap = createSketchedMesh(
+          new THREE.CylinderGeometry(0.22, 0.22, 0.08, 12).rotateZ(Math.PI / 2),
+          MATERIALS.accentCoral,
+          85
+        );
+        frontCap.position.set(2.16, 0.32, zSide);
+        hullVisualGroup.add(frontCap);
+      });
+
+      // 2. Cute Oversized Frog-Eye Glowing Headlights
+      [-0.58, 0.58].forEach(function (zLamp) {
+        const housing = createSketchedMesh(
+          new THREE.SphereGeometry(0.15, 14, 12),
+          MATERIALS.accentYellow,
+          90
+        );
+        housing.position.set(1.98, 0.36, zLamp);
+        hullVisualGroup.add(housing);
+
+        const lens = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 10), MATERIALS.headlightGlow);
+        lens.position.set(2.06, 0.36, zLamp);
+        hullVisualGroup.add(lens);
+      });
+
+      // 3. Rear Adventure Gear: Wooden Supply Crate, Rolled Blanket & Brass Exhaust Pipe
+      const crateMesh = createSketchedMesh(
+        new THREE.BoxGeometry(0.55, 0.42, 0.88),
+        MATERIALS.woodWarm,
+        40
+      );
+      crateMesh.position.set(-1.62, 0.68, 0.22);
+      hullVisualGroup.add(crateMesh);
+
+      const bedrollGeo = new THREE.CylinderGeometry(0.16, 0.16, 1.15, 14);
+      bedrollGeo.rotateX(Math.PI / 2);
+      const bedrollMesh = createSketchedMesh(bedrollGeo, MATERIALS.accentCoral, 85);
+      bedrollMesh.position.set(-1.98, 0.44, 0.0);
+      hullVisualGroup.add(bedrollMesh);
+
+      // Vertical Brass Exhaust Pipe that puffs cartoon clouds
+      const exhaustPipe = createSketchedMesh(
+        new THREE.CylinderGeometry(0.065, 0.08, 0.58, 12),
+        MATERIALS.accentYellow,
+        85
+      );
+      exhaustPipe.position.set(-1.92, 0.62, -0.56);
+      hullVisualGroup.add(exhaustPipe);
+
+      // 4. Chubby Rounded Dome Turret
+      const turretBaseGeo = new THREE.SphereGeometry(0.86, 20, 16);
+      turretBaseGeo.scale(1.12, 0.68, 0.92);
+      const turretDome = createSketchedMesh(turretBaseGeo, MATERIALS.hullSage, 85);
+      turretDome.position.set(0, 0.22, 0);
+      turretGroup.add(turretDome);
+
+      // Cream turret cheek band
+      const turretBand = createSketchedMesh(
+        new THREE.CylinderGeometry(0.85, 0.89, 0.14, 18),
+        MATERIALS.hullCream,
+        85
+      );
+      turretBand.position.set(0, 0.16, 0);
+      turretGroup.add(turretBand);
+
+      // Warm Wooden Commander Hatch
+      const cupolaMesh = createSketchedMesh(
+        new THREE.CylinderGeometry(0.32, 0.35, 0.14, 16),
+        MATERIALS.woodWarm,
+        80
+      );
+      cupolaMesh.position.set(-0.18, 0.72, -0.22);
+      turretGroup.add(cupolaMesh);
+
+      // Cute Little Yellow Rubber Ducky Mascot on top of the hatch!
+      duckMascotGroup = new THREE.Group();
+      duckMascotGroup.position.set(-0.18, 0.82, -0.22);
+      const duckBody = createSketchedMesh(new THREE.SphereGeometry(0.15, 12, 10), MATERIALS.duckYellow, 90);
+      duckBody.scale.set(1.2, 0.9, 0.95);
+      duckMascotGroup.add(duckBody);
+
+      const duckHead = createSketchedMesh(new THREE.SphereGeometry(0.11, 12, 10), MATERIALS.duckYellow, 90);
+      duckHead.position.set(0.08, 0.14, 0);
+      duckMascotGroup.add(duckHead);
+
+      const duckBeak = createSketchedMesh(new THREE.ConeGeometry(0.045, 0.10, 8).rotateZ(-Math.PI / 2), MATERIALS.duckBeak, 90);
+      duckBeak.position.set(0.20, 0.14, 0);
+      duckMascotGroup.add(duckBeak);
+
+      // Tiny aviator helmet on the duck!
+      const duckHelmet = createSketchedMesh(new THREE.SphereGeometry(0.118, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), MATERIALS.woodWarm, 90);
+      duckHelmet.position.set(0.07, 0.15, 0);
+      duckMascotGroup.add(duckHelmet);
+      turretGroup.add(duckMascotGroup);
+
+      // Bouncy Spring Antenna with Red Pennant Flag
+      antennaSpringGroup = new THREE.Group();
+      antennaSpringGroup.position.set(-0.62, 0.65, 0.35);
+      const rod = createSketchedMesh(new THREE.CylinderGeometry(0.018, 0.025, 0.95, 8), MATERIALS.woodWarm, 90);
+      rod.position.y = 0.47;
+      antennaSpringGroup.add(rod);
+
+      const flagGeo = new THREE.ConeGeometry(0.14, 0.38, 3);
+      flagGeo.rotateZ(Math.PI / 2);
+      const flagMesh = createSketchedMesh(flagGeo, MATERIALS.accentCoral, 60);
+      flagMesh.position.set(-0.18, 0.85, 0);
+      antennaSpringGroup.add(flagMesh);
+      turretGroup.add(antennaSpringGroup);
+
+      // 5. Chubby Short Cartoon Barrel & Flared Muzzle
+      const mantletMesh = createSketchedMesh(
+        new THREE.CylinderGeometry(0.24, 0.24, 0.56, 14).rotateX(Math.PI / 2),
+        MATERIALS.accentYellow,
+        80
+      );
+      gunPitchGroup.add(mantletMesh);
+
+      barrelRecoilMesh = new THREE.Group();
+      gunPitchGroup.add(barrelRecoilMesh);
+
+      const barrelGeo = new THREE.CylinderGeometry(0.105, 0.135, 1.75, 16);
+      barrelGeo.rotateZ(-Math.PI / 2);
+      const barrelMesh = createSketchedMesh(barrelGeo, MATERIALS.hullCream, 85);
+      barrelMesh.position.set(0.92, 0, 0);
+      barrelRecoilMesh.add(barrelMesh);
+
+      const muzzleGeo = new THREE.CylinderGeometry(0.18, 0.13, 0.28, 16);
+      muzzleGeo.rotateZ(-Math.PI / 2);
+      const muzzleMesh = createSketchedMesh(muzzleGeo, MATERIALS.accentCoral, 85);
+      muzzleMesh.position.set(1.82, 0, 0);
+      barrelRecoilMesh.add(muzzleMesh);
+
+      // 6. Left (-Z) & Right (+Z) Suspension, Road Wheels, Sprockets, Idlers & 88 Cute Track Pads
+      ['left', 'right'].forEach(function (sideKey) {
+        const side = sideAssemblies[sideKey];
+        const zPos = side.zOffset;
+
+        for (let i = 0; i < 6; i++) {
+          const armGroup = new THREE.Group();
+          const pivotX = TANK_SPECS.wheelX[i] + 0.24;
+          armGroup.position.set(pivotX, TANK_SPECS.pivotY, zPos * 0.82);
+
+          const armBarMesh = createSketchedMesh(
+            new THREE.BoxGeometry(TANK_SPECS.armLength, 0.09, 0.11),
+            MATERIALS.woodWarm,
+            50
+          );
+          armBarMesh.position.set(-TANK_SPECS.armLength * 0.5, 0, 0);
+          armGroup.add(armBarMesh);
+
+          const capGeo = new THREE.CylinderGeometry(0.075, 0.075, 0.14, 12);
+          capGeo.rotateX(Math.PI / 2);
+          armGroup.add(createSketchedMesh(capGeo, MATERIALS.accentYellow, 80));
+
+          tankRoot.add(armGroup);
+          side.swingArms.push({ group: armGroup, pivotX: pivotX, pivotY: TANK_SPECS.pivotY });
+
+          const wheelGroup = createRoadWheelMesh(TANK_SPECS.wheelRadius, TANK_SPECS.trackWidth * 0.78, false);
+          wheelGroup.position.set(TANK_SPECS.wheelX[i], TANK_SPECS.restWheelY, zPos);
+          tankRoot.add(wheelGroup);
+          side.roadWheels.push(wheelGroup);
+        }
+
+        const idlerGroup = createRoadWheelMesh(TANK_SPECS.idlerRadius, TANK_SPECS.trackWidth * 0.74, true);
+        idlerGroup.position.set(TANK_SPECS.idlerPos.x, TANK_SPECS.idlerPos.y, zPos);
+        tankRoot.add(idlerGroup);
+        side.idler = idlerGroup;
+
+        const sprocketGroup = createSprocketMesh(TANK_SPECS.sprocketRadius, TANK_SPECS.trackWidth * 0.80);
+        sprocketGroup.position.set(TANK_SPECS.sprocketPos.x, TANK_SPECS.sprocketPos.y, zPos);
+        tankRoot.add(sprocketGroup);
+        side.sprocket = sprocketGroup;
+
+        for (let r = 0; r < TANK_SPECS.rollerPos.length; r++) {
+          const rGeo = new THREE.CylinderGeometry(TANK_SPECS.rollerRadius, TANK_SPECS.rollerRadius, 0.24, 12);
+          rGeo.rotateX(Math.PI / 2);
+          const rollerMesh = createSketchedMesh(rGeo, MATERIALS.accentYellow, 85);
+          rollerMesh.position.set(TANK_SPECS.rollerPos[r].x, TANK_SPECS.rollerPos[r].y, zPos);
+          tankRoot.add(rollerMesh);
+          side.rollers.push(rollerMesh);
+        }
+
+        const shoeProto = createTrackShoeTemplate(TANK_SPECS.trackWidth);
+        for (let k = 0; k < TANK_SPECS.linksPerSide; k++) {
+          const shoe = shoeProto.clone();
+          tankRoot.add(shoe);
+          side.trackShoes.push(shoe);
+        }
+      });
+    }
+
+    buildTankModel();
+
+    // ============================================================================
+    // 5. CUTE 3D PUFFY CARTOON CLOUD PARTICLES & FORCE VECTOR OVERLAYS
+    // ============================================================================
+    const inkParticles = [];
+    const particleGroup = new THREE.Group();
+    scene.add(particleGroup);
+    const puffSphereGeo = new THREE.SphereGeometry(0.11, 10, 8);
+
+    function spawnInkPuff(x, y, z, scale) {
+      if (scale === undefined) scale = 1.0;
+      if (inkParticles.length > 40) return;
+      const mat = new THREE.MeshLambertMaterial({
+        color: 0xfffdf8,
+        emissive: 0xf7efe0,
+        emissiveIntensity: 0.35,
+        transparent: true,
+        opacity: 0.85
+      });
+      const puff = new THREE.Mesh(puffSphereGeo, mat);
+      puff.position.set(
+        x + (Math.random() - 0.5) * 0.14,
+        y + 0.06,
+        z + (Math.random() - 0.5) * 0.14
+      );
+      puff.scale.setScalar(scale * 0.7);
+      particleGroup.add(puff);
+      inkParticles.push({
+        mesh: puff,
+        life: 0,
+        maxLife: 0.55 + Math.random() * 0.3,
+        vy: 0.55 + Math.random() * 0.35,
+        grow: 1.9 + Math.random() * 1.1,
+        baseScale: scale * 0.7
+      });
+    }
+
+    function updateInkParticles(dt) {
+      for (let i = inkParticles.length - 1; i >= 0; i--) {
+        const p = inkParticles[i];
+        p.life += dt;
+        if (p.life >= p.maxLife) {
+          particleGroup.remove(p.mesh);
+          p.mesh.material.dispose();
+          inkParticles.splice(i, 1);
+          continue;
+        }
+        const ratio = p.life / p.maxLife;
+        p.mesh.position.y += p.vy * dt;
+        const s = p.baseScale * (1 + ratio * p.grow);
+        p.mesh.scale.set(s, s, s);
+        p.mesh.material.opacity = 0.85 * (1 - ratio);
+      }
+    }
+
+    let showForceVectors = true;
+    const debugVectorGroup = new THREE.Group();
+    scene.add(debugVectorGroup);
+
+    // 360 vertices allow arrows with arrowheads for every contact point
+    const normalVectorGeo = new THREE.BufferGeometry();
+    const normalPositions = new Float32Array(360 * 3);
+    normalVectorGeo.setAttribute('position', new THREE.BufferAttribute(normalPositions, 3));
+    debugVectorGroup.add(new THREE.LineSegments(normalVectorGeo, MATERIALS.forceNormalLine));
+
+    const tractionVectorGeo = new THREE.BufferGeometry();
+    const tractionPositions = new Float32Array(360 * 3);
+    tractionVectorGeo.setAttribute('position', new THREE.BufferAttribute(tractionPositions, 3));
+    debugVectorGroup.add(new THREE.LineSegments(tractionVectorGeo, MATERIALS.forceTractionLine));
+
+    const envelopeVectorGeo = new THREE.BufferGeometry();
+    const envelopePositions = new Float32Array(240 * 3);
+    envelopeVectorGeo.setAttribute('position', new THREE.BufferAttribute(envelopePositions, 3));
+    debugVectorGroup.add(new THREE.LineSegments(envelopeVectorGeo, MATERIALS.envelopeLine));
+
+    function writeArrowSegments(buf, idx, ox, oy, oz, dx, dy, dz) {
+      if (idx + 18 >= buf.length) return idx;
+      const ex = ox + dx;
+      const ey = oy + dy;
+      const ez = oz + dz;
+
+      // Main shaft
+      buf[idx++] = ox; buf[idx++] = oy; buf[idx++] = oz;
+      buf[idx++] = ex; buf[idx++] = ey; buf[idx++] = ez;
+
+      // Small V arrowhead
+      const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      if (len > 0.04) {
+        const hx = dx * 0.22;
+        const hy = dy * 0.22;
+        const hz = dz * 0.22;
+        const wing = len * 0.12;
+
+        buf[idx++] = ex; buf[idx++] = ey; buf[idx++] = ez;
+        buf[idx++] = ex - hx + wing; buf[idx++] = ey - hy; buf[idx++] = ez - hz + wing * 0.5;
+
+        buf[idx++] = ex; buf[idx++] = ey; buf[idx++] = ez;
+        buf[idx++] = ex - hx - wing; buf[idx++] = ey - hy; buf[idx++] = ez - hz - wing * 0.5;
+      }
+      return idx;
+    }
+
+    // ============================================================================
+    // 6. 180Hz SUB-STEPPED 6-DOF RIGID BODY + SUSPENSION + TRACK BRIDGING SOLVER
+    //    FIXED STEERING:
+    //      Left track is at zLocal = -trackCenterZ
+    //      Right track is at zLocal = +trackCenterZ
+    //      steerInput > 0  ==> TURN LEFT  (Right track faster, Left track slower, +Yaw torque)
+    //      steerInput < 0  ==> TURN RIGHT (Left track faster, Right track slower, -Yaw torque)
+    // ============================================================================
+    const physParams = {
+      stiffness: 95000,
+      damping: 14000,
+      tensionFactor: 0.85,
+      torqueFactor: 1.20,
+      timeScale: 1.0
+    };
+
+    const tankPhysics = {
+      mass: 32000,
+      inertia: new THREE.Vector3(26000, 68000, 56000),
+      pos: new THREE.Vector3(-1.2, 0.85, 0.0),
+      vel: new THREE.Vector3(0, 0, 0),
+      quat: new THREE.Quaternion(),
+      angVel: new THREE.Vector3(0, 0, 0),
+      wheels: {
+        left: [
+          { deflection: 0.08, vel: 0, normalForce: 0, grounded: false },
+          { deflection: 0.08, vel: 0, normalForce: 0, grounded: false },
+          { deflection: 0.08, vel: 0, normalForce: 0, grounded: false },
+          { deflection: 0.08, vel: 0, normalForce: 0, grounded: false },
+          { deflection: 0.08, vel: 0, normalForce: 0, grounded: false },
+          { deflection: 0.08, vel: 0, normalForce: 0, grounded: false }
+        ],
+        right: [
+          { deflection: 0.08, vel: 0, normalForce: 0, grounded: false },
+          { deflection: 0.08, vel: 0, normalForce: 0, grounded: false },
+          { deflection: 0.08, vel: 0, normalForce: 0, grounded: false },
+          { deflection: 0.08, vel: 0, normalForce: 0, grounded: false },
+          { deflection: 0.08, vel: 0, normalForce: 0, grounded: false },
+          { deflection: 0.08, vel: 0, normalForce: 0, grounded: false }
+        ]
+      },
+      bellyLift: {
+        left: [0, 0, 0, 0, 0],
+        right: [0, 0, 0, 0, 0]
+      },
+      frontApproachLift: { left: 0, right: 0 },
+      rearDepartureLift: { left: 0, right: 0 },
+      debugContacts: [],
+      bridgingActive: false,
+      turretYaw: 0,
+      targetTurretYaw: 0,
+      gunPitch: 0.05,
+      targetGunPitch: 0.05,
+      barrelRecoil: 0,
+      barrelRecoilVel: 0,
+      upsideDownTimer: 0
+    };
+
+    // 14-Point 3D Hull & Turret Collision Cage (Raised nose/tail skid clearance so downhill transitions never trip!)
+    const HULL_COLLISION_POINTS = [
+      // Lower hull skid corners (clearance above road wheel & idler bottom envelope)
+      { lx:  1.95, ly:  0.04, lz: -1.12, r: 0.14 },
+      { lx:  1.95, ly:  0.04, lz:  1.12, r: 0.14 },
+      { lx: -1.95, ly:  0.04, lz: -1.12, r: 0.14 },
+      { lx: -1.95, ly:  0.04, lz:  1.12, r: 0.14 },
+      // Upper fender & hull deck corners
+      { lx:  2.10, ly:  0.42, lz: -1.24, r: 0.16 },
+      { lx:  2.10, ly:  0.42, lz:  1.24, r: 0.16 },
+      { lx: -2.06, ly:  0.42, lz: -1.24, r: 0.16 },
+      { lx: -2.06, ly:  0.42, lz:  1.24, r: 0.16 },
+      // Mid-side fenders (prevents side-roll clipping)
+      { lx:  0.0,  ly:  0.34, lz: -1.30, r: 0.18 },
+      { lx:  0.0,  ly:  0.34, lz:  1.30, r: 0.18 },
+      // Turret cheeks, roof dome & ducky cupola top (prevents upside-down sinking into ground!)
+      { lx: -0.08, ly:  0.85, lz: -0.78, r: 0.22 },
+      { lx: -0.08, ly:  0.85, lz:  0.78, r: 0.22 },
+      { lx:  0.65, ly:  0.82, lz:  0.0,  r: 0.24 },
+      { lx: -0.18, ly:  1.18, lz:  0.0,  r: 0.28 }
+    ];
+
+    // Perimeter points in hull space for tree / signpost / windmill obstacle collision
+    const HULL_OBSTACLE_PERIMETER = [
+      { lx:  2.20, lz:  0.0,   r: 0.85 },
+      { lx: -2.15, lz:  0.0,   r: 0.85 },
+      { lx:  1.45, lz: -1.15,  r: 0.45 },
+      { lx:  1.45, lz:  1.15,  r: 0.45 },
+      { lx:  0.0,  lz: -1.22,  r: 0.48 },
+      { lx:  0.0,  lz:  1.22,  r: 0.48 },
+      { lx: -1.45, lz: -1.15,  r: 0.45 },
+      { lx: -1.45, lz:  1.15,  r: 0.45 }
+    ];
+
+    function initSuspensionBarsUI() {
+      const leftContainer = document.getElementById('susp-bars-left');
+      const rightContainer = document.getElementById('susp-bars-right');
+      leftContainer.innerHTML = '';
+      rightContainer.innerHTML = '';
+      for (let i = 0; i < 6; i++) {
+        const lBar = document.createElement('div');
+        lBar.className = 'susp-bar';
+        lBar.style.height = '35%';
+        lBar.id = 'susp-bar-L-' + i;
+        leftContainer.appendChild(lBar);
+
+        const rBar = document.createElement('div');
+        rBar.className = 'susp-bar right-bar';
+        rBar.style.height = '35%';
+        rBar.id = 'susp-bar-R-' + i;
+        rightContainer.appendChild(rBar);
+      }
+    }
+    initSuspensionBarsUI();
+
+    const _tmpV1 = new THREE.Vector3();
+    const _tmpV2 = new THREE.Vector3();
+
+    function hullToWorld(lx, ly, lz, target) {
+      if (!target) target = new THREE.Vector3();
+      return target.set(lx, ly, lz).applyQuaternion(tankPhysics.quat).add(tankPhysics.pos);
+    }
+
+    function worldPointVelocity(worldPt, target) {
+      if (!target) target = new THREE.Vector3();
+      _tmpV1.subVectors(worldPt, tankPhysics.pos);
+      target.crossVectors(tankPhysics.angVel, _tmpV1).add(tankPhysics.vel);
+      return target;
+    }
+
+    function stepTankPhysics(dt, throttleInput, steerInput) {
+      const p = tankPhysics;
+      const gravity = -9.81;
+
+      const totalForce = new THREE.Vector3(0, p.mass * gravity, 0);
+      const totalTorque = new THREE.Vector3(0, 0, 0);
+
+      const hullForward = new THREE.Vector3(1, 0, 0).applyQuaternion(p.quat).normalize();
+      const hullUp = new THREE.Vector3(0, 1, 0).applyQuaternion(p.quat).normalize();
+      // Right side of hull is +Z in local coordinates
+      const hullRight = new THREE.Vector3(0, 0, 1).applyQuaternion(p.quat).normalize();
+
+      const maxSpeed = 3.2 * physParams.torqueFactor;
+      // FIXED DIFFERENTIAL STEERING:
+      // steerInput > 0 means Turn Left (CCW around +Y): Right track advances faster (+), Left track slower (-)
+      // steerInput < 0 means Turn Right (CW around +Y): Left track advances faster (+), Right track slower (-)
+      const targetSpeedL = (throttleInput - steerInput * 0.92) * maxSpeed;
+      const targetSpeedR = (throttleInput + steerInput * 0.92) * maxSpeed;
+
+      p.debugContacts.length = 0;
+      p.bridgingActive = false;
+
+      const maxDeflection = 0.28;
+      const minDeflection = -0.10;
+      const trackThickness = 0.042;
+      const effectiveWheelRadius = TANK_SPECS.wheelRadius + trackThickness;
+      let groundedWheelCount = 0;
+
+      // Suspension & track traction only engage when tank is predominantly upright
+      const uprightFactor = THREE.MathUtils.clamp((hullUp.y - 0.25) / 0.55, 0, 1);
+
+      ['left', 'right'].forEach(function (sideKey) {
+        const isLeft = sideKey === 'left';
+        // FIXED: Left track is at -trackCenterZ, Right track is at +trackCenterZ
+        const zLocal = isLeft ? -TANK_SPECS.trackCenterZ : +TANK_SPECS.trackCenterZ;
+        const targetTrackSpeed = isLeft ? targetSpeedL : targetSpeedR;
+        const wheels = p.wheels[sideKey];
+        const bellyLift = p.bellyLift[sideKey];
+
+        // A. 6 Independent Torsion-Bar Road Wheels
+        for (let i = 0; i < 6; i++) {
+          const wState = wheels[i];
+          const wxLocal = TANK_SPECS.wheelX[i];
+
+          const wheelRestWorld = hullToWorld(wxLocal, TANK_SPECS.restWheelY, zLocal, new THREE.Vector3());
+          // Project wheel bottom along hullUp so steep pitches don't overestimate vertical penetration
+          const verticalRadius = effectiveWheelRadius * Math.max(0.55, hullUp.y);
+          const bottomRestY = wheelRestWorld.y - verticalRadius;
+
+          const tCenter = getTerrainAt(wheelRestWorld.x, wheelRestWorld.z);
+          const tFore = getTerrainAt(wheelRestWorld.x + 0.16 * hullForward.x, wheelRestWorld.z + 0.16 * hullForward.z);
+          const tAft = getTerrainAt(wheelRestWorld.x - 0.16 * hullForward.x, wheelRestWorld.z - 0.16 * hullForward.z);
+
+          const groundY = Math.max(
+            tCenter.height,
+            tFore.height - 0.045,
+            tAft.height - 0.045
+          );
+
+          const nx = tCenter.nx * 0.5 + tFore.nx * 0.35 + tAft.nx * 0.15;
+          const ny = tCenter.ny * 0.5 + tFore.ny * 0.35 + tAft.ny * 0.15;
+          const nz = tCenter.nz * 0.5 + tFore.nz * 0.35 + tAft.nz * 0.15;
+          const surfNormal = new THREE.Vector3(nx, Math.max(0.55, ny), nz).normalize();
+
+          const penetration = (groundY - bottomRestY) * uprightFactor;
+
+          if (penetration > minDeflection && uprightFactor > 0.05) {
+            const newDeflection = Math.min(maxDeflection, penetration);
+            const defVel = (newDeflection - wState.deflection) / dt;
+            wState.deflection = newDeflection;
+            wState.vel = wState.vel * 0.6 + defVel * 0.4;
+            wState.grounded = penetration > 0;
+
+            if (penetration > 0) {
+              groundedWheelCount++;
+              const ptVel = worldPointVelocity(wheelRestWorld, _tmpV2);
+              const vn = ptVel.dot(surfNormal);
+
+              // Asymmetric shock absorber: softer bump compression, stronger rebound damping to prevent bounce
+              const effDamping = vn < 0 ? physParams.damping * 1.15 : physParams.damping * 1.65;
+              let fn = physParams.stiffness * Math.max(0, wState.deflection) - effDamping * vn;
+              if (penetration > maxDeflection) {
+                fn += (penetration - maxDeflection) * physParams.stiffness * 2.2;
+              }
+              fn = Math.max(0, Math.min(fn, p.mass * 9.81 * 0.65)) * uprightFactor;
+              wState.normalForce = fn;
+
+              // 1. Normal suspension force acts at the wheel mount
+              const normalVec = surfNormal.clone().multiplyScalar(fn);
+              totalForce.add(normalVec);
+              const rArmNormal = wheelRestWorld.clone().sub(p.pos);
+              totalTorque.add(new THREE.Vector3().crossVectors(rArmNormal, normalVec));
+
+              // 2. Longitudinal & Lateral track shear forces are projected onto the ground plane
+              //    and applied near the hull Roll/Pitch Center (ly = -0.16) so downhill braking never trips the nose!
+              const slopeTangent = hullForward.clone()
+                .sub(surfNormal.clone().multiplyScalar(hullForward.dot(surfNormal)))
+                .normalize();
+
+              const latTangent = hullRight.clone()
+                .sub(surfNormal.clone().multiplyScalar(hullRight.dot(surfNormal)))
+                .normalize();
+
+              const vLong = ptVel.dot(slopeTangent);
+              const slipLong = targetTrackSpeed - vLong;
+              const maxTraction = fn * 1.15 * physParams.torqueFactor;
+              const fLong = Math.max(-maxTraction, Math.min(maxTraction, slipLong * 24000));
+
+              const vLat = ptVel.dot(latTangent);
+              const maxLat = fn * 0.85;
+              const fLat = Math.max(-maxLat, Math.min(maxLat, -vLat * 24000));
+
+              const shearVec = slopeTangent.clone().multiplyScalar(fLong).addScaledVector(latTangent, fLat);
+              totalForce.add(shearVec);
+
+              const shearAppWorld = hullToWorld(wxLocal, -0.16, zLocal, _tmpV1);
+              const rArmShear = shearAppWorld.sub(p.pos);
+              totalTorque.add(new THREE.Vector3().crossVectors(rArmShear, shearVec));
+
+              p.debugContacts.push({
+                pt: new THREE.Vector3(wheelRestWorld.x, groundY, wheelRestWorld.z),
+                normalForce: normalVec,
+                tractionForce: slopeTangent.clone().multiplyScalar(fLong)
+              });
+            } else {
+              wState.normalForce = 0;
+            }
+          } else {
+            wState.deflection += (minDeflection - wState.deflection) * Math.min(1, dt * 14);
+            wState.vel = 0;
+            wState.normalForce = 0;
+            wState.grounded = false;
+          }
+        }
+
+        // B. Inter-Wheel Track Bridging Solver (Stair Corner & Slope Crest Envelope)
+        for (let i = 0; i < 5; i++) {
+          const wA = wheels[i];
+          const wB = wheels[i + 1];
+          const midXLocal = 0.5 * (TANK_SPECS.wheelX[i] + TANK_SPECS.wheelX[i + 1]);
+          const midYLocal = TANK_SPECS.restWheelY + 0.5 * (wA.deflection + wB.deflection) - effectiveWheelRadius;
+
+          const midWorld = hullToWorld(midXLocal, midYLocal, zLocal, new THREE.Vector3());
+          const tMid = getTerrainAt(midWorld.x, midWorld.z);
+
+          const bridgePen = (tMid.height - midWorld.y) * uprightFactor;
+          if (bridgePen > 0.005 && uprightFactor > 0.2) {
+            p.bridgingActive = true;
+            bellyLift[i] = Math.min(0.24, bridgePen);
+
+            const ptVel = worldPointVelocity(midWorld, _tmpV2);
+            const surfNormal = new THREE.Vector3(tMid.nx, Math.max(0.55, tMid.ny), tMid.nz).normalize();
+            const vn = ptVel.dot(surfNormal);
+
+            const tensionStiff = physParams.stiffness * 0.72 * physParams.tensionFactor;
+            let fnBridge = Math.max(0, tensionStiff * bridgePen - physParams.damping * 0.65 * vn);
+            fnBridge = Math.min(fnBridge, p.mass * 9.81 * 0.38) * uprightFactor;
+
+            const sharedLift = bridgePen * 0.35 * physParams.tensionFactor;
+            wA.deflection = Math.min(maxDeflection, Math.max(wA.deflection, wA.deflection + sharedLift * 0.3));
+            wB.deflection = Math.min(maxDeflection, Math.max(wB.deflection, wB.deflection + sharedLift * 0.3));
+
+            const slopeTangent = hullForward.clone()
+              .sub(surfNormal.clone().multiplyScalar(hullForward.dot(surfNormal)))
+              .normalize();
+            const vLong = ptVel.dot(slopeTangent);
+            const fLong = Math.max(-fnBridge * 1.05, Math.min(fnBridge * 1.05, (targetTrackSpeed - vLong) * 20000));
+
+            const normalVec = surfNormal.clone().multiplyScalar(fnBridge);
+            totalForce.add(normalVec);
+            totalTorque.add(new THREE.Vector3().crossVectors(midWorld.clone().sub(p.pos), normalVec));
+
+            const shearVec = slopeTangent.clone().multiplyScalar(fLong);
+            totalForce.add(shearVec);
+            const shearAppWorld = hullToWorld(midXLocal, -0.16, zLocal, _tmpV1);
+            totalTorque.add(new THREE.Vector3().crossVectors(shearAppWorld.sub(p.pos), shearVec));
+
+            p.debugContacts.push({
+              pt: new THREE.Vector3(midWorld.x, tMid.height, midWorld.z),
+              normalForce: normalVec,
+              tractionForce: shearVec
+            });
+          } else {
+            bellyLift[i] *= Math.max(0, 1 - dt * 18);
+          }
+        }
+
+        // C. Front Approach Track Segment (1st Road Wheel -> Front Idler Stair Climbing & Downhill Nose Support)
+        let maxFrontLift = 0;
+        const w0World = hullToWorld(TANK_SPECS.wheelX[0], TANK_SPECS.restWheelY, zLocal, _tmpV1);
+        const w0GroundH = getTerrainHeightRaw(w0World.x, w0World.z);
+
+        for (let s = 1; s <= 3; s++) {
+          const frac = s / 3;
+          const sxLocal = THREE.MathUtils.lerp(TANK_SPECS.wheelX[0], TANK_SPECS.idlerPos.x, frac);
+          const syLocal = THREE.MathUtils.lerp(
+            TANK_SPECS.restWheelY + wheels[0].deflection - effectiveWheelRadius,
+            TANK_SPECS.idlerPos.y - TANK_SPECS.idlerRadius - trackThickness,
+            frac
+          );
+
+          const sampleWorld = hullToWorld(sxLocal, syLocal, zLocal, new THREE.Vector3());
+          const tFront = getTerrainAt(sampleWorld.x, sampleWorld.z);
+          const penFront = (tFront.height - sampleWorld.y) * uprightFactor;
+
+          if (penFront > 0.005 && uprightFactor > 0.2) {
+            p.bridgingActive = true;
+            if (penFront > maxFrontLift) maxFrontLift = penFront;
+
+            const ptVel = worldPointVelocity(sampleWorld, _tmpV2);
+            const surfNormal = new THREE.Vector3(tFront.nx, Math.max(0.65, tFront.ny), tFront.nz).normalize();
+
+            const vn = ptVel.dot(surfNormal);
+            const effDamp = vn < 0 ? physParams.damping * 0.95 : physParams.damping * 1.45;
+            let fnFront = Math.max(0, physParams.stiffness * 0.85 * penFront - effDamp * vn);
+            fnFront = Math.min(fnFront, p.mass * 9.81 * 0.48) * uprightFactor;
+
+            // Normal support at the front nose prevents the nose from diving into the ground at the bottom of slopes!
+            const normalVec = surfNormal.clone().multiplyScalar(fnFront);
+            totalForce.add(normalVec);
+            totalTorque.add(new THREE.Vector3().crossVectors(sampleWorld.clone().sub(p.pos), normalVec));
+
+            // Only apply upward step-climbing assist when actually ascending a step higher than wheel #1
+            const isClimbingStep = (tFront.height > w0GroundH + 0.035) && (targetTrackSpeed > 0.05);
+            const slopeTangent = isClimbingStep
+              ? hullForward.clone().multiplyScalar(0.84).addScaledVector(hullUp, 0.54).normalize()
+              : hullForward.clone().sub(surfNormal.clone().multiplyScalar(hullForward.dot(surfNormal))).normalize();
+
+            const vClimb = ptVel.dot(slopeTangent);
+            // Never allow negative fClimb on an upward-tilted tangent to pull the nose down!
+            const rawFClimb = (targetTrackSpeed - vClimb) * 24000;
+            const minFClimb = isClimbingStep ? 0 : -fnFront * 0.85;
+            const fClimb = Math.max(
+              minFClimb,
+              Math.min(fnFront * 1.20 * physParams.torqueFactor, rawFClimb)
+            );
+
+            const shearVec = slopeTangent.clone().multiplyScalar(fClimb);
+            totalForce.add(shearVec);
+            const shearAppWorld = hullToWorld(sxLocal, -0.14, zLocal, _tmpV1);
+            totalTorque.add(new THREE.Vector3().crossVectors(shearAppWorld.sub(p.pos), shearVec));
+
+            p.debugContacts.push({
+              pt: new THREE.Vector3(sampleWorld.x, tFront.height, sampleWorld.z),
+              normalForce: normalVec,
+              tractionForce: shearVec
+            });
+          }
+        }
+        p.frontApproachLift[sideKey] = Math.min(0.20, maxFrontLift);
+
+        // D. Rear Departure Track Segment (6th Road Wheel -> Rear Sprocket)
+        let maxRearLift = 0;
+        for (let s = 1; s <= 2; s++) {
+          const frac = s / 2;
+          const sxLocal = THREE.MathUtils.lerp(TANK_SPECS.wheelX[5], TANK_SPECS.sprocketPos.x, frac);
+          const syLocal = THREE.MathUtils.lerp(
+            TANK_SPECS.restWheelY + wheels[5].deflection - effectiveWheelRadius,
+            TANK_SPECS.sprocketPos.y - TANK_SPECS.sprocketRadius - trackThickness,
+            frac
+          );
+          const sampleWorld = hullToWorld(sxLocal, syLocal, zLocal, new THREE.Vector3());
+          const tRear = getTerrainAt(sampleWorld.x, sampleWorld.z);
+          const penRear = (tRear.height - sampleWorld.y) * uprightFactor;
+
+          if (penRear > 0.005 && uprightFactor > 0.2) {
+            if (penRear > maxRearLift) maxRearLift = penRear;
+            const ptVel = worldPointVelocity(sampleWorld, _tmpV2);
+            const surfNormal = new THREE.Vector3(tRear.nx, Math.max(0.65, tRear.ny), tRear.nz).normalize();
+            const vn = ptVel.dot(surfNormal);
+            const effDamp = vn < 0 ? physParams.damping * 0.90 : physParams.damping * 1.40;
+            const fnRear = Math.max(0, Math.min(p.mass * 9.81 * 0.42, physParams.stiffness * 0.78 * penRear - effDamp * vn)) * uprightFactor;
+
+            const normalVec = surfNormal.clone().multiplyScalar(fnRear);
+            totalForce.add(normalVec);
+            totalTorque.add(new THREE.Vector3().crossVectors(sampleWorld.clone().sub(p.pos), normalVec));
+
+            const slopeTangent = hullForward.clone()
+              .sub(surfNormal.clone().multiplyScalar(hullForward.dot(surfNormal)))
+              .normalize();
+            const vClimb = ptVel.dot(slopeTangent);
+            const fClimb = Math.max(-fnRear * 0.95, Math.min(fnRear * 1.10, (targetTrackSpeed - vClimb) * 20000));
+
+            const shearVec = slopeTangent.clone().multiplyScalar(fClimb);
+            totalForce.add(shearVec);
+            const shearAppWorld = hullToWorld(sxLocal, -0.14, zLocal, _tmpV1);
+            totalTorque.add(new THREE.Vector3().crossVectors(shearAppWorld.sub(p.pos), shearVec));
+          }
+        }
+        p.rearDepartureLift[sideKey] = Math.min(0.18, maxRearLift);
+
+        const forwardVel = p.vel.dot(hullForward);
+        // Right-hand cross product: v_x = forwardVel - angVel.y * zLocal
+        const sideVel = forwardVel - p.angVel.y * zLocal;
+        const anyGrounded = wheels.some(function (w) { return w.grounded; }) || maxFrontLift > 0 || maxRearLift > 0;
+        const blendedTrackSpeed = anyGrounded
+          ? THREE.MathUtils.lerp(sideVel, targetTrackSpeed, 0.42)
+          : targetTrackSpeed;
+
+        sideAssemblies[sideKey].trackSpeed = blendedTrackSpeed;
+        sideAssemblies[sideKey].trackDistance += blendedTrackSpeed * dt;
+        sideAssemblies[sideKey].sprocketAngle -= (blendedTrackSpeed / TANK_SPECS.sprocketRadius) * dt;
+      });
+
+      // Responsive Differential Pivot-Steering Assist when grounded
+      if (groundedWheelCount > 0 && Math.abs(steerInput) > 0.01 && uprightFactor > 0.4) {
+        const targetYawRate = steerInput * 1.25 * physParams.torqueFactor;
+        const yawRateErr = targetYawRate - p.angVel.y;
+        totalTorque.addScaledVector(hullUp, yawRateErr * 65000 * (groundedWheelCount / 12));
+      }
+
+      // E. 14-Point 3D Hull & Turret Ground Contact Cage (Low-friction Coulomb skid plate so it never trips the tank!)
+      let maxBodyPenetration = 0;
+      for (let i = 0; i < HULL_COLLISION_POINTS.length; i++) {
+        const cp = HULL_COLLISION_POINTS[i];
+        const wp = hullToWorld(cp.lx, cp.ly, cp.lz, _tmpV1);
+        const tGround = getTerrainAt(wp.x, wp.z);
+        const pen = (tGround.height + cp.r) - wp.y;
+
+        if (pen > 0) {
+          if (pen > maxBodyPenetration) maxBodyPenetration = pen;
+          const surfNormal = new THREE.Vector3(tGround.nx, Math.max(0.65, tGround.ny), tGround.nz).normalize();
+          const ptVel = worldPointVelocity(wp, _tmpV2);
+          const vn = ptVel.dot(surfNormal);
+
+          let fnBody = Math.max(0, physParams.stiffness * 2.2 * pen - physParams.damping * 1.8 * Math.min(0, vn));
+          fnBody = Math.min(fnBody, p.mass * 9.81 * 0.45);
+          const bodyForce = surfNormal.clone().multiplyScalar(fnBody);
+
+          // Clamped Coulomb skid friction (mu = 0.20) so a nose/fender touch glides smoothly instead of flipping!
+          const vTan = ptVel.clone().addScaledVector(surfNormal, -vn);
+          const vTanLen = vTan.length();
+          if (vTanLen > 1e-4) {
+            const maxFriction = fnBody * 0.20;
+            const fTanMag = Math.min(maxFriction, vTanLen * 6000);
+            bodyForce.addScaledVector(vTan, -fTanMag / vTanLen);
+          }
+
+          totalForce.add(bodyForce);
+          const rArm = wp.clone().sub(p.pos);
+          totalTorque.add(new THREE.Vector3().crossVectors(rArm, bodyForce));
+        }
+      }
+
+      // Smooth position projection if any hull/turret point penetrated deeply
+      if (maxBodyPenetration > 0.025) {
+        p.pos.y += (maxBodyPenetration - 0.025) * 0.55;
+        if (p.vel.y < 0) p.vel.y *= 0.5;
+      }
+
+      // F. Critically-Damped Self-Righting "Tumbler Ducky" Assist when Tank Tilts Strongly (> 45 deg)
+      if (hullUp.y < 0.70) {
+        p.upsideDownTimer += dt;
+        const rightingAxis = new THREE.Vector3().crossVectors(hullUp, new THREE.Vector3(0, 1, 0));
+        if (rightingAxis.lengthSq() > 1e-4) {
+          rightingAxis.normalize();
+          const tiltStrength = p.upsideDownTimer > 0.5 ? 145000 : 75000;
+          // PD controller: restoring torque minus strong angular velocity damping
+          totalTorque.addScaledVector(rightingAxis, tiltStrength * (1.0 - hullUp.y));
+          totalTorque.addScaledVector(p.angVel, -42000);
+        }
+        if (hullUp.y < 0.15 && p.upsideDownTimer > 0.7 && Math.abs(p.vel.y) < 0.8) {
+          p.vel.y = 2.2;
+        }
+      } else {
+        p.upsideDownTimer = 0;
+      }
+
+      // G. Solid Cylinder Obstacle Collisions (Trees, Signposts, Windmill Pedestal)
+      for (let i = 0; i < terrainObstacles.length; i++) {
+        const obs = terrainObstacles[i];
+        if (p.pos.y + 1.4 < obs.minY || p.pos.y - 0.8 > obs.maxY) continue;
+
+        // Broadphase check
+        if (Math.hypot(p.pos.x - obs.cx, p.pos.z - obs.cz) > obs.radius + 3.6) continue;
+
+        for (let j = 0; j < HULL_OBSTACLE_PERIMETER.length; j++) {
+          const hp = HULL_OBSTACLE_PERIMETER[j];
+          const wp = hullToWorld(hp.lx, 0.1, hp.lz, _tmpV1);
+          const dx = wp.x - obs.cx;
+          const dz = wp.z - obs.cz;
+          const dist = Math.hypot(dx, dz);
+          const minDist = obs.radius + hp.r;
+
+          if (dist < minDist && dist > 1e-4) {
+            const pen = minDist - dist;
+            const nx = dx / dist;
+            const nz = dz / dist;
+            const hitNormal = new THREE.Vector3(nx, 0, nz);
+
+            const ptVel = worldPointVelocity(wp, _tmpV2);
+            const vn = ptVel.dot(hitNormal);
+
+            const fRepel = Math.max(0, 260000 * pen - 28000 * Math.min(0, vn));
+            const repelVec = hitNormal.multiplyScalar(fRepel);
+
+            totalForce.add(repelVec);
+            const rArm = wp.clone().sub(p.pos);
+            totalTorque.add(new THREE.Vector3().crossVectors(rArm, repelVec));
+
+            // Direct position push-out so tank never clips inside tree trunks
+            p.pos.x += nx * pen * 0.45;
+            p.pos.z += nz * pen * 0.45;
+
+            if (obs.treeRef) {
+              obs.treeRef.hitShake = Math.min(1.0, obs.treeRef.hitShake + 0.35);
+            }
+          }
+        }
+      }
+
+      // H. Integrate 6-DOF Hull Motion with Stability Damping & Safety Bounds
+      totalForce.addScaledVector(p.vel, -p.mass * 0.38);
+      totalTorque.addScaledVector(p.angVel, -28000);
+
+      const linAcc = totalForce.divideScalar(p.mass);
+      p.vel.addScaledVector(linAcc, dt);
+
+      // Clamp maximum linear speed so downhill runaway can never happen
+      const maxAllowedSpeed = 5.2;
+      const curSpeed = p.vel.length();
+      if (curSpeed > maxAllowedSpeed) {
+        p.vel.multiplyScalar(maxAllowedSpeed / curSpeed);
+      }
+      p.pos.addScaledVector(p.vel, dt);
+
+      const invQuat = p.quat.clone().invert();
+      const torqueBody = totalTorque.clone().applyQuaternion(invQuat);
+      const angAccBody = new THREE.Vector3(
+        torqueBody.x / p.inertia.x,
+        torqueBody.y / p.inertia.y,
+        torqueBody.z / p.inertia.z
+      );
+      const angAccWorld = angAccBody.applyQuaternion(p.quat);
+      p.angVel.addScaledVector(angAccWorld, dt);
+
+      // Clamp maximum angular velocity to prevent physics explosion / runaway spin
+      const maxAllowedOmega = 2.8;
+      const omegaLen = p.angVel.length();
+      if (omegaLen > maxAllowedOmega) {
+        p.angVel.multiplyScalar(maxAllowedOmega / omegaLen);
+      }
+
+      const clampedOmega = p.angVel.length();
+      if (clampedOmega > 1e-6) {
+        const dq = new THREE.Quaternion().setFromAxisAngle(
+          p.angVel.clone().divideScalar(clampedOmega),
+          clampedOmega * dt
+        );
+        p.quat.premultiply(dq).normalize();
+      }
+
+      if (p.barrelRecoil > 0 || Math.abs(p.barrelRecoilVel) > 1e-4) {
+        const accRecoil = -180 * p.barrelRecoil - 22 * p.barrelRecoilVel;
+        p.barrelRecoilVel += accRecoil * dt;
+        p.barrelRecoil = Math.max(0, p.barrelRecoil + p.barrelRecoilVel * dt);
+      }
+    }
+
+    // ============================================================================
+    // 7. CLOSED-LOOP 96 TRACK SHOES & DYNAMIC ENVELOPE VISUALIZATION
+    // ============================================================================
+    function updateTrackAndSuspensionVisuals(dt) {
+      const p = tankPhysics;
+      tankRoot.position.copy(p.pos);
+      tankRoot.quaternion.copy(p.quat);
+
+      p.turretYaw = THREE.MathUtils.lerp(p.turretYaw, p.targetTurretYaw, Math.min(1, dt * 8));
+      p.gunPitch = THREE.MathUtils.lerp(p.gunPitch, p.targetGunPitch, Math.min(1, dt * 8));
+      turretGroup.rotation.y = p.turretYaw;
+      gunPitchGroup.rotation.z = p.gunPitch;
+      if (barrelRecoilMesh) {
+        barrelRecoilMesh.position.x = -p.barrelRecoil;
+      }
+
+      // Cute duck mascot & spring antenna secondary motion!
+      const nowSec = performance.now() * 0.001;
+      if (duckMascotGroup) {
+        duckMascotGroup.position.y = 0.82 + Math.abs(Math.sin(nowSec * 9)) * Math.min(0.04, p.vel.length() * 0.015);
+        duckMascotGroup.rotation.z = Math.sin(nowSec * 6) * 0.08;
+      }
+      if (antennaSpringGroup) {
+        antennaSpringGroup.rotation.z = Math.sin(nowSec * 12) * 0.06 - p.vel.x * 0.06;
+        antennaSpringGroup.rotation.x = Math.cos(nowSec * 10) * 0.05;
+      }
+
+      const envelopeVerts = [];
+
+      ['left', 'right'].forEach(function (sideKey) {
+        const side = sideAssemblies[sideKey];
+        const wStates = p.wheels[sideKey];
+        const bellyLift = p.bellyLift[sideKey];
+        const zLocal = side.zOffset;
+
+        for (let i = 0; i < 6; i++) {
+          const def = wStates[i].deflection;
+          const wheelY = TANK_SPECS.restWheelY + def;
+          const wheelMesh = side.roadWheels[i];
+          wheelMesh.position.y = wheelY;
+          wheelMesh.rotation.z = side.sprocketAngle * (TANK_SPECS.sprocketRadius / TANK_SPECS.wheelRadius);
+
+          const armInfo = side.swingArms[i];
+          const dx = TANK_SPECS.wheelX[i] - armInfo.pivotX;
+          const dy = wheelY - armInfo.pivotY;
+          armInfo.group.rotation.z = Math.atan2(dy, dx) + Math.PI;
+        }
+
+        side.sprocket.rotation.z = side.sprocketAngle;
+        const idlerRecoilX = TANK_SPECS.idlerPos.x - p.frontApproachLift[sideKey] * 0.18;
+        const idlerRecoilY = TANK_SPECS.idlerPos.y + p.frontApproachLift[sideKey] * 0.12;
+        side.idler.position.set(idlerRecoilX, idlerRecoilY, zLocal);
+        side.idler.rotation.z = side.sprocketAngle * (TANK_SPECS.sprocketRadius / TANK_SPECS.idlerRadius);
+
+        for (let r = 0; r < side.rollers.length; r++) {
+          side.rollers[r].rotation.z = side.sprocketAngle * (TANK_SPECS.sprocketRadius / TANK_SPECS.rollerRadius);
+        }
+
+        // Build Closed-Loop 2D Control Polyline
+        const loopPts = [];
+        const shoeOffset = 0.024;
+        const rSprocket = TANK_SPECS.sprocketRadius + shoeOffset;
+        const rIdler = TANK_SPECS.idlerRadius + shoeOffset;
+        const rWheel = TANK_SPECS.wheelRadius + shoeOffset;
+        const rRoller = TANK_SPECS.rollerRadius + shoeOffset;
+
+        const spX = TANK_SPECS.sprocketPos.x;
+        const spY = TANK_SPECS.sprocketPos.y;
+        const spAngles = [Math.PI * 0.5, Math.PI * 0.78, Math.PI, -Math.PI * 0.78, -Math.PI * 0.56];
+        for (let a = 0; a < spAngles.length; a++) {
+          const ang = spAngles[a];
+          loopPts.push({ x: spX + Math.cos(ang) * rSprocket, y: spY + Math.sin(ang) * rSprocket });
+        }
+
+        const w5Y = TANK_SPECS.restWheelY + wStates[5].deflection - rWheel;
+        if (p.rearDepartureLift[sideKey] > 0.01) {
+          loopPts.push({
+            x: 0.5 * (spX + TANK_SPECS.wheelX[5]),
+            y: 0.5 * (spY - rSprocket + w5Y) + p.rearDepartureLift[sideKey] * 0.85
+          });
+        }
+
+        for (let i = 5; i >= 0; i--) {
+          const wx = TANK_SPECS.wheelX[i];
+          const wy = TANK_SPECS.restWheelY + wStates[i].deflection - rWheel;
+
+          loopPts.push({ x: wx - 0.09, y: wy + 0.008 });
+          loopPts.push({ x: wx, y: wy });
+          loopPts.push({ x: wx + 0.09, y: wy + 0.008 });
+
+          if (i > 0) {
+            const lift = bellyLift[i - 1];
+            const nextY = TANK_SPECS.restWheelY + wStates[i - 1].deflection - rWheel;
+            const midX = 0.5 * (wx + TANK_SPECS.wheelX[i - 1]);
+            const midY = 0.5 * (wy + nextY) + lift * 0.92;
+            loopPts.push({ x: midX, y: midY });
+          }
+        }
+
+        const w0Y = TANK_SPECS.restWheelY + wStates[0].deflection - rWheel;
+        if (p.frontApproachLift[sideKey] > 0.01) {
+          loopPts.push({
+            x: 0.5 * (TANK_SPECS.wheelX[0] + idlerRecoilX),
+            y: 0.5 * (w0Y + idlerRecoilY - rIdler) + p.frontApproachLift[sideKey] * 0.82
+          });
+        }
+
+        const idAngles = [-Math.PI * 0.36, -Math.PI * 0.12, Math.PI * 0.12, Math.PI * 0.35, Math.PI * 0.5];
+        for (let a = 0; a < idAngles.length; a++) {
+          const ang = idAngles[a];
+          loopPts.push({ x: idlerRecoilX + Math.cos(ang) * rIdler, y: idlerRecoilY + Math.sin(ang) * rIdler });
+        }
+
+        // Upper Track Run with dynamic Catenary Sag
+        const torqueTightening = Math.min(0.032, Math.abs(side.trackSpeed) * 0.009);
+        const baseSag = (0.048 / Math.max(0.45, physParams.tensionFactor)) - torqueTightening;
+        const dynamicBounce = Math.max(-0.02, Math.min(0.025, -p.vel.y * 0.018));
+        const sagAmount = Math.max(0.008, baseSag + dynamicBounce);
+
+        const upperNodes = [
+          { x: idlerRecoilX, y: idlerRecoilY + rIdler },
+          { x: TANK_SPECS.rollerPos[0].x, y: TANK_SPECS.rollerPos[0].y + rRoller },
+          { x: TANK_SPECS.rollerPos[1].x, y: TANK_SPECS.rollerPos[1].y + rRoller },
+          { x: TANK_SPECS.rollerPos[2].x, y: TANK_SPECS.rollerPos[2].y + rRoller },
+          { x: spX, y: spY + rSprocket }
+        ];
+
+        for (let u = 0; u < upperNodes.length - 1; u++) {
+          const nA = upperNodes[u];
+          const nB = upperNodes[u + 1];
+          if (u > 0) loopPts.push(nA);
+          loopPts.push({
+            x: 0.5 * (nA.x + nB.x),
+            y: 0.5 * (nA.y + nB.y) - sagAmount
+          });
+        }
+
+        if (showForceVectors) {
+          for (let k = 4; k < loopPts.length - 9; k++) {
+            const wA = hullToWorld(loopPts[k].x, loopPts[k].y, zLocal, new THREE.Vector3());
+            const wB = hullToWorld(loopPts[k + 1].x, loopPts[k + 1].y, zLocal, new THREE.Vector3());
+            envelopeVerts.push(wA.x, wA.y, wA.z, wB.x, wB.y, wB.z);
+          }
+        }
+
+        // Arc-Length Parameterization for 48 Track Shoes
+        const cumDist = [0];
+        let totalPerimeter = 0;
+        const N = loopPts.length;
+        for (let i = 0; i < N; i++) {
+          const pA = loopPts[i];
+          const pB = loopPts[(i + 1) % N];
+          const d = Math.hypot(pB.x - pA.x, pB.y - pA.y);
+          totalPerimeter += d;
+          cumDist.push(totalPerimeter);
+        }
+
+        const linkSpacing = totalPerimeter / TANK_SPECS.linksPerSide;
+        const baseOffset = ((side.trackDistance % totalPerimeter) + totalPerimeter) % totalPerimeter;
+
+        for (let k = 0; k < TANK_SPECS.linksPerSide; k++) {
+          const s = (baseOffset + k * linkSpacing) % totalPerimeter;
+
+          let seg = 0;
+          let low = 0, high = N - 1;
+          while (low <= high) {
+            const mid = (low + high) >> 1;
+            if (cumDist[mid] <= s && s <= cumDist[mid + 1]) {
+              seg = mid;
+              break;
+            } else if (cumDist[mid + 1] < s) {
+              low = mid + 1;
+            } else {
+              high = mid - 1;
+            }
+          }
+
+          const segLen = Math.max(1e-5, cumDist[seg + 1] - cumDist[seg]);
+          const t = (s - cumDist[seg]) / segLen;
+          const pA = loopPts[seg];
+          const pB = loopPts[(seg + 1) % N];
+
+          const lx = pA.x + (pB.x - pA.x) * t;
+          const ly = pA.y + (pB.y - pA.y) * t;
+          const angle = Math.atan2(pB.y - pA.y, pB.x - pA.x);
+
+          const shoe = side.trackShoes[k];
+          shoe.position.set(lx, ly, zLocal);
+          shoe.rotation.z = angle;
+        }
+      });
+
+      // Update 3D Debug Force Vector Arrows & Envelope Lines
+      debugVectorGroup.visible = showForceVectors;
+      if (showForceVectors) {
+        let nIdx = 0;
+        let tIdx = 0;
+        const forceScale = 0.000018;
+
+        for (let i = 0; i < p.debugContacts.length; i++) {
+          const c = p.debugContacts[i];
+          nIdx = writeArrowSegments(
+            normalPositions, nIdx,
+            c.pt.x, c.pt.y, c.pt.z,
+            c.normalForce.x * forceScale,
+            c.normalForce.y * forceScale,
+            c.normalForce.z * forceScale
+          );
+          tIdx = writeArrowSegments(
+            tractionPositions, tIdx,
+            c.pt.x, c.pt.y + 0.03, c.pt.z,
+            c.tractionForce.x * forceScale * 1.4,
+            c.tractionForce.y * forceScale * 1.4,
+            c.tractionForce.z * forceScale * 1.4
+          );
+        }
+
+        for (let i = nIdx; i < normalPositions.length; i++) normalPositions[i] = 0;
+        for (let i = tIdx; i < tractionPositions.length; i++) tractionPositions[i] = 0;
+        normalVectorGeo.attributes.position.needsUpdate = true;
+        tractionVectorGeo.attributes.position.needsUpdate = true;
+
+        for (let i = 0; i < envelopePositions.length; i++) {
+          envelopePositions[i] = i < envelopeVerts.length ? envelopeVerts[i] : 0;
+        }
+        envelopeVectorGeo.attributes.position.needsUpdate = true;
+      }
+    }
+
+    // ============================================================================
+    // 8. CAMERA CONTROLLER, SCENARIO SWITCHER & TELEMETRY HUD
+    // ============================================================================
+    const keyState = {
+      forward: false,
+      backward: false,
+      left: false,
+      right: false,
+      turretLeft: false,
+      turretRight: false
+    };
+    const touchState = {
+      forward: false,
+      backward: false,
+      left: false,
+      right: false
+    };
+
+    let autoDriveEnabled = true;
+    let currentScenario = 1;
+    let cameraMode = 'closeup';
+
+    const orbitCam = {
+      theta: -0.58,
+      phi: 1.22,
+      radius: 5.5,
+      panOffset: new THREE.Vector3(0, 0, 0),
+      button: -1,
+      lastX: 0,
+      lastY: 0,
+      targetLookAt: new THREE.Vector3()
+    };
+
+    window.addEventListener('keydown', function (e) {
+      const k = e.key.toLowerCase();
+      if (k === 'w' || e.key === 'ArrowUp') { keyState.forward = true; disableAutoDriveOnManual(); }
+      if (k === 's' || e.key === 'ArrowDown') { keyState.backward = true; disableAutoDriveOnManual(); }
+      if (k === 'a' || e.key === 'ArrowLeft') { keyState.left = true; disableAutoDriveOnManual(); }
+      if (k === 'd' || e.key === 'ArrowRight') { keyState.right = true; disableAutoDriveOnManual(); }
+      if (k === 'q') keyState.turretLeft = true;
+      if (k === 'e') keyState.turretRight = true;
+      if (k === 'f' || e.key === ' ') fireMainGun();
+      if (k === 'r') resetTankAtCurrentScenario();
+      if (k === '1') selectScenario(1);
+      if (k === '2') selectScenario(2);
+      if (k === '3') selectScenario(3);
+      if (k === '4') selectScenario(4);
+      updateKeyHighlightUI();
+    });
+
+    window.addEventListener('keyup', function (e) {
+      const k = e.key.toLowerCase();
+      if (k === 'w' || e.key === 'ArrowUp') keyState.forward = false;
+      if (k === 's' || e.key === 'ArrowDown') keyState.backward = false;
+      if (k === 'a' || e.key === 'ArrowLeft') keyState.left = false;
+      if (k === 'd' || e.key === 'ArrowRight') keyState.right = false;
+      if (k === 'q') keyState.turretLeft = false;
+      if (k === 'e') keyState.turretRight = false;
+      updateKeyHighlightUI();
+    });
+
+    function setTouchControl(dir, active) {
+      touchState[dir] = active;
+      if (active) disableAutoDriveOnManual();
+      updateKeyHighlightUI();
+    }
+
+    function disableAutoDriveOnManual() {
+      if (autoDriveEnabled) {
+        autoDriveEnabled = false;
+        syncAutoDriveButtonUI();
+      }
+    }
+
+    function updateKeyHighlightUI() {
+      document.getElementById('key-w').classList.toggle('active', keyState.forward || touchState.forward);
+      document.getElementById('key-s').classList.toggle('active', keyState.backward || touchState.backward);
+      document.getElementById('key-a').classList.toggle('active', keyState.left || touchState.left);
+      document.getElementById('key-d').classList.toggle('active', keyState.right || touchState.right);
+    }
+
+    // Built-in Orbit & Pan Camera Mouse Controller
+    renderer.domElement.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    renderer.domElement.addEventListener('mousedown', function (e) {
+      orbitCam.button = e.button;
+      orbitCam.lastX = e.clientX;
+      orbitCam.lastY = e.clientY;
+    });
+    window.addEventListener('mousemove', function (e) {
+      if (orbitCam.button === -1) return;
+      const dx = e.clientX - orbitCam.lastX;
+      const dy = e.clientY - orbitCam.lastY;
+      orbitCam.lastX = e.clientX;
+      orbitCam.lastY = e.clientY;
+
+      if (orbitCam.button === 0) {
+        orbitCam.theta -= dx * 0.007;
+        orbitCam.phi = Math.max(0.22, Math.min(1.48, orbitCam.phi - dy * 0.007));
+      } else {
+        orbitCam.panOffset.x -= dx * 0.01;
+        orbitCam.panOffset.y += dy * 0.01;
+      }
+    });
+    window.addEventListener('mouseup', function () {
+      orbitCam.button = -1;
+    });
+    renderer.domElement.addEventListener('wheel', function (e) {
+      orbitCam.radius = Math.max(3.0, Math.min(24.0, orbitCam.radius + e.deltaY * 0.005));
+    }, { passive: true });
+
+    const SCENARIOS = {
+      1: { x: 0.1, z: 0.0, desc: '青石庭院阶梯：前导轮上扬履带段先搭上青石台阶棱角，履带张紧力将台阶支撑力分摊给相邻负重轮。' },
+      2: { x: 0.1, z: -9.5, desc: '高阶木梯与跳台：0.29m高木阶由前导轮仰角强攻咬合，并在顶部平台借助履带张力跨越1.25m宽跳台壕沟。' },
+      3: { x: -0.2, z: 9.5, desc: '风车山丘连续斜坡：观察攀爬重心后移、后扭杆压缩以及坡顶折角处履带下支段包络贴合。' },
+      4: { x: 0.1, z: 19.0, desc: '交错踏脚石与原木路：左右两侧独立扭杆摆臂产生明显行程差，吸收交错冲击并保持圆润车身稳定。' }
+    };
+
+    function selectScenario(id) {
+      currentScenario = id;
+      for (let i = 1; i <= 4; i++) {
+        const btn = document.getElementById('scene-btn-' + i);
+        if (btn) btn.classList.toggle('active', i === id);
+      }
+      const cfg = SCENARIOS[id];
+      tankPhysics.pos.set(cfg.x, 0.84, cfg.z);
+      tankPhysics.vel.set(0, 0, 0);
+      tankPhysics.quat.identity();
+      tankPhysics.angVel.set(0, 0, 0);
+      orbitCam.panOffset.set(0, 0, 0);
+
+      ['left', 'right'].forEach(function (s) {
+        tankPhysics.wheels[s].forEach(function (w) { w.deflection = 0.08; w.vel = 0; });
+        tankPhysics.bellyLift[s].fill(0);
+        tankPhysics.frontApproachLift[s] = 0;
+        tankPhysics.rearDepartureLift[s] = 0;
+      });
+
+      document.getElementById('physics-insight-box').innerHTML = '<strong>🌱 履带爬梯小百科：</strong>' + cfg.desc;
+    }
+
+    function resetTankAtCurrentScenario() {
+      selectScenario(currentScenario);
+    }
+
+    function toggleAutoDrive() {
+      autoDriveEnabled = !autoDriveEnabled;
+      syncAutoDriveButtonUI();
+    }
+
+    function syncAutoDriveButtonUI() {
+      const btn = document.getElementById('auto-drive-btn');
+      btn.classList.toggle('accent-active', autoDriveEnabled);
+      btn.textContent = autoDriveEnabled ? '🐤 自动爬梯巡航: 开启' : '🐤 自动爬梯巡航: 关闭';
+    }
+
+    function setCameraMode(mode) {
+      cameraMode = mode;
+      ['closeup', 'orbit', 'side', 'follow'].forEach(function (m) {
+        const btn = document.getElementById('cam-btn-' + m);
+        if (btn) btn.classList.toggle('active', m === mode);
+      });
+      orbitCam.panOffset.set(0, 0, 0);
+      if (mode === 'closeup') {
+        orbitCam.theta = -0.58;
+        orbitCam.phi = 1.22;
+        orbitCam.radius = 5.4;
+      } else if (mode === 'side') {
+        orbitCam.theta = 0.0;
+        orbitCam.phi = 1.42;
+        orbitCam.radius = 7.6;
+      } else if (mode === 'orbit') {
+        orbitCam.theta = -0.82;
+        orbitCam.phi = 1.08;
+        orbitCam.radius = 9.2;
+      }
+    }
+
+    function toggleForceVectors() {
+      showForceVectors = !showForceVectors;
+      const btn = document.getElementById('toggle-vectors-btn');
+      btn.classList.toggle('active', showForceVectors);
+      btn.textContent = showForceVectors ? '显示中' : '已隐藏';
+    }
+
+    function setTimeScale(scale) {
+      physParams.timeScale = scale;
+      document.getElementById('time-btn-1').classList.toggle('active', scale === 1.0);
+      document.getElementById('time-btn-03').classList.toggle('active', scale === 0.3);
+    }
+
+    function updatePhysicsParam(type, val) {
+      const v = parseFloat(val);
+      if (type === 'stiffness') {
+        physParams.stiffness = v * 1000;
+        document.getElementById('val-stiffness').textContent = v + ' kN/m';
+      } else if (type === 'damping') {
+        physParams.damping = v * 1000;
+        document.getElementById('val-damping').textContent = v.toFixed(1) + ' kN·s/m';
+      } else if (type === 'tension') {
+        physParams.tensionFactor = v / 100;
+        document.getElementById('val-tension').textContent = v + '%';
+      } else if (type === 'torque') {
+        physParams.torqueFactor = v / 100;
+        document.getElementById('val-torque').textContent = (v / 100).toFixed(2) + 'x';
+      }
+    }
+
+    function resetPhysicsParams() {
+      document.getElementById('slider-stiffness').value = 95;
+      updatePhysicsParam('stiffness', 95);
+      document.getElementById('slider-damping').value = 14;
+      updatePhysicsParam('damping', 14);
+      document.getElementById('slider-tension').value = 85;
+      updatePhysicsParam('tension', 85);
+      document.getElementById('slider-torque').value = 115;
+      updatePhysicsParam('torque', 115);
+      setTimeScale(1.0);
+    }
+
+    function fireMainGun() {
+      const p = tankPhysics;
+      p.barrelRecoil = 0.36;
+      p.barrelRecoilVel = 1.2;
+
+      const gunDir = new THREE.Vector3(1, 0, 0)
+        .applyAxisAngle(new THREE.Vector3(0, 1, 0), p.turretYaw)
+        .applyQuaternion(p.quat)
+        .normalize();
+
+      p.vel.addScaledVector(gunDir, -1.45);
+      const turretWorld = hullToWorld(-0.12, 0.85, 0, new THREE.Vector3());
+      const rArm = turretWorld.sub(p.pos);
+      const recoilTorque = new THREE.Vector3().crossVectors(rArm, gunDir.clone().multiplyScalar(-p.mass * 1.65));
+      p.angVel.addScaledVector(recoilTorque, 1 / p.inertia.z);
+
+      const muzzleWorld = hullToWorld(2.85, 0.72, 0, new THREE.Vector3());
+      for (let i = 0; i < 5; i++) {
+        spawnInkPuff(muzzleWorld.x, muzzleWorld.y, muzzleWorld.z, 2.2 + i * 0.6);
+      }
+    }
+
+    function updateCameraAndHUD(dt) {
+      const p = tankPhysics;
+
+      dirLight.target.position.copy(p.pos);
+      dirLight.position.set(p.pos.x + 18, p.pos.y + 32, p.pos.z + 18);
+
+      const focusTarget = p.pos.clone().add(orbitCam.panOffset);
+      if (cameraMode === 'closeup') {
+        focusTarget.add(new THREE.Vector3(0.45, -0.18, TANK_SPECS.trackCenterZ * 0.75).applyQuaternion(p.quat));
+      } else if (cameraMode === 'side') {
+        focusTarget.y -= 0.10;
+      }
+
+      orbitCam.targetLookAt.lerp(focusTarget, Math.min(1, dt * 12));
+
+      if (cameraMode === 'follow') {
+        const backOffset = new THREE.Vector3(-7.4, 2.9, 0.0).applyQuaternion(p.quat);
+        const desiredPos = p.pos.clone().add(backOffset);
+        camera.position.lerp(desiredPos, Math.min(1, dt * 6));
+        camera.lookAt(orbitCam.targetLookAt);
+      } else {
+        const cx = orbitCam.targetLookAt.x + orbitCam.radius * Math.sin(orbitCam.phi) * Math.sin(orbitCam.theta);
+        const cy = Math.max(0.28, orbitCam.targetLookAt.y + orbitCam.radius * Math.cos(orbitCam.phi));
+        const cz = orbitCam.targetLookAt.z + orbitCam.radius * Math.sin(orbitCam.phi) * Math.cos(orbitCam.theta);
+        camera.position.lerp(new THREE.Vector3(cx, cy, cz), Math.min(1, dt * 14));
+        camera.lookAt(orbitCam.targetLookAt);
+      }
+
+      const euler = new THREE.Euler().setFromQuaternion(p.quat, 'YXZ');
+      const pitchDeg = THREE.MathUtils.radToDeg(euler.z);
+      const rollDeg = THREE.MathUtils.radToDeg(euler.x);
+      const speedVal = p.vel.length();
+
+      document.getElementById('hud-pitch').textContent = (pitchDeg >= 0 ? '+' : '') + pitchDeg.toFixed(1) + '°';
+      document.getElementById('hud-roll').textContent = (rollDeg >= 0 ? '+' : '') + rollDeg.toFixed(1) + '°';
+      document.getElementById('hud-speed').textContent = speedVal.toFixed(1) + ' m/s';
+
+      const statusBadge = document.getElementById('telemetry-status');
+      if (p.upsideDownTimer > 0.25) {
+        statusBadge.textContent = '小黄鸭回正中';
+        statusBadge.style.background = '#e06d53';
+      } else if (p.bridgingActive) {
+        statusBadge.textContent = '阶梯架桥中';
+        statusBadge.style.background = '#b85d43';
+      } else if (Math.abs(pitchDeg) > 6) {
+        statusBadge.textContent = '爬坡牵引中';
+        statusBadge.style.background = '#c59441';
+      } else {
+        statusBadge.textContent = '多轮接地平稳';
+        statusBadge.style.background = '#5c7a58';
+      }
+
+      for (let i = 0; i < 6; i++) {
+        const lPct = Math.min(100, Math.max(12, ((p.wheels.left[i].deflection + 0.06) / 0.30) * 100));
+        const rPct = Math.min(100, Math.max(12, ((p.wheels.right[i].deflection + 0.06) / 0.30) * 100));
+        const lEl = document.getElementById('susp-bar-L-' + i);
+        const rEl = document.getElementById('susp-bar-R-' + i);
+        if (lEl) lEl.style.height = lPct + '%';
+        if (rEl) rEl.style.height = rPct + '%';
+      }
+    }
+
+    // ============================================================================
+    // 9. MAIN ANIMATION LOOP
+    // ============================================================================
+    let lastTime = performance.now();
+    let puffTimer = 0;
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+
+      const rawDt = Math.min(0.04, Math.max(0.001, (now - lastTime) / 1000));
+      lastTime = now;
+      const dt = rawDt * physParams.timeScale;
+
+      // Animate cozy diorama windmill, clouds, and swaying trees
+      if (animatedScenery.windmillBlades) {
+        animatedScenery.windmillBlades.rotation.z -= rawDt * 0.65;
+      }
+      for (let i = 0; i < animatedScenery.clouds.length; i++) {
+        const c = animatedScenery.clouds[i];
+        c.group.position.x += c.speed * rawDt;
+        if (c.group.position.x > 42) c.group.position.x = -24;
+      }
+      for (let i = 0; i < animatedScenery.trees.length; i++) {
+        const t = animatedScenery.trees[i];
+        if (t.hitShake > 0) {
+          t.hitShake = Math.max(0, t.hitShake - rawDt * 2.4);
+        }
+        const shakeAmp = 0.025 + t.hitShake * 0.14;
+        const shakeFreq = t.hitShake > 0.05 ? 0.022 : 0.0018;
+        t.group.rotation.z = Math.sin(now * shakeFreq + t.phase) * shakeAmp;
+      }
+
+      let throttle = 0;
+      let steer = 0;
+
+      if (autoDriveEnabled) {
+        throttle = 0.68;
+        if (tankPhysics.pos.x > 21.5) {
+          selectScenario(currentScenario);
+        }
+        const targetZ = SCENARIOS[currentScenario].z;
+        const zErr = targetZ - tankPhysics.pos.z;
+        const forwardWorld = new THREE.Vector3(1, 0, 0).applyQuaternion(tankPhysics.quat);
+        // If tank drifts toward +Z (right), steer > 0 turns it left toward -Z
+        const yawErr = forwardWorld.z;
+        steer = Math.max(-0.45, Math.min(0.45, yawErr * 1.8 - zErr * 0.22));
+      } else {
+        if (keyState.forward || touchState.forward) throttle += 1.0;
+        if (keyState.backward || touchState.backward) throttle -= 0.85;
+        // FIXED: Pressing Left ('A' / ArrowLeft) gives steer = +1.0 (turns left, CCW around +Y)
+        //        Pressing Right ('D' / ArrowRight) gives steer = -1.0 (turns right, CW around +Y)
+        if (keyState.left || touchState.left) steer += 1.0;
+        if (keyState.right || touchState.right) steer -= 1.0;
+      }
+
+      if (keyState.turretLeft) tankPhysics.targetTurretYaw += rawDt * 1.4;
+      if (keyState.turretRight) tankPhysics.targetTurretYaw -= rawDt * 1.4;
+
+      const subSteps = 8;
+      const subDt = dt / subSteps;
+      for (let s = 0; s < subSteps; s++) {
+        stepTankPhysics(subDt, throttle, steer);
+      }
+
+      puffTimer += dt;
+      const isMoving = Math.abs(sideAssemblies.left.trackSpeed) + Math.abs(sideAssemblies.right.trackSpeed) > 0.35;
+      if (puffTimer > 0.11 && isMoving) {
+        puffTimer = 0;
+        // Cute white cartoon cloud puff from the brass exhaust pipe!
+        const exWorld = hullToWorld(exhaustTipLocal.x, exhaustTipLocal.y, exhaustTipLocal.z, new THREE.Vector3());
+        spawnInkPuff(exWorld.x, exWorld.y, exWorld.z, 0.95);
+
+        if (tankPhysics.bridgingActive && tankPhysics.debugContacts.length > 0) {
+          const c = tankPhysics.debugContacts[Math.floor(Math.random() * tankPhysics.debugContacts.length)];
+          spawnInkPuff(c.pt.x, c.pt.y, c.pt.z, 0.85);
+        }
+      }
+
+      updateInkParticles(dt);
+      updateTrackAndSuspensionVisuals(dt);
+      updateCameraAndHUD(rawDt);
+
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', function () {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Expose UI handlers globally for inline HTML event attributes
+    window.setTouchControl = setTouchControl;
+    window.selectScenario = selectScenario;
+    window.setCameraMode = setCameraMode;
+    window.toggleForceVectors = toggleForceVectors;
+    window.setTimeScale = setTimeScale;
+    window.updatePhysicsParam = updatePhysicsParam;
+    window.resetPhysicsParams = resetPhysicsParams;
+    window.fireMainGun = fireMainGun;
+    window.resetTankAtCurrentScenario = resetTankAtCurrentScenario;
+    window.toggleAutoDrive = toggleAutoDrive;
+
+    window.onload = function () {
+      selectScenario(1);
+      setCameraMode('closeup');
+      orbitCam.targetLookAt.copy(tankPhysics.pos);
+      lastTime = performance.now();
+      requestAnimationFrame(animate);
+    };
+  </script>
+</body>
+</html>
