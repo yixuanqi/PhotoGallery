@@ -1,0 +1,1753 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Q版手绘直升机与叶素气动物理仿真</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --paper-bg: #f4efe6;
+      --paper-card: rgba(250, 246, 240, 0.90);
+      --ink-dark: #262523;
+      --ink-muted: #6e6a63;
+      --accent-terracotta: #d65a47;
+      --accent-sage: #7a9a8b;
+      --accent-ochre: #e0a450;
+      --accent-slate: #4d6d84;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--paper-bg);
+      color: var(--ink-dark);
+      font-family: 'Noto Sans SC', sans-serif;
+    }
+
+    .font-mono-tech {
+      font-family: 'JetBrains Mono', monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Hand-drawn paper grain & drafting grid overlay */
+    .paper-overlay {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      z-index: 5;
+      background-image:
+        radial-gradient(rgba(38, 37, 35, 0.055) 1px, transparent 0),
+        linear-gradient(to right, rgba(38, 37, 35, 0.025) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(38, 37, 35, 0.025) 1px, transparent 1px);
+      background-size: 24px 24px, 60px 60px, 60px 60px;
+    }
+
+    /* Hand-drawn Architectural Sketch Panel */
+    .sketch-panel {
+      background: var(--paper-card);
+      backdrop-filter: blur(4px);
+      border: 2px solid var(--ink-dark);
+      border-radius: 12px 4px 14px 6px / 6px 14px 4px 12px;
+      box-shadow: 3px 3px 0px var(--ink-dark);
+    }
+
+    /* Hand-drawn Virtual Joystick Pad */
+    .joystick-zone {
+      background: rgba(250, 246, 240, 0.78);
+      border: 2px solid var(--ink-dark);
+      border-radius: 50%;
+      box-shadow: 4px 4px 0px var(--ink-dark);
+      touch-action: none;
+      cursor: grab;
+    }
+    .joystick-zone:active {
+      cursor: grabbing;
+    }
+
+    .joystick-knob {
+      border: 2.5px solid var(--ink-dark);
+      border-radius: 50%;
+      box-shadow: 2px 2px 0px var(--ink-dark);
+      transition: transform 0.04s linear;
+    }
+
+    #webgl-container {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body tabindex="0">
+
+  <!-- 3D Sketch Canvas -->
+  <div id="webgl-container"></div>
+
+  <!-- Drafting Paper Texture Overlay -->
+  <div class="paper-overlay"></div>
+
+  <!-- Minimalist Top Telemetry & Polar Rotor Rose HUD -->
+  <header class="fixed top-3 left-3 right-3 z-20 flex flex-wrap items-start justify-between gap-2 pointer-events-none">
+    <!-- Title & Direct Keybind Hint -->
+    <div class="sketch-panel px-3.5 py-2.5 flex items-center gap-3 pointer-events-auto">
+      <div class="w-9 h-9 rounded-lg border-2 border-[#262523] bg-[#d65a47] flex items-center justify-center shadow-[2px_2px_0px_#262523] shrink-0">
+        <svg class="w-5 h-5 text-[#faf6f0]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M2 6h20M12 6v5m-5 4h10a3 3 0 0 0 3-3v-1H7v1a3 3 0 0 0 3 3zm-4 5h12M9 15v5m6-5v5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-sm sm:text-base font-bold tracking-tight text-[#262523]">Q版手绘直升机 · 叶素气动仿真</h1>
+          <span id="flight-badge" class="text-[10px] font-mono-tech px-1.5 py-0.5 bg-[#7a9a8b]/30 border border-[#262523] rounded font-bold">IGE 地面效应区</span>
+        </div>
+        <p class="text-[11px] text-[#6e6a63] mt-0.5">
+          <strong class="text-[#262523]">W/S 前进后退 · A/D 左右飞行 · Q/E 上升下降 · ←/→ 转向</strong> · 鼠标拖拽旋转视角
+        </p>
+      </div>
+    </div>
+
+    <!-- Top-Right Compact Rotor Polar Lift Rose & Telemetry Readout -->
+    <div class="sketch-panel px-3 py-2 flex items-center gap-3 pointer-events-auto">
+      <canvas id="polar-canvas" width="76" height="76" class="w-[68px] h-[68px] rounded-full border border-[#262523]/30 bg-[#faf6f0]"></canvas>
+      <div class="text-[11px] font-mono-tech space-y-0.5 pr-1">
+        <div class="flex justify-between gap-3"><span class="text-[#6e6a63]">总距角 θ₀:</span><span id="tel-pitch" class="font-bold text-[#d65a47]">8.6°</span></div>
+        <div class="flex justify-between gap-3"><span class="text-[#6e6a63]">旋翼升力 T:</span><span id="tel-thrust" class="font-bold">8.8 kN</span></div>
+        <div class="flex justify-between gap-3"><span class="text-[#6e6a63]">离地高度 H:</span><span id="tel-alt" class="font-bold text-[#4d6d84]">2.8 m</span></div>
+        <div class="flex justify-between gap-3"><span class="text-[#6e6a63]">巡航地速 V:</span><span id="tel-spd" class="font-bold text-[#7a9a8b]">0.0 m/s</span></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Bottom Dual Hand-Drawn Interactive Flight Joysticks -->
+  <div class="fixed bottom-5 left-5 right-5 z-20 flex items-end justify-between pointer-events-none">
+    
+    <!-- LEFT STICK: W/S Forward/Back & A/D Strafe Left/Right (Cyclic Pitch & Roll) -->
+    <div class="flex flex-col items-center gap-2 pointer-events-auto">
+      <div class="sketch-panel px-3 py-1 text-center">
+        <div class="text-xs font-bold text-[#262523]">水平自由飞行 (周期变距 θ₁s / θ₁c)</div>
+        <div class="text-[10px] font-mono-tech text-[#d65a47] font-bold">W 前进 · S 后退 · A 左飞 · D 右飞</div>
+      </div>
+      <div id="stick-left" class="joystick-zone relative w-36 h-36 sm:w-40 sm:h-40 flex items-center justify-center">
+        <svg class="w-full h-full pointer-events-none opacity-45" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="46" fill="none" stroke="#262523" stroke-width="1.2" stroke-dasharray="4,3"/>
+          <circle cx="60" cy="60" r="22" fill="none" stroke="#262523" stroke-width="0.9"/>
+          <line x1="60" y1="8" x2="60" y2="112" stroke="#262523" stroke-width="1.2"/>
+          <line x1="8" y1="60" x2="112" y2="60" stroke="#262523" stroke-width="1.2"/>
+          <text x="60" y="19" text-anchor="middle" font-size="9" font-weight="bold" fill="#262523">前进 (W)</text>
+          <text x="60" y="108" text-anchor="middle" font-size="9" font-weight="bold" fill="#262523">后退 (S)</text>
+          <text x="22" y="56" text-anchor="middle" font-size="8" font-weight="bold" fill="#262523">左飞(A)</text>
+          <text x="98" y="56" text-anchor="middle" font-size="8" font-weight="bold" fill="#262523">右飞(D)</text>
+        </svg>
+        <div id="knob-left" class="joystick-knob absolute w-11 h-11 bg-[#d65a47] flex items-center justify-center pointer-events-none">
+          <div class="w-3 h-3 rounded-full border-2 border-[#262523] bg-[#faf6f0]"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center Live Keycap Feedback & Vector Legend -->
+    <div class="hidden md:flex flex-col items-center gap-2 mb-1 pointer-events-auto">
+      <div class="flex items-center gap-1.5 sketch-panel px-3 py-1.5 text-xs font-mono-tech">
+        <span id="key-w" class="px-2 py-0.5 border border-[#262523] rounded bg-[#faf6f0] transition-colors">W 前进</span>
+        <span id="key-s" class="px-2 py-0.5 border border-[#262523] rounded bg-[#faf6f0] transition-colors">S 后退</span>
+        <span id="key-a" class="px-2 py-0.5 border border-[#262523] rounded bg-[#faf6f0] transition-colors">A 左飞</span>
+        <span id="key-d" class="px-2 py-0.5 border border-[#262523] rounded bg-[#faf6f0] transition-colors">D 右飞</span>
+        <span class="mx-1 text-[#6e6a63]">|</span>
+        <span id="key-q" class="px-2 py-0.5 border border-[#262523] rounded bg-[#faf6f0] transition-colors">Q 上升</span>
+        <span id="key-e" class="px-2 py-0.5 border border-[#262523] rounded bg-[#faf6f0] transition-colors">E 下降</span>
+      </div>
+      <div class="flex items-center gap-4 sketch-panel px-4 py-1.5 text-xs pointer-events-none">
+        <div class="flex items-center gap-1.5">
+          <span class="w-3 h-3 inline-block bg-[#d65a47] border border-[#262523] rounded-xs"></span>
+          <span>叶素升力 <strong class="font-mono-tech">dL(r,ψ)</strong></span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-3 h-3 inline-block bg-[#e0a450] border border-[#262523] rounded-xs"></span>
+          <span>总升力矢量 <strong class="font-mono-tech">T</strong></span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-3 h-3 inline-block bg-[#4d6d84] border border-[#262523] rounded-xs"></span>
+          <span>飞行尾迹与下洗流</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT STICK: Q/E Collective (Ascend/Descend) & Arrow Left/Right Yaw -->
+    <div class="flex flex-col items-center gap-2 pointer-events-auto">
+      <div class="sketch-panel px-3 py-1 text-center">
+        <div class="text-xs font-bold text-[#262523]">垂直升降与转向 (总距 θ₀ / 尾桨)</div>
+        <div class="text-[10px] font-mono-tech text-[#4d6d84] font-bold">Q 上升 · E 下降 · ←/→ 机头转向</div>
+      </div>
+      <div id="stick-right" class="joystick-zone relative w-36 h-36 sm:w-40 sm:h-40 flex items-center justify-center">
+        <svg class="w-full h-full pointer-events-none opacity-45" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="46" fill="none" stroke="#262523" stroke-width="1.2" stroke-dasharray="4,3"/>
+          <circle cx="60" cy="60" r="22" fill="none" stroke="#262523" stroke-width="0.9"/>
+          <line x1="60" y1="8" x2="60" y2="112" stroke="#262523" stroke-width="1.2"/>
+          <line x1="8" y1="60" x2="112" y2="60" stroke="#262523" stroke-width="1.2"/>
+          <text x="60" y="19" text-anchor="middle" font-size="9" font-weight="bold" fill="#262523">上升 (Q)</text>
+          <text x="60" y="108" text-anchor="middle" font-size="9" font-weight="bold" fill="#262523">下降 (E)</text>
+          <text x="22" y="56" text-anchor="middle" font-size="8" font-weight="bold" fill="#262523">左转(←)</text>
+          <text x="98" y="56" text-anchor="middle" font-size="8" font-weight="bold" fill="#262523">右转(→)</text>
+        </svg>
+        <div id="knob-right" class="joystick-knob absolute w-11 h-11 bg-[#e0a450] flex items-center justify-center pointer-events-none">
+          <div class="w-3 h-3 rounded-full border-2 border-[#262523] bg-[#faf6f0]"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // ============================================================================
+    // 1. HAND-DRAWN SKETCH PALETTE & CEL-SHADING UTILITIES
+    // ============================================================================
+    const PALETTE = {
+      paper: 0xf4efe6,
+      ink: 0x262523,
+      terracotta: 0xd65a47,
+      sage: 0x7a9a8b,
+      ochre: 0xe0a450,
+      slate: 0x4d6d84,
+      cream: 0xfaf6f0,
+      sand: 0xe6dec8,
+      wood: 0xc89d66
+    };
+
+    function createStepGradientTexture() {
+      const data = new Uint8Array([
+        125, 125, 125, 255,
+        195, 195, 195, 255,
+        240, 240, 240, 255,
+        255, 255, 255, 255
+      ]);
+      const texture = new THREE.DataTexture(data, 4, 1, THREE.RGBAFormat);
+      texture.minFilter = THREE.NearestFilter;
+      texture.magFilter = THREE.NearestFilter;
+      texture.needsUpdate = true;
+      return texture;
+    }
+
+    const stepGradientMap = createStepGradientTexture();
+    const inkLineMaterial = new THREE.LineBasicMaterial({
+      color: PALETTE.ink,
+      transparent: true,
+      opacity: 0.85
+    });
+    const faintInkLineMaterial = new THREE.LineBasicMaterial({
+      color: PALETTE.ink,
+      transparent: true,
+      opacity: 0.32
+    });
+    const hullOutlineMaterial = new THREE.MeshBasicMaterial({
+      color: PALETTE.ink,
+      side: THREE.BackSide
+    });
+
+    function createSketchMesh(geometry, colorHex, options = {}) {
+      const {
+        edgeThreshold = 22,
+        hullScale = 0.0,
+        opacity = 1.0,
+        transparent = false,
+        castShadow = true,
+        receiveShadow = true
+      } = options;
+
+      const mat = new THREE.MeshToonMaterial({
+        color: colorHex,
+        gradientMap: stepGradientMap,
+        transparent,
+        opacity
+      });
+
+      const mesh = new THREE.Mesh(geometry, mat);
+      mesh.castShadow = castShadow;
+      mesh.receiveShadow = receiveShadow;
+
+      if (edgeThreshold !== null) {
+        const edgesGeo = new THREE.EdgesGeometry(geometry, edgeThreshold);
+        const edgeLines = new THREE.LineSegments(edgesGeo, inkLineMaterial);
+        mesh.add(edgeLines);
+      }
+
+      if (hullScale > 0 && !transparent) {
+        const hullMesh = new THREE.Mesh(geometry, hullOutlineMaterial);
+        hullMesh.scale.setScalar(1 + hullScale);
+        mesh.add(hullMesh);
+      }
+
+      return mesh;
+    }
+
+    // ============================================================================
+    // 2. AERODYNAMIC & RIGID-BODY SIMULATION PARAMETERS
+    // ============================================================================
+    const PARAMS = {
+      mass: 900,                   // Helicopter mass (kg)
+      gravity: 9.81,               // Gravitational acceleration (m/s^2)
+      airDensity: 1.225,           // Sea-level air density rho (kg/m^3)
+      rotorRadius: 3.6,            // Q-version wide paddle rotor radius R (m)
+      rootCutout: 0.65,            // Blade root cutout r0 (m)
+      bladeChord: 0.42,            // Wide cute paddle chord c (m)
+      numBlades: 4,                // 4-bladed articulated rotor
+      numStations: 6,              // 6 radial BEMT stations per blade
+      numAzimuthSectors: 24,       // 24 azimuth sectors around the 360-deg rotor disk
+      liftSlope: 5.7,              // 2D airfoil lift curve slope a_0 (rad^-1)
+      bladeFlapInertia: 48.0,      // Flapping moment of inertia I_beta (kg*m^2)
+      tailBoomLen: 2.95,           // Tail rotor moment arm (m)
+      hubHeight: 1.50,             // Main rotor hub height above CG (m)
+      physicalOmega: 50.0,         // Physical rotor angular speed (rad/s) for BEMT lift
+      visualOmega: 5.2             // Smooth anti-flicker visual angular speed (rad/s)
+    };
+
+    const simState = {
+      pos: new THREE.Vector3(0, 3.8, 0),
+      vel: new THREE.Vector3(0, 0, 0),
+      euler: new THREE.Euler(0, Math.PI, 0, 'YXZ'), // Facing -Z forward along runway
+      angVel: new THREE.Vector3(0, 0, 0),
+
+      // Direct normalized inputs [-1..+1]
+      climbInput: 0.0,       // Q / E
+      yawInput: 0.0,         // ArrowLeft / ArrowRight
+      pitchInput: 0.0,       // W / S
+      rollInput: 0.0,        // A / D
+
+      // Altitude hold target (m)
+      targetAltitude: 3.8,
+
+      // Swashplate angles (degrees)
+      collectiveDeg: 8.6,
+      cyclicLonDeg: 0.0,
+      cyclicLatDeg: 0.0,
+      tailPitchDeg: 6.5,
+
+      // Rotor kinematics & aerodynamics
+      visualAzimuth: 0.0,
+      tailVisualAzimuth: 0.0,
+      inducedVel: 6.2,
+      igeFactor: 1.12,
+      totalThrustN: 8829,
+      tailThrustN: 520,
+      mainTorqueNm: 1450,
+      coningAngleRad: 0.055,
+      diskTiltLonRad: 0.0,
+      diskTiltLatRad: 0.0,
+      skidCompression: 0.0,
+      agl: 2.78,
+
+      sectorLift: new Float32Array(PARAMS.numAzimuthSectors),
+      bladesData: []
+    };
+
+    for (let b = 0; b < PARAMS.numBlades; b++) {
+      const stations = [];
+      const span = PARAMS.rotorRadius - PARAMS.rootCutout;
+      const dr = span / PARAMS.numStations;
+      for (let i = 0; i < PARAMS.numStations; i++) {
+        const r = PARAMS.rootCutout + (i + 0.5) * dr;
+        stations.push({ r, dr, dL: 0, alphaDeg: 0 });
+      }
+      simState.bladesData.push({
+        psi: (b * Math.PI) / 2,
+        thetaRad: 0.14,
+        betaRad: 0.05,
+        stations
+      });
+    }
+
+    // ============================================================================
+    // 3. THREE.JS SCENE, CAMERA & LIGHTING
+    // ============================================================================
+    const container = document.getElementById('webgl-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(PALETTE.paper);
+    scene.fog = new THREE.FogExp2(PALETTE.paper, 0.005);
+
+    const camera = new THREE.PerspectiveCamera(44, window.innerWidth / window.innerHeight, 0.1, 350);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    const ambientLight = new THREE.AmbientLight(0xfffbf2, 0.78);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xfff6e5, 0.88);
+    sunLight.position.set(28, 48, 26);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.camera.near = 5;
+    sunLight.shadow.camera.far = 160;
+    const d = 55;
+    sunLight.shadow.camera.left = -d;
+    sunLight.shadow.camera.right = d;
+    sunLight.shadow.camera.top = d;
+    sunLight.shadow.camera.bottom = -d;
+    sunLight.shadow.bias = -0.0005;
+    scene.add(sunLight);
+
+    // ============================================================================
+    // 4. HAND-DRAWN ENVIRONMENT (3 Helipads, Runway, Flight Rings, Crates, Windsock)
+    // ============================================================================
+    const environmentGroup = new THREE.Group();
+    scene.add(environmentGroup);
+
+    const helipads = [
+      { x: 0, z: 0, topY: 0.14, radius: 5.5, name: '主停机坪' },
+      { x: -16, z: -34, topY: 3.2, radius: 4.5, name: '西侧高台' },
+      { x: 18, z: -30, topY: 5.0, radius: 4.5, name: '东侧瞭望台' }
+    ];
+
+    const crates = [];
+    const trees = [];
+    const windsockSegments = [];
+    let windsockPivot = null;
+
+    function buildSketchEnvironment() {
+      // 1. Drafting Grid & Ground Plane
+      const groundGeo = new THREE.PlaneGeometry(280, 280);
+      const groundMat = new THREE.MeshLambertMaterial({ color: PALETTE.paper });
+      const ground = new THREE.Mesh(groundGeo, groundMat);
+      ground.rotation.x = -Math.PI / 2;
+      ground.receiveShadow = true;
+      environmentGroup.add(ground);
+
+      const gridHelper = new THREE.GridHelper(180, 60, PALETTE.ink, PALETTE.ink);
+      gridHelper.position.y = 0.01;
+      gridHelper.material.transparent = true;
+      gridHelper.material.opacity = 0.11;
+      environmentGroup.add(gridHelper);
+
+      // 2. Main Helipad (0, 0)
+      const padMesh = createSketchMesh(new THREE.CylinderGeometry(5.5, 5.8, 0.14, 32), PALETTE.sand, { edgeThreshold: 15 });
+      padMesh.position.set(0, 0.07, 0);
+      environmentGroup.add(padMesh);
+
+      const ringMesh = createSketchMesh(new THREE.RingGeometry(4.2, 4.6, 32), PALETTE.terracotta, { edgeThreshold: null, castShadow: false });
+      ringMesh.rotation.x = -Math.PI / 2;
+      ringMesh.position.set(0, 0.15, 0);
+      environmentGroup.add(ringMesh);
+
+      const hShapeGroup = new THREE.Group();
+      const barGeo = new THREE.BoxGeometry(0.55, 0.04, 3.2);
+      const crossGeo = new THREE.BoxGeometry(2.2, 0.04, 0.55);
+      const leftBar = createSketchMesh(barGeo, PALETTE.cream);
+      leftBar.position.x = -1.0;
+      const rightBar = createSketchMesh(barGeo, PALETTE.cream);
+      rightBar.position.x = 1.0;
+      const midBar = createSketchMesh(crossGeo, PALETTE.cream);
+      hShapeGroup.add(leftBar, rightBar, midBar);
+      hShapeGroup.position.set(0, 0.15, 0);
+      environmentGroup.add(hShapeGroup);
+
+      // 3. Elevated West Helipad (-16, -34, Y=3.2)
+      const westPillar = createSketchMesh(new THREE.CylinderGeometry(4.2, 5.2, 3.2, 16), PALETTE.sand, { edgeThreshold: 15 });
+      westPillar.position.set(-16, 1.6, -34);
+      environmentGroup.add(westPillar);
+      const westPad = createSketchMesh(new THREE.CylinderGeometry(4.6, 4.6, 0.25, 24), PALETTE.sage, { edgeThreshold: 15 });
+      westPad.position.set(-16, 3.1, -34);
+      environmentGroup.add(westPad);
+
+      // 4. Elevated East Helipad (18, -30, Y=5.0)
+      const eastPillar = createSketchMesh(new THREE.CylinderGeometry(4.0, 5.4, 5.0, 16), PALETTE.sand, { edgeThreshold: 15 });
+      eastPillar.position.set(18, 2.5, -30);
+      environmentGroup.add(eastPillar);
+      const eastPad = createSketchMesh(new THREE.CylinderGeometry(4.6, 4.6, 0.25, 24), PALETTE.ochre, { edgeThreshold: 15 });
+      eastPad.position.set(18, 4.9, -30);
+      environmentGroup.add(eastPad);
+
+      // 5. Sketch Lighthouse (-26, -12)
+      const lhGroup = new THREE.Group();
+      const lhBase = createSketchMesh(new THREE.CylinderGeometry(1.4, 2.2, 9.0, 12), PALETTE.cream, { hullScale: 0.02 });
+      lhBase.position.y = 4.5;
+      const lhStripe = createSketchMesh(new THREE.CylinderGeometry(1.68, 1.92, 2.5, 12), PALETTE.terracotta);
+      lhStripe.position.y = 4.2;
+      const lhTop = createSketchMesh(new THREE.ConeGeometry(1.8, 1.8, 12), PALETTE.slate, { hullScale: 0.02 });
+      lhTop.position.y = 9.9;
+      lhGroup.add(lhBase, lhStripe, lhTop);
+      lhGroup.position.set(-26, 0, -12);
+      environmentGroup.add(lhGroup);
+
+      // 6. Windsock on Pole (Reacts to Rotor Downwash)
+      const poleGroup = new THREE.Group();
+      poleGroup.position.set(8.8, 0, -4.5);
+      const poleMesh = createSketchMesh(new THREE.CylinderGeometry(0.08, 0.11, 4.8, 8), PALETTE.ink);
+      poleMesh.position.y = 2.4;
+      poleGroup.add(poleMesh);
+
+      windsockPivot = new THREE.Group();
+      windsockPivot.position.set(0, 4.6, 0);
+      poleGroup.add(windsockPivot);
+
+      let parentNode = windsockPivot;
+      for (let i = 0; i < 5; i++) {
+        const segGroup = new THREE.Group();
+        segGroup.position.z = i === 0 ? 0.15 : 0.38;
+        const r1 = 0.28 - i * 0.04;
+        const r2 = 0.28 - (i + 1) * 0.04;
+        const segGeo = new THREE.CylinderGeometry(r2, r1, 0.38, 10, 1, true);
+        segGeo.rotateX(Math.PI / 2);
+        segGeo.translate(0, 0, 0.19);
+        const col = i % 2 === 0 ? PALETTE.terracotta : PALETTE.cream;
+        const segMesh = createSketchMesh(segGeo, col, { edgeThreshold: 25 });
+        segGroup.add(segMesh);
+        parentNode.add(segGroup);
+        windsockSegments.push(segGroup);
+        parentNode = segGroup;
+      }
+      environmentGroup.add(poleGroup);
+
+      // 7. Stylised Sketch Cypress & Pine Trees
+      const treeCoords = [
+        [-13, 8, 1.2], [-18, -6, 1.4], [15, 9, 1.1], [20, -4, 1.35],
+        [-8, -22, 1.3], [11, -18, 1.0], [-25, 16, 1.5], [25, 15, 1.25],
+        [-15, -52, 1.4], [16, -50, 1.3], [0, -68, 1.5]
+      ];
+      treeCoords.forEach(([tx, tz, sc]) => {
+        const treeGroup = new THREE.Group();
+        const trunk = createSketchMesh(new THREE.CylinderGeometry(0.16, 0.26, 1.4, 7), PALETTE.wood);
+        trunk.position.y = 0.7;
+        treeGroup.add(trunk);
+
+        const crownPivot = new THREE.Group();
+        crownPivot.position.y = 1.2;
+        const c1 = createSketchMesh(new THREE.ConeGeometry(1.15, 2.2, 7), PALETTE.sage, { hullScale: 0.025 });
+        c1.position.y = 0.9;
+        const c2 = createSketchMesh(new THREE.ConeGeometry(0.88, 1.8, 7), PALETTE.sage, { hullScale: 0.025 });
+        c2.position.y = 2.0;
+        crownPivot.add(c1, c2);
+        treeGroup.add(crownPivot);
+
+        treeGroup.position.set(tx, 0, tz);
+        treeGroup.scale.setScalar(sc);
+        environmentGroup.add(treeGroup);
+        trees.push({ group: crownPivot, x: tx, z: tz, phase: Math.random() * 6.28 });
+      });
+
+      // 8. Interactive Downwash Cargo Crates
+      const cratePositions = [
+        [-4.2, 3.2], [-4.9, 2.2], [4.5, 2.6], [4.0, -3.5], [-3.8, -4.0]
+      ];
+      cratePositions.forEach(([cx, cz], idx) => {
+        const size = idx % 2 === 0 ? 0.68 : 0.54;
+        const mesh = createSketchMesh(
+          new THREE.BoxGeometry(size, size, size),
+          idx % 2 === 0 ? PALETTE.ochre : PALETTE.wood,
+          { hullScale: 0.03 }
+        );
+        mesh.position.set(cx, size / 2, cz);
+        mesh.rotation.y = idx * 0.5;
+        environmentGroup.add(mesh);
+        crates.push({
+          mesh,
+          size,
+          vel: new THREE.Vector3(),
+          angVel: new THREE.Vector3()
+        });
+      });
+
+      // 9. Hand-Drawn Flight Runway Corridor & Aerial Rings along -Z (Forward Flight Reference)
+      const runwayStrip = createSketchMesh(new THREE.BoxGeometry(5.2, 0.04, 96), PALETTE.sand, { edgeThreshold: 15 });
+      runwayStrip.position.set(0, 0.02, -48);
+      environmentGroup.add(runwayStrip);
+
+      for (let zMark = -10; zMark >= -90; zMark -= 6) {
+        const dash = createSketchMesh(new THREE.BoxGeometry(0.45, 0.06, 2.8), PALETTE.terracotta);
+        dash.position.set(0, 0.04, zMark);
+        environmentGroup.add(dash);
+      }
+
+      const ringGates = [
+        { x: 0, y: 5.2, z: -16, ry: 0.0, color: PALETTE.terracotta },
+        { x: -11, y: 6.5, z: -28, ry: 0.45, color: PALETTE.ochre },
+        { x: 12, y: 8.0, z: -26, ry: -0.45, color: PALETTE.slate },
+        { x: 0, y: 7.5, z: -46, ry: 0.0, color: PALETTE.sage }
+      ];
+      ringGates.forEach((gate) => {
+        const gateGroup = new THREE.Group();
+        const torus = createSketchMesh(new THREE.TorusGeometry(2.8, 0.15, 8, 24), gate.color, { edgeThreshold: 18, hullScale: 0.02 });
+        gateGroup.add(torus);
+        const poleH = gate.y - 2.8;
+        if (poleH > 0.5) {
+          const pole = createSketchMesh(new THREE.CylinderGeometry(0.08, 0.12, poleH, 8), PALETTE.ink);
+          pole.position.y = -2.8 - poleH / 2;
+          gateGroup.add(pole);
+        }
+        gateGroup.position.set(gate.x, gate.y, gate.z);
+        gateGroup.rotation.y = gate.ry;
+        environmentGroup.add(gateGroup);
+      });
+    }
+
+    buildSketchEnvironment();
+
+    // Hand-Drawn 3D Flight Path Ribbon Trail
+    const MAX_TRAIL_PTS = 70;
+    const trailPositions = new Float32Array(MAX_TRAIL_PTS * 3);
+    const trailGeo = new THREE.BufferGeometry();
+    trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+    const trailLine = new THREE.Line(
+      trailGeo,
+      new THREE.LineBasicMaterial({ color: PALETTE.slate, transparent: true, opacity: 0.55 })
+    );
+    scene.add(trailLine);
+    const trailHistory = [];
+
+    // ============================================================================
+    // 5. Q-VERSION CHIBI HELICOPTER & ARTICULATED SWASHPLATE + ROTOR HUB
+    // ============================================================================
+    const heliRoot = new THREE.Group();
+    scene.add(heliRoot);
+
+    const fuselageGroup = new THREE.Group();
+    heliRoot.add(fuselageGroup);
+
+    let pilotHeadGroup = null;
+    let landingSkidsGroup = null;
+    const springMeshes = [];
+    const exhaustPuffs = [];
+
+    // 5.1 Plump Egg-Shaped Chibi Fuselage (Zero Z-fighting or clipping)
+    const eggGeo = new THREE.SphereGeometry(1.12, 28, 22);
+    eggGeo.scale(0.95, 0.88, 1.24);
+    const cabinBody = createSketchMesh(eggGeo, PALETTE.terracotta, { edgeThreshold: 26, hullScale: 0.022 });
+    cabinBody.position.set(0, 0.12, 0.12);
+    fuselageGroup.add(cabinBody);
+
+    // Cute Cream Belly Band (Offset cleanly below belly without overlapping egg surface)
+    const bellyBandGeo = new THREE.CylinderGeometry(0.84, 0.62, 0.22, 24);
+    bellyBandGeo.scale(1.0, 1.0, 1.22);
+    const bellyBand = createSketchMesh(bellyBandGeo, PALETTE.cream, { edgeThreshold: 20 });
+    bellyBand.position.set(0, -0.58, 0.12);
+    fuselageGroup.add(bellyBand);
+
+    // Side Porthole Windows (3D protruding brass barrels + glass lens so zero clipping!)
+    [-1, 1].forEach((side) => {
+      const portGroup = new THREE.Group();
+      const barrelGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.18, 18);
+      barrelGeo.rotateZ(Math.PI / 2);
+      const barrelMesh = createSketchMesh(barrelGeo, PALETTE.ochre, { edgeThreshold: 22 });
+      portGroup.add(barrelMesh);
+
+      const glassGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.20, 16);
+      glassGeo.rotateZ(Math.PI / 2);
+      const glassMesh = createSketchMesh(glassGeo, PALETTE.slate, { edgeThreshold: null });
+      portGroup.add(glassMesh);
+
+      portGroup.position.set(side * 1.02, 0.16, -0.18);
+      portGroup.rotation.y = side * -0.14;
+      portGroup.rotation.z = side * -0.06;
+      fuselageGroup.add(portGroup);
+    });
+
+    // Big Oversized Bubble Glass Canopy in Front (+Z is Nose)
+    const bubbleGeo = new THREE.SphereGeometry(0.90, 24, 20);
+    bubbleGeo.scale(0.90, 0.82, 0.96);
+    const bubbleCanopy = createSketchMesh(bubbleGeo, PALETTE.cream, {
+      edgeThreshold: 32,
+      transparent: true,
+      opacity: 0.42,
+      castShadow: false
+    });
+    bubbleCanopy.position.set(0, 0.16, 0.68);
+    fuselageGroup.add(bubbleCanopy);
+
+    // Manga-style shiny window highlight arc on the bubble glass
+    const shineGeo = new THREE.SphereGeometry(0.22, 12, 10);
+    shineGeo.scale(0.6, 0.35, 0.12);
+    const shineMesh = new THREE.Mesh(
+      shineGeo,
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75 })
+    );
+    shineMesh.position.set(0.38, 0.48, 1.42);
+    shineMesh.rotation.y = 0.42;
+    shineMesh.rotation.x = -0.35;
+    fuselageGroup.add(shineMesh);
+
+    // 5.2 Cute Chibi Pilot inside the Bubble Cockpit
+    const pilotGroup = new THREE.Group();
+    pilotGroup.position.set(0, -0.10, 0.72);
+    fuselageGroup.add(pilotGroup);
+
+    const pilotTorso = createSketchMesh(new THREE.CylinderGeometry(0.22, 0.26, 0.38, 12), PALETTE.slate);
+    pilotTorso.position.y = 0.05;
+    pilotGroup.add(pilotTorso);
+
+    const scarfRing = createSketchMesh(new THREE.TorusGeometry(0.20, 0.055, 8, 16), PALETTE.terracotta);
+    scarfRing.rotation.x = Math.PI / 2;
+    scarfRing.position.y = 0.24;
+    pilotGroup.add(scarfRing);
+
+    pilotHeadGroup = new THREE.Group();
+    pilotHeadGroup.position.set(0, 0.42, 0.02);
+    pilotGroup.add(pilotHeadGroup);
+
+    const headMesh = createSketchMesh(new THREE.SphereGeometry(0.26, 16, 14), PALETTE.cream, { hullScale: 0.03 });
+    pilotHeadGroup.add(headMesh);
+
+    const helmetGeo = new THREE.SphereGeometry(0.28, 16, 14, 0, Math.PI * 2, 0, Math.PI * 0.62);
+    const helmetMesh = createSketchMesh(helmetGeo, PALETTE.wood, { hullScale: 0.02 });
+    helmetMesh.rotation.x = -0.25;
+    pilotHeadGroup.add(helmetMesh);
+
+    [-0.11, 0.11].forEach((gx) => {
+      const goggleRim = createSketchMesh(new THREE.CylinderGeometry(0.095, 0.095, 0.08, 12), PALETTE.ochre);
+      goggleRim.rotation.x = Math.PI / 2;
+      goggleRim.position.set(gx, 0.08, 0.24);
+      pilotHeadGroup.add(goggleRim);
+
+      const goggleLens = createSketchMesh(new THREE.CylinderGeometry(0.07, 0.07, 0.09, 10), PALETTE.ink);
+      goggleLens.rotation.x = Math.PI / 2;
+      goggleLens.position.set(gx, 0.08, 0.24);
+      pilotHeadGroup.add(goggleLens);
+    });
+
+    // 5.3 Top Engine Cowling Collar & Cute Twin Brass Exhaust Pipes
+    const engineCollar = createSketchMesh(new THREE.CylinderGeometry(0.54, 0.72, 0.30, 18), PALETTE.ochre, { hullScale: 0.025 });
+    engineCollar.position.set(0, 0.88, 0.02);
+    fuselageGroup.add(engineCollar);
+
+    for (let i = 0; i < 8; i++) {
+      const ang = (i / 8) * Math.PI * 2;
+      const rivet = createSketchMesh(new THREE.SphereGeometry(0.035, 6, 6), PALETTE.ink, { edgeThreshold: null });
+      rivet.position.set(Math.cos(ang) * 0.62, 0.86, 0.02 + Math.sin(ang) * 0.62);
+      fuselageGroup.add(rivet);
+    }
+
+    [-0.38, 0.38].forEach((ex) => {
+      const pipe = createSketchMesh(new THREE.CylinderGeometry(0.11, 0.09, 0.34, 10), PALETTE.ochre, { hullScale: 0.03 });
+      pipe.position.set(ex, 0.88, -0.52);
+      pipe.rotation.x = -0.55;
+      pipe.rotation.z = ex > 0 ? -0.3 : 0.3;
+      fuselageGroup.add(pipe);
+    });
+
+    // Cartoon Smoke Puff Pool (Clean white/cream toon spheres without backside black shell)
+    const puffGroup = new THREE.Group();
+    scene.add(puffGroup);
+    for (let i = 0; i < 10; i++) {
+      const puffMesh = createSketchMesh(
+        new THREE.DodecahedronGeometry(0.16, 1),
+        PALETTE.cream,
+        { edgeThreshold: 25, hullScale: 0.0, transparent: true, opacity: 0.75, castShadow: false }
+      );
+      puffMesh.visible = false;
+      puffGroup.add(puffMesh);
+      exhaustPuffs.push({
+        mesh: puffMesh,
+        age: i * 0.12,
+        maxAge: 1.1,
+        vel: new THREE.Vector3(),
+        side: i % 2 === 0 ? -1 : 1
+      });
+    }
+
+    // 5.4 Upturned Chibi Tail Boom & Fenestron-Shrouded 4-Blade Tail Rotor
+    const tailBoomGeo = new THREE.CylinderGeometry(0.20, 0.44, 2.35, 14);
+    tailBoomGeo.rotateX(Math.PI / 2);
+    const tailBoom = createSketchMesh(tailBoomGeo, PALETTE.terracotta, { hullScale: 0.025 });
+    tailBoom.position.set(0, 0.25, -1.75);
+    tailBoom.rotation.x = 0.08;
+    fuselageGroup.add(tailBoom);
+
+    const tailBandGeo = new THREE.CylinderGeometry(0.30, 0.33, 0.26, 14);
+    tailBandGeo.rotateX(Math.PI / 2);
+    const tailBand = createSketchMesh(tailBandGeo, PALETTE.cream);
+    tailBand.position.set(0, 0.26, -1.72);
+    tailBand.rotation.x = 0.08;
+    fuselageGroup.add(tailBand);
+
+    const tailShroud = createSketchMesh(new THREE.TorusGeometry(0.56, 0.09, 10, 20), PALETTE.cream, { hullScale: 0.03 });
+    tailShroud.rotation.y = Math.PI / 2;
+    tailShroud.position.set(0, 0.42, -2.95);
+    fuselageGroup.add(tailShroud);
+
+    const tailFin = createSketchMesh(new THREE.BoxGeometry(0.12, 1.15, 0.52), PALETTE.sage, { hullScale: 0.025 });
+    tailFin.position.set(0, 0.65, -2.95);
+    tailFin.rotation.x = -0.18;
+    fuselageGroup.add(tailFin);
+
+    const tailRotorHub = new THREE.Group();
+    tailRotorHub.position.set(0.18, 0.42, -2.95);
+    fuselageGroup.add(tailRotorHub);
+
+    const tailCap = createSketchMesh(new THREE.SphereGeometry(0.13, 10, 10), PALETTE.terracotta);
+    tailRotorHub.add(tailCap);
+
+    const tailBlades = [];
+    for (let i = 0; i < 4; i++) {
+      const tbPivot = new THREE.Group();
+      tbPivot.rotation.x = (i * Math.PI) / 2;
+      const tbMesh = createSketchMesh(new THREE.BoxGeometry(0.04, 0.42, 0.16), i % 2 === 0 ? PALETTE.ochre : PALETTE.ink);
+      tbMesh.position.y = 0.24;
+      tbPivot.add(tbMesh);
+      tailRotorHub.add(tbPivot);
+      tailBlades.push(tbMesh);
+    }
+
+    // 5.5 Seamless One-Piece Curved Chibi Landing Skids (Zero Detached Pieces!)
+    landingSkidsGroup = new THREE.Group();
+    fuselageGroup.add(landingSkidsGroup);
+
+    [-0.78, 0.78].forEach((xSide) => {
+      const skidCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(xSide, -1.00, -1.05),
+        new THREE.Vector3(xSide, -1.00, -0.35),
+        new THREE.Vector3(xSide, -1.00, 0.55),
+        new THREE.Vector3(xSide, -0.96, 1.02),
+        new THREE.Vector3(xSide, -0.76, 1.24)
+      ]);
+      const skidTubeGeo = new THREE.TubeGeometry(skidCurve, 24, 0.075, 10, false);
+      const skidRunner = createSketchMesh(skidTubeGeo, PALETTE.ink, { edgeThreshold: 28, hullScale: 0.02 });
+      landingSkidsGroup.add(skidRunner);
+
+      const rearCap = createSketchMesh(new THREE.SphereGeometry(0.08, 10, 10), PALETTE.ochre);
+      rearCap.position.set(xSide, -1.00, -1.05);
+      landingSkidsGroup.add(rearCap);
+
+      const frontCap = createSketchMesh(new THREE.SphereGeometry(0.08, 10, 10), PALETTE.ochre);
+      frontCap.position.set(xSide, -0.76, 1.24);
+      landingSkidsGroup.add(frontCap);
+
+      [-0.48, 0.48].forEach((zStrut) => {
+        const strut = createSketchMesh(new THREE.CylinderGeometry(0.045, 0.045, 0.52, 8), PALETTE.ink);
+        strut.position.set(xSide * 0.90, -0.74, zStrut);
+        strut.rotation.z = xSide > 0 ? 0.24 : -0.24;
+        landingSkidsGroup.add(strut);
+
+        const coilGroup = new THREE.Group();
+        coilGroup.position.set(xSide * 0.88, -0.72, zStrut);
+        coilGroup.rotation.z = xSide > 0 ? 0.24 : -0.24;
+        for (let c = -1; c <= 1; c++) {
+          const ring = createSketchMesh(new THREE.TorusGeometry(0.075, 0.022, 6, 12), PALETTE.ochre, { edgeThreshold: null });
+          ring.rotation.x = Math.PI / 2;
+          ring.position.y = c * 0.065;
+          coilGroup.add(ring);
+        }
+        landingSkidsGroup.add(coilGroup);
+        springMeshes.push(coilGroup);
+      });
+    });
+
+    // 5.6 Oversized Visible Swashplate & Rotor Mast Assembly
+    const mastShaft = createSketchMesh(new THREE.CylinderGeometry(0.13, 0.15, 0.88, 14), PALETTE.ink);
+    mastShaft.position.set(0, 1.16, 0);
+    fuselageGroup.add(mastShaft);
+
+    const swashplateGroup = new THREE.Group();
+    swashplateGroup.position.set(0, 1.15, 0);
+    fuselageGroup.add(swashplateGroup);
+
+    const lowerSwash = createSketchMesh(new THREE.CylinderGeometry(0.50, 0.50, 0.07, 20), PALETTE.slate, { hullScale: 0.02 });
+    swashplateGroup.add(lowerSwash);
+
+    const upperSwash = createSketchMesh(new THREE.CylinderGeometry(0.54, 0.54, 0.07, 20), PALETTE.ochre, { hullScale: 0.02 });
+    upperSwash.position.y = 0.075;
+    swashplateGroup.add(upperSwash);
+
+    // 5.7 Main Rotor Hub + Cute Acorn Spinner Cap + 4 Wide Paddle Blades
+    const mainRotorHub = new THREE.Group();
+    mainRotorHub.position.set(0, PARAMS.hubHeight, 0);
+    fuselageGroup.add(mainRotorHub);
+
+    const hubCore = createSketchMesh(new THREE.CylinderGeometry(0.34, 0.34, 0.16, 16), PALETTE.ink);
+    mainRotorHub.add(hubCore);
+
+    const spinnerDomeGeo = new THREE.SphereGeometry(0.32, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.65);
+    const spinnerDome = createSketchMesh(spinnerDomeGeo, PALETTE.terracotta, { hullScale: 0.025 });
+    spinnerDome.position.y = 0.05;
+    mainRotorHub.add(spinnerDome);
+
+    const spinnerTip = createSketchMesh(new THREE.SphereGeometry(0.08, 10, 10), PALETTE.ochre);
+    spinnerTip.position.y = 0.37;
+    mainRotorHub.add(spinnerTip);
+
+    const bladeRigObjects = [];
+
+    for (let b = 0; b < PARAMS.numBlades; b++) {
+      const azimuthArm = new THREE.Group();
+      azimuthArm.rotation.y = (b * Math.PI) / 2;
+      mainRotorHub.add(azimuthArm);
+
+      const flapHinge = new THREE.Group();
+      flapHinge.position.set(0, 0, 0.34);
+      azimuthArm.add(flapHinge);
+
+      const gripCuff = createSketchMesh(new THREE.BoxGeometry(0.22, 0.12, 0.34), PALETTE.ink);
+      gripCuff.position.z = 0.14;
+      flapHinge.add(gripCuff);
+
+      const pitchHousing = new THREE.Group();
+      pitchHousing.position.set(0, 0, 0.28);
+      flapHinge.add(pitchHousing);
+
+      const hornArm = createSketchMesh(new THREE.BoxGeometry(0.28, 0.06, 0.07), PALETTE.ochre);
+      hornArm.position.set(0.15, 0, 0.02);
+      pitchHousing.add(hornArm);
+
+      const hornBall = createSketchMesh(new THREE.SphereGeometry(0.055, 8, 8), PALETTE.terracotta, { edgeThreshold: null });
+      hornBall.position.set(0.26, 0, 0.02);
+      pitchHousing.add(hornBall);
+
+      // Wide Chibi Paddle Blade with Rounded Tip & Safety Stripes
+      const bladeSpan = PARAMS.rotorRadius - PARAMS.rootCutout;
+      const mainBodyLen = bladeSpan - 0.24;
+      const bladeGeo = new THREE.BoxGeometry(PARAMS.bladeChord, 0.042, mainBodyLen);
+      bladeGeo.translate(0, 0, mainBodyLen / 2 + 0.05);
+
+      const bladeColor = b === 0 ? PALETTE.terracotta : PALETTE.cream;
+      const bladeMesh = createSketchMesh(bladeGeo, bladeColor, { edgeThreshold: 20, hullScale: 0.015 });
+      pitchHousing.add(bladeMesh);
+
+      const stripeGeo = new THREE.BoxGeometry(PARAMS.bladeChord + 0.01, 0.046, 0.36);
+      stripeGeo.translate(0, 0, mainBodyLen - 0.14);
+      const stripeMesh = createSketchMesh(stripeGeo, PALETTE.ochre);
+      pitchHousing.add(stripeMesh);
+
+      const tipCapGeo = new THREE.CylinderGeometry(PARAMS.bladeChord / 2, PARAMS.bladeChord / 2, 0.044, 16);
+      tipCapGeo.translate(0, 0, mainBodyLen + 0.05);
+      const tipCapMesh = createSketchMesh(tipCapGeo, PALETTE.ochre, { hullScale: 0.015 });
+      pitchHousing.add(tipCapMesh);
+
+      // Pushrod connecting swashplate to blade horn
+      const rodMesh = createSketchMesh(new THREE.CylinderGeometry(0.03, 0.03, 0.22, 8), PALETTE.terracotta);
+      azimuthArm.add(rodMesh);
+
+      bladeRigObjects.push({
+        azimuthArm,
+        flapHinge,
+        pitchHousing,
+        rodMesh
+      });
+    }
+
+    // 5.8 Hand-Drawn Rotor Tip-Path-Plane (TPP) Cone & 24 Azimuth Lift Bars
+    const rotorConeGroup = new THREE.Group();
+    rotorConeGroup.position.set(0, PARAMS.hubHeight, 0);
+    fuselageGroup.add(rotorConeGroup);
+
+    [1.4, 2.5, PARAMS.rotorRadius].forEach((radius, idx) => {
+      const pts = [];
+      const segs = 64;
+      for (let i = 0; i <= segs; i++) {
+        if (idx === 2 && i % 2 === 1) continue;
+        const a1 = (i / segs) * Math.PI * 2;
+        const a2 = ((i + 0.65) / segs) * Math.PI * 2;
+        pts.push(new THREE.Vector3(Math.sin(a1) * radius, 0, Math.cos(a1) * radius));
+        pts.push(new THREE.Vector3(Math.sin(a2) * radius, 0, Math.cos(a2) * radius));
+      }
+      const ringGeo = new THREE.BufferGeometry().setFromPoints(pts);
+      const ringSegments = new THREE.LineSegments(ringGeo, idx === 2 ? inkLineMaterial : faintInkLineMaterial);
+      ringSegments.userData = { radius };
+      rotorConeGroup.add(ringSegments);
+    });
+
+    const sectorVectors = [];
+    const barGeo = new THREE.CylinderGeometry(0.032, 0.032, 1.0, 6);
+    barGeo.translate(0, 0.5, 0);
+    const tipGeo = new THREE.ConeGeometry(0.075, 0.16, 6);
+    tipGeo.translate(0, 0.08, 0);
+
+    for (let s = 0; s < PARAMS.numAzimuthSectors; s++) {
+      const psi = (s / PARAMS.numAzimuthSectors) * Math.PI * 2;
+      const vecGroup = new THREE.Group();
+      const rPos = PARAMS.rotorRadius * 0.78;
+      vecGroup.position.set(Math.sin(psi) * rPos, 0, Math.cos(psi) * rPos);
+
+      const shaft = createSketchMesh(barGeo, PALETTE.terracotta, { edgeThreshold: null, castShadow: false });
+      const head = createSketchMesh(tipGeo, PALETTE.terracotta, { edgeThreshold: null, castShadow: false });
+      vecGroup.add(shaft, head);
+      rotorConeGroup.add(vecGroup);
+      sectorVectors.push({ group: vecGroup, shaft, head, psi, rPos });
+    }
+
+    const totalThrustArrow = new THREE.Group();
+    const tShaft = createSketchMesh(new THREE.CylinderGeometry(0.06, 0.06, 1.0, 8).translate(0, 0.5, 0), PALETTE.ochre, { castShadow: false });
+    const tHead = createSketchMesh(new THREE.ConeGeometry(0.15, 0.34, 8).translate(0, 0.17, 0), PALETTE.ochre, { castShadow: false });
+    totalThrustArrow.add(tShaft, tHead);
+    rotorConeGroup.add(totalThrustArrow);
+
+    // 5.9 Hand-Drawn Downwash Vortex Rings beneath the Helicopter
+    const downwashGroup = new THREE.Group();
+    scene.add(downwashGroup);
+    const downwashRings = [];
+    for (let i = 0; i < 3; i++) {
+      const pts = [];
+      const segs = 36;
+      for (let k = 0; k < segs; k += 2) {
+        const a1 = (k / segs) * Math.PI * 2;
+        const a2 = ((k + 1) / segs) * Math.PI * 2;
+        pts.push(new THREE.Vector3(Math.cos(a1), 0, Math.sin(a1)));
+        pts.push(new THREE.Vector3(Math.cos(a2), 0, Math.sin(a2)));
+      }
+      const line = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), faintInkLineMaterial);
+      downwashGroup.add(line);
+      downwashRings.push({ line, phase: i / 3 });
+    }
+
+    // ============================================================================
+    // 6. BEMT AERODYNAMICS & EFFORTLESS AUTO-STABILIZED 6-DOF FLIGHT ENGINE
+    // ============================================================================
+    const camOrbit = {
+      worldAzimuth: 0.22,           // Looking forward from behind the helicopter along the runway & rings
+      phi: 0.34,                    // Elevation angle
+      distance: 15.5,               // Zoom distance
+      isDragging: false,
+      dragButton: 0,
+      lastX: 0,
+      lastY: 0,
+      anchorPos: new THREE.Vector3(0, 3.8, 0),
+      lookPos: new THREE.Vector3(0, 3.8, 0)
+    };
+
+    function stepPhysics(dtRaw) {
+      const dt = Math.min(dtRaw, 0.035);
+      if (dt <= 0) return;
+
+      // 1. Advance Smooth Anti-Flicker Visual Azimuth for the 3D Blades
+      simState.visualAzimuth = (simState.visualAzimuth + PARAMS.visualOmega * dt) % (Math.PI * 2);
+      simState.tailVisualAzimuth = (simState.tailVisualAzimuth + PARAMS.visualOmega * 2.4 * dt) % (Math.PI * 2);
+
+      // 2. Ground Elevation & Ground Effect (IGE) Detection across all 3 Helipads
+      let groundY = 0.0;
+      for (const pad of helipads) {
+        const dist = Math.hypot(simState.pos.x - pad.x, simState.pos.z - pad.z);
+        if (dist < pad.radius && simState.pos.y >= pad.topY - 0.5) {
+          groundY = Math.max(groundY, pad.topY);
+        }
+      }
+      const minCenterY = groundY + 1.02;
+      const skidBottomY = simState.pos.y - 1.02;
+      simState.agl = Math.max(0, skidBottomY - groundY);
+
+      const rotorHeightAboveGround = Math.max(0.85, (simState.pos.y + PARAMS.hubHeight) - groundY);
+      const zOverR = rotorHeightAboveGround / PARAMS.rotorRadius;
+      const igeRatio = 1.0 / (1.0 - (1.0 / 16.0) * Math.pow(1.0 / Math.max(0.48, zOverR), 2));
+      simState.igeFactor = THREE.MathUtils.clamp(igeRatio, 1.0, 1.28);
+
+      // 3. Active Altitude Hold (Q to Climb, E to Descend) + Auto Take-Off when W/A/S/D is pressed
+      const isCyclicActive = Math.hypot(simState.pitchInput, simState.rollInput) > 0.04;
+      if (Math.abs(simState.climbInput) > 0.04) {
+        simState.targetAltitude = THREE.MathUtils.clamp(
+          simState.targetAltitude + simState.climbInput * 11.5 * dt,
+          minCenterY - 0.1,
+          55.0
+        );
+      } else if (isCyclicActive && simState.targetAltitude < minCenterY + 1.5) {
+        simState.targetAltitude = minCenterY + 2.0;
+      } else {
+        simState.targetAltitude = THREE.MathUtils.clamp(simState.targetAltitude, minCenterY - 0.05, 55.0);
+      }
+
+      const altError = simState.targetAltitude - simState.pos.y;
+      const desiredVz = THREE.MathUtils.clamp(altError * 3.2 + simState.climbInput * 8.5, -8.0, 9.0);
+      const vzError = desiredVz - simState.vel.y;
+
+      const targetCollectiveDeg = THREE.MathUtils.clamp(
+        8.6 + simState.climbInput * 5.0 + altError * 1.5 + vzError * 1.4,
+        1.5, 18.0
+      );
+      simState.collectiveDeg += (targetCollectiveDeg - simState.collectiveDeg) * Math.min(1, dt * 14);
+
+      // 4. Camera-Aligned W/S (Forward/Backward) & A/D (Left/Right) Free-Flight Controls
+      const camFwdX = -Math.sin(camOrbit.worldAzimuth);
+      const camFwdZ = -Math.cos(camOrbit.worldAzimuth);
+      const camRightX = -camFwdZ;
+      const camRightZ = camFwdX;
+
+      const desiredWorldDirX = camFwdX * simState.pitchInput + camRightX * simState.rollInput;
+      const desiredWorldDirZ = camFwdZ * simState.pitchInput + camRightZ * simState.rollInput;
+
+      // Helicopter Local Axes in World XZ: Nose (+Z local) is (sinY, cosY), Starboard Right (-X local) is (-cosY, sinY)
+      const yawAngle = simState.euler.y;
+      const cosY = Math.cos(yawAngle);
+      const sinY = Math.sin(yawAngle);
+
+      const bodyForwardCmd = desiredWorldDirX * sinY + desiredWorldDirZ * cosY;
+      const bodyRightCmd = -desiredWorldDirX * cosY + desiredWorldDirZ * sinY;
+
+      const vForward = simState.vel.x * sinY + simState.vel.z * cosY;
+      const vRight = -simState.vel.x * cosY + simState.vel.z * sinY;
+      const vHoriz = Math.hypot(vForward, vRight);
+
+      // Swashplate Cyclic Pitch (theta_1s) & Cyclic Roll (theta_1c)
+      const maxCruiseSpeed = 22.0;
+      const desiredForwardVel = bodyForwardCmd * maxCruiseSpeed;
+      const desiredRightVel = bodyRightCmd * maxCruiseSpeed;
+
+      const targetCyclicLonDeg = THREE.MathUtils.clamp(
+        bodyForwardCmd * 10.5 + (desiredForwardVel - vForward) * 0.25,
+        -13, 13
+      );
+      const targetCyclicLatDeg = THREE.MathUtils.clamp(
+        bodyRightCmd * 10.5 + (desiredRightVel - vRight) * 0.25,
+        -13, 13
+      );
+
+      simState.cyclicLonDeg += (targetCyclicLonDeg - simState.cyclicLonDeg) * Math.min(1, dt * 14);
+      simState.cyclicLatDeg += (targetCyclicLatDeg - simState.cyclicLatDeg) * Math.min(1, dt * 14);
+
+      // 5. BEMT Rotor Disk Integration (24 Azimuth Sectors x 6 Radial Stations)
+      const omega = PARAMS.physicalOmega;
+      const theta0 = THREE.MathUtils.degToRad(simState.collectiveDeg);
+      const theta1s = THREE.MathUtils.degToRad(simState.cyclicLonDeg);
+      const theta1c = THREE.MathUtils.degToRad(simState.cyclicLatDeg);
+
+      const diskArea = Math.PI * PARAMS.rotorRadius * PARAMS.rotorRadius;
+      const hoverVi = Math.sqrt((PARAMS.mass * PARAMS.gravity) / (2 * PARAMS.airDensity * diskArea));
+      const etlFactor = 1.0 / Math.sqrt(1.0 + Math.pow(vHoriz / (hoverVi + 0.6), 2));
+      simState.inducedVel = (hoverVi * etlFactor) / simState.igeFactor;
+
+      const psiWind = Math.atan2(vRight, vForward);
+      let sumThrust = 0;
+      let sumTorque = 0;
+      let sumLiftMoment = 0;
+
+      const solidityWeight = PARAMS.numBlades / PARAMS.numAzimuthSectors;
+      for (let s = 0; s < PARAMS.numAzimuthSectors; s++) {
+        const psi = (s / PARAMS.numAzimuthSectors) * Math.PI * 2;
+        const pitchAtPsi = theta0 - theta1s * Math.cos(psi) - theta1c * Math.sin(psi);
+
+        let sectorThrust = 0;
+        for (let i = 0; i < PARAMS.numStations; i++) {
+          const st = simState.bladesData[0].stations[i];
+          const uT = Math.max(2.0, omega * st.r + vHoriz * Math.sin(psi - psiWind));
+          const uP = Math.max(0.5, simState.inducedVel + simState.vel.y * 0.30);
+          const phi = Math.atan2(uP, uT);
+          const alpha = THREE.MathUtils.clamp(pitchAtPsi - phi, -0.25, 0.28);
+
+          const cL = PARAMS.liftSlope * alpha;
+          const cD = 0.012 + 0.4 * alpha * alpha;
+          const dynQ = 0.5 * PARAMS.airDensity * (uT * uT + uP * uP);
+
+          const dL = dynQ * PARAMS.bladeChord * cL * st.dr;
+          const dD = dynQ * PARAMS.bladeChord * cD * st.dr;
+
+          sectorThrust += dL;
+          sumThrust += dL * solidityWeight;
+          sumTorque += dD * st.r * solidityWeight;
+          sumLiftMoment += dL * st.r * solidityWeight;
+        }
+        simState.sectorLift[s] = sectorThrust;
+      }
+
+      // Compute physical coning angle (beta_0) & Tip-Path-Plane tilt (beta_1c, beta_1s)
+      const centrifugalStiffness = PARAMS.bladeFlapInertia * omega * omega;
+      simState.coningAngleRad = THREE.MathUtils.clamp(
+        (sumLiftMoment / PARAMS.numBlades) / centrifugalStiffness,
+        0.01, 0.18
+      );
+      simState.diskTiltLonRad = theta1s * 1.15;
+      simState.diskTiltLatRad = theta1c * 1.15;
+      simState.totalThrustN = Math.max(0, sumThrust);
+      simState.mainTorqueNm = sumTorque;
+
+      // Update the 4 visual blades at their current smooth visualAzimuth
+      for (let b = 0; b < PARAMS.numBlades; b++) {
+        const blade = simState.bladesData[b];
+        const psi = (simState.visualAzimuth + (b * Math.PI) / 2) % (Math.PI * 2);
+        blade.psi = psi;
+        blade.thetaRad = theta0 - theta1s * Math.cos(psi) - theta1c * Math.sin(psi);
+        blade.betaRad = simState.coningAngleRad
+          - simState.diskTiltLonRad * Math.cos(psi)
+          + simState.diskTiltLatRad * Math.sin(psi);
+      }
+
+      // 6. Tail Rotor Anti-Torque & Smooth Yaw Control
+      const desiredYawRate = -simState.yawInput * 2.4;
+      simState.angVel.y += (desiredYawRate - simState.angVel.y) * Math.min(1, dt * 10.0);
+      simState.euler.y += simState.angVel.y * dt;
+
+      const baseAntiTorqueThrust = simState.mainTorqueNm / PARAMS.tailBoomLen;
+      simState.tailThrustN = baseAntiTorqueThrust + simState.yawInput * 440;
+      simState.tailPitchDeg = THREE.MathUtils.clamp(6.5 + simState.yawInput * 10.5, -12, 22);
+
+      // 7. 6-DOF Helicopter Attitude & Direct Horizontal Propulsion
+      const targetPitch = THREE.MathUtils.clamp(bodyForwardCmd * 0.34, -0.38, 0.38);
+      const targetRoll = THREE.MathUtils.clamp(bodyRightCmd * 0.34, -0.38, 0.38);
+
+      simState.angVel.x = (targetPitch - simState.euler.x) * 9.5;
+      simState.angVel.z = (targetRoll - simState.euler.z) * 9.5;
+      simState.euler.x += simState.angVel.x * dt;
+      simState.euler.z += simState.angVel.z * dt;
+
+      const targetWorldVx = desiredWorldDirX * maxCruiseSpeed;
+      const targetWorldVz = desiredWorldDirZ * maxCruiseSpeed;
+      const horizResponsiveness = isCyclicActive ? 4.2 : 2.8;
+
+      const accelWorldX = (targetWorldVx - simState.vel.x) * horizResponsiveness;
+      const accelWorldZ = (targetWorldVz - simState.vel.z) * horizResponsiveness;
+      const accelWorldY = ((simState.totalThrustN / PARAMS.mass) - PARAMS.gravity) + vzError * 3.2 - simState.vel.y * 0.9;
+
+      simState.vel.x += accelWorldX * dt;
+      simState.vel.y += accelWorldY * dt;
+      simState.vel.z += accelWorldZ * dt;
+      simState.pos.addScaledVector(simState.vel, dt);
+
+      // 8. Bouncy Landing Skids Ground Contact & Spring Compression
+      if (simState.pos.y <= minCenterY + 0.18) {
+        const penetration = Math.max(0, (minCenterY + 0.12) - simState.pos.y);
+        simState.skidCompression += (Math.min(0.20, penetration * 1.4) - simState.skidCompression) * Math.min(1, dt * 18);
+      } else {
+        simState.skidCompression *= Math.max(0, 1 - 10.0 * dt);
+      }
+
+      if (simState.pos.y <= minCenterY) {
+        simState.pos.y = minCenterY;
+        if (simState.vel.y < -0.8) {
+          simState.vel.y = -simState.vel.y * 0.25;
+          simState.skidCompression = 0.20;
+        } else if (simState.vel.y < 0) {
+          simState.vel.y = 0;
+        }
+        if (!isCyclicActive) {
+          simState.vel.x *= Math.max(0, 1 - 6.0 * dt);
+          simState.vel.z *= Math.max(0, 1 - 6.0 * dt);
+          simState.euler.x *= Math.max(0, 1 - 8.0 * dt);
+          simState.euler.z *= Math.max(0, 1 - 8.0 * dt);
+        }
+      }
+
+      // Expanded 3D Free-Flight World Bounds
+      simState.pos.x = THREE.MathUtils.clamp(simState.pos.x, -120, 120);
+      simState.pos.z = THREE.MathUtils.clamp(simState.pos.z, -120, 120);
+      simState.pos.y = Math.min(simState.pos.y, 58);
+
+      // 9. Update 3D Flight Path Trail Ribbon
+      trailHistory.push(simState.pos.clone());
+      if (trailHistory.length > MAX_TRAIL_PTS) trailHistory.shift();
+      for (let i = 0; i < MAX_TRAIL_PTS; i++) {
+        const pt = trailHistory[Math.min(i, trailHistory.length - 1)] || simState.pos;
+        trailPositions[i * 3] = pt.x;
+        trailPositions[i * 3 + 1] = pt.y - 0.35;
+        trailPositions[i * 3 + 2] = pt.z;
+      }
+      trailGeo.attributes.position.needsUpdate = true;
+
+      // 10. Interactive Environment Props (Crates, Swaying Trees & Windsock)
+      updateEnvironmentProps(dt, groundY);
+    }
+
+    function updateEnvironmentProps(dt, groundY) {
+      const hPos = simState.pos;
+      const downwashStrength = (simState.totalThrustN / 9000) * Math.max(0, 1 - simState.agl / 15.0);
+
+      for (const c of crates) {
+        const dx = c.mesh.position.x - hPos.x;
+        const dz = c.mesh.position.z - hPos.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist < 6.0 && dist > 0.1 && downwashStrength > 0.05) {
+          const push = (1 - dist / 6.0) * downwashStrength * 9.5;
+          c.vel.x += (dx / dist) * push * dt;
+          c.vel.z += (dz / dist) * push * dt;
+          c.angVel.y += (dx - dz) * push * 0.4 * dt;
+        }
+        c.mesh.position.x += c.vel.x * dt;
+        c.mesh.position.z += c.vel.z * dt;
+        c.mesh.rotation.y += c.angVel.y * dt;
+        c.vel.multiplyScalar(Math.max(0, 1 - 4.0 * dt));
+        c.angVel.multiplyScalar(Math.max(0, 1 - 4.5 * dt));
+      }
+
+      const now = performance.now() * 0.001;
+      for (const t of trees) {
+        const dx = t.x - hPos.x;
+        const dz = t.z - hPos.z;
+        const dist = Math.hypot(dx, dz);
+        let washLeanX = 0;
+        let washLeanZ = 0;
+        if (dist < 10.0 && dist > 0.1) {
+          const factor = (1 - dist / 10.0) * downwashStrength * 0.38;
+          washLeanX = (dz / dist) * factor;
+          washLeanZ = -(dx / dist) * factor;
+        }
+        t.group.rotation.x = Math.sin(now * 2.2 + t.phase) * 0.03 + washLeanX;
+        t.group.rotation.z = Math.cos(now * 1.9 + t.phase) * 0.03 + washLeanZ;
+      }
+
+      if (windsockPivot) {
+        const wx = 8.8 - hPos.x;
+        const wz = -4.5 - hPos.z;
+        const wDist = Math.hypot(wx, wz);
+        const targetAngle = wDist < 14 ? Math.atan2(wx, wz) : 0.7;
+        windsockPivot.rotation.y += (targetAngle - windsockPivot.rotation.y) * Math.min(1, dt * 4);
+        const windIntensity = wDist < 14 ? Math.min(1.0, 0.3 + downwashStrength * 1.1) : 0.3;
+        windsockSegments.forEach((seg, idx) => {
+          seg.rotation.x = (1 - windIntensity * 0.85) * 0.22 + Math.sin(now * 7 - idx * 0.9) * 0.06 * windIntensity;
+        });
+      }
+
+      downwashGroup.position.set(hPos.x, groundY + 0.06, hPos.z);
+      const showWash = simState.agl < 13.0 && simState.totalThrustN > 2000;
+      downwashGroup.visible = showWash;
+      if (showWash) {
+        downwashRings.forEach((ringObj) => {
+          ringObj.phase = (ringObj.phase + dt * 0.85) % 1.0;
+          const r = 1.6 + ringObj.phase * 4.5;
+          ringObj.line.scale.set(r, 1, r);
+        });
+      }
+    }
+
+    // ============================================================================
+    // 7. VISUAL SYNCHRONIZATION OF SWASHPLATE, BLADES, PILOT & EXHAUST PUFFS
+    // ============================================================================
+    function syncHelicopterVisuals(dt) {
+      heliRoot.position.copy(simState.pos);
+      heliRoot.rotation.copy(simState.euler);
+
+      if (pilotHeadGroup) {
+        const targetHeadYaw = THREE.MathUtils.clamp(-simState.yawInput * 0.55 - simState.rollInput * 0.35, -0.65, 0.65);
+        const targetHeadPitch = THREE.MathUtils.clamp(simState.pitchInput * 0.32 - simState.climbInput * 0.25, -0.4, 0.4);
+        pilotHeadGroup.rotation.y += (targetHeadYaw - pilotHeadGroup.rotation.y) * 0.18;
+        pilotHeadGroup.rotation.x += (targetHeadPitch - pilotHeadGroup.rotation.x) * 0.18;
+      }
+
+      if (landingSkidsGroup) {
+        landingSkidsGroup.position.y = simState.skidCompression;
+        const springScaleY = Math.max(0.45, 1.0 - simState.skidCompression * 2.2);
+        springMeshes.forEach((sp) => {
+          sp.scale.y = springScaleY;
+        });
+      }
+
+      const collectiveOffset = ((simState.collectiveDeg - 8.5) / 10.0) * 0.12;
+      swashplateGroup.position.y = 1.15 + collectiveOffset;
+      swashplateGroup.rotation.x = THREE.MathUtils.degToRad(simState.cyclicLonDeg * 1.45);
+      swashplateGroup.rotation.z = THREE.MathUtils.degToRad(simState.cyclicLatDeg * 1.45);
+      upperSwash.rotation.y = simState.visualAzimuth;
+
+      for (let b = 0; b < PARAMS.numBlades; b++) {
+        const bData = simState.bladesData[b];
+        const rig = bladeRigObjects[b];
+
+        rig.azimuthArm.rotation.y = bData.psi;
+        rig.flapHinge.rotation.x = -bData.betaRad * 1.3;
+        rig.pitchHousing.rotation.z = bData.thetaRad * 1.5;
+
+        const swashDeltaAtPsi = collectiveOffset
+          - Math.sin(swashplateGroup.rotation.x) * Math.cos(bData.psi) * 0.34
+          - Math.sin(swashplateGroup.rotation.z) * Math.sin(bData.psi) * 0.34;
+        rig.rodMesh.position.set(0.15, -0.15 + swashDeltaAtPsi * 0.5, 0.30);
+      }
+
+      rotorConeGroup.children.forEach((child) => {
+        if (child.userData && child.userData.radius) {
+          const r = child.userData.radius;
+          child.position.y = Math.sin(simState.coningAngleRad) * r;
+          child.rotation.x = simState.diskTiltLonRad * 1.25;
+          child.rotation.z = simState.diskTiltLatRad * 1.25;
+        }
+      });
+
+      for (let s = 0; s < PARAMS.numAzimuthSectors; s++) {
+        const sv = sectorVectors[s];
+        const psi = sv.psi;
+        const localFlap = simState.coningAngleRad
+          - simState.diskTiltLonRad * Math.cos(psi)
+          + simState.diskTiltLatRad * Math.sin(psi);
+        sv.group.position.y = Math.sin(localFlap) * sv.rPos;
+
+        const liftMag = Math.max(0.05, simState.sectorLift[s] / 850);
+        const barH = THREE.MathUtils.clamp(liftMag * 0.72, 0.08, 1.45);
+        sv.shaft.scale.set(1, barH, 1);
+        sv.head.position.y = barH;
+      }
+
+      const totalTScale = THREE.MathUtils.clamp(simState.totalThrustN / 5800, 0.2, 2.2);
+      tShaft.scale.set(1, totalTScale, 1);
+      tHead.position.y = totalTScale;
+      totalThrustArrow.rotation.x = simState.diskTiltLonRad * 1.25;
+      totalThrustArrow.rotation.z = simState.diskTiltLatRad * 1.25;
+
+      tailRotorHub.rotation.z = simState.tailVisualAzimuth;
+      const tailPitchRad = THREE.MathUtils.degToRad(simState.tailPitchDeg);
+      tailBlades.forEach((tb) => {
+        tb.rotation.y = tailPitchRad;
+      });
+
+      exhaustPuffs.forEach((p) => {
+        p.age += dt * (0.9 + simState.collectiveDeg * 0.06);
+        if (p.age >= p.maxAge) {
+          p.age = 0;
+          const localOrigin = new THREE.Vector3(p.side * 0.42, 0.95, -0.58);
+          localOrigin.applyEuler(simState.euler).add(simState.pos);
+          p.mesh.position.copy(localOrigin);
+          p.vel.set(
+            (Math.random() - 0.5) * 0.6 + p.side * 0.5,
+            0.8 + Math.random() * 0.5,
+            -1.4 - Math.random() * 0.6
+          ).applyEuler(simState.euler);
+          p.mesh.visible = true;
+        }
+        p.mesh.position.addScaledVector(p.vel, dt);
+        const progress = p.age / p.maxAge;
+        const sc = 0.5 + progress * 1.4;
+        p.mesh.scale.setScalar(sc);
+        p.mesh.rotation.x += dt * 1.5;
+        p.mesh.rotation.y += dt * 1.8;
+      });
+    }
+
+    // ============================================================================
+    // 8. DUAL VIRTUAL JOYSTICKS + W/S A/D Q/E KEYBOARD + CAMERA CONTROLS
+    // ============================================================================
+    const stickLeftEl = document.getElementById('stick-left');
+    const knobLeftEl = document.getElementById('knob-left');
+    const stickRightEl = document.getElementById('stick-right');
+    const knobRightEl = document.getElementById('knob-right');
+
+    const stickState = {
+      left: { active: false, x: 0, y: 0 },
+      right: { active: false, x: 0, y: 0 }
+    };
+
+    function bindVirtualStick(zoneEl, sideKey) {
+      const maxRadius = 42;
+      const updateFromEvent = (clientX, clientY) => {
+        const rect = zoneEl.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        let dx = clientX - cx;
+        let dy = clientY - cy;
+        const dist = Math.hypot(dx, dy);
+        if (dist > maxRadius) {
+          dx = (dx / dist) * maxRadius;
+          dy = (dy / dist) * maxRadius;
+        }
+        stickState[sideKey].x = dx / maxRadius;
+        stickState[sideKey].y = -dy / maxRadius;
+      };
+
+      zoneEl.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        zoneEl.setPointerCapture(e.pointerId);
+        stickState[sideKey].active = true;
+        updateFromEvent(e.clientX, e.clientY);
+      });
+
+      zoneEl.addEventListener('pointermove', (e) => {
+        if (!stickState[sideKey].active) return;
+        updateFromEvent(e.clientX, e.clientY);
+      });
+
+      const releaseStick = () => {
+        stickState[sideKey].active = false;
+        stickState[sideKey].x = 0;
+        stickState[sideKey].y = 0;
+      };
+
+      zoneEl.addEventListener('pointerup', releaseStick);
+      zoneEl.addEventListener('pointercancel', releaseStick);
+    }
+
+    bindVirtualStick(stickLeftEl, 'left');
+    bindVirtualStick(stickRightEl, 'right');
+
+    const keys = {};
+    const handleKeyDown = (e) => {
+      keys[e.code] = true;
+      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE'].includes(e.code)) {
+        e.preventDefault();
+      }
+    };
+    const handleKeyUp = (e) => {
+      keys[e.code] = false;
+    };
+    window.addEventListener('keydown', handleKeyDown, { passive: false });
+    window.addEventListener('keyup', handleKeyUp);
+    document.addEventListener('keydown', handleKeyDown, { passive: false });
+    document.addEventListener('keyup', handleKeyUp);
+
+    window.addEventListener('pointermove', () => {
+      if (document.activeElement !== document.body) {
+        window.focus();
+      }
+    }, { passive: true });
+
+    const keycapMap = [
+      { id: 'key-w', code: 'KeyW' },
+      { id: 'key-s', code: 'KeyS' },
+      { id: 'key-a', code: 'KeyA' },
+      { id: 'key-d', code: 'KeyD' },
+      { id: 'key-q', code: 'KeyQ' },
+      { id: 'key-e', code: 'KeyE' }
+    ];
+    keycapMap.forEach(({ id, code }) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.style.cursor = 'pointer';
+      el.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        keys[code] = true;
+      });
+      el.addEventListener('pointerup', () => { keys[code] = false; });
+      el.addEventListener('pointerleave', () => { keys[code] = false; });
+    });
+
+    function setKeycapHighlight(id, active) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (active) {
+        el.className = 'px-2 py-0.5 border border-[#262523] rounded bg-[#d65a47] text-[#faf6f0] font-bold transition-colors';
+      } else {
+        el.className = 'px-2 py-0.5 border border-[#262523] rounded bg-[#faf6f0] text-[#262523] transition-colors';
+      }
+    }
+
+    function updateFlightInputs() {
+      // W / S -> Forward (+1) / Backward (-1)
+      let kbPitch = 0;
+      if (keys['KeyW'] || keys['ArrowUp']) kbPitch += 1;
+      if (keys['KeyS'] || keys['ArrowDown']) kbPitch -= 1;
+
+      // A / D -> Fly Left (-1) / Fly Right (+1)
+      let kbRoll = 0;
+      if (keys['KeyD']) kbRoll += 1;
+      if (keys['KeyA']) kbRoll -= 1;
+
+      // Q / E (or Space / Shift) -> Climb Up (+1) / Descend Down (-1)
+      let kbClimb = 0;
+      if (keys['KeyQ'] || keys['Space']) kbClimb += 1;
+      if (keys['KeyE'] || keys['ShiftLeft'] || keys['ShiftRight'] || keys['ControlLeft']) kbClimb -= 1;
+
+      // ArrowLeft / ArrowRight (or Z / C) -> Yaw Turn Left (-1) / Right (+1)
+      let kbYaw = 0;
+      if (keys['ArrowRight'] || keys['KeyC']) kbYaw += 1;
+      if (keys['ArrowLeft'] || keys['KeyZ']) kbYaw -= 1;
+
+      const finalPitch = stickState.left.active ? stickState.left.y : kbPitch;
+      const finalRoll = stickState.left.active ? stickState.left.x : kbRoll;
+      const finalClimb = stickState.right.active ? stickState.right.y : kbClimb;
+      const finalYaw = stickState.right.active ? stickState.right.x : kbYaw;
+
+      setKeycapHighlight('key-w', finalPitch > 0.1);
+      setKeycapHighlight('key-s', finalPitch < -0.1);
+      setKeycapHighlight('key-a', finalRoll < -0.1);
+      setKeycapHighlight('key-d', finalRoll > 0.1);
+      setKeycapHighlight('key-q', finalClimb > 0.1);
+      setKeycapHighlight('key-e', finalClimb < -0.1);
+
+      simState.pitchInput += (finalPitch - simState.pitchInput) * 0.25;
+      simState.rollInput += (finalRoll - simState.rollInput) * 0.25;
+      simState.climbInput += (finalClimb - simState.climbInput) * 0.25;
+      simState.yawInput += (finalYaw - simState.yawInput) * 0.25;
+
+      const maxPx = 42;
+      knobLeftEl.style.transform = `translate(${simState.rollInput * maxPx}px, ${-simState.pitchInput * maxPx}px)`;
+      knobRightEl.style.transform = `translate(${simState.yawInput * maxPx}px, ${-simState.climbInput * maxPx}px)`;
+    }
+
+    // Free-Flight Chase & Orbit Camera
+    container.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    container.addEventListener('pointerdown', (e) => {
+      camOrbit.isDragging = true;
+      camOrbit.dragButton = e.button;
+      camOrbit.lastX = e.clientX;
+      camOrbit.lastY = e.clientY;
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (!camOrbit.isDragging) return;
+      const dx = e.clientX - camOrbit.lastX;
+      const dy = e.clientY - camOrbit.lastY;
+      camOrbit.lastX = e.clientX;
+      camOrbit.lastY = e.clientY;
+
+      if (camOrbit.dragButton === 2 || e.shiftKey) {
+        const panScale = camOrbit.distance * 0.002;
+        const rightX = Math.cos(camOrbit.worldAzimuth);
+        const rightZ = -Math.sin(camOrbit.worldAzimuth);
+        camOrbit.anchorPos.x -= rightX * dx * panScale;
+        camOrbit.anchorPos.z -= rightZ * dx * panScale;
+        camOrbit.anchorPos.y = THREE.MathUtils.clamp(camOrbit.anchorPos.y + dy * panScale, 0.8, 55.0);
+        camOrbit.lookPos.copy(camOrbit.anchorPos);
+      } else {
+        camOrbit.worldAzimuth -= dx * 0.0065;
+        camOrbit.phi = THREE.MathUtils.clamp(camOrbit.phi + dy * 0.0055, 0.08, 1.35);
+      }
+    });
+
+    window.addEventListener('pointerup', () => {
+      camOrbit.isDragging = false;
+    });
+
+    container.addEventListener('dblclick', () => {
+      const target = simState.pos.clone().add(new THREE.Vector3(0, 0.85, 0));
+      camOrbit.anchorPos.copy(target);
+      camOrbit.lookPos.copy(target);
+    });
+
+    window.addEventListener('wheel', (e) => {
+      camOrbit.distance = THREE.MathUtils.clamp(camOrbit.distance + e.deltaY * 0.01, 4.5, 42.0);
+    }, { passive: true });
+
+    function updateCamera(dtRaw) {
+      const heliTarget = simState.pos.clone().add(new THREE.Vector3(0, 0.85, 0));
+
+      const offset = heliTarget.clone().sub(camOrbit.anchorPos);
+      const horizDist = Math.hypot(offset.x, offset.z);
+      const freeRadiusXZ = 2.8;
+      const freeRadiusY = 1.6;
+
+      if (horizDist > freeRadiusXZ) {
+        const excess = horizDist - freeRadiusXZ;
+        camOrbit.anchorPos.x += (offset.x / horizDist) * excess * Math.min(1, dtRaw * 9.0);
+        camOrbit.anchorPos.z += (offset.z / horizDist) * excess * Math.min(1, dtRaw * 9.0);
+      } else {
+        camOrbit.anchorPos.x += offset.x * Math.min(1, dtRaw * 2.2);
+        camOrbit.anchorPos.z += offset.z * Math.min(1, dtRaw * 2.2);
+      }
+
+      if (Math.abs(offset.y) > freeRadiusY) {
+        const excessY = Math.abs(offset.y) - freeRadiusY;
+        camOrbit.anchorPos.y += Math.sign(offset.y) * excessY * Math.min(1, dtRaw * 9.0);
+      } else {
+        camOrbit.anchorPos.y += offset.y * Math.min(1, dtRaw * 2.5);
+      }
+
+      const desiredLook = camOrbit.anchorPos.clone().lerp(heliTarget, 0.45);
+      camOrbit.lookPos.lerp(desiredLook, Math.min(1, dtRaw * 10.0));
+
+      const r = camOrbit.distance;
+      const camX = camOrbit.anchorPos.x + r * Math.sin(camOrbit.worldAzimuth) * Math.cos(camOrbit.phi);
+      const camY = camOrbit.anchorPos.y + r * Math.sin(camOrbit.phi);
+      const camZ = camOrbit.anchorPos.z + r * Math.cos(camOrbit.worldAzimuth) * Math.cos(camOrbit.phi);
+
+      camera.position.set(camX, Math.max(0.6, camY), camZ);
+      camera.lookAt(camOrbit.lookPos);
+    }
+
+    // ============================================================================
+    // 9. TOP-RIGHT POLAR ROTOR LIFT ROSE & TELEMETRY UPDATER
+    // ============================================================================
+    const polarCanvas = document.getElementById('polar-canvas');
+    const pCtx = polarCanvas.getContext('2d');
+    const telPitch = document.getElementById('tel-pitch');
+    const telThrust = document.getElementById('tel-thrust');
+    const telAlt = document.getElementById('tel-alt');
+    const telSpd = document.getElementById('tel-spd');
+    const flightBadge = document.getElementById('flight-badge');
+
+    function updateTelemetryAndPolarPlot() {
+      telPitch.textContent = `${simState.collectiveDeg.toFixed(1)}°`;
+      telThrust.textContent = `${(simState.totalThrustN / 1000).toFixed(1)} kN`;
+      telAlt.textContent = `${simState.agl.toFixed(1)} m`;
+      const groundSpeed = Math.hypot(simState.vel.x, simState.vel.z);
+      telSpd.textContent = `${groundSpeed.toFixed(1)} m/s`;
+
+      if (simState.agl < 0.12) {
+        flightBadge.textContent = '已着陆 (按 Q 起飞 / W 前进)';
+        flightBadge.className = 'text-[10px] font-mono-tech px-1.5 py-0.5 bg-[#e0a450]/35 border border-[#262523] rounded font-bold';
+      } else if (simState.igeFactor > 1.05) {
+        flightBadge.textContent = `IGE 地面效应 x${simState.igeFactor.toFixed(2)}`;
+        flightBadge.className = 'text-[10px] font-mono-tech px-1.5 py-0.5 bg-[#7a9a8b]/35 border border-[#262523] rounded font-bold';
+      } else {
+        flightBadge.textContent = '自由巡航模式';
+        flightBadge.className = 'text-[10px] font-mono-tech px-1.5 py-0.5 bg-[#d65a47]/25 border border-[#262523] rounded font-bold';
+      }
+
+      const w = polarCanvas.width;
+      const h = polarCanvas.height;
+      const cx = w / 2;
+      const cy = h / 2;
+      const maxR = cx - 6;
+
+      pCtx.clearRect(0, 0, w, h);
+
+      pCtx.strokeStyle = 'rgba(38, 37, 35, 0.25)';
+      pCtx.lineWidth = 1;
+      pCtx.beginPath();
+      pCtx.arc(cx, cy, maxR * 0.55, 0, Math.PI * 2);
+      pCtx.moveTo(cx - maxR, cy);
+      pCtx.lineTo(cx + maxR, cy);
+      pCtx.moveTo(cx, cy - maxR);
+      pCtx.lineTo(cx, cy + maxR);
+      pCtx.stroke();
+
+      pCtx.beginPath();
+      for (let s = 0; s < PARAMS.numAzimuthSectors; s++) {
+        const psi = (s / PARAMS.numAzimuthSectors) * Math.PI * 2;
+        const normL = THREE.MathUtils.clamp(simState.sectorLift[s] / 1300, 0.1, 1.0);
+        const r = normL * maxR;
+        const px = cx + Math.sin(psi) * r;
+        const py = cy - Math.cos(psi) * r;
+        if (s === 0) pCtx.moveTo(px, py);
+        else pCtx.lineTo(px, py);
+      }
+      pCtx.closePath();
+      pCtx.fillStyle = 'rgba(214, 90, 71, 0.32)';
+      pCtx.fill();
+      pCtx.strokeStyle = '#d65a47';
+      pCtx.lineWidth = 1.5;
+      pCtx.stroke();
+
+      for (let b = 0; b < PARAMS.numBlades; b++) {
+        const psi = simState.bladesData[b].psi;
+        pCtx.beginPath();
+        pCtx.moveTo(cx, cy);
+        pCtx.lineTo(cx + Math.sin(psi) * maxR, cy - Math.cos(psi) * maxR);
+        pCtx.strokeStyle = b === 0 ? '#d65a47' : '#262523';
+        pCtx.lineWidth = b === 0 ? 2.0 : 1.2;
+        pCtx.stroke();
+      }
+    }
+
+    // ============================================================================
+    // 10. WINDOW RESIZE & MAIN ANIMATION LOOP
+    // ============================================================================
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    let lastFrameTime = performance.now();
+    let uiFrameCount = 0;
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+
+      const dtRaw = Math.min((now - lastFrameTime) / 1000, 0.05);
+      lastFrameTime = now;
+
+      updateFlightInputs();
+      stepPhysics(dtRaw);
+      syncHelicopterVisuals(dtRaw);
+      updateCamera(dtRaw);
+
+      if (uiFrameCount++ % 2 === 0) {
+        updateTelemetryAndPolarPlot();
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    window.onload = function () {
+      window.focus();
+      updateTelemetryAndPolarPlot();
+      requestAnimationFrame(animate);
+    };
+  </script>
+</body>
+</html>
