@@ -997,6 +997,7 @@
       const posAttr = terrainGeo.attributes.position;
       const colAttr = terrainGeo.attributes.color;
       const tmpRGB = { r: 0, g: 0, b: 0 };
+
       for (let i = 0; i < gridCount; i++) {
         const h = heightGrid[i];
         posAttr.setY(i, h);
@@ -1996,6 +1997,7 @@
       ['left', 'right'].forEach(function (sideKey) {
         const side = sideAssemblies[sideKey];
         const zPos = side.zOffset;
+
         for (let i = 0; i < 6; i++) {
           const armGroupSus = new THREE.Group();
           const pivotX = EXCAVATOR_SPECS.wheelX[i] + 0.22;
