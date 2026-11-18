@@ -740,12 +740,19 @@
       });
     }
 
-    function getTerrainHeightRaw(x, z) {
+    // Maximum single vertical step height the front idler & track approach angle can physically climb (~0.40m)
+    const MAX_CLIMB_STEP = 0.40;
+
+    function getTerrainHeightRaw(x, z, refY) {
       let maxH = 0.0;
       const bevel = 0.055; // Rounded stair-nose bevel for smooth climbing
+      // If refY is provided, ignore platform/ramp roofs that are taller than the tank's climbable step reach
+      const maxReachableH = (refY !== undefined) ? (refY + MAX_CLIMB_STEP) : 999.0;
 
       for (let i = 0; i < terrainBoxes.length; i++) {
         const b = terrainBoxes[i];
+        if (b.height > maxReachableH) continue;
+
         if (x >= b.minX - bevel && x <= b.maxX + bevel && z >= b.minZ - bevel && z <= b.maxZ + bevel) {
           let fx = 1.0;
           if (x < b.minX) fx = Math.max(0, 1 - (b.minX - x) / bevel);
@@ -765,7 +772,7 @@
         if (x >= r.minX && x <= r.maxX && z >= r.minZ && z <= r.maxZ) {
           const t = (x - r.minX) / (r.maxX - r.minX);
           const h = r.hStart + t * (r.hEnd - r.hStart);
-          if (h > maxH) maxH = h;
+          if (h <= maxReachableH && h > maxH) maxH = h;
         }
       }
 
@@ -775,13 +782,14 @@
           const dx = x - l.cx;
           if (Math.abs(dx) <= l.radius) {
             const h = Math.sqrt(Math.max(0, l.radius * l.radius - dx * dx));
-            if (h > maxH) maxH = h;
+            if (h <= maxReachableH && h > maxH) maxH = h;
           }
         }
       }
 
       for (let i = 0; i < terrainCylinders.length; i++) {
         const c = terrainCylinders[i];
+        if (c.height > maxReachableH) continue;
         const dist = Math.hypot(x - c.cx, z - c.cz);
         if (dist <= c.radius + bevel) {
           const f = dist <= c.radius ? 1.0 : Math.max(0, 1 - (dist - c.radius) / bevel);
@@ -793,13 +801,15 @@
       return maxH;
     }
 
-    function getTerrainAt(x, z) {
-      const h = getTerrainHeightRaw(x, z);
+    function getTerrainAt(x, z, refY) {
+      const h = getTerrainHeightRaw(x, z, refY);
       const eps = 0.04;
-      const hx1 = getTerrainHeightRaw(x + eps, z);
-      const hx0 = getTerrainHeightRaw(x - eps, z);
-      const hz1 = getTerrainHeightRaw(x, z + eps);
-      const hz0 = getTerrainHeightRaw(x, z - eps);
+      // Evaluate local slope around the active support surface height
+      const slopeRefY = refY !== undefined ? Math.max(refY, h - 0.15) : undefined;
+      const hx1 = getTerrainHeightRaw(x + eps, z, slopeRefY);
+      const hx0 = getTerrainHeightRaw(x - eps, z, slopeRefY);
+      const hz1 = getTerrainHeightRaw(x, z + eps, slopeRefY);
+      const hz0 = getTerrainHeightRaw(x, z - eps, slopeRefY);
 
       const dhdx = (hx1 - hx0) / (2 * eps);
       const dhdz = (hz1 - hz0) / (2 * eps);
@@ -1979,10 +1989,11 @@
           // Project wheel bottom along hullUp so steep pitches don't overestimate vertical penetration
           const verticalRadius = effectiveWheelRadius * Math.max(0.55, hullUp.y);
           const bottomRestY = wheelRestWorld.y - verticalRadius;
+          const currentWheelBottomY = bottomRestY + Math.max(0, wState.deflection);
 
-          const tCenter = getTerrainAt(wheelRestWorld.x, wheelRestWorld.z);
-          const tFore = getTerrainAt(wheelRestWorld.x + 0.16 * hullForward.x, wheelRestWorld.z + 0.16 * hullForward.z);
-          const tAft = getTerrainAt(wheelRestWorld.x - 0.16 * hullForward.x, wheelRestWorld.z - 0.16 * hullForward.z);
+          const tCenter = getTerrainAt(wheelRestWorld.x, wheelRestWorld.z, currentWheelBottomY);
+          const tFore = getTerrainAt(wheelRestWorld.x + 0.16 * hullForward.x, wheelRestWorld.z + 0.16 * hullForward.z, currentWheelBottomY);
+          const tAft = getTerrainAt(wheelRestWorld.x - 0.16 * hullForward.x, wheelRestWorld.z - 0.16 * hullForward.z, currentWheelBottomY);
 
           const groundY = Math.max(
             tCenter.height,
@@ -2074,7 +2085,7 @@
           const midYLocal = TANK_SPECS.restWheelY + 0.5 * (wA.deflection + wB.deflection) - effectiveWheelRadius;
 
           const midWorld = hullToWorld(midXLocal, midYLocal, zLocal, new THREE.Vector3());
-          const tMid = getTerrainAt(midWorld.x, midWorld.z);
+          const tMid = getTerrainAt(midWorld.x, midWorld.z, midWorld.y);
 
           const bridgePen = (tMid.height - midWorld.y) * uprightFactor;
           if (bridgePen > 0.005 && uprightFactor > 0.2) {
@@ -2121,7 +2132,8 @@
         // C. Front Approach Track Segment (1st Road Wheel -> Front Idler Stair Climbing & Downhill Nose Support)
         let maxFrontLift = 0;
         const w0World = hullToWorld(TANK_SPECS.wheelX[0], TANK_SPECS.restWheelY, zLocal, _tmpV1);
-        const w0GroundH = getTerrainHeightRaw(w0World.x, w0World.z);
+        const w0BottomY = w0World.y - effectiveWheelRadius + Math.max(0, wheels[0].deflection);
+        const w0GroundH = getTerrainHeightRaw(w0World.x, w0World.z, w0BottomY);
 
         for (let s = 1; s <= 3; s++) {
           const frac = s / 3;
@@ -2133,10 +2145,11 @@
           );
 
           const sampleWorld = hullToWorld(sxLocal, syLocal, zLocal, new THREE.Vector3());
-          const tFront = getTerrainAt(sampleWorld.x, sampleWorld.z);
+          // Only allow front approach track segment to hook onto steps within climbable reach of wheel #1
+          const tFront = getTerrainAt(sampleWorld.x, sampleWorld.z, w0BottomY + 0.04);
           const penFront = (tFront.height - sampleWorld.y) * uprightFactor;
 
-          if (penFront > 0.005 && uprightFactor > 0.2) {
+          if (penFront > 0.005 && penFront < MAX_CLIMB_STEP && uprightFactor > 0.2) {
             p.bridgingActive = true;
             if (penFront > maxFrontLift) maxFrontLift = penFront;
 
@@ -2146,7 +2159,7 @@
             const vn = ptVel.dot(surfNormal);
             const effDamp = vn < 0 ? physParams.damping * 0.95 : physParams.damping * 1.45;
             let fnFront = Math.max(0, physParams.stiffness * 0.85 * penFront - effDamp * vn);
-            fnFront = Math.min(fnFront, p.mass * 9.81 * 0.48) * uprightFactor;
+            fnFront = Math.min(fnFront, p.mass * 9.81 * 0.35) * uprightFactor;
 
             // Normal support at the front nose prevents the nose from diving into the ground at the bottom of slopes!
             const normalVec = surfNormal.clone().multiplyScalar(fnFront);
@@ -2156,7 +2169,7 @@
             // Only apply upward step-climbing assist when actually ascending a step higher than wheel #1
             const isClimbingStep = (tFront.height > w0GroundH + 0.035) && (targetTrackSpeed > 0.05);
             const slopeTangent = isClimbingStep
-              ? hullForward.clone().multiplyScalar(0.84).addScaledVector(hullUp, 0.54).normalize()
+              ? hullForward.clone().multiplyScalar(0.88).addScaledVector(hullUp, 0.47).normalize()
               : hullForward.clone().sub(surfNormal.clone().multiplyScalar(hullForward.dot(surfNormal))).normalize();
 
             const vClimb = ptVel.dot(slopeTangent);
@@ -2184,6 +2197,9 @@
 
         // D. Rear Departure Track Segment (6th Road Wheel -> Rear Sprocket)
         let maxRearLift = 0;
+        const w5World = hullToWorld(TANK_SPECS.wheelX[5], TANK_SPECS.restWheelY, zLocal, _tmpV1);
+        const w5BottomY = w5World.y - effectiveWheelRadius + Math.max(0, wheels[5].deflection);
+
         for (let s = 1; s <= 2; s++) {
           const frac = s / 2;
           const sxLocal = THREE.MathUtils.lerp(TANK_SPECS.wheelX[5], TANK_SPECS.sprocketPos.x, frac);
@@ -2193,19 +2209,16 @@
             frac
           );
           const sampleWorld = hullToWorld(sxLocal, syLocal, zLocal, new THREE.Vector3());
-          const tRear = getTerrainAt(sampleWorld.x, sampleWorld.z);
+          const tRear = getTerrainAt(sampleWorld.x, sampleWorld.z, w5BottomY + 0.04);
           const penRear = (tRear.height - sampleWorld.y) * uprightFactor;
 
-          if (penRear > 0.005 && uprightFactor > 0.2) {
+          if (penRear > 0.005 && penRear < MAX_CLIMB_STEP && uprightFactor > 0.2) {
             if (penRear > maxRearLift) maxRearLift = penRear;
             const ptVel = worldPointVelocity(sampleWorld, _tmpV2);
             const surfNormal = new THREE.Vector3(tRear.nx, Math.max(0.65, tRear.ny), tRear.nz).normalize();
             const vn = ptVel.dot(surfNormal);
             const effDamp = vn < 0 ? physParams.damping * 0.90 : physParams.damping * 1.40;
-            const fnRear = Math.max(0, Math.min(p.mass * 9.81 * 0.42, physParams.stiffness * 0.78 * penRear - effDamp * vn)) * uprightFactor;
-
-            const normalVec = surfNormal.clone().multiplyScalar(fnRear);
-            totalForce.add(normalVec);
+            const fnRear = Math.max(0, Math.min(p.mass * 9.81 * 0.35, physParams.stiffness * 0.78 * penRear - effDamp * vn)) * uprightFactor;
             totalTorque.add(new THREE.Vector3().crossVectors(sampleWorld.clone().sub(p.pos), normalVec));
 
             const slopeTangent = hullForward.clone()
@@ -2247,17 +2260,18 @@
       for (let i = 0; i < HULL_COLLISION_POINTS.length; i++) {
         const cp = HULL_COLLISION_POINTS[i];
         const wp = hullToWorld(cp.lx, cp.ly, cp.lz, _tmpV1);
-        const tGround = getTerrainAt(wp.x, wp.z);
+        // Pass wp.y - cp.r so high vertical walls are never mistaken for ground underneath the hull point!
+        const tGround = getTerrainAt(wp.x, wp.z, wp.y - cp.r);
         const pen = (tGround.height + cp.r) - wp.y;
 
-        if (pen > 0) {
+        if (pen > 0 && pen < MAX_CLIMB_STEP) {
           if (pen > maxBodyPenetration) maxBodyPenetration = pen;
           const surfNormal = new THREE.Vector3(tGround.nx, Math.max(0.65, tGround.ny), tGround.nz).normalize();
           const ptVel = worldPointVelocity(wp, _tmpV2);
           const vn = ptVel.dot(surfNormal);
 
-          let fnBody = Math.max(0, physParams.stiffness * 2.2 * pen - physParams.damping * 1.8 * Math.min(0, vn));
-          fnBody = Math.min(fnBody, p.mass * 9.81 * 0.45);
+          let fnBody = Math.max(0, physParams.stiffness * 2.0 * pen - physParams.damping * 1.8 * Math.min(0, vn));
+          fnBody = Math.min(fnBody, p.mass * 9.81 * 0.35);
           const bodyForce = surfNormal.clone().multiplyScalar(fnBody);
 
           // Clamped Coulomb skid friction (mu = 0.20) so a nose/fender touch glides smoothly instead of flipping!
@@ -2275,10 +2289,10 @@
         }
       }
 
-      // Smooth position projection if any hull/turret point penetrated deeply
+      // Gentle position projection if any hull/turret point penetrated the ground
       if (maxBodyPenetration > 0.025) {
-        p.pos.y += (maxBodyPenetration - 0.025) * 0.55;
-        if (p.vel.y < 0) p.vel.y *= 0.5;
+        p.pos.y += Math.min(0.008, (maxBodyPenetration - 0.025) * 0.25);
+        if (p.vel.y < 0) p.vel.y *= 0.6;
       }
 
       // F. Critically-Damped Self-Righting "Tumbler Ducky" Assist when Tank Tilts Strongly (> 45 deg)
@@ -2288,18 +2302,114 @@
         if (rightingAxis.lengthSq() > 1e-4) {
           rightingAxis.normalize();
           const tiltStrength = p.upsideDownTimer > 0.5 ? 145000 : 75000;
-          // PD controller: restoring torque minus strong angular velocity damping
+          // PD controller: restoring torque minus strong angular velocity damping (no vertical jump!)
           totalTorque.addScaledVector(rightingAxis, tiltStrength * (1.0 - hullUp.y));
           totalTorque.addScaledVector(p.angVel, -42000);
-        }
-        if (hullUp.y < 0.15 && p.upsideDownTimer > 0.7 && Math.abs(p.vel.y) < 0.8) {
-          p.vel.y = 2.2;
         }
       } else {
         p.upsideDownTimer = 0;
       }
 
-      // G. Solid Cylinder Obstacle Collisions (Trees, Signposts, Windmill Pedestal)
+      // G1. 3D Vertical Wall Collisions against Unclimbable Box & Ramp Side Walls
+      // Any platform, high step, or ramp side wall taller than trackBottomY + MAX_CLIMB_STEP blocks the tank horizontally!
+      const trackBottomY = p.pos.y - 0.78;
+      for (let j = 0; j < HULL_OBSTACLE_PERIMETER.length; j++) {
+        const hp = HULL_OBSTACLE_PERIMETER[j];
+        const wp = hullToWorld(hp.lx, -0.05, hp.lz, _tmpV1);
+
+        // 1) Check against high terrainBoxes (e.g. 1.45m platform walls, side of stairs)
+        for (let i = 0; i < terrainBoxes.length; i++) {
+          const b = terrainBoxes[i];
+          if (b.height <= trackBottomY + MAX_CLIMB_STEP) continue;
+
+          const clampedX = Math.max(b.minX, Math.min(b.maxX, wp.x));
+          const clampedZ = Math.max(b.minZ, Math.min(b.maxZ, wp.z));
+          const dx = wp.x - clampedX;
+          const dz = wp.z - clampedZ;
+          const distSq = dx * dx + dz * dz;
+
+          if (distSq < hp.r * hp.r) {
+            let nx = 0, nz = 0, pen = 0;
+            if (distSq > 1e-6) {
+              const dist = Math.sqrt(distSq);
+              nx = dx / dist;
+              nz = dz / dist;
+              pen = hp.r - dist;
+            } else {
+              // Center is inside box footprint: push out toward nearest vertical face
+              const dLeft = wp.x - b.minX;
+              const dRight = b.maxX - wp.x;
+              const dFront = wp.z - b.minZ;
+              const dBack = b.maxZ - wp.z;
+              const minD = Math.min(dLeft, dRight, dFront, dBack);
+              if (minD === dLeft) { nx = -1; pen = hp.r + dLeft; }
+              else if (minD === dRight) { nx = 1; pen = hp.r + dRight; }
+              else if (minD === dFront) { nz = -1; pen = hp.r + dFront; }
+              else { nz = 1; pen = hp.r + dBack; }
+            }
+
+            const wallNormal = new THREE.Vector3(nx, 0, nz);
+            const ptVel = worldPointVelocity(wp, _tmpV2);
+            const vn = ptVel.dot(wallNormal);
+
+            const fWall = Math.max(0, 240000 * pen - 28000 * Math.min(0, vn));
+            const wallForce = wallNormal.multiplyScalar(fWall);
+            totalForce.add(wallForce);
+
+            const rArm = wp.clone().sub(p.pos);
+            totalTorque.add(new THREE.Vector3().crossVectors(rArm, wallForce));
+
+            p.pos.x += nx * pen * 0.45;
+            p.pos.z += nz * pen * 0.45;
+          }
+        }
+
+        // 2) Check against high terrainRamps side walls (e.g. driving into the tall side of the windmill ramp)
+        for (let i = 0; i < terrainRamps.length; i++) {
+          const r = terrainRamps[i];
+          const clampedX = Math.max(r.minX, Math.min(r.maxX, wp.x));
+          const t = (clampedX - r.minX) / Math.max(1e-4, r.maxX - r.minX);
+          const rampHAtX = r.hStart + t * (r.hEnd - r.hStart);
+
+          if (rampHAtX <= trackBottomY + MAX_CLIMB_STEP) continue;
+
+          const clampedZ = Math.max(r.minZ, Math.min(r.maxZ, wp.z));
+          const dx = wp.x - clampedX;
+          const dz = wp.z - clampedZ;
+          const distSq = dx * dx + dz * dz;
+
+          if (distSq < hp.r * hp.r) {
+            let nx = 0, nz = 0, pen = 0;
+            if (distSq > 1e-6) {
+              const dist = Math.sqrt(distSq);
+              nx = dx / dist;
+              nz = dz / dist;
+              pen = hp.r - dist;
+            } else {
+              const dFront = wp.z - r.minZ;
+              const dBack = r.maxZ - wp.z;
+              if (dFront < dBack) { nz = -1; pen = hp.r + dFront; }
+              else { nz = 1; pen = hp.r + dBack; }
+            }
+
+            const wallNormal = new THREE.Vector3(nx, 0, nz);
+            const ptVel = worldPointVelocity(wp, _tmpV2);
+            const vn = ptVel.dot(wallNormal);
+
+            const fWall = Math.max(0, 240000 * pen - 28000 * Math.min(0, vn));
+            const wallForce = wallNormal.multiplyScalar(fWall);
+            totalForce.add(wallForce);
+
+            const rArm = wp.clone().sub(p.pos);
+            totalTorque.add(new THREE.Vector3().crossVectors(rArm, wallForce));
+
+            p.pos.x += nx * pen * 0.45;
+            p.pos.z += nz * pen * 0.45;
+          }
+        }
+      }
+
+      // G2. Solid Cylinder Obstacle Collisions (Trees, Signposts, Windmill Pedestal)
       for (let i = 0; i < terrainObstacles.length; i++) {
         const obs = terrainObstacles[i];
         if (p.pos.y + 1.4 < obs.minY || p.pos.y - 0.8 > obs.maxY) continue;
