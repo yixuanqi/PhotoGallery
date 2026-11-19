@@ -693,7 +693,7 @@ function createSkyBackdrop(){
  const shared={uTime:{value:0},uTheme:{value:theme==='paper'?1:0}};
  skyNebulaMaterial=new THREE.ShaderMaterial({
   uniforms:shared,vertexShader:SKY_VERTEX_SHADER,fragmentShader:SKY_NEBULA_FRAGMENT_SHADER,
-  side:THREE.BackSide,transparent:true,depthTest:false,depthWrite:false,fog:false,
+  side:THREE.BackSide,transparent:true,depthTest:true,depthWrite:false,fog:false,
   blending:THREE.NormalBlending
  });
  const starUniforms={
@@ -702,7 +702,7 @@ function createSkyBackdrop(){
  };
  skyStarMaterial=new THREE.ShaderMaterial({
   uniforms:starUniforms,vertexShader:SKY_VERTEX_SHADER,fragmentShader:SKY_STARS_FRAGMENT_SHADER,
-  side:THREE.BackSide,transparent:true,depthTest:false,depthWrite:false,fog:false,
+  side:THREE.BackSide,transparent:true,depthTest:true,depthWrite:false,fog:false,
   blending:THREE.NormalBlending
  });
  const cloud=new THREE.Mesh(geometry,skyNebulaMaterial);
