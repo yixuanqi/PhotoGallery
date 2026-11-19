@@ -356,7 +356,9 @@ var PROJECTS=[
   {id:'islebound',index:'07',name:'手绘群岛漫游',en:'Islebound · A Little Flight Across the Sea',icon:'✈',category:'online',tags:['Three.js','飞行探索','手绘海洋','互动游戏'],desc:'驾驶小小的螺旋桨飞机，飞往狗狗岛、猫猫岛、灯塔岛和星星花园。沿着海岸寻找村庄、灯塔、主题小火车与可以降落的机场。',note:'可以直接在浏览器里驾驶飞机探索；这个入口会随群岛的新版本持续更新。',x:12,z:-29,y:.6,link:'../islebound/',linkText:'↗ 开始群岛之旅',source:'https://github.com/yixuanqi/PhotoGallery/blob/main/docs/islebound/index.html'},
   {id:'doudou-tank',index:'08',name:'豆豆号坦克实验室',en:'Doudou Tank · Storybook Terrain Lab',icon:'⚙',category:'online',tags:['Three.js','履带与悬挂','楼梯斜坡','3D 交互'],desc:'驾驶可爱的豆豆号小坦克，在青石阶梯、木梯跳台、风车山丘与波浪路之间自由切换。观察履带贴地、车身俯仰与负重轮行程，亲手调整弹簧、阻尼和驱动参数。',note:'采用交互式地形接触与悬挂近似模型，适合探索物理现象，并非工程级高精度求解器；后续更新仍会直接进入这个页面。',x:27,z:-23,y:1.2,link:'../doudou-tank/',linkText:'↗ 驾驶豆豆号',source:'https://github.com/yixuanqi/PhotoGallery/blob/main/docs/doudou-tank/index.html'},
   {"id":"helicopter","index":"09","name":"手绘直升机飞行实验室","en":"Sketch Helicopter · Rotor Flight Lab","icon":"🚁","category":"online","tags":["Three.js","旋翼气动","3D 飞行","双摇杆交互"],"desc":"驾驶一架圆滚滚的手绘小直升机，体验前后左右飞行、升降与机头转向。可观察旋翼叶素升力、总升力矢量、飞行轨迹和下洗气流，并探索停机坪、灯塔与空中穿环航道。","note":"浏览器直接游玩。基于叶素动量理论（BEMT）与简化六自由度控制的交互演示，并非工程级气动仿真；更新后沿用同一入口。","x":-29,"z":-29,"y":1.1,"link":"../helicopter/","linkText":"↗ 开始直升机飞行","source":"https://github.com/yixuanqi/PhotoGallery/blob/main/docs/helicopter/index.html"},
-  {"id":"excavator","index":"10","name":"豆豆挖掘机实验室","en":"Doudou Excavator · Storybook Worksite","icon":"🚜","category":"online","tags":["Three.js","可变形地形","挖掘物理","3D 交互"],"desc":"驾驶可爱的豆豆挖掘机，在金沙丘陵、粘稠泥地、绘本水塘与装车料斗之间切换。操纵大臂、小臂与铲斗，挖出会改变形状的土地，体验装土、卸土与智能平斗联动。","note":"可以直接在浏览器里体验。使用实时高度场、沙土流动与液压联动的简化交互模型，不代表工程级土体力学仿真；后续版本沿用同一个入口。","x":12,"z":30,"y":1.2,"link":"../excavator/","linkText":"↗ 开始挖掘","source":"https://github.com/yixuanqi/PhotoGallery/blob/main/docs/excavator/index.html"}
+  {"id":"excavator","index":"10","name":"豆豆挖掘机实验室","en":"Doudou Excavator · Storybook Worksite","icon":"🚜","category":"online","tags":["Three.js","可变形地形","挖掘物理","3D 交互"],"desc":"驾驶可爱的豆豆挖掘机，在金沙丘陵、粘稠泥地、绘本水塘与装车料斗之间切换。操纵大臂、小臂与铲斗，挖出会改变形状的土地，体验装土、卸土与智能平斗联动。","note":"可以直接在浏览器里体验。使用实时高度场、沙土流动与液压联动的简化交互模型，不代表工程级土体力学仿真；后续版本沿用同一个入口。","x":12,"z":30,"y":1.2,"link":"../excavator/","linkText":"↗ 开始挖掘","source":"https://github.com/yixuanqi/PhotoGallery/blob/main/docs/excavator/index.html"},
+  {id:'gravity-lens',index:'11',name:'引力透镜实验室',en:'Gravitational Lensing · GPGPU Lab',icon:'◉',category:'online',tags:['WebGL2','Three.js','GPGPU','广义相对论'],desc:'在浏览器中观察多体引力场下的测地线光线弯曲、黑洞阴影与相对论吸积盘，同时运行 GPU 粒子系综，探索双体混沌、相对论进动和三体共振。',note:'支持 65K–262K 粒子规模、时间流速与初始扰动调节，并提供 GPU 采样遥测和 Ping-Pong FBO 画中画检视；需要支持 WebGL2 的现代浏览器。',x:42,z:19,y:1,link:'../gravity-lens/',linkText:'↗ 进入引力透镜实验室',source:'https://github.com/yixuanqi/PhotoGallery/blob/main/docs/gravity-lens/index.html'}
+
 ];
 var POSTS=[
  {id:'welcome',no:'01 · 星河缘起',title:'为什么把个人主页画成一片银河？',summary:'一个项目一颗星。让作品不再只是简历上的一行文字。',paragraphs:['普通的作品集像一张排列整齐的清单。但我更喜欢手帐：它有空白、有涂改、有相互连接的线索，也允许故事继续生长。','所以这片银河并不追求天文学的严格比例。中心是好奇心，星星是一次次动手做出来的东西。能在浏览器运行的，点开就玩；需要安装的软件，找到它的下载页；尚在研究的项目，打开实验记录。','以后每做完一个项目，就点亮一颗新的星。文章也会从星际间慢慢长出来。']},
@@ -365,11 +367,13 @@ var POSTS=[
  {id:'islebound-note',no:'05 · 群岛飞行手记',title:'把一片海洋变成可以亲自飞进去的世界',summary:'从狗狗岛和猫猫岛出发，飞过海面、火车和灯塔。',paragraphs:['Islebound 是一片用 Three.js 绘制的手绘群岛。它不是静态的作品展示，而是可以驾驶小飞机穿行的互动世界。','四座岛屿各有自己的地形、村镇、动物主题元素和可以降落的机场。沿海有灯塔、轨道与小火车，探索时总会发现新的细节。','我把它接到了星海漫游的第七颗星上。以后随着小游戏不断修改，这颗星通往的仍是最新的群岛。']},
  {id:'doudou-tank-note',no:'06 · 坦克物理手记',title:'让一辆圆滚滚的小坦克翻过台阶',summary:'把履带、悬挂和地形接触变成一座可以亲手驾驶的绘本实验场。',paragraphs:['豆豆号坦克实验室是一页可以直接在浏览器打开的 3D 互动实验：同一辆小坦克，会遇到庭院石阶、高阶木梯、风车斜坡与交错原木。','除了手动驾驶和自动巡航，我还为它做了车身姿态、轮组行程和受力辅助显示。玩家可以改变悬挂刚度、阻尼、履带张力和驱动扭矩，观察不同地形下的响应。','这是一套为了探索和学习而设计的近似仿真，并不把网页演示等同于工程级履带动力学验证。第八颗星通往独立页面，以后还能继续打磨物理细节与关卡。']},
   {"id":"helicopter-note","no":"07 · 旋翼飞行手记","title":"给手绘小直升机装上一套气动模型","summary":"从叶素升力到双摇杆操纵，把旋翼动力学做成可以飞进场景的小游戏。","paragraphs":["这个直升机项目是一页独立的 Three.js 手绘互动世界：圆滚滚的机身、四片主旋翼、小小的飞行员，以及供起降的停机坪和空中圆环。","除了操纵前后左右与升降转向，还能观察总距角、主旋翼升力、离地高度和巡航速度。旋翼升力与下洗流通过简化的叶素气动计算与可视化元素呈现。","它更接近一座可玩的飞行物理实验场，而不是专业飞行训练器。第九颗星连接到独立网页，接下来可以继续丰富飞行场景、操控手感与气动细节。"]},
-  {"id":"excavator-note","no":"08 · 挖掘机工地手记","title":"给豆豆号一片能真正挖开的土地","summary":"从履带底盘、液压挖臂到可变形沙土、泥地与水塘，把手绘工地变成一座可操作的实验场。","paragraphs":["豆豆挖掘机是一页可以直接在浏览器运行的 3D 手绘工地。四个分区分别有金沙丘陵、泥地、水塘清淤和料斗装车，铲斗挖下去之后，地形会随之变化。","玩家既能驾驶履带底盘，也能用按键和滑块控制大臂、小臂、铲斗与旋转平台，还能切换智能平斗、一键铲土和一键卸土。页面同步显示铲斗装载、累计挖运量和履带悬挂等数据。","为了让过程有趣且能实时运行，它采用离散高度场、简化的土料流动与接触模型，而不是完整的工业级颗粒或液压求解器。这第十颗星，先把挖掘和装运的乐趣装进星海。"]}
+  {"id":"excavator-note","no":"08 · 挖掘机工地手记","title":"给豆豆号一片能真正挖开的土地","summary":"从履带底盘、液压挖臂到可变形沙土、泥地与水塘，把手绘工地变成一座可操作的实验场。","paragraphs":["豆豆挖掘机是一页可以直接在浏览器运行的 3D 手绘工地。四个分区分别有金沙丘陵、泥地、水塘清淤和料斗装车，铲斗挖下去之后，地形会随之变化。","玩家既能驾驶履带底盘，也能用按键和滑块控制大臂、小臂、铲斗与旋转平台，还能切换智能平斗、一键铲土和一键卸土。页面同步显示铲斗装载、累计挖运量和履带悬挂等数据。","为了让过程有趣且能实时运行，它采用离散高度场、简化的土料流动与接触模型，而不是完整的工业级颗粒或液压求解器。这第十颗星，先把挖掘和装运的乐趣装进星海。"]},
+  {id:'gravity-lens-note',no:'09 · 引力透镜与 GPGPU',title:'让光线在黑洞附近转弯，让粒子在 GPU 上演化',summary:'把广义相对论测地线可视化与大规模 GPU 粒子系综放进同一个浏览器实验室。',paragraphs:['这个项目把 3D 测地线光线步进、黑洞阴影和相对论吸积盘放在同一幅实时画面里；背景之外，还有一套独立运行的 GPU 粒子演化系统。','粒子系统通过 Ping-Pong FBO 与 RK4 积分推进状态，可以在双体混沌引力井、相对论进动与三体共振等场景之间切换。页面还会采样 GPU 状态，显示束缚、逃逸和吸积粒子的比例，以及空间弥散和混沌发散代理量。','粒子规模可以从约 6.5 万调整到 26 万，并能实时调节时间流速、初始扰动和光线步进精度。它是一座可以直接在浏览器里探索的引力与 GPU 计算实验室。']}
+
 ];
 const el=id=>document.getElementById(id),mobile=matchMedia('(max-width:640px)').matches,reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;
 let renderer,scene,camera,controls,galaxyGroup,nebulaPivot=null,nebulaMesh=null,nebulaTextures=null,nebulaLayers=[],shootingStars=[],skyNebulaMaterial=null,skyStarMaterial=null,coreHalo=null,glintPoints=null,glintColors=null,planets=[],meshes=[],labels=[],starGroups=[],orbitRings=[],planetHalos=[],dustCloud=null,lights=null,selected=-1,flight=null,paused=false,clock=0,last=0,speed=.7,started=false,theme='night',raycaster,pointer;
-const locations=[[22,1,10],[-7,1,25],[-25,2,-12],[30,1,-15],[-28,1,17],[-15,2,0],[12,2,-29],[27,1,-23],[-29,1,-29],[12,1,30]];
+const locations=[[22,1,10],[-7,1,25],[-25,2,-12],[30,1,-15],[-28,1,17],[-15,2,0],[12,2,-29],[27,1,-23],[-29,1,-29],[12,1,30],[42,1,19]];
 try{theme=localStorage.getItem('star-theme')==='paper'?'paper':'night'}catch(e){}
 document.documentElement.dataset.theme=theme;
 function setText(id,s){el(id).textContent=s}
@@ -422,7 +426,7 @@ function openArticle(post){
 function openJournal(){el('card').classList.remove('show');el('drawer').classList.remove('show');el('journal').classList.add('show');journalList()}
 function jump(i){let link=PROJECTS[i].link;if(link.startsWith('../'))window.location.href=link;else window.open(link,'_blank','noopener,noreferrer')}
 function texture(i){
- const sets=[['#b77a4c','#f3cca1','#674c40'],['#c17f5e','#ead3a1','#71533d'],['#4e8e9a','#aadbd9','#30626d'],['#827393','#c5b6d3','#554669'],['#b29c74','#f2d7aa','#736348'],['#3882a8','#b6d9c1','#68976f'],['#418ca0','#b8e5d1','#568f80'],['#ac9765','#f1d7a2','#71866a'],['#b85a49','#f2c2a0','#7e4a3d'],['#bf923b','#f7dba0','#8d743e']];
+ const sets=[['#b77a4c','#f3cca1','#674c40'],['#c17f5e','#ead3a1','#71533d'],['#4e8e9a','#aadbd9','#30626d'],['#827393','#c5b6d3','#554669'],['#b29c74','#f2d7aa','#736348'],['#3882a8','#b6d9c1','#68976f'],['#418ca0','#b8e5d1','#568f80'],['#ac9765','#f1d7a2','#71866a'],['#b85a49','#f2c2a0','#7e4a3d'],['#bf923b','#f7dba0','#8d743e'],['#596c9a','#b7b6d8','#354765']];
  let cv=document.createElement('canvas');cv.width=512;cv.height=256;let x=cv.getContext('2d'),p=sets[i],grad=x.createLinearGradient(0,0,0,256);
  grad.addColorStop(0,p[0]);grad.addColorStop(.52,p[1]);grad.addColorStop(1,p[0]);x.fillStyle=grad;x.fillRect(0,0,512,256);
  let seed=867+i*13007;function rand(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296}
@@ -904,7 +908,7 @@ function populateGalaxy(glow){
 }
 
 function populatePlanets(glow){
- const loc=locations;let colors=['#e2af77','#db8d65','#8ad5dc','#cfb2d7','#e2cd9d','#87b9d3','#8fccc1','#ecc58a','#f0a58a','#e7c97d'];
+ const loc=locations;let colors=['#e2af77','#db8d65','#8ad5dc','#cfb2d7','#e2cd9d','#87b9d3','#8fccc1','#ecc58a','#f0a58a','#e7c97d','#9b9bd3'];
  PROJECTS.forEach((p,i)=>{
   let g=new THREE.Group();g.position.set(...loc[i]);let radius=(i===0||i===5)?2.25:1.8;
   let mesh=new THREE.Mesh(new THREE.SphereGeometry(radius,42,30),new THREE.MeshStandardMaterial({map:texture(i),roughness:.89,metalness:0}));

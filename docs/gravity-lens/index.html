@@ -1,0 +1,2861 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>引力透镜与蒙特卡洛轨道演化云 · 3D 测地线光线步进 + WebGL2 GPGPU</title>
+  <!-- Tailwind CSS for responsive scientific observatory UI -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Inter & JetBrains Mono typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg-obsidian: #02040a;
+      --glass-bg: rgba(7, 11, 20, 0.74);
+      --glass-border: rgba(148, 163, 184, 0.16);
+      --glass-highlight: rgba(255, 255, 255, 0.06);
+      --accent-cyan: #38bdf8;
+      --accent-amber: #f59e0b;
+      --accent-crimson: #f43f5e;
+      --text-primary: #e2e8f0;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-obsidian);
+      color: var(--text-primary);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      user-select: none;
+    }
+
+    #webgl-container {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      cursor: grab;
+    }
+
+    #webgl-container:active {
+      cursor: grabbing;
+    }
+
+    .mono {
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .glass-panel {
+      background: var(--glass-bg);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--glass-border);
+      box-shadow:
+        0 18px 44px -12px rgba(0, 0, 0, 0.78),
+        inset 0 1px 0 0 var(--glass-highlight);
+    }
+
+    /* Sleek scientific range sliders */
+    input[type="range"].sci-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.22);
+      outline: none;
+      transition: background 0.2s ease;
+    }
+
+    input[type="range"].sci-slider:hover {
+      background: rgba(148, 163, 184, 0.34);
+    }
+
+    input[type="range"].sci-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #e2e8f0;
+      border: 2px solid var(--accent-cyan);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.55);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    input[type="range"].sci-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.16);
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.85);
+    }
+
+    input[type="range"].sci-slider::-moz-range-thumb {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #e2e8f0;
+      border: 2px solid var(--accent-cyan);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.55);
+      cursor: pointer;
+    }
+
+    /* Toggle switches */
+    .toggle-track {
+      width: 36px;
+      height: 20px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.22);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      position: relative;
+      transition: background 0.22s ease, border-color 0.22s ease;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .toggle-track[data-checked="true"] {
+      background: rgba(56, 189, 248, 0.28);
+      border-color: rgba(56, 189, 248, 0.72);
+    }
+
+    .toggle-knob {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #cbd5e1;
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), background 0.22s ease;
+    }
+
+    .toggle-track[data-checked="true"] .toggle-knob {
+      transform: translateX(16px);
+      background: #38bdf8;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.75);
+    }
+
+    /* Pill buttons */
+    .preset-btn, .scale-btn, .quality-btn {
+      transition: all 0.18s ease;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: rgba(15, 23, 42, 0.54);
+    }
+
+    .preset-btn:hover, .scale-btn:hover, .quality-btn:hover {
+      border-color: rgba(148, 163, 184, 0.38);
+      background: rgba(30, 41, 59, 0.68);
+    }
+
+    .preset-btn.active {
+      border-color: rgba(245, 158, 11, 0.65);
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(56, 189, 248, 0.10));
+      color: #fef3c7;
+      box-shadow: 0 0 18px -6px rgba(245, 158, 11, 0.45);
+    }
+
+    .scale-btn.active, .quality-btn.active {
+      border-color: rgba(56, 189, 248, 0.72);
+      background: rgba(56, 189, 248, 0.16);
+      color: #e0f2fe;
+      box-shadow: 0 0 14px -5px rgba(56, 189, 248, 0.5);
+    }
+
+    .action-btn {
+      transition: all 0.18s ease;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(15, 23, 42, 0.62);
+    }
+
+    .action-btn:hover {
+      border-color: rgba(56, 189, 248, 0.55);
+      background: rgba(30, 41, 59, 0.85);
+      color: #f8fafc;
+    }
+
+    .action-btn:active {
+      transform: scale(0.97);
+    }
+
+    .panel-scroll::-webkit-scrollbar {
+      width: 4px;
+    }
+    .panel-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .panel-scroll::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.25);
+      border-radius: 999px;
+    }
+
+    /* Live Ping-Pong FBO PiP chrome (transparent cutout windows allow direct WebGL scissor pass) */
+    .fbo-chrome {
+      background: rgba(7, 11, 20, 0.84);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+  </style>
+
+  <!-- ES Module Import Map for Three.js r164 via esm.sh -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://esm.sh/three@0.164.1",
+        "three/addons/": "https://esm.sh/three@0.164.1/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <!-- Full-Viewport WebGL2 Canvas Host -->
+  <div id="webgl-container" aria-label="3D 测地线引力透镜与 WebGL2 GPGPU 蒙特卡洛轨道演化云"></div>
+
+  <!-- Non-blocking Error Banner -->
+  <div id="webgl-error" class="hidden fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-950/90">
+    <div class="glass-panel rounded-2xl max-w-md p-6 text-center space-y-3">
+      <div class="text-rose-400 font-semibold text-base">WebGL2 初始化失败</div>
+      <p id="webgl-error-msg" class="text-xs text-slate-300 leading-relaxed"></p>
+    </div>
+  </div>
+
+  <!-- Top-Left HUD: Live GPU-Sampled Telemetry -->
+  <aside class="fixed top-3 left-3 sm:top-4 sm:left-4 z-10 w-[calc(100vw-6.5rem)] max-w-[314px] sm:max-w-[332px] pointer-events-none">
+    <div class="glass-panel rounded-2xl p-3.5 sm:p-4 pointer-events-auto">
+      <!-- Title & Live FPS -->
+      <div class="flex items-start justify-between gap-2 pb-2.5 border-b border-slate-700/40">
+        <div class="min-w-0">
+          <h1 class="text-[13.5px] sm:text-[14.5px] font-semibold tracking-wide text-slate-100 leading-snug">
+            引力透镜与蒙特卡洛轨道演化云
+          </h1>
+          <div class="flex items-center gap-1.5 mt-1">
+            <span id="gpu-status-dot" class="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.85)] shrink-0"></span>
+            <span id="gpu-status-badge" class="mono text-[9.5px] tracking-wide text-sky-300/90 truncate">
+              3D Geodesic Raymarch · Float32 FBO
+            </span>
+          </div>
+        </div>
+        <span id="fps-badge" class="mono text-[10px] px-1.5 py-0.5 rounded-md bg-slate-900/80 border border-slate-700/60 text-emerald-400 shrink-0">
+          60 FPS
+        </span>
+      </div>
+
+      <!-- GPU Specs Row -->
+      <div class="grid grid-cols-2 gap-2 pt-2.5 pb-2 border-b border-slate-700/35 text-[10.5px]">
+        <div class="rounded-lg bg-slate-950/60 border border-slate-800/80 px-2.5 py-1.5">
+          <div class="text-slate-400 text-[9.5px]">活跃粒子规模</div>
+          <div id="metric-count" class="mono text-[12.5px] font-semibold text-slate-100 mt-0.5">147,456</div>
+        </div>
+        <div class="rounded-lg bg-slate-950/60 border border-slate-800/80 px-2.5 py-1.5">
+          <div class="text-slate-400 text-[9.5px]">FBO 状态纹理</div>
+          <div id="metric-fbo-res" class="mono text-[12.5px] font-semibold text-amber-300 mt-0.5">384×384</div>
+        </div>
+      </div>
+
+      <!-- Core Physics Telemetry -->
+      <div class="grid grid-cols-2 gap-x-3 gap-y-1.5 pt-2 text-[11px]">
+        <div>
+          <div class="text-slate-400 text-[10px]">演化时间 <span class="mono text-slate-500">t</span></div>
+          <div id="metric-time" class="mono text-[13px] font-medium text-slate-100">0.00</div>
+        </div>
+        <div>
+          <div class="text-slate-400 text-[10px]">空间弥散 <span class="mono text-slate-500">σ_r(t)</span></div>
+          <div id="metric-sigma" class="mono text-[13px] font-medium text-sky-300">0.000</div>
+        </div>
+      </div>
+
+      <!-- Chaos Divergence Proxy + Live Sparkline -->
+      <div class="mt-2.5 pt-2 border-t border-slate-700/40">
+        <div class="flex items-baseline justify-between mb-1.5">
+          <span class="text-slate-400 text-[10px]">混沌发散度 <span class="mono text-slate-500">ln(δ/δ₀)</span></span>
+          <span id="metric-lyapunov" class="mono text-[12px] font-semibold text-amber-300">+0.000</span>
+        </div>
+        <div class="relative w-full h-[44px] rounded-lg bg-slate-950/75 border border-slate-800/80 overflow-hidden">
+          <canvas id="sparkline-canvas" class="w-full h-full block"></canvas>
+        </div>
+      </div>
+
+      <!-- GPU-Sampled Particle State Breakdown (32x32 Readback) -->
+      <div class="mt-2.5 pt-2 border-t border-slate-700/40">
+        <div class="flex items-center justify-between text-[10px] mb-1.5">
+          <span class="text-slate-400">系综态占比 <span class="mono text-[9px] text-slate-500">(GPU 32² 采样)</span></span>
+          <span id="metric-bodies" class="mono text-[9.5px] text-slate-400">2 致密体</span>
+        </div>
+        <div class="w-full h-1.5 rounded-full bg-slate-900/90 overflow-hidden flex mb-2">
+          <div id="bar-bound" class="h-full bg-sky-400 transition-all duration-150" style="width: 100%"></div>
+          <div id="bar-ejected" class="h-full bg-rose-500 transition-all duration-150" style="width: 0%"></div>
+          <div id="bar-accreted" class="h-full bg-amber-400 transition-all duration-150" style="width: 0%"></div>
+        </div>
+        <div class="grid grid-cols-3 gap-1 text-[10px]">
+          <div class="flex flex-col">
+            <span class="text-slate-400 flex items-center gap-1">
+              <i class="inline-block w-1.5 h-1.5 rounded-full bg-sky-400"></i>束缚
+            </span>
+            <span id="pct-bound" class="mono text-slate-200 font-medium mt-0.5">100.0%</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-slate-400 flex items-center gap-1">
+              <i class="inline-block w-1.5 h-1.5 rounded-full bg-rose-500"></i>逃逸
+            </span>
+            <span id="pct-ejected" class="mono text-slate-200 font-medium mt-0.5">0.0%</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-slate-400 flex items-center gap-1">
+              <i class="inline-block w-1.5 h-1.5 rounded-full bg-amber-400"></i>吸积
+            </span>
+            <span id="pct-accreted" class="mono text-slate-200 font-medium mt-0.5">0.0%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Top-Right HUD: Collapsible Control Panel -->
+  <aside class="fixed top-3 right-3 sm:top-4 sm:right-4 z-20 flex flex-col items-end">
+    <div id="control-panel" class="glass-panel rounded-2xl w-[288px] sm:w-[318px] max-h-[calc(100vh-1.75rem)] flex flex-col overflow-hidden transition-all duration-300">
+      <!-- Header / Collapse Button -->
+      <button
+        id="panel-toggle-btn"
+        type="button"
+        class="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-white/[0.03] transition-colors shrink-0"
+        aria-expanded="true"
+      >
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.85)]"></span>
+          <span class="text-[13px] font-medium tracking-wide text-slate-100">测地线与 GPGPU 控制台</span>
+        </div>
+        <svg id="panel-chevron" class="w-4 h-4 text-slate-400 transition-transform duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="18 15 12 9 6 15"></polyline>
+        </svg>
+      </button>
+
+      <!-- Scrollable Panel Body -->
+      <div id="panel-body" class="panel-scroll overflow-y-auto px-4 pb-4 space-y-3.5 border-t border-slate-700/40">
+        <!-- 1. Physical Scenario Presets -->
+        <div class="pt-3">
+          <div class="text-[11px] font-medium text-slate-400 mb-2 tracking-wide">天体物理场景预设</div>
+          <div class="space-y-1.5" id="preset-list">
+            <button type="button" data-preset="binary" class="preset-btn active w-full text-left px-3 py-2 rounded-xl text-[12px] font-medium text-slate-200">
+              双体混沌引力井
+              <span class="block text-[10px] font-normal text-slate-400 mt-0.5">主黑洞吸积盘 + 伴星黑洞互绕与潮汐撕裂粒子云</span>
+            </button>
+            <button type="button" data-preset="precession" class="preset-btn w-full text-left px-3 py-2 rounded-xl text-[12px] font-medium text-slate-200">
+              相对论进动与潮汐流
+              <span class="block text-[10px] font-normal text-slate-400 mt-0.5">单超大质量黑洞 1PN 玫瑰线进动与无断面吸积盘</span>
+            </button>
+            <button type="button" data-preset="lagrange" class="preset-btn w-full text-left px-3 py-2 rounded-xl text-[12px] font-medium text-slate-200">
+              三体共振与拉格朗日失稳
+              <span class="block text-[10px] font-normal text-slate-400 mt-0.5">三致密体共振微扰诱发混沌发散与三体引力透镜</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. Playback & Reset Controls -->
+        <div class="pt-2.5 border-t border-slate-700/40 space-y-2">
+          <button id="btn-pause" type="button" class="action-btn w-full py-2 px-3 rounded-xl text-[12px] font-medium text-sky-200 flex items-center justify-center gap-2">
+            <span id="pause-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            <span id="pause-label">暂停演化</span>
+          </button>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="btn-reseed" type="button" class="action-btn py-1.5 px-2.5 rounded-xl text-[11.5px] font-medium text-slate-200">
+              重置模拟
+            </button>
+            <button id="btn-reset-cam" type="button" class="action-btn py-1.5 px-2.5 rounded-xl text-[11.5px] font-medium text-slate-200">
+              视角重置
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. 3D Geodesic Raymarching & Accretion Disk Controls -->
+        <div class="space-y-3 pt-2.5 border-t border-slate-700/40">
+          <div class="text-[11px] font-medium text-amber-300/90 tracking-wide">3D 广义相对论测地线透镜</div>
+
+          <!-- Raymarching Precision Mode -->
+          <div>
+            <div class="flex items-center justify-between text-[11px] mb-1.5">
+              <span class="text-slate-300">光线步进精度</span>
+              <span id="quality-label" class="mono text-[10px] text-sky-300">108 步</span>
+            </div>
+            <div class="grid grid-cols-3 gap-1.5" id="quality-selector">
+              <button type="button" data-steps="72" data-scale="0.21" class="quality-btn py-1.5 px-1 rounded-xl text-center">
+                <span class="block text-[10.5px] font-medium">平衡</span>
+                <span class="block mono text-[9px] text-slate-400">72 步</span>
+              </button>
+              <button type="button" data-steps="108" data-scale="0.145" class="quality-btn active py-1.5 px-1 rounded-xl text-center">
+                <span class="block text-[10.5px] font-medium">高精</span>
+                <span class="block mono text-[9px] text-slate-400">108 步</span>
+              </button>
+              <button type="button" data-steps="144" data-scale="0.108" class="quality-btn py-1.5 px-1 rounded-xl text-center">
+                <span class="block text-[10.5px] font-medium">极致</span>
+                <span class="block mono text-[9px] text-slate-400">144 步</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Gravitational Lensing Strength -->
+          <div>
+            <div class="flex items-center justify-between text-[11px] mb-1">
+              <label for="slider-lensing" class="text-slate-300">引力透镜强度</label>
+              <span id="val-lensing" class="mono text-sky-300">1.00</span>
+            </div>
+            <input id="slider-lensing" class="sci-slider" type="range" min="0.0" max="2.0" step="0.05" value="1.0" />
+          </div>
+
+          <!-- Accretion Disk Inclination Angle (Real-time 360 seamless verification) -->
+          <div>
+            <div class="flex items-center justify-between text-[11px] mb-1">
+              <label for="slider-disk-tilt" class="text-slate-300">吸积盘倾角</label>
+              <span id="val-disk-tilt" class="mono text-amber-300">-6°</span>
+            </div>
+            <input id="slider-disk-tilt" class="sci-slider" type="range" min="-85" max="85" step="1" value="-6" />
+          </div>
+
+          <!-- Relativistic Doppler Beaming Strength -->
+          <div>
+            <div class="flex items-center justify-between text-[11px] mb-1">
+              <label for="slider-doppler" class="text-slate-300">多普勒聚束强度</label>
+              <span id="val-doppler" class="mono text-amber-300">1.00</span>
+            </div>
+            <input id="slider-doppler" class="sci-slider" type="range" min="0.0" max="1.8" step="0.05" value="1.0" />
+          </div>
+        </div>
+
+        <!-- 4. GPGPU Particle Scale & Integrator Controls -->
+        <div class="space-y-3 pt-2.5 border-t border-slate-700/40">
+          <div class="text-[11px] font-medium text-sky-300/90 tracking-wide">GPGPU 蒙特卡洛粒子引擎</div>
+
+          <!-- Particle Scale (FBO Resolution) -->
+          <div>
+            <div class="flex items-center justify-between text-[11px] mb-1.5">
+              <span class="text-slate-300">粒子规模 (FBO)</span>
+              <span id="scale-label" class="mono text-[10px] text-sky-300">147,456</span>
+            </div>
+            <div class="grid grid-cols-3 gap-1.5" id="scale-selector">
+              <button type="button" data-size="256" class="scale-btn py-1.5 px-1 rounded-xl text-center">
+                <span class="block mono text-[11px] font-semibold">65K</span>
+                <span class="block mono text-[9px] text-slate-400">256²</span>
+              </button>
+              <button type="button" data-size="384" class="scale-btn active py-1.5 px-1 rounded-xl text-center">
+                <span class="block mono text-[11px] font-semibold">147K</span>
+                <span class="block mono text-[9px] text-slate-400">384²</span>
+              </button>
+              <button type="button" data-size="512" class="scale-btn py-1.5 px-1 rounded-xl text-center">
+                <span class="block mono text-[11px] font-semibold">262K</span>
+                <span class="block mono text-[9px] text-slate-400">512²</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Time Speed -->
+          <div>
+            <div class="flex items-center justify-between text-[11px] mb-1">
+              <label for="slider-speed" class="text-slate-300">时间流速</label>
+              <span id="val-speed" class="mono text-slate-200">1.0x</span>
+            </div>
+            <input id="slider-speed" class="sci-slider" type="range" min="0.1" max="3.0" step="0.1" value="1.0" />
+          </div>
+
+          <!-- Initial Perturbation sigma0 -->
+          <div>
+            <div class="flex items-center justify-between text-[11px] mb-1">
+              <label for="slider-sigma" class="text-slate-300">初始相空间扰动 σ₀</label>
+              <span id="val-sigma" class="mono text-amber-300">0.040</span>
+            </div>
+            <input id="slider-sigma" class="sci-slider" type="range" min="0.005" max="0.25" step="0.005" value="0.04" />
+          </div>
+
+          <!-- Cloud Exposure -->
+          <div>
+            <div class="flex items-center justify-between text-[11px] mb-1">
+              <label for="slider-exposure" class="text-slate-300">云团曝光度</label>
+              <span id="val-exposure" class="mono text-slate-200">1.00</span>
+            </div>
+            <input id="slider-exposure" class="sci-slider" type="range" min="0.25" max="2.4" step="0.05" value="1.0" />
+          </div>
+
+          <!-- 1PN Toggle + Strength -->
+          <div class="pt-1 space-y-2">
+            <div class="flex items-center justify-between text-[11.5px]">
+              <span class="text-slate-300">1PN 广义相对论进动</span>
+              <button id="toggle-1pn" type="button" class="toggle-track" data-checked="true" role="switch" aria-checked="true" aria-label="切换 1PN 进动">
+                <span class="toggle-knob"></span>
+              </button>
+            </div>
+            <div id="pn-strength-wrap">
+              <div class="flex items-center justify-between text-[10.5px] mb-1">
+                <label for="slider-pn-strength" class="text-slate-400">1PN 进动强度</label>
+                <span id="val-pn-strength" class="mono text-amber-300">1.00</span>
+              </div>
+              <input id="slider-pn-strength" class="sci-slider" type="range" min="0.0" max="2.5" step="0.05" value="1.0" />
+            </div>
+          </div>
+
+          <!-- Visual & Inspector Toggles -->
+          <div class="space-y-2 pt-2 border-t border-slate-700/40 text-[11.5px]">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-300">相对论吸积盘</span>
+              <button id="toggle-disk" type="button" class="toggle-track" data-checked="true" role="switch" aria-checked="true" aria-label="切换吸积盘">
+                <span class="toggle-knob"></span>
+              </button>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-slate-300">参考轨道尾迹</span>
+              <button id="toggle-ref-trail" type="button" class="toggle-track" data-checked="true" role="switch" aria-checked="true" aria-label="切换参考轨道">
+                <span class="toggle-knob"></span>
+              </button>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-sky-200 font-medium">Ping-Pong FBO 实时检视</span>
+              <button id="toggle-fbo-pip" type="button" class="toggle-track" data-checked="false" role="switch" aria-checked="false" aria-label="切换 FBO 画中画检视">
+                <span class="toggle-knob"></span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Phase-Space Cloud Color Legend -->
+        <div class="pt-2 border-t border-slate-700/40">
+          <div class="flex items-center justify-between text-[9.5px] text-slate-400 mb-1">
+            <span>相干低发散</span>
+            <span>流形剪切</span>
+            <span>高混沌 / 散射</span>
+          </div>
+          <div class="w-full h-1.5 rounded-full" style="background: linear-gradient(90deg, #38bdf8 0%, #60a5fa 24%, #f59e0b 62%, #f43f5e 100%);"></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Bottom-Left Live Ping-Pong FBO Inspector PiP -->
+  <div id="fbo-inspector" class="hidden fixed bottom-12 left-3 sm:bottom-12 sm:left-4 z-15 pointer-events-auto rounded-2xl overflow-hidden border border-slate-600/40 shadow-[0_18px_40px_-10px_rgba(0,0,0,0.85)]">
+    <div class="fbo-chrome px-3 py-1.5 flex items-center justify-between gap-4 border-b border-slate-700/50">
+      <span class="text-[10.5px] font-medium text-slate-200 flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+        Ping-Pong FBO 实时状态纹理
+      </span>
+      <span id="fbo-pip-tag" class="mono text-[9.5px] text-sky-300">readIdx=0</span>
+    </div>
+
+    <div class="flex items-stretch">
+      <div class="fbo-chrome w-2 shrink-0"></div>
+      <div id="fbo-slot-pos" class="w-[116px] h-[116px] sm:w-[132px] sm:h-[132px] border border-sky-400/35 relative">
+        <span class="mono text-[8.5px] px-1 py-0.5 rounded bg-slate-950/75 text-sky-300 absolute top-1 left-1 pointer-events-none">
+          posRT
+        </span>
+      </div>
+      <div class="fbo-chrome w-2 shrink-0"></div>
+      <div id="fbo-slot-vel" class="w-[116px] h-[116px] sm:w-[132px] sm:h-[132px] border border-amber-400/35 relative">
+        <span class="mono text-[8.5px] px-1 py-0.5 rounded bg-slate-950/75 text-amber-300 absolute top-1 left-1 pointer-events-none">
+          velRT
+        </span>
+      </div>
+      <div class="fbo-chrome w-2 shrink-0"></div>
+    </div>
+
+    <div class="fbo-chrome px-3 py-1.5 grid grid-cols-2 gap-2 border-t border-slate-700/50 text-[9px] text-slate-400 mono">
+      <div class="truncate">RGB: xyz · A: state</div>
+      <div class="truncate">RGB: vxyz · A: chaos</div>
+    </div>
+  </div>
+
+  <!-- Bottom-Left Subtle Interaction Hint -->
+  <div class="fixed bottom-3 left-3 sm:bottom-4 sm:left-4 z-10 pointer-events-none hidden sm:block">
+    <div class="glass-panel rounded-xl px-3 py-1.5 text-[10.5px] text-slate-400 tracking-wide flex items-center gap-2.5">
+      <span>左键拖拽 360° 环视</span>
+      <span class="text-slate-600">·</span>
+      <span>滚轮缩放</span>
+      <span class="text-slate-600">·</span>
+      <span>右键平移</span>
+      <span class="text-slate-600">·</span>
+      <span><kbd class="mono text-slate-300 px-1 py-0.5 rounded bg-slate-800/80 border border-slate-700/70 text-[9.5px]">Space</kbd> 暂停/继续</span>
+    </div>
+  </div>
+
+  <!-- Main Three.js r164 + WebGL2 3D Geodesic Raymarching & GPGPU Simulation -->
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    /* ============================================================================
+     * 1. PHYSICAL PRESETS & CONSTANTS (Geometrized Units, G = 1)
+     * ========================================================================== */
+    const MAX_BODIES = 3;
+    const SAMPLE_SLICE_DIM = 32; // 32x32 = 1,024 particles read back every 6 frames
+    const SAMPLE_SLICE_COUNT = SAMPLE_SLICE_DIM * SAMPLE_SLICE_DIM;
+    const REF_TRAIL_LEN = 320;
+    const SOFTENING_SQ = 0.09;
+
+    const PRESETS = {
+      binary: {
+        name: '双体混沌引力井',
+        bodyCount: 2,
+        m1: 58.0, rs1: 1.55,
+        m2: 22.0, rs2: 0.92,
+        m3: 0.0,  rs3: 0.0,
+        separation: 19.5,
+        invC2: 0.0042,
+        dtBase: 0.0155,
+        diskInner: 3.15,
+        diskOuter: 9.6,
+        diskTiltDeg: -6,
+        diskRollDeg: 5,
+        nomPos: [2.2, 2.1, 18.2],
+        nomVel: [-1.96, -0.18, -0.26],
+        posNoiseScale: 6.2,
+        velNoiseScale: 1.10,
+        // Framing shows seamless Gargantua disk (front, upper back arch, lower inverted arch) + companion BH + 147K cloud
+        camPos: [-3.5, 9.2, 35.5],
+        camTarget: [-2.0, 0.0, 0.0]
+      },
+      precession: {
+        name: '相对论进动与潮汐流',
+        bodyCount: 1,
+        m1: 76.0, rs1: 1.85,
+        m2: 0.0,  rs2: 0.0,
+        m3: 0.0,  rs3: 0.0,
+        separation: 0.0,
+        invC2: 0.0072,
+        dtBase: 0.0145,
+        diskInner: 3.85,
+        diskOuter: 11.8,
+        diskTiltDeg: -7,
+        diskRollDeg: -6,
+        // Eccentric orbit around single supermassive BH -> dramatic 1PN rosette precession & spiral tidal stream
+        nomPos: [20.5, 2.2, 0.0],
+        nomVel: [0.0, -0.14, 1.24],
+        posNoiseScale: 6.8,
+        velNoiseScale: 0.88,
+        camPos: [0.0, 7.6, 33.5],
+        camTarget: [0.0, 0.0, 0.0]
+      },
+      lagrange: {
+        name: '三体共振与拉格朗日失稳',
+        bodyCount: 3,
+        m1: 62.0, rs1: 1.50,
+        m2: 7.4,  rs2: 0.72,
+        m3: 4.0,  rs3: 0.58,
+        separation: 16.0,
+        outerRadius: 28.5,
+        outerInclY: 2.8,
+        invC2: 0.0036,
+        dtBase: 0.016,
+        diskInner: 3.05,
+        diskOuter: 8.6,
+        diskTiltDeg: -8,
+        diskRollDeg: 4,
+        useL4: true,
+        posNoiseScale: 5.4,
+        velNoiseScale: 0.78,
+        camPos: [2.0, 14.5, 36.5],
+        camTarget: [0.0, 0.0, 0.0]
+      }
+    };
+
+    /* ============================================================================
+     * 2. APPLICATION STATE
+     * ========================================================================== */
+    const simState = {
+      presetKey: 'binary',
+      texSize: 384,
+      particleCount: 384 * 384,
+      paused: false,
+      time: 0,
+      timeScale: 1.0,
+      substeps: 2,
+      sigma: 0.04,
+      enable1PN: true,
+      pnStrength: 1.0,
+      lensingStrength: 1.0,
+      diskTiltDeg: -6,
+      diskRollDeg: 5,
+      dopplerStrength: 1.0,
+      maxSteps: 108,
+      stepScale: 0.145,
+      exposure: 1.0,
+      showDisk: true,
+      showRefTrail: true,
+      showFboPip: false,
+      // Telemetry derived from GPU readback
+      delta0: 0.1,
+      sigmaR0: 0.1,
+      sigmaR: 0.0,
+      logDivergence: 0.0,
+      boundPct: 100.0,
+      ejectedPct: 0.0,
+      accretedPct: 0.0,
+      sparklineHistory: [0],
+      frameCount: 0,
+      trailCounter: 0
+    };
+
+    /* ============================================================================
+     * 3. WEBGL2 CONTEXT & FLOAT32 FBO CAPABILITY VERIFICATION
+     * ========================================================================== */
+    const container = document.getElementById('webgl-container');
+    const errorBox  = document.getElementById('webgl-error');
+    const errorMsg  = document.getElementById('webgl-error-msg');
+
+    function showFatalError(msg) {
+      errorMsg.textContent = msg;
+      errorBox.classList.remove('hidden');
+    }
+
+    const renderer = new THREE.WebGLRenderer({
+      antialias: false,
+      powerPreference: 'high-performance',
+      alpha: false
+    });
+    // Cap pixel ratio at 1.75 for crisp high-DPI visuals & smooth 60 FPS raymarching
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.toneMapping = THREE.NoToneMapping; // ACES Filmic applied inside 3D raymarch shader
+    renderer.autoClear = false;
+    container.appendChild(renderer.domElement);
+
+    const gl = renderer.getContext();
+    const isWebGL2 = renderer.capabilities.isWebGL2;
+    const extFloatColor = isWebGL2 ? gl.getExtension('EXT_color_buffer_float') : null;
+    const extHalfFloatColor = isWebGL2 ? gl.getExtension('EXT_color_buffer_half_float') : null;
+
+    if (!isWebGL2) {
+      showFatalError('当前浏览器不支持 WebGL2，无法运行 3D 测地线光线步进与 GPGPU Ping-Pong FBO 引擎。请使用支持 WebGL2 的现代浏览器。');
+      throw new Error('WebGL2 unavailable');
+    }
+
+    let fboType = THREE.FloatType;
+    let fboPrecisionLabel = '3D Geodesic Raymarch · Float32 FBO';
+
+    if (extFloatColor) {
+      fboType = THREE.FloatType;
+      fboPrecisionLabel = '3D Geodesic Raymarch · Float32 FBO';
+    } else if (extHalfFloatColor) {
+      fboType = THREE.HalfFloatType;
+      fboPrecisionLabel = '3D Geodesic Raymarch · HalfFloat16 FBO';
+    } else {
+      fboType = THREE.HalfFloatType;
+      fboPrecisionLabel = '3D Geodesic Raymarch · HalfFloat16 Mode';
+    }
+
+    document.getElementById('gpu-status-badge').textContent = fboPrecisionLabel;
+    if (fboType !== THREE.FloatType) {
+      const dot = document.getElementById('gpu-status-dot');
+      dot.classList.remove('bg-sky-400');
+      dot.classList.add('bg-amber-400');
+    }
+
+    // IEEE 754 binary16 decoder for HalfFloat16 readback fallback
+    function halfToFloat(h) {
+      const s = (h & 0x8000) >> 15;
+      const e = (h & 0x7C00) >> 10;
+      const f = h & 0x03FF;
+      if (e === 0) return (s ? -1 : 1) * Math.pow(2, -14) * (f / 1024);
+      if (e === 31) return f ? NaN : (s ? -Infinity : Infinity);
+      return (s ? -1 : 1) * Math.pow(2, e - 15) * (1 + f / 1024);
+    }
+
+    /* ============================================================================
+     * 4. GLSL SHADERS
+     *    4A. Single-Pass 3D General Relativistic Geodesic Raymarching (GLSL3)
+     *    4B. Three-Time-Slice Synchronized GPU RK4 Ping-Pong FBO Integrator
+     *    4C. 100K+ Gaussian-Kernel Phase-Space Cloud Shader (Hardware Depth-Tested)
+     *    4D. Live Ping-Pong FBO Inspector PiP Shader
+     * ========================================================================== */
+
+    /**
+     * 4A-1. Fullscreen Quad Vertex Shader (GLSL ES 3.00 for RawShaderMaterial)
+     */
+    const raymarchVertexShaderGLSL3 = /* glsl */`
+      in vec3 position;
+      out vec2 vNdc;
+
+      void main() {
+        vNdc = position.xy;
+        gl_Position = vec4(position.xy, 0.0, 1.0);
+      }
+    `;
+
+    /**
+     * 4A-2. Single-Pass 3D General Relativistic Geodesic Raymarching Fragment Shader (GLSL ES 3.00)
+     *
+     * Key physical properties:
+     *  - Multi-body exact Schwarzschild null geodesic equation:
+     *      a = sum_i [ -1.5 * r_{s,i} * |d_i x v|^2 / r_i^5 * uLensStrength * d_i ]
+     *    (Without re-normalizing v, this preserves angular momentum h and reproduces
+     *     the exact 1.5 r_s photon sphere & 2.598 r_s black hole shadow!)
+     *  - 2nd-Order Midpoint (RK2) integration with adaptive step sizing & IGN jitter
+     *  - Continuous 3D equatorial plane crossing (ly0 -> ly1) for zero-seam front, upper-arch
+     *    and lower-secondary accretion disk images at any 360-degree viewing angle
+     *  - Dual-Phase Flow Advection in rotated Cartesian 2D (no atan seam anywhere!)
+     *  - Continuous Relativistic Doppler Beaming + Gravitational Redshift + Blackbody ramp
+     *  - Procedural 3D Milky Way & multi-scale starfield sampled along escaped ray direction
+     *  - Exact hardware gl_FragDepth output for seamless 3D occlusion with 100K+ particles
+     */
+    const raymarchFragmentShaderGLSL3 = /* glsl */`
+      precision highp float;
+
+      in vec2 vNdc;
+      out vec4 fragColor;
+
+      uniform mat4  uInvViewProj;
+      uniform mat4  uViewProj;
+      uniform vec3  uCamPos;
+      uniform float uTime;
+
+      uniform int   uBodyCount;
+      uniform vec3  uBodyPos[3];
+      uniform float uBodyRs[3];
+
+      uniform float uLensStrength;
+      uniform float uShowDisk;
+      uniform float uDiskInner;
+      uniform float uDiskOuter;
+      uniform vec3  uDiskRight;
+      uniform vec3  uDiskNormal;
+      uniform vec3  uDiskForward;
+      uniform float uDopplerStrength;
+
+      uniform int   uMaxSteps;
+      uniform float uStepScale;
+
+      /* ---------------- Procedural 3D Noise & Starfield ---------------- */
+      float hash31(vec3 p) {
+        p = fract(p * vec3(443.8975, 397.2973, 491.1871));
+        p += dot(p, p.yxz + 19.19);
+        return fract((p.x + p.y) * p.z);
+      }
+
+      vec3 hash33(vec3 p) {
+        p = fract(p * vec3(443.8975, 397.2973, 491.1871));
+        p += dot(p, p.yxz + 19.19);
+        return fract((p.xxy + p.yxx) * p.zyx);
+      }
+
+      // C2-continuous quintic value noise (eliminates grid creases in disk plasma)
+      float noise3D(vec3 p) {
+        vec3 i = floor(p);
+        vec3 f = fract(p);
+        vec3 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+
+        float n000 = hash31(i + vec3(0.0, 0.0, 0.0));
+        float n100 = hash31(i + vec3(1.0, 0.0, 0.0));
+        float n010 = hash31(i + vec3(0.0, 1.0, 0.0));
+        float n110 = hash31(i + vec3(1.0, 1.0, 0.0));
+        float n001 = hash31(i + vec3(0.0, 0.0, 1.0));
+        float n101 = hash31(i + vec3(1.0, 0.0, 1.0));
+        float n011 = hash31(i + vec3(0.0, 1.0, 1.0));
+        float n111 = hash31(i + vec3(1.0, 1.0, 1.0));
+
+        return mix(
+          mix(mix(n000, n100, u.x), mix(n010, n110, u.x), u.y),
+          mix(mix(n001, n101, u.x), mix(n011, n111, u.x), u.y),
+          u.z
+        );
+      }
+
+      float fbm4(vec3 p) {
+        float val = 0.0;
+        float amp = 0.52;
+        for (int i = 0; i < 4; i++) {
+          val += amp * noise3D(p);
+          p = p * 2.03 + vec3(11.3, 7.7, 19.1);
+          amp *= 0.5;
+        }
+        return val;
+      }
+
+      vec3 starColorTemp(float t) {
+        vec3 blueWhite = vec3(0.66, 0.83, 1.0);
+        vec3 pureWhite = vec3(0.98, 0.97, 0.95);
+        vec3 warmGold  = vec3(1.00, 0.84, 0.56);
+        vec3 deepAmber = vec3(1.00, 0.56, 0.34);
+        if (t < 0.35) return mix(blueWhite, pureWhite, t / 0.35);
+        if (t < 0.72) return mix(pureWhite, warmGold, (t - 0.35) / 0.37);
+        return mix(warmGold, deepAmber, (t - 0.72) / 0.28);
+      }
+
+      vec3 starLayer(vec3 dir, float scale, float densityPow, float brightness, float radius) {
+        vec3 p = dir * scale;
+        vec3 cell = floor(p);
+        vec3 f = fract(p);
+
+        vec3 rnd = hash33(cell);
+        vec3 diff = f - (0.16 + 0.68 * rnd);
+        float d2 = dot(diff, diff);
+
+        float prob = hash31(cell + 17.31);
+        float mag = pow(prob, densityPow);
+        float core = exp(-d2 / (radius * radius));
+        float halo = exp(-d2 / (radius * radius * 8.5)) * 0.22 * smoothstep(0.68, 1.0, prob);
+
+        return starColorTemp(hash31(cell + 91.7)) * (core + halo) * mag * brightness;
+      }
+
+      vec3 sampleDeepSpaceSky(vec3 dir) {
+        // Tilted galactic coordinates for Milky Way dust band
+        float c1 = 0.848, s1 = 0.530;
+        vec3 gDir = vec3(dir.x, dir.y * c1 - dir.z * s1, dir.y * s1 + dir.z * c1);
+        float c2 = 0.940, s2 = 0.341;
+        gDir = vec3(gDir.x * c2 + gDir.z * s2, gDir.y, -gDir.x * s2 + gDir.z * c2);
+
+        float galLat = abs(gDir.y);
+        float bandMask = exp(-galLat * galLat * 14.5);
+        float coreLon = smoothstep(-0.32, 0.95, gDir.z) * 0.75 + 0.25;
+
+        float nebBase = fbm4(gDir * 3.4 + vec3(1.2, -0.5, 2.4));
+        float nebFine = fbm4(gDir * 8.6 - vec3(4.1, 2.7, 1.5));
+        float dustLane = smoothstep(0.43, 0.70, fbm4(gDir * 6.2 + vec3(7.3, 1.1, 3.8)));
+        float dustMask = exp(-galLat * galLat * 54.0);
+
+        vec3 col = vec3(0.006, 0.009, 0.017);
+        vec3 indigoNeb = vec3(0.052, 0.086, 0.175) * pow(nebBase, 1.85) * (0.35 + 0.95 * bandMask);
+        vec3 ochreCore = vec3(0.24, 0.155, 0.085) * pow(nebFine, 2.15) * bandMask * coreLon;
+        vec3 paleGlow  = vec3(0.105, 0.135, 0.195) * nebBase * nebFine * bandMask;
+
+        col += (indigoNeb + ochreCore + paleGlow) * (1.0 - 0.72 * dustLane * dustMask);
+
+        float bandBoost = 1.0 + 1.15 * bandMask;
+        col += starLayer(dir,  78.0, 7.6, 2.75 * bandBoost, 0.072);
+        col += starLayer(dir, 148.0, 6.4, 1.85 * bandBoost, 0.082);
+        col += starLayer(dir, 255.0, 5.6, 1.15 * bandBoost, 0.092);
+        col += starLayer(gDir, 345.0, 4.4, 0.82 * bandMask * (1.0 - 0.6 * dustLane * dustMask), 0.108);
+
+        return col;
+      }
+
+      /* ---------------- Seamless Relativistic Accretion Disk ---------------- */
+      vec2 rot2(vec2 p, float a) {
+        float c = cos(a);
+        float s = sin(a);
+        return vec2(c * p.x - s * p.y, s * p.x + c * p.y);
+      }
+
+      // Smooth C1 blackbody temperature color ramp (zero branch jumps)
+      vec3 blackbodyColor(float t) {
+        vec3 c0 = vec3(0.40, 0.055, 0.015); // Deep ember crimson-orange
+        vec3 c1 = vec3(0.95, 0.36, 0.075);  // Warm amber-orange
+        vec3 c2 = vec3(1.00, 0.76, 0.42);   // Luminous gold
+        vec3 c3 = vec3(1.00, 0.96, 0.90);   // Incandescent cream-white
+        vec3 c4 = vec3(0.78, 0.90, 1.00);   // Doppler-boosted pale ice-blue
+        if (t < 0.45) return mix(c0, c1, smoothstep(0.10, 0.45, t));
+        if (t < 0.92) return mix(c1, c2, smoothstep(0.45, 0.92, t));
+        if (t < 1.38) return mix(c2, c3, smoothstep(0.92, 1.38, t));
+        return mix(c3, c4, smoothstep(1.38, 2.10, t));
+      }
+
+      // Evaluates accretion disk emission & optical opacity at an exact 3D equatorial crossing
+      void evalAccretionDiskHit(
+        vec3 relHit,
+        vec3 rayDirUnit,
+        out vec3 outEmission,
+        out float outAlpha
+      ) {
+        float lx = dot(relHit, uDiskRight);
+        float lz = dot(relHit, uDiskForward);
+        vec2 q = vec2(lx, lz);
+        float rHit = length(q);
+
+        if (rHit <= uDiskInner || rHit >= uDiskOuter) {
+          outEmission = vec3(0.0);
+          outAlpha = 0.0;
+          return;
+        }
+
+        float uNorm = (rHit - uDiskInner) / max(uDiskOuter - uDiskInner, 0.001);
+
+        // Smooth radial profile (soft ISCO ramp + power-law outer taper)
+        float innerEnv = smoothstep(0.0, 0.085, uNorm);
+        float outerEnv = pow(clamp(1.0 - uNorm, 0.0, 1.0), 1.65);
+        float radialEnv = innerEnv * outerEnv;
+
+        // Dual-Phase Flow Advection in rotated 2D Cartesian coordinates (zero atan seam!)
+        float rRatio = max(rHit / uDiskInner, 1.0);
+        float omega = 1.40 / pow(rRatio, 1.28);
+        float spiralWind = log(rRatio) * 5.4;
+
+        float cycle = uTime * 0.165;
+        float ph0 = fract(cycle);
+        float ph1 = fract(cycle + 0.5);
+        float w0 = 1.0 - abs(2.0 * ph0 - 1.0);
+        float w1 = 1.0 - w0;
+
+        vec2 q0 = rot2(q, -(ph0 * 5.2 * omega) + spiralWind);
+        vec2 q1 = rot2(q, -(ph1 * 5.2 * omega) + spiralWind);
+        float n0 = fbm4(vec3(q0 * 0.44, rHit * 0.52 + ph0 * 0.35));
+        float n1 = fbm4(vec3(q1 * 0.44, rHit * 0.52 + ph1 * 0.35));
+        float baseFlow = n0 * w0 + n1 * w1;
+
+        vec2 f0 = rot2(q, -(ph0 * 8.6 * omega) + spiralWind * 1.65);
+        vec2 f1 = rot2(q, -(ph1 * 8.6 * omega) + spiralWind * 1.65);
+        float fine0 = fbm4(vec3(f0 * 1.02, rHit * 1.08 - ph0 * 0.45));
+        float fine1 = fbm4(vec3(f1 * 1.02, rHit * 1.08 - ph1 * 0.45));
+        float fineFlow = fine0 * w0 + fine1 * w1;
+
+        // Seamless radial plasma rings sculpted by sheared turbulence
+        float rings = 0.62 + 0.38 * sin(rHit * 4.2 - uTime * 0.85 + baseFlow * 5.2);
+        float density = mix(0.28, 1.48, baseFlow * 0.60 + fineFlow * 0.40) * rings;
+
+        // Continuous Relativistic Doppler Beaming + Gravitational Redshift
+        vec3 phiHat = normalize(cross(uDiskNormal, relHit));
+        float rs0 = uBodyRs[0];
+        float beta = clamp(sqrt(0.5 * rs0 / max(rHit - 0.55 * rs0, 0.5 * rs0)), 0.06, 0.66);
+        float gammaInv = sqrt(1.0 - beta * beta);
+        float cosDoppler = dot(phiHat, -rayDirUnit);
+        float gravRedshift = sqrt(clamp(1.0 - rs0 / max(rHit, rs0 * 1.06), 0.20, 1.0));
+
+        float gRaw = (gammaInv / max(1.0 - beta * cosDoppler, 0.24)) * gravRedshift;
+        float g = mix(1.0, gRaw, uDopplerStrength);
+
+        // Temperature falls radially outward and shifts smoothly with Doppler factor g
+        float baseTemp = mix(1.18, 0.28, pow(uNorm, 0.62));
+        float effTemp = clamp(baseTemp * pow(g, 1.18), 0.12, 2.25);
+        vec3 col = blackbodyColor(effTemp);
+
+        float beamPower = pow(clamp(g, 0.38, 2.05), 2.75);
+        vec3 emission = col * density * radialEnv * beamPower * 1.88;
+
+        // Subtle incandescent ISCO inner edge
+        float iscoRim = exp(-uNorm * 13.5) * innerEnv * (0.65 + 0.35 * fineFlow);
+        emission += blackbodyColor(effTemp * 1.25) * iscoRim * beamPower * 0.85;
+
+        // Grazing incidence thickens optical depth smoothly
+        float cosInc = abs(dot(rayDirUnit, uDiskNormal));
+        float alpha = clamp(radialEnv * (0.42 + 0.58 * baseFlow) * (0.48 + 0.36 / (cosInc + 0.38)), 0.0, 0.92);
+
+        outEmission = emission;
+        outAlpha = alpha;
+      }
+
+      /* ---------------- Exact Multi-Body Schwarzschild Null Geodesic ---------------- */
+      vec3 evalGeodesicAccel(vec3 p, vec3 v) {
+        vec3 acc = vec3(0.0);
+        for (int i = 0; i < 3; i++) {
+          if (i >= uBodyCount) break;
+          vec3 d = p - uBodyPos[i];
+          float rs = uBodyRs[i];
+          float r2 = dot(d, d);
+          float r2Safe = max(r2, rs * rs * 0.25);
+          float invR = inversesqrt(r2Safe);
+          float invR5 = invR / (r2Safe * r2Safe);
+          vec3 h = cross(d, v);
+          float h2 = dot(h, h);
+          acc += (-1.5 * rs * h2 * invR5 * uLensStrength) * d;
+        }
+        return acc;
+      }
+
+      vec3 acesFilm(vec3 x) {
+        const float a = 2.51;
+        const float b = 0.03;
+        const float c = 2.43;
+        const float d = 0.59;
+        const float e = 0.14;
+        return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+      }
+
+      void main() {
+        // Reconstruct exact 3D world-space camera ray from NDC
+        vec4 nearW = uInvViewProj * vec4(vNdc, -1.0, 1.0);
+        vec4 farW  = uInvViewProj * vec4(vNdc,  1.0, 1.0);
+        vec3 p = uCamPos;
+        vec3 v = normalize(farW.xyz / farW.w - nearW.xyz / nearW.w);
+
+        // Interleaved Gradient Noise jitter eliminates radial step banding
+        float ign = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+
+        vec3 accumColor = vec3(0.0);
+        float transmittance = 1.0;
+        bool captured = false;
+        vec3 capturePos = p;
+
+        // Track previous signed height relative to primary black hole's accretion disk
+        vec3 relPrev = p - uBodyPos[0];
+        float lyPrev = dot(relPrev, uDiskNormal);
+
+        float escapeR = 175.0;
+
+        for (int stepIdx = 0; stepIdx < 160; stepIdx++) {
+          if (stepIdx >= uMaxSteps) break;
+          if (transmittance < 0.015) break;
+
+          // Distance & event-horizon check across all active compact bodies
+          float minClearance = 1e6;
+          float nearestRs = uBodyRs[0];
+          float primaryDist = length(relPrev);
+
+          for (int i = 0; i < 3; i++) {
+            if (i >= uBodyCount) break;
+            vec3 d = p - uBodyPos[i];
+            float r = length(d);
+            float rs = uBodyRs[i];
+            float clearance = r - rs;
+            if (clearance < minClearance) {
+              minClearance = clearance;
+              nearestRs = rs;
+            }
+          }
+
+          // Adaptive step size: fine near photon sphere & horizon, fast in far field
+          float vMag = max(length(v), 1.0);
+          float spatialStep = clamp(max(minClearance, 0.04 * nearestRs) * uStepScale, 0.028 * nearestRs, 7.5);
+
+          // Refine step slightly when gliding near the accretion disk slab
+          if (uShowDisk > 0.5 && primaryDist < uDiskOuter * 1.25) {
+            float diskStepCap = max(0.075 * uBodyRs[0], abs(lyPrev) * 0.42 + 0.065 * uBodyRs[0]);
+            spatialStep = min(spatialStep, diskStepCap);
+          }
+
+          float dt = spatialStep / vMag;
+          if (stepIdx == 0) {
+            dt *= (0.45 + 0.55 * ign);
+          }
+
+          // 2nd-Order Midpoint (RK2) Geodesic Step
+          vec3 a0 = evalGeodesicAccel(p, v);
+          vec3 pMid = p + 0.5 * dt * v;
+          vec3 vMid = v + 0.5 * dt * a0;
+          vec3 aMid = evalGeodesicAccel(pMid, vMid);
+
+          vec3 pNext = p + dt * vMid;
+          vec3 vNext = v + dt * aMid;
+
+          // 1. Check exact 3D equatorial accretion disk crossing BEFORE horizon test on pNext
+          vec3 relNext = pNext - uBodyPos[0];
+          float lyNext = dot(relNext, uDiskNormal);
+
+          if (uShowDisk > 0.5) {
+            bool crossed = ((lyPrev > 0.0 && lyNext <= 0.0) || (lyPrev < 0.0 && lyNext >= 0.0));
+            if (crossed) {
+              float denom = lyPrev - lyNext;
+              float tHit = (abs(denom) > 1e-6) ? clamp(lyPrev / denom, 0.0, 1.0) : 0.5;
+              vec3 relHit = mix(relPrev, relNext, tHit);
+              vec3 rayDirHit = normalize(mix(v, vNext, tHit));
+
+              vec3 diskEm;
+              float diskAlpha;
+              evalAccretionDiskHit(relHit, rayDirHit, diskEm, diskAlpha);
+
+              if (diskAlpha > 0.001) {
+                accumColor += transmittance * diskEm * diskAlpha;
+                transmittance *= (1.0 - diskAlpha * 0.80);
+              }
+            }
+
+            // Delicate volumetric corona halo gives edge-on views natural thickness
+            float rMidDisk = length(0.5 * (relPrev + relNext));
+            if (rMidDisk > uDiskInner * 0.92 && rMidDisk < uDiskOuter * 1.04) {
+              float lyMid = 0.5 * (lyPrev + lyNext);
+              float thickness = 0.22 * uBodyRs[0];
+              float haloVert = exp(-(lyMid * lyMid) / (thickness * thickness));
+              float uHalo = clamp((rMidDisk - uDiskInner) / max(uDiskOuter - uDiskInner, 0.001), 0.0, 1.0);
+              float haloRad = smoothstep(0.0, 0.14, uHalo) * pow(1.0 - uHalo, 2.0);
+              vec3 haloCol = mix(vec3(1.0, 0.82, 0.52), vec3(0.85, 0.38, 0.12), uHalo);
+              accumColor += transmittance * haloCol * haloVert * haloRad * spatialStep * 0.048;
+            }
+          }
+
+          // 2. Subtle volumetric photon-sphere gleam & Event Horizon capture check
+          for (int i = 0; i < 3; i++) {
+            if (i >= uBodyCount) break;
+            float rs = uBodyRs[i];
+            vec3 dNext = pNext - uBodyPos[i];
+            float rNext = length(dNext);
+
+            // Delicate grazing photon-sphere glow (1.5 r_s)
+            float rMidB = length(pMid - uBodyPos[i]);
+            float psEnv = exp(-pow((rMidB - rs * 1.50) / (rs * 0.22), 2.0));
+            vec3 psTint = (i == 0)
+              ? vec3(1.00, 0.78, 0.48)
+              : ((i == 1) ? vec3(0.45, 0.80, 1.00) : vec3(0.78, 0.62, 1.00));
+            float psStr = (i == 0) ? 0.022 : 0.055;
+            accumColor += transmittance * psTint * psEnv * (spatialStep / rs) * psStr * smoothstep(0.0, 0.35, uLensStrength);
+
+            // Exact horizon capture interpolation (r < 1.02 r_s)
+            float capR = rs * 1.02;
+            if (rNext < capR) {
+              float rPrevB = length(p - uBodyPos[i]);
+              float frac = clamp((rPrevB - capR) / max(rPrevB - rNext, 1e-5), 0.0, 1.0);
+              capturePos = mix(p, pNext, frac);
+              captured = true;
+              break;
+            }
+          }
+
+          if (captured) break;
+
+          p = pNext;
+          v = vNext;
+          relPrev = relNext;
+          lyPrev = lyNext;
+
+          // Far-field escape termination (moving outward past escape sphere)
+          float rOrigin2 = dot(p, p);
+          if (rOrigin2 > escapeR * escapeR && dot(p, v) > 0.0) {
+            break;
+          }
+        }
+
+        // If a ray exhausted steps still trapped inside the photon sphere, treat as captured
+        if (!captured) {
+          for (int i = 0; i < 3; i++) {
+            if (i >= uBodyCount) break;
+            float rNow = length(p - uBodyPos[i]);
+            if (rNow < uBodyRs[i] * 1.55) {
+              capturePos = p;
+              captured = true;
+              break;
+            }
+          }
+        }
+
+        // Write exact hardware depth + composite escaped 3D starfield
+        if (captured) {
+          vec4 clipCap = uViewProj * vec4(capturePos, 1.0);
+          gl_FragDepth = clamp(0.5 * (clipCap.z / clipCap.w) + 0.5, 0.0, 0.99998);
+        } else {
+          vec3 skyCol = sampleDeepSpaceSky(normalize(v));
+          accumColor += transmittance * skyCol;
+          gl_FragDepth = 0.99999;
+        }
+
+        // ACES Filmic Tone Mapping + subtle observatory lens vignette + sRGB encoding
+        vec3 col = acesFilm(accumColor * 1.08);
+        float vig = 1.0 - dot(vNdc * vec2(0.58, 0.52), vNdc * vec2(0.58, 0.52)) * 0.24;
+        col *= clamp(vig, 0.62, 1.0);
+        col = pow(max(col, vec3(0.0)), vec3(1.0 / 2.2));
+
+        fragColor = vec4(col, 1.0);
+      }
+    `;
+
+    /**
+     * 4B. Shared Fullscreen Quad Vertex Shader & Copy Shader (for GPGPU & FBO PiP)
+     */
+    const fullscreenVertexShader = /* glsl */`
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = vec4(position.xy, 0.0, 1.0);
+      }
+    `;
+
+    const copyFragmentShader = /* glsl */`
+      precision highp float;
+      uniform sampler2D tSource;
+      varying vec2 vUv;
+      void main() {
+        gl_FragColor = texture2D(tSource, vUv);
+      }
+    `;
+
+    /**
+     * 4B-2. Three-Time-Slice Synchronized GPU RK4 Integrator (posRT + velRT Ping-Pong FBO)
+     */
+    const rk4CoreGLSL = /* glsl */`
+      precision highp float;
+
+      uniform sampler2D tPos;
+      uniform sampler2D tVel;
+      uniform float uDt;
+      uniform vec3  uBodyPos0[3];
+      uniform vec3  uBodyPosMid[3];
+      uniform vec3  uBodyPos1[3];
+      uniform vec3  uBodyVel0[3];
+      uniform vec3  uBodyVelMid[3];
+      uniform vec3  uBodyVel1[3];
+      uniform float uBodyMass[3];
+      uniform float uBodyRs[3];
+      uniform float uEnable1PN;
+      uniform float uPNStrength;
+      uniform float uInvC2;
+
+      varying vec2 vUv;
+
+      vec3 evalAccel(vec3 p, vec3 v, vec3 bPos[3], vec3 bVel[3]) {
+        vec3 acc = vec3(0.0);
+
+        for (int i = 0; i < 3; i++) {
+          float m = uBodyMass[i];
+          if (m <= 0.0001) continue;
+
+          vec3 d = p - bPos[i];
+          float r2 = dot(d, d) + 0.09;
+          float invR = inversesqrt(r2);
+          float invR3 = invR / r2;
+          acc += (-m * invR3) * d;
+
+          // 1PN Schwarzschild General Relativistic periapsis precession on primary BH
+          if (i == 0 && uEnable1PN > 0.5 && uPNStrength > 0.001) {
+            vec3 rv = v - bVel[0];
+            vec3 L = cross(d, rv);
+            float L2 = dot(L, L);
+            float rsSafe2 = max(r2, uBodyRs[0] * uBodyRs[0] * 1.25);
+            float invRsSafe = inversesqrt(rsSafe2);
+            float f1PN = (-3.0 * m * L2 * uInvC2 * uPNStrength) * (invRsSafe / (rsSafe2 * rsSafe2));
+            acc += f1PN * d;
+          }
+        }
+        return acc;
+      }
+
+      void integrateRK4(
+        vec4 posData,
+        vec4 velData,
+        out vec4 outPos,
+        out vec4 outVel
+      ) {
+        // Keep accreted particles parked cleanly inside event horizon
+        if (posData.w < -0.5) {
+          outPos = posData;
+          outVel = vec4(0.0, 0.0, 0.0, velData.w);
+          return;
+        }
+
+        vec3 p = posData.xyz;
+        vec3 v = velData.xyz;
+        float dt = uDt;
+        float hdt = 0.5 * dt;
+
+        // Stage 1: t
+        vec3 k1_v = evalAccel(p, v, uBodyPos0, uBodyVel0);
+        vec3 k1_r = v;
+
+        // Stage 2: t + dt/2
+        vec3 p2 = p + hdt * k1_r;
+        vec3 v2 = v + hdt * k1_v;
+        vec3 k2_v = evalAccel(p2, v2, uBodyPosMid, uBodyVelMid);
+        vec3 k2_r = v2;
+
+        // Stage 3: t + dt/2
+        vec3 p3 = p + hdt * k2_r;
+        vec3 v3 = v + hdt * k2_v;
+        vec3 k3_v = evalAccel(p3, v3, uBodyPosMid, uBodyVelMid);
+        vec3 k3_r = v3;
+
+        // Stage 4: t + dt
+        vec3 p4 = p + dt * k3_r;
+        vec3 v4 = v + dt * k3_v;
+        vec3 k4_v = evalAccel(p4, v4, uBodyPos1, uBodyVel1);
+        vec3 k4_r = v4;
+
+        float s6 = dt / 6.0;
+        vec3 pNew = p + s6 * (k1_r + 2.0 * k2_r + 2.0 * k3_r + k4_r);
+        vec3 vNew = v + s6 * (k1_v + 2.0 * k2_v + 2.0 * k3_v + k4_v);
+
+        float speedSq = dot(vNew, vNew);
+        if (speedSq > 4225.0) {
+          vNew *= 65.0 * inversesqrt(speedSq);
+        }
+
+        // Accumulate finite-time tidal shear / chaos metric
+        float jerkMag = length(k4_v - k1_v) / max(dt, 1e-4);
+        float newChaos = min(velData.w + log(1.0 + jerkMag * 0.28) * dt * 0.32, 12.0);
+
+        // Event horizon capture & hyperbolic escape check at t + dt
+        float state = 0.0;
+        float pot = 0.0;
+        for (int i = 0; i < 3; i++) {
+          float m = uBodyMass[i];
+          if (m <= 0.0001) continue;
+          vec3 d1 = pNew - uBodyPos1[i];
+          float d1Sq = dot(d1, d1);
+          float capR = uBodyRs[i] * 1.03;
+          if (d1Sq < capR * capR) {
+            outPos = vec4(uBodyPos1[i], -1.0);
+            outVel = vec4(0.0, 0.0, 0.0, newChaos);
+            return;
+          }
+          pot -= m * inversesqrt(d1Sq + 0.09);
+        }
+
+        float rOrigSq = dot(pNew, pNew);
+        if (rOrigSq > 250000.0) {
+          state = 1.0;
+        } else if (rOrigSq > 950.0) {
+          float energy = 0.5 * dot(vNew, vNew) + pot;
+          if (energy > 0.02) {
+            state = 1.0;
+          }
+        }
+
+        outPos = vec4(pNew, state);
+        outVel = vec4(vNew, newChaos);
+      }
+    `;
+
+    const gpgpuPosFragmentShader = /* glsl */`
+      ${rk4CoreGLSL}
+      void main() {
+        vec4 posData = texture2D(tPos, vUv);
+        vec4 velData = texture2D(tVel, vUv);
+        vec4 outPos, outVel;
+        integrateRK4(posData, velData, outPos, outVel);
+        gl_FragColor = outPos;
+      }
+    `;
+
+    const gpgpuVelFragmentShader = /* glsl */`
+      ${rk4CoreGLSL}
+      void main() {
+        vec4 posData = texture2D(tPos, vUv);
+        vec4 velData = texture2D(tVel, vUv);
+        vec4 outPos, outVel;
+        integrateRK4(posData, velData, outPos, outVel);
+        gl_FragColor = outVel;
+      }
+    `;
+
+    /**
+     * 4C. 100K+ Gaussian-Kernel Phase-Space Cloud Shaders
+     * Rendered directly with depthTest: true, depthWrite: false, AdditiveBlending
+     * against the exact gl_FragDepth written by the 3D Geodesic Raymarcher!
+     */
+    const cloudVertexShader = /* glsl */`
+      attribute vec2 aTexCoord;
+      attribute float aSeed;
+
+      uniform sampler2D tPos;
+      uniform sampler2D tVel;
+      uniform vec3  uRefPos;
+      uniform float uRefAlive;
+      uniform float uDivNormScale;
+      uniform float uPixelRatio;
+
+      varying float vDivergence;
+      varying float vSpeed;
+      varying float vAlpha;
+      varying float vEscaped;
+
+      void main() {
+        vec4 posData = texture2D(tPos, aTexCoord);
+
+        // Discard accreted particles cleanly
+        if (posData.w < -0.5) {
+          gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+          gl_PointSize = 0.0;
+          return;
+        }
+
+        vec3 worldPos = posData.xyz;
+        vec4 velData = texture2D(tVel, aTexCoord);
+        float speed = length(velData.xyz);
+        float speedNorm = clamp(speed / 6.2, 0.0, 1.0);
+
+        float distRef = (uRefAlive > 0.5) ? length(worldPos - uRefPos) : length(worldPos);
+        float spatialDiv = log(1.0 + (distRef / max(uDivNormScale, 1.0)) * 4.2) / 2.3;
+        float shearDiv   = clamp(velData.w / 3.4, 0.0, 1.0);
+        float divMix     = clamp(spatialDiv * 0.65 + shearDiv * 0.52, 0.0, 1.0);
+
+        float escaped = step(0.5, posData.w);
+        divMix = max(divMix, escaped * 0.86);
+
+        float rOrig = length(worldPos);
+        float farFade = (escaped > 0.5)
+          ? clamp(1.0 - (rOrig - 34.0) / 140.0, 0.14, 1.0)
+          : 1.0;
+
+        vec4 mvPos = viewMatrix * vec4(worldPos, 1.0);
+        gl_Position = projectionMatrix * mvPos;
+
+        vDivergence = divMix;
+        vSpeed = speedNorm;
+        vAlpha = farFade * (0.85 + 0.30 * aSeed);
+        vEscaped = escaped;
+
+        float distCam = max(-mvPos.z, 1.0);
+        float chaosScale = mix(1.06, 0.84, divMix);
+        float rawSize = (98.0 * chaosScale * uPixelRatio) / distCam;
+        gl_PointSize = clamp(rawSize, 1.35 * uPixelRatio, 12.5 * uPixelRatio);
+      }
+    `;
+
+    const cloudFragmentShader = /* glsl */`
+      precision highp float;
+
+      uniform float uBaseAlpha;
+
+      varying float vDivergence;
+      varying float vSpeed;
+      varying float vAlpha;
+      varying float vEscaped;
+
+      void main() {
+        vec2 c = (gl_PointCoord - 0.5) * 2.0;
+        float r2 = dot(c, c);
+        if (r2 > 1.0) discard;
+
+        // Smooth Gaussian density kernel for volumetric phase-space caustics
+        float kernel = exp(-r2 * 5.2);
+
+        vec3 colCoherent = vec3(0.22, 0.74, 0.97); // #38bdf8
+        vec3 colTidal    = vec3(0.96, 0.62, 0.05); // #f59e0b
+        vec3 colChaos    = vec3(0.96, 0.25, 0.37); // #f43f5e
+
+        float d = clamp(vDivergence, 0.0, 1.0);
+        vec3 col = (d < 0.5)
+          ? mix(colCoherent, colTidal, d * 2.0)
+          : mix(colTidal, colChaos, (d - 0.5) * 2.0);
+
+        col = mix(col, vec3(1.0, 0.93, 0.82), clamp(vSpeed * 0.34, 0.0, 0.40));
+        if (vEscaped > 0.5) {
+          col = mix(col, vec3(0.98, 0.26, 0.52), 0.32);
+        }
+
+        float energy = kernel * uBaseAlpha * vAlpha * (0.72 + 0.62 * vSpeed);
+        gl_FragColor = vec4(col * energy, energy);
+      }
+    `;
+
+    /**
+     * 4D. Live Ping-Pong FBO Inspector Visualization Shader
+     */
+    const fboInspectFragmentShader = /* glsl */`
+      precision highp float;
+      uniform sampler2D tFbo;
+      uniform float uMode;
+      varying vec2 vUv;
+
+      vec3 softSignMap(vec3 v, float scale) {
+        vec3 x = v / scale;
+        return 0.5 + 0.5 * (x / (1.0 + abs(x)));
+      }
+
+      void main() {
+        vec4 d = texture2D(tFbo, vUv);
+        vec3 col;
+        if (uMode < 0.5) {
+          col = softSignMap(d.xyz, 18.0);
+          if (d.w < -0.5) col = vec3(0.08, 0.02, 0.04);
+          else if (d.w > 0.5) col = mix(col, vec3(1.0, 0.25, 0.45), 0.35);
+        } else {
+          col = softSignMap(d.xyz, 3.2);
+          float chaos = clamp(d.w / 4.5, 0.0, 1.0);
+          col = mix(col, vec3(1.0, 0.72, 0.18), chaos * 0.42);
+        }
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `;
+
+    /* ============================================================================
+     * 5. SCENES, CAMERAS, SINGLE-PASS 3D RAYMARCHER & GPGPU PIPELINE
+     * ========================================================================== */
+    const raymarchScene = new THREE.Scene();
+    const cloudScene    = new THREE.Scene();
+    const gpgpuScene    = new THREE.Scene();
+    const inspectScene  = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1600);
+    camera.position.set(-3.5, 9.2, 35.5);
+    const orthoCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.minDistance = 7.5;
+    controls.maxDistance = 160.0;
+    controls.rotateSpeed = 0.72;
+    controls.zoomSpeed = 0.9;
+
+    const quadGeo = new THREE.PlaneGeometry(2, 2);
+
+    function makeBodyVec3Array() {
+      return [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+    }
+
+    /* --------------------------------------------------------------------------
+     * 5A. Single-Pass 3D Geodesic Raymarching Material (RawShaderMaterial GLSL3)
+     * ------------------------------------------------------------------------ */
+    const raymarchUniforms = {
+      uInvViewProj:     { value: new THREE.Matrix4() },
+      uViewProj:        { value: new THREE.Matrix4() },
+      uCamPos:          { value: new THREE.Vector3() },
+      uTime:            { value: 0.0 },
+      uBodyCount:       { value: 2 },
+      uBodyPos:         { value: makeBodyVec3Array() },
+      uBodyRs:          { value: [1.55, 0.92, 0.0] },
+      uLensStrength:    { value: simState.lensingStrength },
+      uShowDisk:        { value: 1.0 },
+      uDiskInner:       { value: 3.15 },
+      uDiskOuter:       { value: 9.6 },
+      uDiskRight:       { value: new THREE.Vector3(1, 0, 0) },
+      uDiskNormal:      { value: new THREE.Vector3(0, 1, 0) },
+      uDiskForward:     { value: new THREE.Vector3(0, 0, 1) },
+      uDopplerStrength: { value: simState.dopplerStrength },
+      uMaxSteps:        { value: simState.maxSteps },
+      uStepScale:       { value: simState.stepScale }
+    };
+
+    const raymarchMaterial = new THREE.RawShaderMaterial({
+      glslVersion: THREE.GLSL3,
+      uniforms: raymarchUniforms,
+      vertexShader: raymarchVertexShaderGLSL3,
+      fragmentShader: raymarchFragmentShaderGLSL3,
+      depthTest: false,
+      depthWrite: true
+    });
+
+    const raymarchQuad = new THREE.Mesh(quadGeo, raymarchMaterial);
+    raymarchQuad.frustumCulled = false;
+    raymarchScene.add(raymarchQuad);
+
+    const _diskQuat = new THREE.Quaternion();
+    const _diskEuler = new THREE.Euler();
+
+    function updateDiskBasis() {
+      const tiltRad = THREE.MathUtils.degToRad(simState.diskTiltDeg);
+      const rollRad = THREE.MathUtils.degToRad(simState.diskRollDeg);
+      _diskEuler.set(tiltRad, 0, rollRad, 'XYZ');
+      _diskQuat.setFromEuler(_diskEuler);
+      raymarchUniforms.uDiskRight.value.set(1, 0, 0).applyQuaternion(_diskQuat).normalize();
+      raymarchUniforms.uDiskNormal.value.set(0, 1, 0).applyQuaternion(_diskQuat).normalize();
+      raymarchUniforms.uDiskForward.value.set(0, 0, 1).applyQuaternion(_diskQuat).normalize();
+    }
+
+    /* --------------------------------------------------------------------------
+     * 5B. GPGPU Ping-Pong FBO Materials & Buffers
+     * ------------------------------------------------------------------------ */
+    const gpgpuSharedUniforms = {
+      tPos:        { value: null },
+      tVel:        { value: null },
+      uDt:         { value: 0.008 },
+      uBodyPos0:   { value: makeBodyVec3Array() },
+      uBodyPosMid: { value: makeBodyVec3Array() },
+      uBodyPos1:   { value: makeBodyVec3Array() },
+      uBodyVel0:   { value: makeBodyVec3Array() },
+      uBodyVelMid: { value: makeBodyVec3Array() },
+      uBodyVel1:   { value: makeBodyVec3Array() },
+      uBodyMass:   { value: [58.0, 22.0, 0.0] },
+      uBodyRs:     { value: [1.55, 0.92, 0.0] },
+      uEnable1PN:  { value: 1.0 },
+      uPNStrength: { value: 1.0 },
+      uInvC2:      { value: 0.0042 }
+    };
+
+    const gpgpuPosMat = new THREE.ShaderMaterial({
+      uniforms: gpgpuSharedUniforms,
+      vertexShader: fullscreenVertexShader,
+      fragmentShader: gpgpuPosFragmentShader,
+      depthTest: false,
+      depthWrite: false
+    });
+
+    const gpgpuVelMat = new THREE.ShaderMaterial({
+      uniforms: gpgpuSharedUniforms,
+      vertexShader: fullscreenVertexShader,
+      fragmentShader: gpgpuVelFragmentShader,
+      depthTest: false,
+      depthWrite: false
+    });
+
+    const copyMat = new THREE.ShaderMaterial({
+      uniforms: { tSource: { value: null } },
+      vertexShader: fullscreenVertexShader,
+      fragmentShader: copyFragmentShader,
+      depthTest: false,
+      depthWrite: false
+    });
+
+    const gpgpuQuad = new THREE.Mesh(quadGeo, gpgpuPosMat);
+    gpgpuScene.add(gpgpuQuad);
+
+    let posRT = [null, null];
+    let velRT = [null, null];
+    let readIdx = 0;
+    let writeIdx = 1;
+
+    function createGpgpuFBO(size) {
+      return new THREE.WebGLRenderTarget(size, size, {
+        minFilter: THREE.NearestFilter,
+        magFilter: THREE.NearestFilter,
+        wrapS: THREE.ClampToEdgeWrapping,
+        wrapT: THREE.ClampToEdgeWrapping,
+        format: THREE.RGBAFormat,
+        type: fboType,
+        depthBuffer: false,
+        stencilBuffer: false,
+        generateMipmaps: false
+      });
+    }
+
+    // Live FBO Inspector Quad
+    const inspectUniforms = {
+      tFbo:  { value: null },
+      uMode: { value: 0.0 }
+    };
+    const inspectMat = new THREE.ShaderMaterial({
+      uniforms: inspectUniforms,
+      vertexShader: fullscreenVertexShader,
+      fragmentShader: fboInspectFragmentShader,
+      depthTest: false,
+      depthWrite: false
+    });
+    inspectScene.add(new THREE.Mesh(quadGeo, inspectMat));
+
+    /* --------------------------------------------------------------------------
+     * 5C. 100K+ GPU Particle Cloud Mesh (Hardware Depth-Tested against Raymarcher)
+     * ------------------------------------------------------------------------ */
+    const cloudUniforms = {
+      tPos:          { value: null },
+      tVel:          { value: null },
+      uRefPos:       { value: new THREE.Vector3() },
+      uRefAlive:     { value: 1.0 },
+      uDivNormScale: { value: 5.0 },
+      uPixelRatio:   { value: renderer.getPixelRatio() },
+      uBaseAlpha:    { value: 0.048 }
+    };
+
+    const cloudMaterial = new THREE.ShaderMaterial({
+      uniforms: cloudUniforms,
+      vertexShader: cloudVertexShader,
+      fragmentShader: cloudFragmentShader,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthTest: true,
+      depthWrite: false
+    });
+
+    let cloudGeometry = null;
+    let cloudPoints = null;
+
+    function updateCloudBaseAlpha() {
+      const n = simState.particleCount;
+      cloudUniforms.uBaseAlpha.value = simState.exposure * (18.5 / Math.sqrt(n));
+    }
+
+    function allocateGpgpuResources(texSize) {
+      // Dispose existing Ping-Pong FBOs cleanly
+      for (let i = 0; i < 2; i++) {
+        if (posRT[i]) { posRT[i].dispose(); posRT[i] = null; }
+        if (velRT[i]) { velRT[i].dispose(); velRT[i] = null; }
+      }
+
+      // Dispose existing particle geometry cleanly
+      if (cloudPoints) {
+        cloudScene.remove(cloudPoints);
+        cloudPoints = null;
+      }
+      if (cloudGeometry) {
+        cloudGeometry.dispose();
+        cloudGeometry = null;
+      }
+
+      simState.texSize = texSize;
+      simState.particleCount = texSize * texSize;
+      readIdx = 0;
+      writeIdx = 1;
+
+      posRT[0] = createGpgpuFBO(texSize);
+      posRT[1] = createGpgpuFBO(texSize);
+      velRT[0] = createGpgpuFBO(texSize);
+      velRT[1] = createGpgpuFBO(texSize);
+
+      const N = simState.particleCount;
+      const dummyPos = new Float32Array(N * 3);
+      const texCoords = new Float32Array(N * 2);
+      const seeds = new Float32Array(N);
+
+      let p2 = 0;
+      for (let y = 0; y < texSize; y++) {
+        const v = (y + 0.5) / texSize;
+        for (let x = 0; x < texSize; x++) {
+          const u = (x + 0.5) / texSize;
+          texCoords[p2]     = u;
+          texCoords[p2 + 1] = v;
+          seeds[p2 >> 1]    = Math.random();
+          p2 += 2;
+        }
+      }
+
+      cloudGeometry = new THREE.BufferGeometry();
+      cloudGeometry.setAttribute('position', new THREE.BufferAttribute(dummyPos, 3));
+      cloudGeometry.setAttribute('aTexCoord', new THREE.BufferAttribute(texCoords, 2));
+      cloudGeometry.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 1));
+      cloudGeometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1000);
+
+      cloudPoints = new THREE.Points(cloudGeometry, cloudMaterial);
+      cloudPoints.frustumCulled = false;
+      cloudScene.add(cloudPoints);
+
+      updateCloudBaseAlpha();
+
+      const formattedN = N.toLocaleString('en-US');
+      document.getElementById('metric-count').textContent = formattedN;
+      document.getElementById('metric-fbo-res').textContent = `${texSize}×${texSize}`;
+      document.getElementById('scale-label').textContent = formattedN;
+    }
+
+    /* --------------------------------------------------------------------------
+     * 5D. Unperturbed Reference Orbit Ribbon (Hardware Depth-Tested)
+     * ------------------------------------------------------------------------ */
+    const refSegCount = REF_TRAIL_LEN - 1;
+    const refLinePositions = new Float32Array(refSegCount * 2 * 3);
+    const refLineColors    = new Float32Array(refSegCount * 2 * 3);
+    const refLineGeo = new THREE.BufferGeometry();
+    refLineGeo.setAttribute('position', new THREE.BufferAttribute(refLinePositions, 3));
+    refLineGeo.setAttribute('color', new THREE.BufferAttribute(refLineColors, 3));
+    refLineGeo.setDrawRange(0, 0);
+
+    const refLineMesh = new THREE.LineSegments(
+      refLineGeo,
+      new THREE.LineBasicMaterial({
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.78,
+        blending: THREE.AdditiveBlending,
+        depthTest: true,
+        depthWrite: false
+      })
+    );
+    refLineMesh.frustumCulled = false;
+    cloudScene.add(refLineMesh);
+
+    /* ============================================================================
+     * 6. CPU FLOAT64 N-BODY RK4 INTEGRATOR & REFERENCE ORBIT
+     * ========================================================================== */
+    const bodies = Array.from({ length: MAX_BODIES }, () => ({
+      mass: 0, rs: 0,
+      x: 0, y: 0, z: 0,
+      vx: 0, vy: 0, vz: 0
+    }));
+
+    const slicePos0   = Array.from({ length: MAX_BODIES }, () => new Float64Array(3));
+    const slicePosMid = Array.from({ length: MAX_BODIES }, () => new Float64Array(3));
+    const slicePos1   = Array.from({ length: MAX_BODIES }, () => new Float64Array(3));
+    const sliceVel0   = Array.from({ length: MAX_BODIES }, () => new Float64Array(3));
+    const sliceVelMid = Array.from({ length: MAX_BODIES }, () => new Float64Array(3));
+    const sliceVel1   = Array.from({ length: MAX_BODIES }, () => new Float64Array(3));
+
+    const refOrbit = {
+      x: 0, y: 0, z: 0,
+      vx: 0, vy: 0, vz: 0,
+      alive: true,
+      history: []
+    };
+
+    const _px = new Float64Array(3), _py = new Float64Array(3), _pz = new Float64Array(3);
+    const _vx = new Float64Array(3), _vy = new Float64Array(3), _vz = new Float64Array(3);
+    const _k1x = new Float64Array(3), _k1y = new Float64Array(3), _k1z = new Float64Array(3);
+    const _k1vx = new Float64Array(3), _k1vy = new Float64Array(3), _k1vz = new Float64Array(3);
+    const _k2x = new Float64Array(3), _k2y = new Float64Array(3), _k2z = new Float64Array(3);
+    const _k2vx = new Float64Array(3), _k2vy = new Float64Array(3), _k2vz = new Float64Array(3);
+    const _k3x = new Float64Array(3), _k3y = new Float64Array(3), _k3z = new Float64Array(3);
+    const _k3vx = new Float64Array(3), _k3vy = new Float64Array(3), _k3vz = new Float64Array(3);
+    const _k4x = new Float64Array(3), _k4y = new Float64Array(3), _k4z = new Float64Array(3);
+    const _k4vx = new Float64Array(3), _k4vy = new Float64Array(3), _k4vz = new Float64Array(3);
+    const _pTmp = new Float64Array(9), _vTmp = new Float64Array(9);
+
+    function computeMutualNBodyAccel(px, py, pz, outAx, outAy, outAz) {
+      for (let i = 0; i < MAX_BODIES; i++) {
+        outAx[i] = 0; outAy[i] = 0; outAz[i] = 0;
+        if (bodies[i].mass <= 0) continue;
+        for (let j = 0; j < MAX_BODIES; j++) {
+          if (i === j || bodies[j].mass <= 0) continue;
+          const dx = px[j] - px[i];
+          const dy = py[j] - py[i];
+          const dz = pz[j] - pz[i];
+          const r2 = dx * dx + dy * dy + dz * dz + 0.04;
+          const invR3 = bodies[j].mass / (r2 * Math.sqrt(r2));
+          outAx[i] += dx * invR3;
+          outAy[i] += dy * invR3;
+          outAz[i] += dz * invR3;
+        }
+      }
+    }
+
+    function stepMassiveBodiesRK4(dt) {
+      const hdt = dt * 0.5;
+
+      for (let i = 0; i < MAX_BODIES; i++) {
+        _px[i] = bodies[i].x; _py[i] = bodies[i].y; _pz[i] = bodies[i].z;
+        _vx[i] = bodies[i].vx; _vy[i] = bodies[i].vy; _vz[i] = bodies[i].vz;
+        slicePos0[i][0] = _px[i]; slicePos0[i][1] = _py[i]; slicePos0[i][2] = _pz[i];
+        sliceVel0[i][0] = _vx[i]; sliceVel0[i][1] = _vy[i]; sliceVel0[i][2] = _vz[i];
+        _k1x[i] = _vx[i]; _k1y[i] = _vy[i]; _k1z[i] = _vz[i];
+      }
+      computeMutualNBodyAccel(_px, _py, _pz, _k1vx, _k1vy, _k1vz);
+
+      // Stage 2 (t + dt/2)
+      const p2x = _pTmp.subarray(0, 3), p2y = _pTmp.subarray(3, 6), p2z = _pTmp.subarray(6, 9);
+      const v2x = _vTmp.subarray(0, 3), v2y = _vTmp.subarray(3, 6), v2z = _vTmp.subarray(6, 9);
+      for (let i = 0; i < MAX_BODIES; i++) {
+        p2x[i] = _px[i] + hdt * _k1x[i]; p2y[i] = _py[i] + hdt * _k1y[i]; p2z[i] = _pz[i] + hdt * _k1z[i];
+        v2x[i] = _vx[i] + hdt * _k1vx[i]; v2y[i] = _vy[i] + hdt * _k1vy[i]; v2z[i] = _vz[i] + hdt * _k1vz[i];
+        _k2x[i] = v2x[i]; _k2y[i] = v2y[i]; _k2z[i] = v2z[i];
+      }
+      computeMutualNBodyAccel(p2x, p2y, p2z, _k2vx, _k2vy, _k2vz);
+
+      // Stage 3 (t + dt/2)
+      const p3x = new Float64Array(3), p3y = new Float64Array(3), p3z = new Float64Array(3);
+      const v3x = new Float64Array(3), v3y = new Float64Array(3), v3z = new Float64Array(3);
+      for (let i = 0; i < MAX_BODIES; i++) {
+        p3x[i] = _px[i] + hdt * _k2x[i]; p3y[i] = _py[i] + hdt * _k2y[i]; p3z[i] = _pz[i] + hdt * _k2z[i];
+        v3x[i] = _vx[i] + hdt * _k2vx[i]; v3y[i] = _vy[i] + hdt * _k2vy[i]; v3z[i] = _vz[i] + hdt * _k2vz[i];
+        _k3x[i] = v3x[i]; _k3y[i] = v3y[i]; _k3z[i] = v3z[i];
+
+        slicePosMid[i][0] = 0.5 * (p2x[i] + p3x[i]);
+        slicePosMid[i][1] = 0.5 * (p2y[i] + p3y[i]);
+        slicePosMid[i][2] = 0.5 * (p2z[i] + p3z[i]);
+        sliceVelMid[i][0] = 0.5 * (v2x[i] + v3x[i]);
+        sliceVelMid[i][1] = 0.5 * (v2y[i] + v3y[i]);
+        sliceVelMid[i][2] = 0.5 * (v2z[i] + v3z[i]);
+      }
+      computeMutualNBodyAccel(p3x, p3y, p3z, _k3vx, _k3vy, _k3vz);
+
+      // Stage 4 (t + dt)
+      for (let i = 0; i < MAX_BODIES; i++) {
+        p2x[i] = _px[i] + dt * _k3x[i]; p2y[i] = _py[i] + dt * _k3y[i]; p2z[i] = _pz[i] + dt * _k3z[i];
+        v2x[i] = _vx[i] + dt * _k3vx[i]; v2y[i] = _vy[i] + dt * _k3vy[i]; v2z[i] = _vz[i] + dt * _k3vz[i];
+        _k4x[i] = v2x[i]; _k4y[i] = v2y[i]; _k4z[i] = v2z[i];
+      }
+      computeMutualNBodyAccel(p2x, p2y, p2z, _k4vx, _k4vy, _k4vz);
+
+      const s6 = dt / 6.0;
+      for (let i = 0; i < MAX_BODIES; i++) {
+        if (bodies[i].mass > 0) {
+          bodies[i].x  += s6 * (_k1x[i]  + 2 * _k2x[i]  + 2 * _k3x[i]  + _k4x[i]);
+          bodies[i].y  += s6 * (_k1y[i]  + 2 * _k2y[i]  + 2 * _k3y[i]  + _k4y[i]);
+          bodies[i].z  += s6 * (_k1z[i]  + 2 * _k2z[i]  + 2 * _k3z[i]  + _k4z[i]);
+          bodies[i].vx += s6 * (_k1vx[i] + 2 * _k2vx[i] + 2 * _k3vx[i] + _k4vx[i]);
+          bodies[i].vy += s6 * (_k1vy[i] + 2 * _k2vy[i] + 2 * _k3vy[i] + _k4vy[i]);
+          bodies[i].vz += s6 * (_k1vz[i] + 2 * _k2vz[i] + 2 * _k3vz[i] + _k4vz[i]);
+        }
+        slicePos1[i][0] = bodies[i].x; slicePos1[i][1] = bodies[i].y; slicePos1[i][2] = bodies[i].z;
+        sliceVel1[i][0] = bodies[i].vx; sliceVel1[i][1] = bodies[i].vy; sliceVel1[i][2] = bodies[i].vz;
+      }
+    }
+
+    const _refAcc = new Float64Array(3);
+
+    function evalRefAccel(x, y, z, vx, vy, vz, bPosSlice, bVelSlice, use1PN, pnStrength, invC2, out) {
+      let ax = 0, ay = 0, az = 0;
+      for (let i = 0; i < MAX_BODIES; i++) {
+        const m = bodies[i].mass;
+        if (m <= 0) continue;
+        const dx = x - bPosSlice[i][0];
+        const dy = y - bPosSlice[i][1];
+        const dz = z - bPosSlice[i][2];
+        const r2 = dx * dx + dy * dy + dz * dz + SOFTENING_SQ;
+        const invR = 1.0 / Math.sqrt(r2);
+        const f = -m * invR / r2;
+        ax += f * dx; ay += f * dy; az += f * dz;
+
+        if (i === 0 && use1PN && pnStrength > 0.001) {
+          const rvx = vx - bVelSlice[0][0];
+          const rvy = vy - bVelSlice[0][1];
+          const rvz = vz - bVelSlice[0][2];
+          const lx = dy * rvz - dz * rvy;
+          const ly = dz * rvx - dx * rvz;
+          const lz = dx * rvy - dy * rvx;
+          const L2 = lx * lx + ly * ly + lz * lz;
+          const rsSafe2 = Math.max(r2, bodies[0].rs * bodies[0].rs * 1.25);
+          const f1PN = (-3.0 * m * L2 * invC2 * pnStrength) / (rsSafe2 * rsSafe2 * Math.sqrt(rsSafe2));
+          ax += f1PN * dx; ay += f1PN * dy; az += f1PN * dz;
+        }
+      }
+      out[0] = ax; out[1] = ay; out[2] = az;
+    }
+
+    function stepRefOrbitRK4(dt, use1PN, pnStrength, invC2) {
+      if (!refOrbit.alive) return;
+      const hdt = dt * 0.5;
+      const { x, y, z, vx, vy, vz } = refOrbit;
+
+      evalRefAccel(x, y, z, vx, vy, vz, slicePos0, sliceVel0, use1PN, pnStrength, invC2, _refAcc);
+      const k1vx = _refAcc[0], k1vy = _refAcc[1], k1vz = _refAcc[2];
+      const k1x = vx, k1y = vy, k1z = vz;
+
+      const x2 = x + hdt * k1x, y2 = y + hdt * k1y, z2 = z + hdt * k1z;
+      const vx2 = vx + hdt * k1vx, vy2 = vy + hdt * k1vy, vz2 = vz + hdt * k1vz;
+      evalRefAccel(x2, y2, z2, vx2, vy2, vz2, slicePosMid, sliceVelMid, use1PN, pnStrength, invC2, _refAcc);
+      const k2vx = _refAcc[0], k2vy = _refAcc[1], k2vz = _refAcc[2];
+      const k2x = vx2, k2y = vy2, k2z = vz2;
+
+      const x3 = x + hdt * k2x, y3 = y + hdt * k2y, z3 = z + hdt * k2z;
+      const vx3 = vx + hdt * k2vx, vy3 = vy + hdt * k2vy, vz3 = vz + hdt * k2vz;
+      evalRefAccel(x3, y3, z3, vx3, vy3, vz3, slicePosMid, sliceVelMid, use1PN, pnStrength, invC2, _refAcc);
+      const k3vx = _refAcc[0], k3vy = _refAcc[1], k3vz = _refAcc[2];
+      const k3x = vx3, k3y = vy3, k3z = vz3;
+
+      const x4 = x + dt * k3x, y4 = y + dt * k3y, z4 = z + dt * k3z;
+      const vx4 = vx + dt * k3vx, vy4 = vy + dt * k3vy, vz4 = vz + dt * k3vz;
+      evalRefAccel(x4, y4, z4, vx4, vy4, vz4, slicePos1, sliceVel1, use1PN, pnStrength, invC2, _refAcc);
+      const k4vx = _refAcc[0], k4vy = _refAcc[1], k4vz = _refAcc[2];
+      const k4x = vx4, k4y = vy4, k4z = vz4;
+
+      const s6 = dt / 6.0;
+      refOrbit.x  += s6 * (k1x  + 2 * k2x  + 2 * k3x  + k4x);
+      refOrbit.y  += s6 * (k1y  + 2 * k2y  + 2 * k3y  + k4y);
+      refOrbit.z  += s6 * (k1z  + 2 * k2z  + 2 * k3z  + k4z);
+      refOrbit.vx += s6 * (k1vx + 2 * k2vx + 2 * k3vx + k4vx);
+      refOrbit.vy += s6 * (k1vy + 2 * k2vy + 2 * k3vy + k4vy);
+      refOrbit.vz += s6 * (k1vz + 2 * k2vz + 2 * k3vz + k4vz);
+
+      for (let i = 0; i < MAX_BODIES; i++) {
+        if (bodies[i].mass <= 0) continue;
+        const dx = refOrbit.x - bodies[i].x;
+        const dy = refOrbit.y - bodies[i].y;
+        const dz = refOrbit.z - bodies[i].z;
+        const capR = bodies[i].rs * 1.03;
+        if (dx * dx + dy * dy + dz * dz < capR * capR) {
+          refOrbit.alive = false;
+          break;
+        }
+      }
+    }
+
+    function updateRefTrailMesh() {
+      refLineMesh.visible = simState.showRefTrail;
+      if (!simState.showRefTrail) return;
+
+      const nh = refOrbit.history;
+      const nSegs = Math.max(0, nh.length - 1);
+      for (let s = 0; s < nSegs; s++) {
+        const p0 = nh[s];
+        const p1 = nh[s + 1];
+        const idx = s * 6;
+        refLinePositions[idx]     = p0[0];
+        refLinePositions[idx + 1] = p0[1];
+        refLinePositions[idx + 2] = p0[2];
+        refLinePositions[idx + 3] = p1[0];
+        refLinePositions[idx + 4] = p1[1];
+        refLinePositions[idx + 5] = p1[2];
+
+        const f0 = Math.pow(s / Math.max(nSegs, 1), 1.65);
+        const f1 = Math.pow((s + 1) / Math.max(nSegs, 1), 1.65);
+        refLineColors[idx]     = 0.72 * f0;
+        refLineColors[idx + 1] = 0.96 * f0;
+        refLineColors[idx + 2] = 1.00 * f0;
+        refLineColors[idx + 3] = 0.72 * f1;
+        refLineColors[idx + 4] = 0.96 * f1;
+        refLineColors[idx + 5] = 1.00 * f1;
+      }
+      refLineGeo.setDrawRange(0, nSegs * 2);
+      refLineGeo.attributes.position.needsUpdate = true;
+      refLineGeo.attributes.color.needsUpdate = true;
+    }
+
+    /* ============================================================================
+     * 7. SCENARIO INITIALIZATION & GPU DATA TEXTURE UPLOAD
+     * ========================================================================== */
+    function randGaussian() {
+      let u = 0, v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    }
+
+    function uploadInitialCloudToFBO(nomX, nomY, nomZ, nomVX, nomVY, nomVZ, posStd, velStd) {
+      const size = simState.texSize;
+      const N = size * size;
+      const initPos = new Float32Array(N * 4);
+      const initVel = new Float32Array(N * 4);
+
+      let sumDistSqSample = 0.0;
+      let cx = 0, cy = 0, cz = 0;
+
+      for (let i = 0; i < N; i++) {
+        const dx = randGaussian() * posStd;
+        const dy = randGaussian() * posStd * 0.7;
+        const dz = randGaussian() * posStd;
+        const dvx = randGaussian() * velStd;
+        const dvy = randGaussian() * velStd * 0.65;
+        const dvz = randGaussian() * velStd;
+
+        const x = nomX + dx;
+        const y = nomY + dy;
+        const z = nomZ + dz;
+
+        const i4 = i * 4;
+        initPos[i4]     = x;
+        initPos[i4 + 1] = y;
+        initPos[i4 + 2] = z;
+        initPos[i4 + 3] = 0.0; // bound
+
+        initVel[i4]     = nomVX + dvx;
+        initVel[i4 + 1] = nomVY + dvy;
+        initVel[i4 + 2] = nomVZ + dvz;
+        initVel[i4 + 3] = 0.0; // chaosMetric
+
+        if (i < 2048) {
+          sumDistSqSample += dx * dx + dy * dy + dz * dz;
+          cx += x; cy += y; cz += z;
+        }
+      }
+
+      cx /= 2048; cy /= 2048; cz /= 2048;
+      let spreadSq = 0.0;
+      for (let i = 0; i < 2048; i++) {
+        const i4 = i * 4;
+        const dx = initPos[i4] - cx;
+        const dy = initPos[i4 + 1] - cy;
+        const dz = initPos[i4 + 2] - cz;
+        spreadSq += dx * dx + dy * dy + dz * dz;
+      }
+
+      simState.delta0 = Math.max(Math.sqrt(sumDistSqSample / 2048), 1e-4);
+      simState.sigmaR0 = Math.max(Math.sqrt(spreadSq / 2048), 1e-4);
+      simState.sigmaR = simState.sigmaR0;
+      simState.logDivergence = 0.0;
+      simState.boundPct = 100.0;
+      simState.ejectedPct = 0.0;
+      simState.accretedPct = 0.0;
+
+      cloudUniforms.uDivNormScale.value = Math.max(simState.delta0 * 14.0, 4.5);
+
+      const posDataTex = new THREE.DataTexture(initPos, size, size, THREE.RGBAFormat, THREE.FloatType);
+      posDataTex.minFilter = THREE.NearestFilter;
+      posDataTex.magFilter = THREE.NearestFilter;
+      posDataTex.needsUpdate = true;
+
+      const velDataTex = new THREE.DataTexture(initVel, size, size, THREE.RGBAFormat, THREE.FloatType);
+      velDataTex.minFilter = THREE.NearestFilter;
+      velDataTex.magFilter = THREE.NearestFilter;
+      velDataTex.needsUpdate = true;
+
+      gpgpuQuad.material = copyMat;
+
+      copyMat.uniforms.tSource.value = posDataTex;
+      renderer.setRenderTarget(posRT[0]);
+      renderer.render(gpgpuScene, orthoCam);
+      renderer.setRenderTarget(posRT[1]);
+      renderer.render(gpgpuScene, orthoCam);
+
+      copyMat.uniforms.tSource.value = velDataTex;
+      renderer.setRenderTarget(velRT[0]);
+      renderer.render(gpgpuScene, orthoCam);
+      renderer.setRenderTarget(velRT[1]);
+      renderer.render(gpgpuScene, orthoCam);
+
+      renderer.setRenderTarget(null);
+
+      posDataTex.dispose();
+      velDataTex.dispose();
+
+      readIdx = 0;
+      writeIdx = 1;
+      cloudUniforms.tPos.value = posRT[readIdx].texture;
+      cloudUniforms.tVel.value = velRT[readIdx].texture;
+    }
+
+    function initScenario(presetKey, resetCamera = false) {
+      simState.presetKey = presetKey;
+      const preset = PRESETS[presetKey];
+
+      simState.time = 0;
+      simState.sparklineHistory = [0];
+      simState.trailCounter = 0;
+
+      // Sync default disk inclination for this scenario
+      simState.diskTiltDeg = preset.diskTiltDeg;
+      simState.diskRollDeg = preset.diskRollDeg;
+      document.getElementById('slider-disk-tilt').value = String(simState.diskTiltDeg);
+      document.getElementById('val-disk-tilt').textContent = `${simState.diskTiltDeg}°`;
+      updateDiskBasis();
+
+      for (let i = 0; i < MAX_BODIES; i++) {
+        bodies[i].mass = 0; bodies[i].rs = 0;
+        bodies[i].x = 0; bodies[i].y = 0; bodies[i].z = 0;
+        bodies[i].vx = 0; bodies[i].vy = 0; bodies[i].vz = 0;
+      }
+
+      bodies[0].mass = preset.m1; bodies[0].rs = preset.rs1;
+      bodies[1].mass = preset.m2; bodies[1].rs = preset.rs2;
+      bodies[2].mass = preset.m3; bodies[2].rs = preset.rs3;
+
+      let nomX, nomY, nomZ, nomVX, nomVY, nomVZ;
+
+      if (preset.bodyCount === 1) {
+        // Single supermassive black hole anchored at origin
+        [nomX, nomY, nomZ] = preset.nomPos;
+        [nomVX, nomVY, nomVZ] = preset.nomVel;
+      } else {
+        const m12 = bodies[0].mass + bodies[1].mass;
+        const D = preset.separation;
+        const omega12 = Math.sqrt(m12 / (D * D * D));
+        const r1 = -D * (bodies[1].mass / m12);
+        const r2 =  D * (bodies[0].mass / m12);
+
+        bodies[0].x = r1; bodies[0].z = 0; bodies[0].vz = -omega12 * r1;
+        bodies[1].x = r2; bodies[1].z = 0; bodies[1].vz = -omega12 * r2;
+
+        if (preset.bodyCount === 3) {
+          const R3 = preset.outerRadius;
+          const mTot = m12 + bodies[2].mass;
+          const v3 = Math.sqrt(mTot / R3);
+          const angle3 = 2.25;
+          bodies[2].x = Math.cos(angle3) * R3;
+          bodies[2].y = preset.outerInclY;
+          bodies[2].z = Math.sin(angle3) * R3;
+          bodies[2].vx =  Math.sin(angle3) * v3;
+          bodies[2].vy = -0.14;
+          bodies[2].vz = -Math.cos(angle3) * v3;
+
+          // Center-of-momentum frame
+          let cmX = 0, cmY = 0, cmZ = 0, cmVX = 0, cmVY = 0, cmVZ = 0;
+          for (let i = 0; i < 3; i++) {
+            cmX += bodies[i].mass * bodies[i].x;
+            cmY += bodies[i].mass * bodies[i].y;
+            cmZ += bodies[i].mass * bodies[i].z;
+            cmVX += bodies[i].mass * bodies[i].vx;
+            cmVY += bodies[i].mass * bodies[i].vy;
+            cmVZ += bodies[i].mass * bodies[i].vz;
+          }
+          cmX /= mTot; cmY /= mTot; cmZ /= mTot;
+          cmVX /= mTot; cmVY /= mTot; cmVZ /= mTot;
+          for (let i = 0; i < 3; i++) {
+            bodies[i].x -= cmX; bodies[i].y -= cmY; bodies[i].z -= cmZ;
+            bodies[i].vx -= cmVX; bodies[i].vy -= cmVY; bodies[i].vz -= cmVZ;
+          }
+        }
+
+        if (preset.useL4) {
+          const cos60 = 0.5;
+          const sin60 = Math.sqrt(3.0) * 0.5;
+          nomX = bodies[0].x + D * cos60;
+          nomY = 0.65;
+          nomZ = bodies[0].z - D * sin60;
+          nomVX =  omega12 * (nomZ - bodies[0].z) + bodies[0].vx;
+          nomVY =  0.04;
+          nomVZ = -omega12 * (nomX - bodies[0].x) + bodies[0].vz;
+        } else {
+          [nomX, nomY, nomZ] = preset.nomPos;
+          [nomVX, nomVY, nomVZ] = preset.nomVel;
+        }
+      }
+
+      refOrbit.x = nomX; refOrbit.y = nomY; refOrbit.z = nomZ;
+      refOrbit.vx = nomVX; refOrbit.vy = nomVY; refOrbit.vz = nomVZ;
+      refOrbit.alive = true;
+      refOrbit.history = [[nomX, nomY, nomZ]];
+
+      // Sync body parameters to both GPGPU & 3D Geodesic Raymarcher
+      raymarchUniforms.uBodyCount.value = preset.bodyCount;
+      raymarchUniforms.uDiskInner.value = preset.diskInner;
+      raymarchUniforms.uDiskOuter.value = preset.diskOuter;
+
+      for (let i = 0; i < MAX_BODIES; i++) {
+        gpgpuSharedUniforms.uBodyMass.value[i] = bodies[i].mass;
+        gpgpuSharedUniforms.uBodyRs.value[i] = bodies[i].rs;
+        raymarchUniforms.uBodyRs.value[i] = bodies[i].rs;
+      }
+      gpgpuSharedUniforms.uInvC2.value = preset.invC2;
+
+      document.getElementById('metric-bodies').textContent = `${preset.bodyCount} 致密体`;
+
+      const posStd = simState.sigma * preset.posNoiseScale;
+      const velStd = simState.sigma * preset.velNoiseScale;
+      uploadInitialCloudToFBO(nomX, nomY, nomZ, nomVX, nomVY, nomVZ, posStd, velStd);
+
+      syncBodyPositionsToShaders();
+      updateRefTrailMesh();
+
+      if (resetCamera) {
+        camera.position.set(...preset.camPos);
+        controls.target.set(...preset.camTarget);
+        controls.update();
+      }
+    }
+
+    function syncBodyPositionsToShaders() {
+      for (let i = 0; i < MAX_BODIES; i++) {
+        raymarchUniforms.uBodyPos.value[i].set(bodies[i].x, bodies[i].y, bodies[i].z);
+      }
+      cloudUniforms.uRefPos.value.set(refOrbit.x, refOrbit.y, refOrbit.z);
+      cloudUniforms.uRefAlive.value = refOrbit.alive ? 1.0 : 0.0;
+    }
+
+    /* ============================================================================
+     * 8. GPU PING-PONG RK4 STEPPER
+     * ========================================================================== */
+    function stepGpgpuSimulation() {
+      const preset = PRESETS[simState.presetKey];
+      const substeps = simState.substeps;
+      const dt = (preset.dtBase * simState.timeScale) / substeps;
+
+      gpgpuSharedUniforms.uDt.value = dt;
+      gpgpuSharedUniforms.uEnable1PN.value = simState.enable1PN ? 1.0 : 0.0;
+      gpgpuSharedUniforms.uPNStrength.value = simState.pnStrength;
+
+      for (let s = 0; s < substeps; s++) {
+        stepMassiveBodiesRK4(dt);
+        stepRefOrbitRK4(dt, simState.enable1PN, simState.pnStrength, preset.invC2);
+
+        for (let i = 0; i < MAX_BODIES; i++) {
+          gpgpuSharedUniforms.uBodyPos0.value[i].set(slicePos0[i][0], slicePos0[i][1], slicePos0[i][2]);
+          gpgpuSharedUniforms.uBodyPosMid.value[i].set(slicePosMid[i][0], slicePosMid[i][1], slicePosMid[i][2]);
+          gpgpuSharedUniforms.uBodyPos1.value[i].set(slicePos1[i][0], slicePos1[i][1], slicePos1[i][2]);
+          gpgpuSharedUniforms.uBodyVel0.value[i].set(sliceVel0[i][0], sliceVel0[i][1], sliceVel0[i][2]);
+          gpgpuSharedUniforms.uBodyVelMid.value[i].set(sliceVelMid[i][0], sliceVelMid[i][1], sliceVelMid[i][2]);
+          gpgpuSharedUniforms.uBodyVel1.value[i].set(sliceVel1[i][0], sliceVel1[i][1], sliceVel1[i][2]);
+        }
+
+        gpgpuSharedUniforms.tPos.value = posRT[readIdx].texture;
+        gpgpuSharedUniforms.tVel.value = velRT[readIdx].texture;
+
+        gpgpuQuad.material = gpgpuPosMat;
+        renderer.setRenderTarget(posRT[writeIdx]);
+        renderer.render(gpgpuScene, orthoCam);
+
+        gpgpuQuad.material = gpgpuVelMat;
+        renderer.setRenderTarget(velRT[writeIdx]);
+        renderer.render(gpgpuScene, orthoCam);
+
+        const tmp = readIdx;
+        readIdx = writeIdx;
+        writeIdx = tmp;
+
+        simState.time += dt;
+      }
+
+      renderer.setRenderTarget(null);
+
+      cloudUniforms.tPos.value = posRT[readIdx].texture;
+      cloudUniforms.tVel.value = velRT[readIdx].texture;
+
+      simState.trailCounter++;
+      if (simState.trailCounter % 2 === 0 && refOrbit.alive) {
+        refOrbit.history.push([refOrbit.x, refOrbit.y, refOrbit.z]);
+        if (refOrbit.history.length > REF_TRAIL_LEN) refOrbit.history.shift();
+        updateRefTrailMesh();
+      }
+
+      syncBodyPositionsToShaders();
+    }
+
+    /* ============================================================================
+     * 9. REAL-TIME GPU-SAMPLED TELEMETRY (32x32 SLICE READBACK EVERY 6 FRAMES)
+     * ========================================================================== */
+    const readBufPos = (fboType === THREE.FloatType)
+      ? new Float32Array(SAMPLE_SLICE_COUNT * 4)
+      : new Uint16Array(SAMPLE_SLICE_COUNT * 4);
+    const readBufVel = (fboType === THREE.FloatType)
+      ? new Float32Array(SAMPLE_SLICE_COUNT * 4)
+      : new Uint16Array(SAMPLE_SLICE_COUNT * 4);
+
+    function sampleGpuTelemetry() {
+      if (!posRT[readIdx] || !velRT[readIdx]) return;
+
+      try {
+        renderer.readRenderTargetPixels(posRT[readIdx], 0, 0, SAMPLE_SLICE_DIM, SAMPLE_SLICE_DIM, readBufPos);
+        renderer.readRenderTargetPixels(velRT[readIdx], 0, 0, SAMPLE_SLICE_DIM, SAMPLE_SLICE_DIM, readBufVel);
+      } catch (e) {
+        return;
+      }
+
+      const isHalf = fboType !== THREE.FloatType;
+      const getVal = isHalf ? (buf, idx) => halfToFloat(buf[idx]) : (buf, idx) => buf[idx];
+
+      let bound = 0, ejected = 0, accreted = 0;
+      let cx = 0, cy = 0, cz = 0;
+      let validCentroidCount = 0;
+
+      for (let i = 0; i < SAMPLE_SLICE_COUNT; i++) {
+        const i4 = i * 4;
+        const px = getVal(readBufPos, i4);
+        const py = getVal(readBufPos, i4 + 1);
+        const pz = getVal(readBufPos, i4 + 2);
+        const st = getVal(readBufPos, i4 + 3);
+
+        if (!Number.isFinite(px) || st < -0.5) {
+          accreted++;
+        } else {
+          if (st > 0.5) ejected++;
+          else bound++;
+
+          if (px * px + py * py + pz * pz < 6400.0) {
+            cx += px; cy += py; cz += pz;
+            validCentroidCount++;
+          }
+        }
+      }
+
+      if (validCentroidCount > 0) {
+        cx /= validCentroidCount;
+        cy /= validCentroidCount;
+        cz /= validCentroidCount;
+      }
+
+      const refX = refOrbit.alive ? refOrbit.x : cx;
+      const refY = refOrbit.alive ? refOrbit.y : cy;
+      const refZ = refOrbit.alive ? refOrbit.z : cz;
+
+      let sumSpreadSq = 0.0;
+      let sumRefDistSq = 0.0;
+      let metricCount = 0;
+
+      for (let i = 0; i < SAMPLE_SLICE_COUNT; i++) {
+        const i4 = i * 4;
+        const st = getVal(readBufPos, i4 + 3);
+        if (st < -0.5) continue;
+        const px = getVal(readBufPos, i4);
+        const py = getVal(readBufPos, i4 + 1);
+        const pz = getVal(readBufPos, i4 + 2);
+        if (!Number.isFinite(px) || (px * px + py * py + pz * pz >= 6400.0)) continue;
+
+        const dcx = px - cx, dcy = py - cy, dcz = pz - cz;
+        sumSpreadSq += dcx * dcx + dcy * dcy + dcz * dcz;
+
+        const drx = px - refX, dry = py - refY, drz = pz - refZ;
+        sumRefDistSq += drx * drx + dry * dry + drz * drz;
+        metricCount++;
+      }
+
+      simState.boundPct    = (bound / SAMPLE_SLICE_COUNT) * 100.0;
+      simState.ejectedPct  = (ejected / SAMPLE_SLICE_COUNT) * 100.0;
+      simState.accretedPct = (accreted / SAMPLE_SLICE_COUNT) * 100.0;
+
+      if (metricCount > 0) {
+        simState.sigmaR = Math.sqrt(sumSpreadSq / metricCount);
+        const deltaRMS = Math.sqrt(sumRefDistSq / metricCount);
+        const baseRef = refOrbit.alive ? simState.delta0 : simState.sigmaR0;
+        simState.logDivergence = Math.log(Math.max(deltaRMS, 1e-4) / Math.max(baseRef, 1e-4));
+      }
+
+      simState.sparklineHistory.push(simState.logDivergence);
+      if (simState.sparklineHistory.length > 140) {
+        simState.sparklineHistory.shift();
+      }
+    }
+
+    /* ============================================================================
+     * 10. TELEMETRY HUD & LIVE SPARKLINE RENDERING
+     * ========================================================================== */
+    const elTime      = document.getElementById('metric-time');
+    const elSigma     = document.getElementById('metric-sigma');
+    const elLyapunov  = document.getElementById('metric-lyapunov');
+    const elFps       = document.getElementById('fps-badge');
+    const elPctBound  = document.getElementById('pct-bound');
+    const elPctEjec   = document.getElementById('pct-ejected');
+    const elPctAccr   = document.getElementById('pct-accreted');
+    const elBarBound  = document.getElementById('bar-bound');
+    const elBarEjec   = document.getElementById('bar-ejected');
+    const elBarAccr   = document.getElementById('bar-accreted');
+    const elPipTag    = document.getElementById('fbo-pip-tag');
+
+    const sparkCanvas = document.getElementById('sparkline-canvas');
+    const sparkCtx = sparkCanvas.getContext('2d');
+
+    function resizeSparklineCanvas() {
+      const rect = sparkCanvas.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      sparkCanvas.width = Math.max(1, Math.floor(rect.width * dpr));
+      sparkCanvas.height = Math.max(1, Math.floor(rect.height * dpr));
+      sparkCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function drawSparkline() {
+      const rect = sparkCanvas.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      if (w <= 2 || h <= 2) return;
+
+      sparkCtx.clearRect(0, 0, w, h);
+      const data = simState.sparklineHistory;
+      if (data.length < 2) return;
+
+      let minV = -0.25, maxV = 1.25;
+      for (let i = 0; i < data.length; i++) {
+        if (data[i] < minV) minV = data[i];
+        if (data[i] > maxV) maxV = data[i];
+      }
+      const span = Math.max(maxV - minV, 0.5);
+      const padY = 5;
+      const mapY = (val) => h - padY - ((val - minV) / span) * (h - padY * 2);
+
+      const y0 = mapY(0);
+      sparkCtx.strokeStyle = 'rgba(148, 163, 184, 0.22)';
+      sparkCtx.lineWidth = 1;
+      sparkCtx.setLineDash([3, 3]);
+      sparkCtx.beginPath();
+      sparkCtx.moveTo(0, y0);
+      sparkCtx.lineTo(w, y0);
+      sparkCtx.stroke();
+      sparkCtx.setLineDash([]);
+
+      const grad = sparkCtx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, 'rgba(245, 158, 11, 0.34)');
+      grad.addColorStop(1, 'rgba(56, 189, 248, 0.02)');
+
+      sparkCtx.beginPath();
+      for (let i = 0; i < data.length; i++) {
+        const x = (i / (data.length - 1)) * (w - 4) + 2;
+        const y = mapY(data[i]);
+        if (i === 0) sparkCtx.moveTo(x, y);
+        else sparkCtx.lineTo(x, y);
+      }
+      const lastX = w - 2;
+      const lastY = mapY(data[data.length - 1]);
+      sparkCtx.lineTo(lastX, h);
+      sparkCtx.lineTo(2, h);
+      sparkCtx.closePath();
+      sparkCtx.fillStyle = grad;
+      sparkCtx.fill();
+
+      const strokeGrad = sparkCtx.createLinearGradient(0, 0, w, 0);
+      strokeGrad.addColorStop(0, '#38bdf8');
+      strokeGrad.addColorStop(0.55, '#f59e0b');
+      strokeGrad.addColorStop(1, '#f43f5e');
+
+      sparkCtx.beginPath();
+      for (let i = 0; i < data.length; i++) {
+        const x = (i / (data.length - 1)) * (w - 4) + 2;
+        const y = mapY(data[i]);
+        if (i === 0) sparkCtx.moveTo(x, y);
+        else sparkCtx.lineTo(x, y);
+      }
+      sparkCtx.strokeStyle = strokeGrad;
+      sparkCtx.lineWidth = 1.65;
+      sparkCtx.stroke();
+
+      sparkCtx.fillStyle = '#fef08a';
+      sparkCtx.beginPath();
+      sparkCtx.arc(lastX, lastY, 2.3, 0, Math.PI * 2);
+      sparkCtx.fill();
+    }
+
+    function updateTelemetryHUD() {
+      elTime.textContent = simState.time.toFixed(2);
+      elSigma.textContent = simState.sigmaR.toFixed(3);
+      const sign = simState.logDivergence >= 0 ? '+' : '';
+      elLyapunov.textContent = `${sign}${simState.logDivergence.toFixed(3)}`;
+
+      elPctBound.textContent = `${simState.boundPct.toFixed(1)}%`;
+      elPctEjec.textContent  = `${simState.ejectedPct.toFixed(1)}%`;
+      elPctAccr.textContent  = `${simState.accretedPct.toFixed(1)}%`;
+
+      elBarBound.style.width = `${simState.boundPct}%`;
+      elBarEjec.style.width  = `${simState.ejectedPct}%`;
+      elBarAccr.style.width  = `${simState.accretedPct}%`;
+
+      if (simState.showFboPip) {
+        elPipTag.textContent = `readIdx=${readIdx} · ${simState.texSize}²`;
+      }
+
+      drawSparkline();
+    }
+
+    /* ============================================================================
+     * 11. LIVE PING-PONG FBO INSPECTOR SCISSOR RENDERER
+     * ========================================================================== */
+    const fboInspectorEl = document.getElementById('fbo-inspector');
+    const fboSlotPosEl   = document.getElementById('fbo-slot-pos');
+    const fboSlotVelEl   = document.getElementById('fbo-slot-vel');
+
+    function renderFboInspectorPip() {
+      if (!simState.showFboPip || !posRT[readIdx] || !velRT[readIdx]) return;
+
+      const canvasH = window.innerHeight;
+      const slots = [
+        { el: fboSlotPosEl, tex: posRT[readIdx].texture, mode: 0.0 },
+        { el: fboSlotVelEl, tex: velRT[readIdx].texture, mode: 1.0 }
+      ];
+
+      renderer.setScissorTest(true);
+      for (let i = 0; i < 2; i++) {
+        const rect = slots[i].el.getBoundingClientRect();
+        if (rect.width <= 2 || rect.height <= 2) continue;
+
+        const x = Math.floor(rect.left);
+        const y = Math.floor(canvasH - rect.bottom);
+        const w = Math.ceil(rect.width);
+        const h = Math.ceil(rect.height);
+
+        renderer.setViewport(x, y, w, h);
+        renderer.setScissor(x, y, w, h);
+        inspectUniforms.tFbo.value = slots[i].tex;
+        inspectUniforms.uMode.value = slots[i].mode;
+        renderer.render(inspectScene, orthoCam);
+      }
+
+      renderer.setScissorTest(false);
+      renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
+    }
+
+    /* ============================================================================
+     * 12. INTERACTIVE CONTROL PANEL BINDINGS
+     * ========================================================================== */
+    const panelToggleBtn = document.getElementById('panel-toggle-btn');
+    const panelBody      = document.getElementById('panel-body');
+    const panelChevron   = document.getElementById('panel-chevron');
+    let panelOpen = window.innerWidth >= 768;
+
+    function applyPanelState() {
+      panelBody.style.display = panelOpen ? 'block' : 'none';
+      panelChevron.style.transform = panelOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+      panelToggleBtn.setAttribute('aria-expanded', String(panelOpen));
+    }
+    applyPanelState();
+
+    panelToggleBtn.addEventListener('click', () => {
+      panelOpen = !panelOpen;
+      applyPanelState();
+    });
+
+    // Scenario presets
+    const presetButtons = document.querySelectorAll('.preset-btn');
+    presetButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.preset;
+        presetButtons.forEach((b) => b.classList.toggle('active', b === btn));
+        initScenario(key, true);
+        updateTelemetryHUD();
+      });
+    });
+
+    // Raymarching precision selector (72 / 108 / 144 steps)
+    const qualityButtons = document.querySelectorAll('.quality-btn');
+    qualityButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const steps = parseInt(btn.dataset.steps, 10);
+        const scale = parseFloat(btn.dataset.scale);
+        qualityButtons.forEach((b) => b.classList.toggle('active', b === btn));
+        simState.maxSteps = steps;
+        simState.stepScale = scale;
+        raymarchUniforms.uMaxSteps.value = steps;
+        raymarchUniforms.uStepScale.value = scale;
+        document.getElementById('quality-label').textContent = `${steps} 步`;
+      });
+    });
+
+    // Particle scale (FBO resolution) selector
+    const scaleButtons = document.querySelectorAll('.scale-btn');
+    scaleButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const newSize = parseInt(btn.dataset.size, 10);
+        if (newSize === simState.texSize) return;
+        scaleButtons.forEach((b) => b.classList.toggle('active', b === btn));
+        allocateGpgpuResources(newSize);
+        initScenario(simState.presetKey, false);
+        updateTelemetryHUD();
+      });
+    });
+
+    // Sliders
+    document.getElementById('slider-lensing').addEventListener('input', (e) => {
+      simState.lensingStrength = parseFloat(e.target.value);
+      raymarchUniforms.uLensStrength.value = simState.lensingStrength;
+      document.getElementById('val-lensing').textContent = simState.lensingStrength.toFixed(2);
+    });
+
+    document.getElementById('slider-disk-tilt').addEventListener('input', (e) => {
+      simState.diskTiltDeg = parseFloat(e.target.value);
+      document.getElementById('val-disk-tilt').textContent = `${simState.diskTiltDeg}°`;
+      updateDiskBasis();
+    });
+
+    document.getElementById('slider-doppler').addEventListener('input', (e) => {
+      simState.dopplerStrength = parseFloat(e.target.value);
+      raymarchUniforms.uDopplerStrength.value = simState.dopplerStrength;
+      document.getElementById('val-doppler').textContent = simState.dopplerStrength.toFixed(2);
+    });
+
+    document.getElementById('slider-speed').addEventListener('input', (e) => {
+      simState.timeScale = parseFloat(e.target.value);
+      document.getElementById('val-speed').textContent = `${simState.timeScale.toFixed(1)}x`;
+    });
+
+    const sliderSigma = document.getElementById('slider-sigma');
+    sliderSigma.addEventListener('input', (e) => {
+      simState.sigma = parseFloat(e.target.value);
+      document.getElementById('val-sigma').textContent = simState.sigma.toFixed(3);
+    });
+    sliderSigma.addEventListener('change', () => {
+      initScenario(simState.presetKey, false);
+      updateTelemetryHUD();
+    });
+
+    document.getElementById('slider-exposure').addEventListener('input', (e) => {
+      simState.exposure = parseFloat(e.target.value);
+      updateCloudBaseAlpha();
+      document.getElementById('val-exposure').textContent = simState.exposure.toFixed(2);
+    });
+
+    document.getElementById('slider-pn-strength').addEventListener('input', (e) => {
+      simState.pnStrength = parseFloat(e.target.value);
+      document.getElementById('val-pn-strength').textContent = simState.pnStrength.toFixed(2);
+    });
+
+    // Toggles
+    function bindToggle(elId, onChange) {
+      const btn = document.getElementById(elId);
+      btn.addEventListener('click', () => {
+        const next = btn.dataset.checked !== 'true';
+        btn.dataset.checked = String(next);
+        btn.setAttribute('aria-checked', String(next));
+        onChange(next);
+      });
+    }
+
+    const pnStrengthWrap = document.getElementById('pn-strength-wrap');
+    bindToggle('toggle-1pn', (val) => {
+      simState.enable1PN = val;
+      pnStrengthWrap.style.opacity = val ? '1' : '0.38';
+      pnStrengthWrap.style.pointerEvents = val ? 'auto' : 'none';
+    });
+
+    bindToggle('toggle-disk', (val) => {
+      simState.showDisk = val;
+      raymarchUniforms.uShowDisk.value = val ? 1.0 : 0.0;
+    });
+
+    bindToggle('toggle-ref-trail', (val) => {
+      simState.showRefTrail = val;
+      refLineMesh.visible = val;
+      if (val) updateRefTrailMesh();
+    });
+
+    bindToggle('toggle-fbo-pip', (val) => {
+      simState.showFboPip = val;
+      fboInspectorEl.classList.toggle('hidden', !val);
+      if (val) elPipTag.textContent = `readIdx=${readIdx} · ${simState.texSize}²`;
+    });
+
+    // Playback & Reset Buttons
+    const btnPause   = document.getElementById('btn-pause');
+    const pauseLabel = document.getElementById('pause-label');
+    const pauseDot   = document.getElementById('pause-dot');
+
+    function togglePause() {
+      simState.paused = !simState.paused;
+      pauseLabel.textContent = simState.paused ? '继续演化' : '暂停演化';
+      pauseDot.className = simState.paused
+        ? 'w-1.5 h-1.5 rounded-full bg-amber-400'
+        : 'w-1.5 h-1.5 rounded-full bg-emerald-400';
+    }
+
+    btnPause.addEventListener('click', togglePause);
+
+    document.getElementById('btn-reseed').addEventListener('click', () => {
+      initScenario(simState.presetKey, false);
+      updateTelemetryHUD();
+    });
+
+    document.getElementById('btn-reset-cam').addEventListener('click', () => {
+      const preset = PRESETS[simState.presetKey];
+      camera.position.set(...preset.camPos);
+      controls.target.set(...preset.camTarget);
+      controls.update();
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        const tag = document.activeElement?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON') return;
+        e.preventDefault();
+        togglePause();
+      }
+    });
+
+    function handleResize() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
+
+      renderer.setPixelRatio(dpr);
+      renderer.setSize(w, h);
+
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      cloudUniforms.uPixelRatio.value = dpr;
+
+      resizeSparklineCanvas();
+      drawSparkline();
+    }
+
+    window.addEventListener('resize', handleResize);
+
+    /* ============================================================================
+     * 13. MAIN ANIMATION & RENDER LOOP (2-PASS + OPTIONAL FBO PIP)
+     * ========================================================================== */
+    const _viewProj = new THREE.Matrix4();
+    const _invViewProj = new THREE.Matrix4();
+
+    let lastFrameTime = performance.now();
+    let lastFpsTime = lastFrameTime;
+    let fpsFrames = 0;
+    let visualTime = 0;
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+
+      const dtWall = Math.min((now - lastFrameTime) * 0.001, 0.05);
+      lastFrameTime = now;
+
+      controls.update();
+      camera.updateMatrixWorld();
+
+      // 1. Advance WebGL2 GPGPU Ping-Pong RK4 Particle Simulation
+      if (!simState.paused) {
+        visualTime += dtWall * simState.timeScale;
+        stepGpgpuSimulation();
+
+        if (simState.frameCount % 6 === 0) {
+          sampleGpuTelemetry();
+          updateTelemetryHUD();
+        }
+      }
+
+      // 2. Sync Camera Matrices & Time to 3D Geodesic Raymarcher
+      _viewProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      _invViewProj.copy(_viewProj).invert();
+
+      raymarchUniforms.uViewProj.value.copy(_viewProj);
+      raymarchUniforms.uInvViewProj.value.copy(_invViewProj);
+      raymarchUniforms.uCamPos.value.copy(camera.position);
+      raymarchUniforms.uTime.value = visualTime;
+
+      // PASS 1: Single-Pass 3D General Relativistic Geodesic Raymarching
+      // Renders multi-body lensed Milky Way, seamless 3D accretion disk, photon rings & exact gl_FragDepth
+      renderer.setRenderTarget(null);
+      renderer.clear(true, true, true);
+      renderer.render(raymarchScene, orthoCam);
+
+      // PASS 2: 100K+ GPGPU Monte Carlo Cloud & Reference Orbit Ribbon
+      // Hardware depthTest: true seamlessly occludes particles behind event horizons while keeping foreground particles luminous
+      renderer.render(cloudScene, camera);
+
+      // PASS 3: Optional Live Ping-Pong FBO Inspector PiP (Direct Scissor Pass)
+      if (simState.showFboPip) {
+        renderFboInspectorPip();
+      }
+
+      // FPS counter
+      simState.frameCount++;
+      fpsFrames++;
+      if (now - lastFpsTime >= 450) {
+        const fps = Math.round((fpsFrames * 1000) / (now - lastFpsTime));
+        elFps.textContent = `${fps} FPS`;
+        fpsFrames = 0;
+        lastFpsTime = now;
+      }
+    }
+
+    // Boot cleanly on window load
+    window.addEventListener('load', () => {
+      try {
+        resizeSparklineCanvas();
+        allocateGpgpuResources(384); // Default 147,456 particles (384x384 Float32 FBO)
+        initScenario('binary', true);
+        updateTelemetryHUD();
+        lastFrameTime = performance.now();
+        lastFpsTime = lastFrameTime;
+        requestAnimationFrame(animate);
+      } catch (err) {
+        console.error('Initialization Error:', err);
+        showFatalError(`初始化异常：${err.message}`);
+      }
+    });
+  </script>
+</body>
+</html>
