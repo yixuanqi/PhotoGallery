@@ -1,3 +1,12 @@
+> **适用范围说明：** 本文只适用于仓库根目录的 Android 原生 PhotoGallery 应用（Kotlin / Jetpack Compose），不适用于 `docs/<project-id>/` 下的独立网页项目。
+>
+> 网页作品请改为阅读：
+> - [Web 项目管理规范](./web-projects/PROJECT_MANAGEMENT_STANDARD.md)
+> - [Web 项目 Agent 开发指南](./web-projects/AGENT_DEVELOPMENT_GUIDE.md)
+> - [Web 项目登记表](./projects.json)
+>
+> 仓库同时承载 Android 应用和网页作品；修改其中一类时，不得默认另一类可以随意改动。
+>
 # PhotoGallery 开发与问题排查指南 (Agent 专用)
 
 本指南旨在为后续参与本项目开发的 Agent 和开发者提供核心组件（尤其是绳子与照片交互系统）的设计思想、常见问题及排查指导。

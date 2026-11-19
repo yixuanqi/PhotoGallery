@@ -1,0 +1,292 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": 1,
+  "repository": "yixuanqi/PhotoGallery",
+  "baseUrl": "https://yixuanqi.github.io/PhotoGallery/",
+  "updatedAt": "2026-11-19",
+  "projects": [
+    {
+      "id": "galaxy",
+      "name": "星海漫游",
+      "nameEn": "Yixuanqi's Creative Universe",
+      "kind": "portal-experience",
+      "category": "navigation",
+      "status": "published",
+      "summary": "可漫游的 3D 星海导航入口，连接个人互动作品与实验项目。",
+      "tags": [
+        "Three.js",
+        "3D 交互",
+        "星空",
+        "项目导航"
+      ],
+      "techStack": [
+        "Three.js",
+        "WebGL",
+        "GLSL"
+      ],
+      "primaryUrl": "https://yixuanqi.github.io/PhotoGallery/galaxy/",
+      "primaryAction": "进入星海",
+      "repositoryUrl": "https://github.com/yixuanqi/PhotoGallery",
+      "sourcePath": "docs/galaxy/index.html",
+      "sortOrder": 0
+    },
+    {
+      "id": "astra",
+      "name": "手绘天体运行志",
+      "nameEn": "Astra · Celestial Sketchbook",
+      "kind": "interactive-web",
+      "category": "creative-3d",
+      "status": "published",
+      "summary": "一册可以转动的太阳系博物手帐。拖拽观测天体，切换水彩、蓝晒与手稿画风，探索星球和地球奇观。",
+      "tags": [
+        "Three.js",
+        "3D 交互",
+        "浏览器体验"
+      ],
+      "techStack": [
+        "Three.js",
+        "WebGL"
+      ],
+      "primaryUrl": "https://yixuanqi.github.io/PhotoGallery/astra/",
+      "primaryAction": "在线体验",
+      "repositoryUrl": "https://github.com/yixuanqi/PhotoGallery",
+      "sourcePath": "docs/astra/index.html",
+      "sortOrder": 1
+    },
+    {
+      "id": "cannon",
+      "name": "桌面小炮",
+      "nameEn": "Desktop Cannon · Tiny Desk Game",
+      "kind": "desktop-app",
+      "category": "desktop",
+      "status": "published",
+      "summary": "一门住在 Windows 桌面上的可爱小炮，面向轻松、有趣的桌面交互。公开 Release 提供安装包和免安装版。",
+      "tags": [
+        "Windows",
+        "Tauri 2",
+        "桌面小玩具"
+      ],
+      "techStack": [
+        "Tauri 2",
+        "Windows"
+      ],
+      "primaryUrl": "https://github.com/yixuanqi/desktop_cannon_v01_app/releases/tag/v0.7.0",
+      "primaryAction": "下载 Windows 版",
+      "repositoryUrl": "https://github.com/yixuanqi/desktop_cannon_v01_app",
+      "sortOrder": 2
+    },
+    {
+      "id": "audioalgo",
+      "name": "AudioAlgo Lab",
+      "nameEn": "Audio Algorithm Laboratory",
+      "kind": "desktop-app",
+      "category": "audio",
+      "status": "published",
+      "summary": "一个用于音频算法可视化与实验的桌面平台，围绕算法处理链、听感验证与快速实验展开。公开版本提供 Windows 安装包。",
+      "tags": [
+        "JUCE",
+        "音频算法",
+        "Windows"
+      ],
+      "techStack": [
+        "JUCE",
+        "Windows"
+      ],
+      "primaryUrl": "https://github.com/yixuanqi/audioalgo/releases/tag/v0.1.0",
+      "primaryAction": "下载实验平台",
+      "repositoryUrl": "https://github.com/yixuanqi/audioalgo",
+      "sortOrder": 3
+    },
+    {
+      "id": "learning",
+      "name": "终身学习实验室",
+      "nameEn": "Lifelong Learning Lab",
+      "kind": "research-project",
+      "category": "research",
+      "status": "published",
+      "summary": "将持续学习、遗忘、记忆与实验方法整理成可复现的工程研究，保留探索过程与实验记录。",
+      "tags": [
+        "AI 研究",
+        "实验记录",
+        "GitHub"
+      ],
+      "techStack": [
+        "AI 研究",
+        "可复现实验"
+      ],
+      "primaryUrl": "https://github.com/yixuanqi/lifelong-learning-lab",
+      "primaryAction": "查看研究仓库",
+      "repositoryUrl": "https://github.com/yixuanqi/lifelong-learning-lab",
+      "sortOrder": 4
+    },
+    {
+      "id": "gallery",
+      "name": "小笨相册",
+      "nameEn": "PhotoGallery · Little Photo Companion",
+      "kind": "android-app",
+      "category": "android",
+      "status": "published",
+      "summary": "手绘风格的原生 Android 照片展示应用，采用绳子晾照片的视觉呈现方式。",
+      "tags": [
+        "Android",
+        "应用开发",
+        "开源代码"
+      ],
+      "techStack": [
+        "Kotlin",
+        "Jetpack Compose",
+        "Android"
+      ],
+      "primaryUrl": "https://github.com/yixuanqi/PhotoGallery",
+      "primaryAction": "查看项目代码",
+      "repositoryUrl": "https://github.com/yixuanqi/PhotoGallery",
+      "sortOrder": 5
+    },
+    {
+      "id": "earthplant",
+      "name": "手绘博物航海志",
+      "nameEn": "EarthPlant · Atlas Orbis Terrarum",
+      "kind": "interactive-web",
+      "category": "creative-3d",
+      "status": "published",
+      "summary": "一册能转动的手绘地球航海志。探索世界地标，规划大圆航线，让纸飞机沿球面巡航，并切换第三人称跟随视角。",
+      "tags": [
+        "Three.js",
+        "3D 地球",
+        "地标探索",
+        "纸飞机航线"
+      ],
+      "techStack": [
+        "Three.js",
+        "WebGL"
+      ],
+      "primaryUrl": "https://yixuanqi.github.io/PhotoGallery/earthplant/",
+      "primaryAction": "在线探索地球",
+      "repositoryUrl": "https://github.com/yixuanqi/PhotoGallery",
+      "sourcePath": "docs/earthplant/index.html",
+      "sortOrder": 6
+    },
+    {
+      "id": "islebound",
+      "name": "手绘群岛漫游",
+      "nameEn": "Islebound · A Little Flight Across the Sea",
+      "kind": "interactive-web",
+      "category": "game",
+      "status": "published",
+      "summary": "驾驶小小的螺旋桨飞机，飞往狗狗岛、猫猫岛、灯塔岛和星星花园，探索村庄、灯塔、主题小火车与机场。",
+      "tags": [
+        "Three.js",
+        "飞行探索",
+        "手绘海洋",
+        "互动游戏"
+      ],
+      "techStack": [
+        "Three.js",
+        "Playwright"
+      ],
+      "primaryUrl": "https://yixuanqi.github.io/PhotoGallery/islebound/",
+      "primaryAction": "开始群岛之旅",
+      "repositoryUrl": "https://github.com/yixuanqi/PhotoGallery",
+      "sourcePath": "docs/islebound/index.html",
+      "sortOrder": 7
+    },
+    {
+      "id": "doudou-tank",
+      "name": "豆豆号坦克实验室",
+      "nameEn": "Doudou Tank · Storybook Terrain Lab",
+      "kind": "interactive-web",
+      "category": "simulation",
+      "status": "published",
+      "summary": "驾驶可爱的豆豆号小坦克，在不同地形间探索，观察履带贴地、车身俯仰与负重轮行程，并调整弹簧、阻尼和驱动参数。",
+      "tags": [
+        "Three.js",
+        "履带与悬挂",
+        "楼梯斜坡",
+        "3D 交互"
+      ],
+      "techStack": [
+        "Three.js",
+        "WebGL"
+      ],
+      "primaryUrl": "https://yixuanqi.github.io/PhotoGallery/doudou-tank/",
+      "primaryAction": "驾驶豆豆号",
+      "repositoryUrl": "https://github.com/yixuanqi/PhotoGallery",
+      "sourcePath": "docs/doudou-tank/index.html",
+      "sortOrder": 8
+    },
+    {
+      "id": "helicopter",
+      "name": "手绘直升机飞行实验室",
+      "nameEn": "Sketch Helicopter · Rotor Flight Lab",
+      "kind": "interactive-web",
+      "category": "simulation",
+      "status": "published",
+      "summary": "驾驶手绘小直升机，体验飞行控制，观察旋翼叶素升力、总升力矢量、飞行轨迹和下洗气流。",
+      "tags": [
+        "Three.js",
+        "旋翼气动",
+        "3D 飞行",
+        "双摇杆交互"
+      ],
+      "techStack": [
+        "Three.js",
+        "WebGL"
+      ],
+      "primaryUrl": "https://yixuanqi.github.io/PhotoGallery/helicopter/",
+      "primaryAction": "开始直升机飞行",
+      "repositoryUrl": "https://github.com/yixuanqi/PhotoGallery",
+      "sourcePath": "docs/helicopter/index.html",
+      "sortOrder": 9
+    },
+    {
+      "id": "excavator",
+      "name": "豆豆挖掘机实验室",
+      "nameEn": "Doudou Excavator · Storybook Worksite",
+      "kind": "interactive-web",
+      "category": "simulation",
+      "status": "published",
+      "summary": "驾驶可爱的豆豆挖掘机，在不同地形中操纵大臂、小臂与铲斗，体验地形变形、挖掘、装土与卸土。",
+      "tags": [
+        "Three.js",
+        "可变形地形",
+        "挖掘物理",
+        "3D 交互"
+      ],
+      "techStack": [
+        "Three.js",
+        "WebGL"
+      ],
+      "primaryUrl": "https://yixuanqi.github.io/PhotoGallery/excavator/",
+      "primaryAction": "开始挖掘",
+      "repositoryUrl": "https://github.com/yixuanqi/PhotoGallery",
+      "sourcePath": "docs/excavator/index.html",
+      "sortOrder": 10
+    },
+    {
+      "id": "gravity-lens",
+      "name": "引力透镜实验室",
+      "nameEn": "Gravitational Lensing · GPGPU Lab",
+      "kind": "interactive-web",
+      "category": "science",
+      "status": "published",
+      "summary": "在浏览器中观察多体引力场下的测地线光线弯曲、黑洞阴影与相对论吸积盘，同时运行 GPU 粒子系综，探索双体混沌、相对论进动和三体共振。",
+      "tags": [
+        "WebGL2",
+        "Three.js",
+        "GPGPU",
+        "广义相对论"
+      ],
+      "techStack": [
+        "Three.js",
+        "WebGL2",
+        "GPGPU",
+        "GLSL"
+      ],
+      "primaryUrl": "https://yixuanqi.github.io/PhotoGallery/gravity-lens/",
+      "primaryAction": "进入引力透镜实验室",
+      "repositoryUrl": "https://github.com/yixuanqi/PhotoGallery",
+      "sourcePath": "docs/gravity-lens/index.html",
+      "sortOrder": 11
+    }
+  ]
+}

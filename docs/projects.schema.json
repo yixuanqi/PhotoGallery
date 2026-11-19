@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PhotoGallery Public Project Catalog",
+  "description": "Public project catalog consumed by the future yixuanqi.github.io portal.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "catalogVersion",
+    "repository",
+    "baseUrl",
+    "updatedAt",
+    "projects"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "catalogVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "repository": {
+      "type": "string",
+      "pattern": "^[^/]+/[^/]+$"
+    },
+    "baseUrl": {
+      "type": "string",
+      "format": "uri"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date"
+    },
+    "projects": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/project"
+      }
+    }
+  },
+  "$defs": {
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "category",
+        "status",
+        "summary",
+        "tags",
+        "primaryUrl",
+        "primaryAction",
+        "repositoryUrl",
+        "sortOrder"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "nameEn": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "portal-experience",
+            "interactive-web",
+            "desktop-app",
+            "research-project",
+            "android-app"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "idea",
+            "development",
+            "testing",
+            "published",
+            "archived"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "techStack": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "primaryUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "primaryAction": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repositoryUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "sourcePath": {
+          "type": "string",
+          "pattern": "^docs/[a-z0-9-]+/index\\.html$"
+        },
+        "sortOrder": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "featured": {
+          "type": "boolean"
+        },
+        "cover": {
+          "type": "string"
+        },
+        "lastUpdated": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    }
+  }
+}
