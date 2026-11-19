@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>引力透镜与蒙特卡洛轨道演化云 · 3D 测地线光线步进 + WebGL2 GPGPU</title>
   <!-- Tailwind CSS for responsive scientific observatory UI -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -207,6 +207,74 @@
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
     }
+
+    /* Desktop retains both panels; mobile shows two compact, mutually exclusive drawers. */
+    .telemetry-mobile-toggle, .control-title-mobile { display: none; }
+    [hidden] { display: none !important; }
+    @media (max-width: 767px) {
+      #webgl-container, #webgl-container canvas { touch-action: none; }
+      #telemetry-aside, #control-aside {
+        position: fixed; top: calc(10px + env(safe-area-inset-top, 0px));
+        max-width: none !important; width: auto !important; pointer-events: auto;
+      }
+      #telemetry-aside { left: calc(10px + env(safe-area-inset-left, 0px)); right: auto; z-index: 22; }
+      #control-aside { right: calc(10px + env(safe-area-inset-right, 0px)); left: auto; z-index: 22; }
+      #telemetry-aside[data-open="true"], #control-aside[data-open="true"] {
+        left: calc(10px + env(safe-area-inset-left, 0px));
+        right: calc(10px + env(safe-area-inset-right, 0px)); z-index: 31;
+      }
+      #telemetry-panel, #control-panel {
+        max-width: calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+        max-height: calc(100dvh - 20px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+        border-radius: 14px; min-width: 0; overflow: hidden;
+      }
+      #telemetry-panel {
+        display: flex; flex-direction: column; width: max-content; padding: 0 !important;
+      }
+      #control-panel { width: max-content !important; transition: none; }
+      #telemetry-panel[data-open="true"], #control-panel[data-open="true"] { width: 100% !important; }
+      #telemetry-toggle-btn {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 9px; min-height: 46px; width: 100%; padding: 10px 12px;
+        color: #e2e8f0; font-size: 12px; font-weight: 600;
+        white-space: nowrap; background: transparent;
+      }
+      #telemetry-toggle-btn:focus-visible, #panel-toggle-btn:focus-visible {
+        outline: 2px solid var(--accent-cyan); outline-offset: -3px;
+      }
+      #telemetry-panel[data-open="false"] #telemetry-toggle-btn { width: max-content; }
+      #telemetry-panel[data-open="true"] #telemetry-toggle-btn {
+        border-bottom: 1px solid rgba(148, 163, 184, .18);
+      }
+      #telemetry-mini-fps { color: #34d399; font-size: 10px; font-weight: 400; }
+      #telemetry-body, #panel-body {
+        min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch; touch-action: pan-y;
+      }
+      #telemetry-body { padding: 13px; }
+      #telemetry-panel[data-open="false"] #telemetry-body,
+      #control-panel[data-open="false"] #panel-body { display: none !important; }
+      #panel-toggle-btn { min-height: 46px; padding: 10px 12px; gap: 10px; }
+      #control-panel[data-open="false"] #panel-toggle-btn { width: max-content; }
+      #control-panel[data-open="false"] .control-title { display: none; }
+      #control-panel[data-open="false"] .control-title-mobile { display: inline; }
+      #control-panel[data-open="true"] .control-title { display: inline; }
+      #panel-body { flex: 1 1 auto; }
+      #mobile-panel-backdrop {
+        display: block; position: fixed; inset: 0; z-index: 20;
+        background: rgba(2, 6, 23, .22);
+      }
+      #fbo-inspector {
+        bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+        left: calc(10px + env(safe-area-inset-left, 0px));
+        max-width: calc(100vw - 20px);
+      }
+      #fbo-inspector .fbo-chrome { min-width: 0; }
+      #fbo-slot-pos, #fbo-slot-vel {
+        width: min(29vw, 116px) !important; height: min(29vw, 116px) !important;
+        flex-shrink: 0;
+      }
+    }
   </style>
 
   <!-- ES Module Import Map for Three.js r164 via esm.sh -->
@@ -231,9 +299,16 @@
     </div>
   </div>
 
+  <button id="mobile-panel-backdrop" type="button" hidden aria-label="关闭当前面板"></button>
+
   <!-- Top-Left HUD: Live GPU-Sampled Telemetry -->
-  <aside class="fixed top-3 left-3 sm:top-4 sm:left-4 z-10 w-[calc(100vw-6.5rem)] max-w-[314px] sm:max-w-[332px] pointer-events-none">
-    <div class="glass-panel rounded-2xl p-3.5 sm:p-4 pointer-events-auto">
+  <aside id="telemetry-aside" aria-label="实时 GPU 遥测" class="fixed top-3 left-3 sm:top-4 sm:left-4 z-10 w-[calc(100vw-6.5rem)] max-w-[314px] sm:max-w-[332px] pointer-events-none">
+    <div id="telemetry-panel" class="glass-panel rounded-2xl p-3.5 sm:p-4 pointer-events-auto">
+      <button id="telemetry-toggle-btn" class="telemetry-mobile-toggle" type="button" aria-expanded="true" aria-controls="telemetry-body">
+        <span>实时数据</span><span id="telemetry-mini-fps" class="mono">60 FPS</span>
+        <svg id="telemetry-chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+      </button>
+      <div id="telemetry-body" role="region" aria-label="GPU 遥测详细数据">
       <!-- Title & Live FPS -->
       <div class="flex items-start justify-between gap-2 pb-2.5 border-b border-slate-700/40">
         <div class="min-w-0">
@@ -319,22 +394,25 @@
           </div>
         </div>
       </div>
+      </div>
     </div>
   </aside>
 
   <!-- Top-Right HUD: Collapsible Control Panel -->
-  <aside class="fixed top-3 right-3 sm:top-4 sm:right-4 z-20 flex flex-col items-end">
+  <aside id="control-aside" class="fixed top-3 right-3 sm:top-4 sm:right-4 z-20 flex flex-col items-end">
     <div id="control-panel" class="glass-panel rounded-2xl w-[288px] sm:w-[318px] max-h-[calc(100vh-1.75rem)] flex flex-col overflow-hidden transition-all duration-300">
       <!-- Header / Collapse Button -->
       <button
         id="panel-toggle-btn"
+        aria-controls="panel-body"
         type="button"
         class="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-white/[0.03] transition-colors shrink-0"
         aria-expanded="true"
       >
         <div class="flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.85)]"></span>
-          <span class="text-[13px] font-medium tracking-wide text-slate-100">测地线与 GPGPU 控制台</span>
+          <span class="control-title text-[13px] font-medium tracking-wide text-slate-100">测地线与 GPGPU 控制台</span>
+          <span class="control-title-mobile text-[12px] font-medium tracking-wide text-slate-100">参数设置</span>
         </div>
         <svg id="panel-chevron" class="w-4 h-4 text-slate-400 transition-transform duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="18 15 12 9 6 15"></polyline>
@@ -582,6 +660,71 @@
       <span><kbd class="mono text-slate-300 px-1 py-0.5 rounded bg-slate-800/80 border border-slate-700/70 text-[9.5px]">Space</kbd> 暂停/继续</span>
     </div>
   </div>
+
+  <!-- Panels work independently from WebGL (including when GPU initialization fails). -->
+  <script>
+  (() => {
+    'use strict';
+    const small = window.matchMedia('(max-width: 767px)');
+    const telemetryAside = document.getElementById('telemetry-aside');
+    const controlAside = document.getElementById('control-aside');
+    const telemetryPanel = document.getElementById('telemetry-panel');
+    const controlPanel = document.getElementById('control-panel');
+    const telemetryBody = document.getElementById('telemetry-body');
+    const controlBody = document.getElementById('panel-body');
+    const telemetryToggle = document.getElementById('telemetry-toggle-btn');
+    const controlToggle = document.getElementById('panel-toggle-btn');
+    const telemetryChevron = document.getElementById('telemetry-chevron');
+    const controlChevron = document.getElementById('panel-chevron');
+    const backdrop = document.getElementById('mobile-panel-backdrop');
+    let telemetryOpen = !small.matches;
+    let controlOpen = !small.matches;
+
+    function applyPanelState() {
+      telemetryAside.dataset.open = telemetryPanel.dataset.open = String(telemetryOpen);
+      controlAside.dataset.open = controlPanel.dataset.open = String(controlOpen);
+      telemetryBody.hidden = !telemetryOpen;
+      controlBody.hidden = !controlOpen;
+      telemetryToggle.setAttribute('aria-expanded', String(telemetryOpen));
+      controlToggle.setAttribute('aria-expanded', String(controlOpen));
+      telemetryChevron.style.transform = telemetryOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+      controlChevron.style.transform = controlOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+      backdrop.hidden = !(small.matches && (telemetryOpen || controlOpen));
+      if (telemetryOpen) window.dispatchEvent(new Event('gravity:telemetry-visible'));
+    }
+
+    telemetryToggle.addEventListener('click', () => {
+      telemetryOpen = !telemetryOpen;
+      if (small.matches && telemetryOpen) controlOpen = false;
+      applyPanelState();
+    });
+    controlToggle.addEventListener('click', () => {
+      controlOpen = !controlOpen;
+      if (small.matches && controlOpen) telemetryOpen = false;
+      applyPanelState();
+    });
+    backdrop.addEventListener('click', () => {
+      if (!small.matches) return;
+      telemetryOpen = false;
+      controlOpen = false;
+      applyPanelState();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || !small.matches || (!telemetryOpen && !controlOpen)) return;
+      telemetryOpen = false;
+      controlOpen = false;
+      applyPanelState();
+    });
+    const updateBreakpoint = () => {
+      telemetryOpen = !small.matches;
+      controlOpen = !small.matches;
+      applyPanelState();
+    };
+    if (small.addEventListener) small.addEventListener('change', updateBreakpoint);
+    else small.addListener(updateBreakpoint);
+    applyPanelState();
+  })();
+  </script>
 
   <!-- Main Three.js r164 + WebGL2 3D Geodesic Raymarching & GPGPU Simulation -->
   <script type="module">
@@ -2585,21 +2728,10 @@
     /* ============================================================================
      * 12. INTERACTIVE CONTROL PANEL BINDINGS
      * ========================================================================== */
-    const panelToggleBtn = document.getElementById('panel-toggle-btn');
-    const panelBody      = document.getElementById('panel-body');
-    const panelChevron   = document.getElementById('panel-chevron');
-    let panelOpen = window.innerWidth >= 768;
-
-    function applyPanelState() {
-      panelBody.style.display = panelOpen ? 'block' : 'none';
-      panelChevron.style.transform = panelOpen ? 'rotate(0deg)' : 'rotate(180deg)';
-      panelToggleBtn.setAttribute('aria-expanded', String(panelOpen));
-    }
-    applyPanelState();
-
-    panelToggleBtn.addEventListener('click', () => {
-      panelOpen = !panelOpen;
-      applyPanelState();
+    // Responsive panel visibility is managed independently from WebGL initialization.
+    window.addEventListener('gravity:telemetry-visible', () => {
+      resizeSparklineCanvas();
+      drawSparkline();
     });
 
     // Scenario presets
@@ -2836,6 +2968,7 @@
       if (now - lastFpsTime >= 450) {
         const fps = Math.round((fpsFrames * 1000) / (now - lastFpsTime));
         elFps.textContent = `${fps} FPS`;
+        document.getElementById('telemetry-mini-fps').textContent = elFps.textContent;
         fpsFrames = 0;
         lastFpsTime = now;
       }
