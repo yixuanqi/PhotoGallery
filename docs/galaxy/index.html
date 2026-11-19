@@ -3,6 +3,26 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b1a2d">
+<script>
+/* A one-time same-tab arrival handshake from the independent homepage. */
+(function () {
+  try {
+    var key = 'cosmos-to-galaxy-v2';
+    var payload = JSON.parse(sessionStorage.getItem(key) || 'null');
+    sessionStorage.removeItem(key);
+    if (payload && payload.version === 2 && payload.origin === location.origin &&
+        Date.now() - payload.time >= 0 && Date.now() - payload.time < 45000) {
+      document.documentElement.classList.add('cosmos-arrival');
+      window.setTimeout(function () {
+        document.documentElement.classList.add('cosmos-arrival-ready');
+      }, 8000);
+    }
+  } catch (error) {
+    /* Direct entry or blocked storage remains a normal, usable galaxy page. */
+  }
+})();
+</script>
+
 <title>星海漫游 · Yixuanqi 的创造宇宙</title>
 <meta name="description" content="走进一片真实可漫游的 3D 星海，每颗作品星球都通往一个可以探索的世界。">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -328,8 +348,43 @@ body{
 #vignette{background:radial-gradient(ellipse 76% 78% at 50% 50%,transparent 32%,rgba(2,8,21,.18) 100%)}
 :root[data-theme="paper"] #vignette{background:radial-gradient(ellipse 76% 78% at 50% 50%,transparent 32%,rgba(16,27,44,.16) 100%)}
 
+
+/* Shared black-hole portal arrival. Only enabled by a fresh same-tab handshake. */
+#cosmos-arrival-curtain{display:none;position:fixed;inset:0;z-index:2147483646;pointer-events:none;opacity:1;background:radial-gradient(circle at 50% 50%,#050914 0%,#01030a 52%,#000108 100%)}
+html.cosmos-arrival #cosmos-arrival-curtain{display:block}
+#cosmos-arrival-curtain::before{content:"";position:absolute;left:50%;top:50%;width:24vmin;height:24vmin;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 1px rgba(202,228,255,.22),0 0 44px rgba(80,161,232,.21),inset 0 0 25px rgba(98,158,204,.26);background:radial-gradient(circle,#00030b 38%,#0b2338 57%,rgba(109,170,214,.40) 61%,transparent 69%);opacity:0}
+#cosmos-arrival-curtain::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 7%,rgba(67,114,155,.11) 21%,transparent 56%);opacity:0}
+@property --cosmos-aperture{syntax:"<percentage>";inherits:false;initial-value:0%}
+html.cosmos-arrival.cosmos-arrival-ready #cosmos-arrival-curtain{
+  animation:cosmos-arrival-reveal 2.1s cubic-bezier(.19,.71,.3,1) forwards;
+  -webkit-mask-image:radial-gradient(circle at 50% 50%,transparent 0 var(--cosmos-aperture),#000 calc(var(--cosmos-aperture) + 8%));
+  mask-image:radial-gradient(circle at 50% 50%,transparent 0 var(--cosmos-aperture),#000 calc(var(--cosmos-aperture) + 8%));
+}
+html.cosmos-arrival.cosmos-arrival-ready #cosmos-arrival-curtain::before{animation:cosmos-arrival-ring 1.8s ease-out both}
+html.cosmos-arrival.cosmos-arrival-ready #cosmos-arrival-curtain::after{animation:cosmos-arrival-glow 1.8s ease-out both}
+@keyframes cosmos-arrival-reveal{
+  0%{--cosmos-aperture:0%;opacity:1}
+  52%{--cosmos-aperture:32%;opacity:1}
+  84%{--cosmos-aperture:85%;opacity:.94}
+  100%{--cosmos-aperture:135%;opacity:0;visibility:hidden}
+}
+@keyframes cosmos-arrival-ring{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.18)}
+  17%{opacity:.8}
+  82%{opacity:.45}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(9)}
+}
+@keyframes cosmos-arrival-glow{0%{opacity:0}24%{opacity:.85}100%{opacity:0}}
+@media(prefers-reduced-motion:reduce){
+  html.cosmos-arrival.cosmos-arrival-ready #cosmos-arrival-curtain{animation:cosmos-arrival-accessible 250ms ease-out forwards}
+  html.cosmos-arrival.cosmos-arrival-ready #cosmos-arrival-curtain::before,
+  html.cosmos-arrival.cosmos-arrival-ready #cosmos-arrival-curtain::after{animation:none}
+}
+@keyframes cosmos-arrival-accessible{from{opacity:1}to{opacity:0;visibility:hidden}}
+
 </style>
 </head><body>
+<div id="cosmos-arrival-curtain" aria-hidden="true"></div>
 <div id="scene"></div><div id="vignette"></div><div id="frame"></div><div id="labels"></div>
 <header class="top"><nav class="nav" aria-label="星海控制">
 <button class="btn" id="home">✦ 漫游</button><button class="btn" id="index">☷ 星球索引</button><button class="btn" id="logs">✎ 航行日志</button><button class="btn" id="palette">☾ 深空</button></nav></header>
@@ -801,7 +856,13 @@ function updateShootingStars(dt){
  });
 }
 
-function renderScene(){renderer.render(scene,camera)}
+function renderScene(){
+ renderer.render(scene,camera);
+ if(document.documentElement.classList.contains('cosmos-arrival') &&
+    !document.documentElement.classList.contains('cosmos-arrival-ready')){
+   document.documentElement.classList.add('cosmos-arrival-ready');
+ }
+}
 
 function populateGalaxy(glow){
  const night=['#79b6cb','#d1b18d','#b4a8cd','#91c3b6'];

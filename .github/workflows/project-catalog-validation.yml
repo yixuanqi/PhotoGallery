@@ -35,3 +35,5 @@ jobs:
           node-version: "22"
       - name: Validate catalog contract and local entry files
         run: node scripts/validate-project-catalog.mjs
+      - name: Validate galaxy black-hole arrival contract
+        run: node scripts/check-galaxy-arrival.mjs

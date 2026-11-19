@@ -1,0 +1,10 @@
+import { readFileSync } from "node:fs";
+import assert from "node:assert/strict";
+const html=readFileSync("docs/galaxy/index.html","utf8");
+assert.match(html,/cosmos-to-galaxy-v2/,"one-time arrival handshake must be supported");
+assert.match(html,/sessionStorage\.removeItem\(key\)/,"handshake must be consumed");
+assert.match(html,/id="cosmos-arrival-curtain"/,"arrival mask must exist");
+assert.match(html,/cosmos-arrival-reveal/,"arrival animation must exist");
+assert.match(html,/function renderScene\(\)\{[\s\S]*cosmos-arrival-ready/,"galaxy must reveal after the first rendered frame");
+assert.match(html,/window\.setTimeout\(function \(\) \{[\s\S]*cosmos-arrival-ready[\s\S]*8000/,"failed renderer must not trap navigation indefinitely");
+console.log("Galaxy arrival handshake and first-frame scene reveal checks passed.");
