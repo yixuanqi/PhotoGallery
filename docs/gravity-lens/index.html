@@ -208,61 +208,73 @@
       -webkit-backdrop-filter: blur(12px);
     }
 
-    /* Desktop retains both panels; mobile shows two compact, mutually exclusive drawers. */
-    .telemetry-mobile-toggle, .control-title-mobile { display: none; }
+    /* Responsive drawer launcher bar stays visible above either open mobile drawer. */
+    .telemetry-mobile-toggle, .control-title-mobile, #mobile-panel-launchers { display: none; }
     [hidden] { display: none !important; }
     @media (max-width: 767px) {
       #webgl-container, #webgl-container canvas { touch-action: none; }
-      #telemetry-aside, #control-aside {
-        position: fixed; top: calc(10px + env(safe-area-inset-top, 0px));
-        max-width: none !important; width: auto !important; pointer-events: auto;
-      }
-      #telemetry-aside { left: calc(10px + env(safe-area-inset-left, 0px)); right: auto; z-index: 22; }
-      #control-aside { right: calc(10px + env(safe-area-inset-right, 0px)); left: auto; z-index: 22; }
-      #telemetry-aside[data-open="true"], #control-aside[data-open="true"] {
+      #mobile-panel-launchers {
+        display: flex; position: fixed; z-index: 41;
         left: calc(10px + env(safe-area-inset-left, 0px));
-        right: calc(10px + env(safe-area-inset-right, 0px)); z-index: 31;
+        right: calc(10px + env(safe-area-inset-right, 0px));
+        top: calc(10px + env(safe-area-inset-top, 0px));
+        justify-content: space-between; align-items: center; gap: 10px;
       }
+      #mobile-panel-launchers button {
+        display: flex; align-items: center; justify-content: center;
+        gap: 8px; min-height: 46px; padding: 8px 13px;
+        color: #e2e8f0; font-size: 12px; font-weight: 600;
+        border-radius: 13px; white-space: nowrap;
+      }
+      #mobile-panel-launchers button[aria-expanded="true"] {
+        border-color: rgba(56, 189, 248, .68);
+        background: rgba(8, 27, 46, .92);
+      }
+      #mobile-launcher-fps, #telemetry-mini-fps {
+        font-size: 10px; color: #34d399; font-weight: 400;
+      }
+      #telemetry-aside, #control-aside {
+        position: fixed; z-index: 31;
+        top: calc(64px + env(safe-area-inset-top, 0px));
+        left: calc(10px + env(safe-area-inset-left, 0px));
+        right: calc(10px + env(safe-area-inset-right, 0px));
+        width: auto !important; max-width: none !important;
+        pointer-events: auto;
+      }
+      #telemetry-aside[data-open="false"], #control-aside[data-open="false"] { display: none; }
       #telemetry-panel, #control-panel {
+        width: 100% !important; min-width: 0;
         max-width: calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
-        max-height: calc(100dvh - 20px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-        border-radius: 14px; min-width: 0; overflow: hidden;
+        max-height: calc(100dvh - 78px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+        border-radius: 14px; overflow: hidden;
       }
       #telemetry-panel {
-        display: flex; flex-direction: column; width: max-content; padding: 0 !important;
+        display: flex; flex-direction: column; padding: 0 !important;
       }
-      #control-panel { width: max-content !important; transition: none; }
-      #telemetry-panel[data-open="true"], #control-panel[data-open="true"] { width: 100% !important; }
+      #control-panel { transition: none; }
       #telemetry-toggle-btn {
         display: flex; align-items: center; justify-content: space-between;
-        gap: 9px; min-height: 46px; width: 100%; padding: 10px 12px;
-        color: #e2e8f0; font-size: 12px; font-weight: 600;
-        white-space: nowrap; background: transparent;
-      }
-      #telemetry-toggle-btn:focus-visible, #panel-toggle-btn:focus-visible {
-        outline: 2px solid var(--accent-cyan); outline-offset: -3px;
-      }
-      #telemetry-panel[data-open="false"] #telemetry-toggle-btn { width: max-content; }
-      #telemetry-panel[data-open="true"] #telemetry-toggle-btn {
+        width: 100%; gap: 9px; min-height: 46px;
+        padding: 10px 13px; color: #e2e8f0;
+        font-size: 12px; font-weight: 600; white-space: nowrap;
+        background: transparent;
         border-bottom: 1px solid rgba(148, 163, 184, .18);
       }
-      #telemetry-mini-fps { color: #34d399; font-size: 10px; font-weight: 400; }
+      #telemetry-toggle-btn:focus-visible,
+      #panel-toggle-btn:focus-visible,
+      #mobile-panel-launchers button:focus-visible {
+        outline: 2px solid var(--accent-cyan); outline-offset: -3px;
+      }
       #telemetry-body, #panel-body {
         min-height: 0; overflow-y: auto; overscroll-behavior: contain;
         -webkit-overflow-scrolling: touch; touch-action: pan-y;
       }
       #telemetry-body { padding: 13px; }
-      #telemetry-panel[data-open="false"] #telemetry-body,
-      #control-panel[data-open="false"] #panel-body { display: none !important; }
-      #panel-toggle-btn { min-height: 46px; padding: 10px 12px; gap: 10px; }
-      #control-panel[data-open="false"] #panel-toggle-btn { width: max-content; }
-      #control-panel[data-open="false"] .control-title { display: none; }
-      #control-panel[data-open="false"] .control-title-mobile { display: inline; }
-      #control-panel[data-open="true"] .control-title { display: inline; }
       #panel-body { flex: 1 1 auto; }
+      #panel-toggle-btn { min-height: 46px; padding: 10px 12px; }
       #mobile-panel-backdrop {
         display: block; position: fixed; inset: 0; z-index: 20;
-        background: rgba(2, 6, 23, .22);
+        background: rgba(2, 6, 23, .24);
       }
       #fbo-inspector {
         bottom: calc(12px + env(safe-area-inset-bottom, 0px));
@@ -271,7 +283,8 @@
       }
       #fbo-inspector .fbo-chrome { min-width: 0; }
       #fbo-slot-pos, #fbo-slot-vel {
-        width: min(29vw, 116px) !important; height: min(29vw, 116px) !important;
+        width: min(29vw, 116px) !important;
+        height: min(29vw, 116px) !important;
         flex-shrink: 0;
       }
     }
@@ -300,6 +313,14 @@
   </div>
 
   <button id="mobile-panel-backdrop" type="button" hidden aria-label="关闭当前面板"></button>
+  <nav id="mobile-panel-launchers" aria-label="移动端面板控制">
+    <button id="mobile-telemetry-launcher" type="button" class="glass-panel" aria-controls="telemetry-body" aria-expanded="false">
+      <span>实时数据</span><span id="mobile-launcher-fps" class="mono">60 FPS</span>
+    </button>
+    <button id="mobile-control-launcher" type="button" class="glass-panel" aria-controls="panel-body" aria-expanded="false">
+      <span>参数设置</span>
+    </button>
+  </nav>
 
   <!-- Top-Left HUD: Live GPU-Sampled Telemetry -->
   <aside id="telemetry-aside" aria-label="实时 GPU 遥测" class="fixed top-3 left-3 sm:top-4 sm:left-4 z-10 w-[calc(100vw-6.5rem)] max-w-[314px] sm:max-w-[332px] pointer-events-none">
@@ -677,6 +698,8 @@
     const telemetryChevron = document.getElementById('telemetry-chevron');
     const controlChevron = document.getElementById('panel-chevron');
     const backdrop = document.getElementById('mobile-panel-backdrop');
+    const telemetryLauncher = document.getElementById('mobile-telemetry-launcher');
+    const controlLauncher = document.getElementById('mobile-control-launcher');
     let telemetryOpen = !small.matches;
     let controlOpen = !small.matches;
 
@@ -687,6 +710,8 @@
       controlBody.hidden = !controlOpen;
       telemetryToggle.setAttribute('aria-expanded', String(telemetryOpen));
       controlToggle.setAttribute('aria-expanded', String(controlOpen));
+      telemetryLauncher.setAttribute('aria-expanded', String(telemetryOpen));
+      controlLauncher.setAttribute('aria-expanded', String(controlOpen));
       telemetryChevron.style.transform = telemetryOpen ? 'rotate(0deg)' : 'rotate(180deg)';
       controlChevron.style.transform = controlOpen ? 'rotate(0deg)' : 'rotate(180deg)';
       backdrop.hidden = !(small.matches && (telemetryOpen || controlOpen));
@@ -699,6 +724,16 @@
       applyPanelState();
     });
     controlToggle.addEventListener('click', () => {
+      controlOpen = !controlOpen;
+      if (small.matches && controlOpen) telemetryOpen = false;
+      applyPanelState();
+    });
+    telemetryLauncher.addEventListener('click', () => {
+      telemetryOpen = !telemetryOpen;
+      if (small.matches && telemetryOpen) controlOpen = false;
+      applyPanelState();
+    });
+    controlLauncher.addEventListener('click', () => {
       controlOpen = !controlOpen;
       if (small.matches && controlOpen) telemetryOpen = false;
       applyPanelState();
@@ -2969,6 +3004,7 @@
         const fps = Math.round((fpsFrames * 1000) / (now - lastFpsTime));
         elFps.textContent = `${fps} FPS`;
         document.getElementById('telemetry-mini-fps').textContent = elFps.textContent;
+        document.getElementById('mobile-launcher-fps').textContent = elFps.textContent;
         fpsFrames = 0;
         lastFpsTime = now;
       }
