@@ -5,18 +5,48 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#050e20">
 <script>
-/* A one-time same-tab arrival handshake from the independent homepage. */
+/* Continue the same portal wave across the same-origin document navigation. */
 (function () {
   try {
-    var key = 'cosmos-to-galaxy-v2';
-    var raw = sessionStorage.getItem(key);
+    var root = document.documentElement;
+    var keyV3 = 'cosmos-to-galaxy-v3';
+    var keyV2 = 'cosmos-to-galaxy-v2';
+    var raw = sessionStorage.getItem(keyV3);
+    if (!raw) raw = sessionStorage.getItem(keyV2);
     var payload = raw ? JSON.parse(raw) : null;
-    sessionStorage.removeItem(key);
-    if (payload && payload.version === 2 && payload.origin === location.origin &&
-        Date.now() - payload.time >= 0 && Date.now() - payload.time < 45000) {
-      document.documentElement.classList.add('cosmos-arrival');
+    sessionStorage.removeItem(keyV3);
+    sessionStorage.removeItem(keyV2);
+
+    var now = Date.now();
+    var isV3 = payload && payload.version === 3 &&
+      Number.isFinite(payload.startedAt) && Number.isFinite(payload.durationMs);
+    var isV2 = payload && payload.version === 2 && Number.isFinite(payload.time);
+    var startedAt = isV3 ? payload.startedAt : (isV2 ? payload.time : NaN);
+    var age = now - startedAt;
+    var fresh = age >= -1000 && age < (isV3 ? 12000 : 45000);
+
+    if (payload && payload.origin === location.origin && (isV3 || isV2) && fresh) {
+      var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var duration = reducedMotion ? 250 : (isV3 ? Math.max(1800, Math.min(4200, payload.durationMs)) : 2800);
+      var elapsed = reducedMotion || !isV3 ? 0 : Math.max(0, Math.min(duration, age));
+      var portal = payload.portal && typeof payload.portal === 'object' ? payload.portal : {};
+      var x = Number.isFinite(portal.x) ? Math.max(0.08, Math.min(0.92, portal.x)) : 0.5;
+      var y = Number.isFinite(portal.y) ? Math.max(0.08, Math.min(0.92, portal.y)) : 0.75;
+
+      root.style.setProperty('--cosmos-portal-x', (x * 100).toFixed(2) + '%');
+      root.style.setProperty('--cosmos-portal-y', (y * 100).toFixed(2) + '%');
+      root.style.setProperty('--cosmos-arrival-duration', duration + 'ms');
+      root.style.setProperty('--cosmos-arrival-delay', (-elapsed) + 'ms');
+      window.__COSMOS_ARRIVAL__ = {
+        version: isV3 ? 3 : 2,
+        startedAt: startedAt,
+        durationMs: duration,
+        elapsedMs: elapsed,
+        portal: { x: x, y: y }
+      };
+      root.classList.add('cosmos-arrival');
       window.setTimeout(function () {
-        document.documentElement.classList.add('cosmos-arrival-ready');
+        root.classList.add('cosmos-arrival-ready');
       }, 8000);
     }
   } catch (error) {
@@ -538,7 +568,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-
   *, *:before, *:after { transition-duration: 0.01ms !important; }
 }
 
-/* Shared black-hole portal arrival curtain from independent homepage */
+/* Cross-document portal continuation: same origin, ring curve and duration as rocket-warp.html. */
 #cosmos-arrival-curtain {
   display: none;
   position: fixed;
@@ -546,27 +576,30 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-
   z-index: 2147483646;
   pointer-events: none;
   opacity: 1;
-  background: radial-gradient(circle at 50% 50%, #050914 0%, #01030a 52%, #000108 100%);
+  --cosmos-aperture: 0%;
+  background: radial-gradient(circle at var(--cosmos-portal-x, 50%) var(--cosmos-portal-y, 75%), #050914 0%, #01030a 52%, #000108 100%);
+  -webkit-mask-image: radial-gradient(circle at var(--cosmos-portal-x, 50%) var(--cosmos-portal-y, 75%), transparent 0 var(--cosmos-aperture), #000 calc(var(--cosmos-aperture) + 8%));
+  mask-image: radial-gradient(circle at var(--cosmos-portal-x, 50%) var(--cosmos-portal-y, 75%), transparent 0 var(--cosmos-aperture), #000 calc(var(--cosmos-aperture) + 8%));
 }
 html.cosmos-arrival #cosmos-arrival-curtain { display: block; }
 #cosmos-arrival-curtain::before {
   content: "";
   position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 24vmin;
-  height: 24vmin;
+  left: var(--cosmos-portal-x, 50%);
+  top: var(--cosmos-portal-y, 75%);
+  width: 18vmin;
+  height: 18vmin;
   border-radius: 50%;
   transform: translate(-50%, -50%);
-  box-shadow: 0 0 0 1px rgba(202, 228, 255, 0.22), 0 0 44px rgba(80, 161, 232, 0.21), inset 0 0 25px rgba(98, 158, 204, 0.26);
-  background: radial-gradient(circle, #00030b 38%, #0b2338 57%, rgba(109, 170, 214, 0.40) 61%, transparent 69%);
+  box-shadow: 0 0 0 1px rgba(208, 231, 255, 0.25), 0 0 42px rgba(91, 166, 229, 0.28);
+  background: radial-gradient(circle, #000 46%, #0b2036 62%, rgba(112, 184, 238, 0.34) 68%, transparent 74%);
   opacity: 0;
 }
 #cosmos-arrival-curtain::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at center, transparent 7%, rgba(67, 114, 155, 0.11) 21%, transparent 56%);
+  background: radial-gradient(ellipse at var(--cosmos-portal-x, 50%) var(--cosmos-portal-y, 75%), rgba(67, 114, 155, 0.20) 0%, rgba(67, 114, 155, 0.08) 22%, transparent 62%);
   opacity: 0;
 }
 @property --cosmos-aperture {
@@ -575,36 +608,36 @@ html.cosmos-arrival #cosmos-arrival-curtain { display: block; }
   initial-value: 0%;
 }
 html.cosmos-arrival.cosmos-arrival-ready #cosmos-arrival-curtain {
-  animation: cosmos-arrival-reveal 2.1s cubic-bezier(0.19, 0.71, 0.3, 1) forwards;
-  -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 0 var(--cosmos-aperture), #000 calc(var(--cosmos-aperture) + 8%));
-  mask-image: radial-gradient(circle at 50% 50%, transparent 0 var(--cosmos-aperture), #000 calc(var(--cosmos-aperture) + 8%));
+  animation: cosmos-arrival-reveal var(--cosmos-arrival-duration, 2800ms) cubic-bezier(.16, .84, .32, 1) var(--cosmos-arrival-delay, 0ms) forwards;
 }
 html.cosmos-arrival.cosmos-arrival-ready #cosmos-arrival-curtain::before {
-  animation: cosmos-arrival-ring 1.8s ease-out both;
+  animation: cosmos-portal-ring var(--cosmos-arrival-duration, 2800ms) cubic-bezier(.16, .84, .32, 1) var(--cosmos-arrival-delay, 0ms) both;
 }
 html.cosmos-arrival.cosmos-arrival-ready #cosmos-arrival-curtain::after {
-  animation: cosmos-arrival-glow 1.8s ease-out both;
+  animation: cosmos-arrival-glow var(--cosmos-arrival-duration, 2800ms) ease-out var(--cosmos-arrival-delay, 0ms) both;
 }
 @keyframes cosmos-arrival-reveal {
   0%   { --cosmos-aperture: 0%; opacity: 1; }
-  52%  { --cosmos-aperture: 32%; opacity: 1; }
-  84%  { --cosmos-aperture: 85%; opacity: 0.94; }
-  100% { --cosmos-aperture: 135%; opacity: 0; visibility: hidden; }
+  14%  { --cosmos-aperture: 2%; opacity: 1; }
+  64%  { --cosmos-aperture: 46%; opacity: 0.98; }
+  100% { --cosmos-aperture: 150%; opacity: 0; visibility: hidden; }
 }
-@keyframes cosmos-arrival-ring {
-  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.18); }
-  17%  { opacity: 0.8; }
-  82%  { opacity: 0.45; }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(9); }
+@keyframes cosmos-portal-ring {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(.25); }
+  12%  { opacity: .9; }
+  62%  { opacity: .48; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(12); }
 }
 @keyframes cosmos-arrival-glow {
   0%   { opacity: 0; }
-  24%  { opacity: 0.85; }
+  18%  { opacity: 0.78; }
   100% { opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   html.cosmos-arrival.cosmos-arrival-ready #cosmos-arrival-curtain {
-    animation: cosmos-arrival-accessible 250ms ease-out forwards;
+    animation: cosmos-arrival-accessible 250ms ease-out 0ms forwards;
+    -webkit-mask-image: none;
+    mask-image: none;
   }
   html.cosmos-arrival.cosmos-arrival-ready #cosmos-arrival-curtain::before,
   html.cosmos-arrival.cosmos-arrival-ready #cosmos-arrival-curtain::after {
@@ -1025,6 +1058,7 @@ var el = function (id) { return document.getElementById(id); };
 var mobile = matchMedia('(max-width: 640px)').matches;
 var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 var isArrival = document.documentElement.classList.contains('cosmos-arrival');
+var arrivalData = window.__COSMOS_ARRIVAL__ || null;
 
 var renderer, scene, camera, controls, galaxyGroup;
 var skyMat = null;
@@ -2013,14 +2047,23 @@ function init() {
   var defaultPos = new THREE.Vector3(0, mobile ? 54 : 44, mobile ? 110 : 92);
 
   if (isArrival && !reduced) {
-    camera.position.set(0, mobile ? 74 : 62, mobile ? 148 : 126);
+    // Enter from the same lower-screen portal point where the rocket exits (~75% viewport height).
+    var arrivalDurationMs = arrivalData && Number.isFinite(arrivalData.durationMs) ? arrivalData.durationMs : 2800;
+    var arrivalElapsedMs = arrivalData && Number.isFinite(arrivalData.elapsedMs) ? arrivalData.elapsedMs : 0;
+    var arrivalStartPos = new THREE.Vector3(0, mobile ? 125 : 110, mobile ? 300 : 260);
+    var arrivalLookFrom = new THREE.Vector3(0, mobile ? 90 : 78, 0);
+    camera.position.copy(arrivalStartPos);
+    camera.fov = 66;
+    camera.updateProjectionMatrix();
     flight = {
       from: camera.position.clone(),
       to: defaultPos.clone(),
-      lookFrom: new THREE.Vector3(0, 0, 0),
+      lookFrom: arrivalLookFrom,
       lookTo: new THREE.Vector3(0, 0, 0),
-      t: 0,
-      rate: 0.56
+      t: Math.min(1, Math.max(0, arrivalElapsedMs / arrivalDurationMs)),
+      rate: 1000 / arrivalDurationMs,
+      fromFov: 66,
+      toFov: 50
     };
   } else {
     camera.position.copy(defaultPos);
@@ -2265,11 +2308,15 @@ function animate(now) {
   });
 
   if (flight) {
-    flight.t = Math.min(1, flight.t + dt * (flight.rate || 0.88));
+    flight.t = Math.min(1, flight.t + dt * flight.rate);
     var t = flight.t;
     var k = t * t * t * (t * (t * 6 - 15) + 10);
     camera.position.copy(flight.from).lerp(flight.to, k);
     controls.target.copy(flight.lookFrom).lerp(flight.lookTo, k);
+    if (Number.isFinite(flight.fromFov) && Number.isFinite(flight.toFov)) {
+      camera.fov = flight.fromFov + (flight.toFov - flight.fromFov) * k;
+      camera.updateProjectionMatrix();
+    }
     if (t >= 1) {
       flight = null;
       controls.syncFromCamera();

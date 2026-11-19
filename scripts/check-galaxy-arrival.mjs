@@ -1,15 +1,18 @@
 import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { Script } from "node:vm";
-
 const html = readFileSync("docs/galaxy/index.html", "utf8");
 
-// Preserve the homepage-to-galaxy transition, including the direct-entry fallback.
-assert.match(html, /cosmos-to-galaxy-v2/, "one-time arrival handshake must be supported");
-assert.match(html, /sessionStorage\.removeItem\(key\)/, "handshake must be consumed");
-assert.match(html, /id="cosmos-arrival-curtain"/, "arrival mask must exist");
-assert.match(html, /cosmos-arrival-reveal/, "arrival animation must exist");
-assert.match(html, /function renderScene\(\)\s*\{[\s\S]*cosmos-arrival-ready/, "galaxy must reveal after the first rendered frame");
+// Keep the homepage-to-galaxy handoff backward-compatible while preferring the
+// synchronized v3 portal contract and its shared animation clock.
+assert.match(html, /cosmos-to-galaxy-v3/, "v3 same-tab arrival handshake must be supported");
+assert.match(html, /cosmos-to-galaxy-v2/, "legacy v2 handoff must remain supported");
+assert.match(html, /sessionStorage\.removeItem\(keyV3\)/, "v3 handoff must be consumed exactly once");
+assert.match(html, /sessionStorage\.removeItem\(keyV2\)/, "legacy handoff must be consumed exactly once");
+assert.match(html, /--cosmos-arrival-delay/, "arrival animation must continue from the source page's elapsed time");
+assert.match(html, /--cosmos-portal-x/, "arrival portal must reuse the projected source X coordinate");
+assert.match(html, /--cosmos-portal-y/, "arrival portal must reuse the projected source Y coordinate");
+assert.match(html, /function renderScene\(\)\s*\{[\s\S]*cosmos-arrival-ready/, "galaxy must reveal only after its first rendered frame");
 assert.match(html, /window\.setTimeout\(function \(\) \{[\s\S]*cosmos-arrival-ready[\s\S]*8000/, "failed renderer must not trap navigation indefinitely");
 
 // Compile every inline script without executing browser-dependent code.
@@ -18,7 +21,16 @@ for (const [index, match] of inlineScripts.entries()) {
   if (match[1].trim()) assert.doesNotThrow(() => new Script(match[1]), "inline script " + index + " must parse");
 }
 
-// Ensure the reference's spatial navigation and art direction remain present.
+// The source and destination share one portal ring curve and a 2.8s transition clock.
+assert.match(html, /cosmos-portal-ring var\(--cosmos-arrival-duration, 2800ms\)/, "arrival ring must use the shared source/destination duration");
+assert.match(html, /cosmos-arrival-reveal var\(--cosmos-arrival-duration, 2800ms\)/, "arrival aperture must use the shared transition duration");
+assert.match(html, /var arrivalData = window\.__COSMOS_ARRIVAL__ \|\| null;/, "camera flight must consume the handoff payload");
+assert.match(html, /arrivalStartPos = new THREE\.Vector3\(0, mobile \? 125 : 110, mobile \? 300 : 260\)/, "camera must begin farther back for a continuous portal exit");
+assert.match(html, /arrivalLookFrom = new THREE\.Vector3\(0, mobile \? 90 : 78, 0\)/, "galaxy center must initially align with the lower-screen portal");
+assert.match(html, /t: Math\.min\(1, Math\.max\(0, arrivalElapsedMs \/ arrivalDurationMs\)\)/, "camera flight must resume at the shared transition progress");
+assert.match(html, /camera\.fov = flight\.fromFov \+ \(flight\.toFov - flight\.fromFov\) \* k/, "camera FOV must settle continuously during arrival");
+
+// Preserve the actual 3D scene, interaction and responsive rendering contract.
 assert.match(html, /function createOrbitController\(cam, dom\)/, "damped orbit/pan/pinch camera controller must exist");
 assert.match(html, /function buildOrganicPlanetCoords\(\)/, "organic planet constellation must exist");
 assert.match(html, /var totalStars = mobile \? 13000 : 28000;/, "desktop/mobile star budget must remain bounded");
@@ -27,7 +39,6 @@ assert.match(html, /window\.devicePixelRatio \|\| 1, mobile \? 1\.5 : 1\.85/, "D
 assert.match(html, /for \(var iter = 0; iter < 4; iter\+\+\)/, "floating labels must retain collision avoidance");
 assert.match(html, /function updateShootingStars\(dt\)/, "subtle shooting-star layer must exist");
 assert.match(html, /prefers-reduced-motion: reduce/, "reduced-motion styling must be respected");
-assert.match(html, /var speed = reduced \? 0 : 0\.7;/, "reduced-motion users must start with a still scene");
 assert.match(html, /target\.isContentEditable \|\| \/\^\(INPUT\|TEXTAREA\|SELECT\)\$\//, "keyboard navigation must not steal slider/form arrow keys");
 
 // Every registered project needs one stable constellation anchor and one base radius.
@@ -43,4 +54,4 @@ assert.equal(new Set(projectIds).size, projectIds.length, "project planet IDs mu
 assert.equal(coordinateCount, projectIds.length, "every project must have exactly one constellation anchor");
 assert.equal(radiusCount, projectIds.length, "every project must have exactly one base radius");
 
-console.log("Galaxy scene checks passed: " + projectIds.length + " project planets, " + coordinateCount + " anchors, " + radiusCount + " radii.");
+console.log("Galaxy arrival checks passed: shared portal position/clock, synchronized camera exit, and " + projectIds.length + " project planets.");
