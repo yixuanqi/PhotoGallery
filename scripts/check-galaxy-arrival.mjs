@@ -26,9 +26,14 @@ assert.match(html, /cosmos-portal-ring var\(--cosmos-arrival-duration, 2800ms\)/
 assert.match(html, /cosmos-arrival-reveal var\(--cosmos-arrival-duration, 2800ms\)/, "arrival aperture must use the shared transition duration");
 assert.match(html, /var arrivalData = window\.__COSMOS_ARRIVAL__ \|\| null;/, "camera flight must consume the handoff payload");
 assert.match(html, /arrivalStartPos = new THREE\.Vector3\(0, mobile \? 125 : 110, mobile \? 300 : 260\)/, "camera must begin farther back for a continuous portal exit");
-assert.match(html, /arrivalLookFrom = new THREE\.Vector3\(0, mobile \? 90 : 78, 0\)/, "galaxy center must initially align with the lower-screen portal");
+assert.match(html, /var portalX = arrivalData && arrivalData\.portal/, "arrival camera must use the source portal X coordinate");
+assert.match(html, /var portalY = arrivalData && arrivalData\.portal/, "arrival camera must use the source portal Y coordinate");
+assert.match(html, /var targetElevation = originElevation - \(portalY - 0\.5\) \* arrivalFovRad/, "camera pitch must align the galaxy center with the exact source portal Y");
+assert.match(html, /arrivalTanHalfFov \* arrivalAspect/, "camera yaw must account for the viewport aspect ratio");
 assert.match(html, /t: Math\.min\(1, Math\.max\(0, arrivalElapsedMs \/ arrivalDurationMs\)\)/, "camera flight must resume at the shared transition progress");
 assert.match(html, /camera\.fov = flight\.fromFov \+ \(flight\.toFov - flight\.fromFov\) \* k/, "camera FOV must settle continuously during arrival");
+assert.match(html, /Date\.now\(\) - arrivalData\.startedAt/, "camera flight must follow the source's absolute transition clock");
+assert.match(html, /style\.setProperty\('--cosmos-arrival-delay', \(-elapsedMs\) \+ 'ms'\)/, "the portal reveal must catch up to the same clock after WebGL initialization");
 
 // Preserve the actual 3D scene, interaction and responsive rendering contract.
 assert.match(html, /function createOrbitController\(cam, dom\)/, "damped orbit/pan/pinch camera controller must exist");
