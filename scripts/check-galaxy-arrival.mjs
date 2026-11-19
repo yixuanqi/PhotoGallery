@@ -31,6 +31,9 @@ assert.match(html, /var portalY = arrivalData && arrivalData\.portal/, "arrival 
 assert.match(html, /var targetElevation = originElevation - \(portalY - 0\.5\) \* arrivalFovRad/, "camera pitch must align the galaxy center with the exact source portal Y");
 assert.match(html, /arrivalTanHalfFov \* arrivalAspect/, "camera yaw must account for the viewport aspect ratio");
 assert.match(html, /t: Math\.min\(1, Math\.max\(0, arrivalElapsedMs \/ arrivalDurationMs\)\)/, "camera flight must resume at the shared transition progress");
+assert.match(html, /arrivalFovRad = THREE\.MathUtils\.degToRad\(54\)/, "arrival must inherit the rocket scene's 54-degree exit FOV");
+assert.match(html, /camera\.fov = 54;/, "arrival camera must start at the source exit FOV");
+assert.match(html, /fromFov: 54,/, "camera FOV must settle from the shared source FOV");
 assert.match(html, /camera\.fov = flight\.fromFov \+ \(flight\.toFov - flight\.fromFov\) \* k/, "camera FOV must settle continuously during arrival");
 assert.match(html, /Date\.now\(\) - arrivalData\.startedAt/, "camera flight must follow the source's absolute transition clock");
 assert.match(html, /style\.setProperty\('--cosmos-arrival-delay', \(-elapsedMs\) \+ 'ms'\)/, "the portal reveal must catch up to the same clock after WebGL initialization");
