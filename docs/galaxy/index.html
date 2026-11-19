@@ -368,7 +368,7 @@ var POSTS=[
   {"id":"excavator-note","no":"08 · 挖掘机工地手记","title":"给豆豆号一片能真正挖开的土地","summary":"从履带底盘、液压挖臂到可变形沙土、泥地与水塘，把手绘工地变成一座可操作的实验场。","paragraphs":["豆豆挖掘机是一页可以直接在浏览器运行的 3D 手绘工地。四个分区分别有金沙丘陵、泥地、水塘清淤和料斗装车，铲斗挖下去之后，地形会随之变化。","玩家既能驾驶履带底盘，也能用按键和滑块控制大臂、小臂、铲斗与旋转平台，还能切换智能平斗、一键铲土和一键卸土。页面同步显示铲斗装载、累计挖运量和履带悬挂等数据。","为了让过程有趣且能实时运行，它采用离散高度场、简化的土料流动与接触模型，而不是完整的工业级颗粒或液压求解器。这第十颗星，先把挖掘和装运的乐趣装进星海。"]}
 ];
 const el=id=>document.getElementById(id),mobile=matchMedia('(max-width:640px)').matches,reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;
-let renderer,scene,camera,controls,galaxyGroup,nebulaPivot=null,nebulaMesh=null,nebulaTextures=null,nebulaLayers=[],shootingStars=[],coreHalo=null,glintPoints=null,glintColors=null,planets=[],meshes=[],labels=[],starGroups=[],orbitRings=[],planetHalos=[],dustCloud=null,lights=null,selected=-1,flight=null,paused=false,clock=0,last=0,speed=.7,started=false,theme='night',raycaster,pointer;
+let renderer,scene,camera,controls,galaxyGroup,nebulaPivot=null,nebulaMesh=null,nebulaTextures=null,nebulaLayers=[],shootingStars=[],skyNebulaMaterial=null,skyStarMaterial=null,coreHalo=null,glintPoints=null,glintColors=null,planets=[],meshes=[],labels=[],starGroups=[],orbitRings=[],planetHalos=[],dustCloud=null,lights=null,selected=-1,flight=null,paused=false,clock=0,last=0,speed=.7,started=false,theme='night',raycaster,pointer;
 const locations=[[22,1,10],[-7,1,25],[-25,2,-12],[30,1,-15],[-28,1,17],[-15,2,0],[12,2,-29],[27,1,-23],[-29,1,-29],[12,1,30]];
 try{theme=localStorage.getItem('star-theme')==='paper'?'paper':'night'}catch(e){}
 document.documentElement.dataset.theme=theme;
@@ -566,6 +566,150 @@ const NEBULA_FRAGMENT_SHADER=[
  ' gl_FragColor=vec4(color,alpha);',
  '}'
 ].join('\n');
+
+
+const SKY_VERTEX_SHADER=[
+ 'varying vec3 vSkyDirection;',
+ 'varying vec2 vSkyUv;',
+ 'void main(){',
+ ' vSkyDirection=normalize(position);',
+ ' vSkyUv=uv;',
+ ' gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);',
+ '}'
+].join('\n');
+
+const SKY_NEBULA_FRAGMENT_SHADER=[
+ 'precision highp float;',
+ 'uniform float uTime;',
+ 'uniform float uTheme;',
+ 'varying vec3 vSkyDirection;',
+ 'float hash31(vec3 p){',
+ ' p=fract(p*vec3(.1031,.1030,.0973));',
+ ' p+=dot(p,p.yxz+33.33);',
+ ' return fract((p.x+p.y)*p.z);',
+ '}',
+ 'float noise3D(vec3 p){',
+ ' vec3 i=floor(p);',
+ ' vec3 f=fract(p);',
+ ' f=f*f*(3.0-2.0*f);',
+ ' float n000=hash31(i);',
+ ' float n100=hash31(i+vec3(1.0,0.0,0.0));',
+ ' float n010=hash31(i+vec3(0.0,1.0,0.0));',
+ ' float n110=hash31(i+vec3(1.0,1.0,0.0));',
+ ' float n001=hash31(i+vec3(0.0,0.0,1.0));',
+ ' float n101=hash31(i+vec3(1.0,0.0,1.0));',
+ ' float n011=hash31(i+vec3(0.0,1.0,1.0));',
+ ' float n111=hash31(i+vec3(1.0,1.0,1.0));',
+ ' float x00=mix(n000,n100,f.x);',
+ ' float x10=mix(n010,n110,f.x);',
+ ' float x01=mix(n001,n101,f.x);',
+ ' float x11=mix(n011,n111,f.x);',
+ ' return mix(mix(x00,x10,f.y),mix(x01,x11,f.y),f.z);',
+ '}',
+ 'float fbm3(vec3 p){',
+ ' float value=0.0;',
+ ' float amplitude=.52;',
+ ' for(int i=0;i<4;i++){',
+ '  value+=amplitude*noise3D(p);',
+ '  p=p*2.03+vec3(17.1,9.2,13.7);',
+ '  amplitude*=.5;',
+ ' }',
+ ' return value;',
+ '}',
+ 'void main(){',
+ ' vec3 d=normalize(vSkyDirection);',
+ ' float longitude=atan(d.z,d.x);',
+ ' float bandCenter=.045*sin(longitude*2.0)+.025*sin(longitude*5.0+1.1);',
+ ' float band=exp(-pow((d.y-bandCenter)*3.5,2.0));',
+ ' vec3 p=d*vec3(5.2,4.4,5.2);',
+ ' p+=vec3(uTime*.0012,0.0,-uTime*.0008);',
+ ' float base=fbm3(p);',
+ ' float detail=fbm3(p*2.35+vec3(4.1,8.7,2.3));',
+ ' float cloud=smoothstep(.34,.68,base*.70+detail*.30);',
+ ' float wisps=smoothstep(.50,.75,detail);',
+ ' float dust=smoothstep(.47,.70,fbm3(p*1.65+vec3(5.2,13.7,2.8)))*band;',
+ ' float density=(cloud*.76+wisps*.18)*(.30+.70*band);',
+ ' density*=1.0-dust*.43;',
+ ' float wideHaze=smoothstep(.34,.66,fbm3(d*2.1+vec3(3.4,8.2,1.7)))*.15;',
+ ' float alpha=clamp(density*.48+wideHaze*.18,0.0,.46);',
+ ' vec3 nightLow=vec3(.085,.125,.195);',
+ ' vec3 nightHigh=vec3(.30,.365,.46);',
+ ' vec3 paperLow=vec3(.13,.17,.205);',
+ ' vec3 paperHigh=vec3(.36,.39,.43);',
+ ' vec3 low=mix(nightLow,paperLow,uTheme);',
+ ' vec3 high=mix(nightHigh,paperHigh,uTheme);',
+ ' vec3 color=mix(low,high,smoothstep(.34,.76,base));',
+ ' color=mix(color,vec3(.36,.31,.30),dust*.22);',
+ ' color=mix(color,vec3(.31,.37,.47),wisps*.13);',
+ ' gl_FragColor=vec4(color,alpha);',
+ '}'
+].join('\n');
+
+const SKY_STARS_FRAGMENT_SHADER=[
+ 'precision highp float;',
+ 'uniform float uTime;',
+ 'uniform float uTheme;',
+ 'uniform float uDensity;',
+ 'uniform float uAspect;',
+ 'varying vec2 vSkyUv;',
+ 'float hash21(vec2 p){',
+ ' return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);',
+ '}',
+ 'float starLayer(vec2 uv,vec2 cells,float density,float seed,float sizeScale,float aspectFix,out vec3 tint){',
+ ' vec2 grid=uv*cells;',
+ ' vec2 cell=floor(grid);',
+ ' vec2 f=fract(grid);',
+ ' float h=hash21(cell+seed);',
+ ' vec2 offset=vec2(hash21(cell+seed+11.7),hash21(cell+seed+27.3));',
+ ' vec2 delta=f-offset;',
+ ' delta.y*=aspectFix;',
+ ' float radius=mix(.035,.095,hash21(cell+seed+41.1))*sizeScale;',
+ ' float d2=dot(delta,delta);',
+ ' float core=exp(-d2/(radius*radius*.16));',
+ ' float halo=exp(-d2/(radius*radius*2.8))*.105;',
+ ' float visible=step(1.0-density*uDensity,h);',
+ ' float twinkle=.88+.12*sin(uTime*(.7+hash21(cell+seed+9.0)*1.7)+h*6.2831);',
+ ' float strength=visible*twinkle*mix(.25,.88,hash21(cell+seed+53.0));',
+ ' float amount=(core+halo)*strength;',
+ ' float warmth=hash21(cell+seed+71.0);',
+ ' tint=mix(vec3(.70,.82,.98),vec3(1.0,.84,.68),step(.67,warmth));',
+ ' return amount;',
+ '}',
+ 'void main(){',
+ ' vec3 c1,c2,c3;',
+ ' float s1=starLayer(vSkyUv,vec2(900.0,450.0),.82,1.0,.82,uAspect,c1);',
+ ' float s2=starLayer(vSkyUv,vec2(430.0,215.0),.48,7.0,1.20,uAspect,c2);',
+ ' float s3=starLayer(vSkyUv,vec2(150.0,75.0),.17,19.0,1.65,uAspect,c3);',
+ ' float total=s1+s2+s3;',
+ ' vec3 color=(c1*s1+c2*s2+c3*s3)/max(total,.0001);',
+ ' color=mix(color,vec3(1.0,.89,.77),uTheme*.12);',
+ ' float alpha=clamp(total*.94,0.0,.96);',
+ ' gl_FragColor=vec4(color,alpha);',
+ '}'
+].join('\n');
+
+function createSkyBackdrop(){
+ const geometry=new THREE.SphereGeometry(650,48,32);
+ const shared={uTime:{value:0},uTheme:{value:theme==='paper'?1:0}};
+ skyNebulaMaterial=new THREE.ShaderMaterial({
+  uniforms:shared,vertexShader:SKY_VERTEX_SHADER,fragmentShader:SKY_NEBULA_FRAGMENT_SHADER,
+  side:THREE.BackSide,transparent:true,depthTest:false,depthWrite:false,fog:false,
+  blending:THREE.NormalBlending
+ });
+ const starUniforms={
+  uTime:{value:0},uTheme:{value:theme==='paper'?1:0},
+  uDensity:{value:mobile?.78:1.0},uAspect:{value:innerWidth/innerHeight}
+ };
+ skyStarMaterial=new THREE.ShaderMaterial({
+  uniforms:starUniforms,vertexShader:SKY_VERTEX_SHADER,fragmentShader:SKY_STARS_FRAGMENT_SHADER,
+  side:THREE.BackSide,transparent:true,depthTest:false,depthWrite:false,fog:false,
+  blending:THREE.NormalBlending
+ });
+ const cloud=new THREE.Mesh(geometry,skyNebulaMaterial);
+ cloud.renderOrder=-1002;cloud.frustumCulled=false;scene.add(cloud);
+ const stars=new THREE.Mesh(geometry,skyStarMaterial);
+ stars.renderOrder=-1001;stars.frustumCulled=false;scene.add(stars);
+}
 
 function buildNebulaLayers(){
  const definitions=[
@@ -783,7 +927,8 @@ function init(){
  try{renderer=new THREE.WebGLRenderer({antialias:!mobile,alpha:true,powerPreference:'high-performance'})}catch(e){fail('WebGL 不可用，请使用更新版 Chrome 或 Edge；仍可打开作品索引。');return}
  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,mobile?1.4:1.65));renderer.setSize(innerWidth,innerHeight);renderer.setClearColor(0x091b2c,0);renderer.outputEncoding=THREE.sRGBEncoding;el('scene').appendChild(renderer.domElement);
  scene=new THREE.Scene();scene.fog=new THREE.FogExp2(theme==='night'?0x0a1b35:0x4c6685,theme==='night'?.0016:.0012);
- camera=new THREE.PerspectiveCamera(52,innerWidth/innerHeight,.1,420);camera.position.set(0,mobile?50:43,mobile?103:88);
+ camera=new THREE.PerspectiveCamera(52,innerWidth/innerHeight,.1,1600);camera.position.set(0,mobile?50:43,mobile?103:88);
+ createSkyBackdrop();
  controls=new THREE.OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.058;controls.enablePan=true;controls.minDistance=8;controls.maxDistance=165;controls.autoRotate=!reduced;controls.autoRotateSpeed=.18;
  controls.minPolarAngle=.08;controls.maxPolarAngle=Math.PI*.9;
  galaxyGroup=new THREE.Group();scene.add(galaxyGroup);let glow=spriteTexture();
@@ -831,6 +976,8 @@ function animate(now){
   starGroups.forEach(a=>a.points.rotation.y+=dt*a.speed*speed);
   if(nebulaPivot)nebulaPivot.rotation.y+=dt*.012*speed;
   if(glintPoints)glintPoints.rotation.y+=dt*.012*speed;
+  if(skyNebulaMaterial)skyNebulaMaterial.uniforms.uTime.value=clock;
+  if(skyStarMaterial)skyStarMaterial.uniforms.uTime.value=clock;
   nebulaLayers.forEach(layer=>{
    const u=layer.material.uniforms;
    u.uTime.value=clock*layer.flow;
@@ -848,7 +995,7 @@ function animate(now){
  }
  controls.update();updateLabels();renderScene()
 }
-function resize(){if(!started)return;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}
+function resize(){if(!started)return;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);if(skyStarMaterial)skyStarMaterial.uniforms.uAspect.value=innerWidth/innerHeight}
 function applyTheme(){
  const dawn=theme==='paper';
  document.documentElement.dataset.theme=theme;
@@ -870,6 +1017,8 @@ function applyTheme(){
    nebulaMesh.material.needsUpdate=true;
   }
   if(coreHalo){coreHalo.material.opacity=dawn?.13:.155}
+  if(skyNebulaMaterial)skyNebulaMaterial.uniforms.uTheme.value=dawn?1:0;
+  if(skyStarMaterial)skyStarMaterial.uniforms.uTheme.value=dawn?1:0;
   if(nebulaLayers.length){
    const palettes=dawn
     ?[['#557f94','#9a8ca5','#c5a68d'],['#5c8790','#9b8ba1','#c6a68f'],['#617c99','#9889a0','#bea08b']]
