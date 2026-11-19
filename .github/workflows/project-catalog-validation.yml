@@ -8,6 +8,8 @@ on:
       - "docs/web-projects/**"
       - "docs/*/index.html"
       - "scripts/validate-project-catalog.mjs"
+      - "scripts/smoke-gravity-mobile.mjs"
+      - "scripts/check-gravity-mobile.mjs"
       - ".github/workflows/project-catalog-validation.yml"
   push:
     branches: [main]
@@ -37,3 +39,16 @@ jobs:
         run: node scripts/validate-project-catalog.mjs
       - name: Validate galaxy black-hole arrival contract
         run: node scripts/check-galaxy-arrival.mjs
+      - name: Validate gravity-lens responsive controls
+        run: node scripts/check-gravity-mobile.mjs
+      - name: Smoke test gravity-lens mobile drawers
+        run: |
+          npm install --no-save --no-package-lock playwright-core@1.56.1
+          CHROME_BIN="$(command -v google-chrome || command -v chromium)" node scripts/smoke-gravity-mobile.mjs
+      - name: Preserve mobile layout screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gravity-mobile-layout
+          path: screenshots/gravity/
+          if-no-files-found: ignore
