@@ -10,7 +10,7 @@ const checks = [
   ["mobile data launcher", /id="mobile-telemetry-launcher"/],
   ["mobile settings launcher", /id="mobile-control-launcher"/],
   ["mobile backdrop", /id="mobile-panel-backdrop"[^>]*hidden/],
-  ["responsive breakpoint", /@media \(max-width: 767px\)/],
+  ["responsive breakpoint", /@media \(max-width: 1023px\)/],
   ["hidden mobile drawer", /#telemetry-aside\[data-open="false"\], #control-aside\[data-open="false"\]/],
   ["viewport height cap", /max-height: calc\(100dvh - 78px/],
   ["safe-area insets", /safe-area-inset-top/],

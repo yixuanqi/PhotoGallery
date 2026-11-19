@@ -38,7 +38,7 @@ try{
  await ready();
  await mkdir(resolve("screenshots/gravity"),{recursive:true});
  browser=await chromium.launch({executablePath:process.env.CHROME_BIN||"/usr/bin/google-chrome",headless:true,args:["--no-sandbox","--disable-dev-shm-usage"]});
- for(const viewport of [{width:320,height:568},{width:390,height:844},{width:430,height:740}]){
+ for(const viewport of [{width:320,height:568},{width:390,height:844},{width:430,height:740},{width:820,height:740}]){
   const page=await browser.newPage({viewport,deviceScaleFactor:1});
   // Panel controls are classic scripts, so test responsive behavior without launching a heavy GPU workload.
   await page.route("**/esm.sh/**",r=>r.abort());
@@ -66,7 +66,7 @@ try{
   assert.ok(s.ctrlRect.x>=0&&s.ctrlRect.right<=viewport.width+1&&s.ctrlRect.bottom<=viewport.height+1,"Controls fit viewport");
   assert.ok(s.controlScroll,"Controls scroll within drawer");
   if(viewport.width===390)await page.screenshot({path:resolve("screenshots/gravity/controls.png")});
-  await page.locator("#mobile-panel-backdrop").click({position:{x:viewport.width/2,y:viewport.height-25}});
+  await page.locator("#mobile-panel-backdrop").click({position:{x:viewport.width/2,y:viewport.height-4}});
   s=await state(page);
   assert.equal(s.telemetry,"false");assert.equal(s.control,"false");
   await page.locator("#mobile-telemetry-launcher").click();

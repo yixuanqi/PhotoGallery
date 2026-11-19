@@ -211,7 +211,7 @@
     /* Responsive drawer launcher bar stays visible above either open mobile drawer. */
     .telemetry-mobile-toggle, .control-title-mobile, #mobile-panel-launchers { display: none; }
     [hidden] { display: none !important; }
-    @media (max-width: 767px) {
+    @media (max-width: 1023px) {
       #webgl-container, #webgl-container canvas { touch-action: none; }
       #mobile-panel-launchers {
         display: flex; position: fixed; z-index: 41;
@@ -686,7 +686,7 @@
   <script>
   (() => {
     'use strict';
-    const small = window.matchMedia('(max-width: 767px)');
+    const small = window.matchMedia('(max-width: 1023px)');
     const telemetryAside = document.getElementById('telemetry-aside');
     const controlAside = document.getElementById('control-aside');
     const telemetryPanel = document.getElementById('telemetry-panel');
