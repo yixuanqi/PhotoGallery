@@ -368,7 +368,7 @@ var POSTS=[
   {"id":"excavator-note","no":"08 · 挖掘机工地手记","title":"给豆豆号一片能真正挖开的土地","summary":"从履带底盘、液压挖臂到可变形沙土、泥地与水塘，把手绘工地变成一座可操作的实验场。","paragraphs":["豆豆挖掘机是一页可以直接在浏览器运行的 3D 手绘工地。四个分区分别有金沙丘陵、泥地、水塘清淤和料斗装车，铲斗挖下去之后，地形会随之变化。","玩家既能驾驶履带底盘，也能用按键和滑块控制大臂、小臂、铲斗与旋转平台，还能切换智能平斗、一键铲土和一键卸土。页面同步显示铲斗装载、累计挖运量和履带悬挂等数据。","为了让过程有趣且能实时运行，它采用离散高度场、简化的土料流动与接触模型，而不是完整的工业级颗粒或液压求解器。这第十颗星，先把挖掘和装运的乐趣装进星海。"]}
 ];
 const el=id=>document.getElementById(id),mobile=matchMedia('(max-width:640px)').matches,reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;
-let renderer,scene,camera,controls,galaxyGroup,nebulaPivot=null,nebulaMesh=null,nebulaTextures=null,nebulaLayers=[],shootingStars=[],coreHalo=null,glintPoints=null,glintColors=null,planets=[],meshes=[],labels=[],starGroups=[],orbitRings=[],planetHalos=[],dustCloud=null,lights=null,postScene=null,postCamera=null,postMaterial=null,postUniforms=null,sceneTarget=null,lensPoint=null,selected=-1,flight=null,paused=false,clock=0,last=0,speed=.7,started=false,theme='night',raycaster,pointer;
+let renderer,scene,camera,controls,galaxyGroup,nebulaPivot=null,nebulaMesh=null,nebulaTextures=null,nebulaLayers=[],shootingStars=[],coreHalo=null,glintPoints=null,glintColors=null,planets=[],meshes=[],labels=[],starGroups=[],orbitRings=[],planetHalos=[],dustCloud=null,lights=null,selected=-1,flight=null,paused=false,clock=0,last=0,speed=.7,started=false,theme='night',raycaster,pointer;
 const locations=[[22,1,10],[-7,1,25],[-25,2,-12],[30,1,-15],[-28,1,17],[-15,2,0],[12,2,-29],[27,1,-23],[-29,1,-29],[12,1,30]];
 try{theme=localStorage.getItem('star-theme')==='paper'?'paper':'night'}catch(e){}
 document.documentElement.dataset.theme=theme;
@@ -567,39 +567,6 @@ const NEBULA_FRAGMENT_SHADER=[
  '}'
 ].join('\n');
 
-const LENS_VERTEX_SHADER=[
- 'varying vec2 vUv;',
- 'void main(){',
- ' vUv=uv;',
- ' gl_Position=vec4(position.xy,0.0,1.0);',
- '}'
-].join('\n');
-
-const LENS_FRAGMENT_SHADER=[
- 'precision highp float;',
- 'uniform sampler2D tDiffuse;',
- 'uniform vec2 uLensCenter;',
- 'uniform float uAspect;',
- 'uniform float uStrength;',
- 'uniform float uVisible;',
- 'varying vec2 vUv;',
- '#include <encodings_pars_fragment>',
- 'void main(){',
- ' vec2 delta=vUv-uLensCenter;',
- ' float r=length(vec2(delta.x*uAspect,delta.y));',
- ' float influence=exp(-r*r*190.0)*uVisible;',
- ' vec2 direction=delta/max(length(delta),.0001);',
- ' vec2 warpedUv=clamp(vUv-direction*(uStrength*.004*influence),vec2(.001),vec2(.999));',
- ' vec3 color=texture2D(tDiffuse,warpedUv).rgb;',
- ' float ring=exp(-pow((r-.045)/.004,2.0))*uVisible;',
- ' float halo=exp(-pow((r-.052)/.022,2.0))*uVisible;',
- ' color+=vec3(.08,.12,.18)*ring*uStrength*.18;',
- ' color+=vec3(.025,.04,.07)*halo*uStrength*.08;',
- ' gl_FragColor=vec4(color,1.0);',
- ' #include <encodings_fragment>',
- '}'
-].join('\n');
-
 function buildNebulaLayers(){
  const definitions=[
   {x:-7,y:-3.2,z:4,tiltX:.018,tiltZ:.012,scale:.060,seed:1.7,flow:.30,phase:.3,drift:.48,opacity:.78},
@@ -686,43 +653,7 @@ function updateShootingStars(dt){
  });
 }
 
-function createLensingPass(){
- const ratio=renderer.getPixelRatio();
- const width=Math.max(1,Math.floor(innerWidth*ratio));
- const height=Math.max(1,Math.floor(innerHeight*ratio));
- sceneTarget=new THREE.WebGLRenderTarget(width,height,{
-  minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,
-  format:THREE.RGBAFormat,depthBuffer:true,stencilBuffer:false
- });
- postScene=new THREE.Scene();
- postCamera=new THREE.OrthographicCamera(-1,1,1,-1,.1,10);
- postCamera.position.set(0,0,1);
- postUniforms={
-  tDiffuse:{value:sceneTarget.texture},
-  uLensCenter:{value:new THREE.Vector2(.5,.5)},
-  uAspect:{value:innerWidth/innerHeight},
-  uStrength:{value:mobile?.34:.56},
-  uVisible:{value:0}
- };
- postMaterial=new THREE.ShaderMaterial({
-  uniforms:postUniforms,vertexShader:LENS_VERTEX_SHADER,
-  fragmentShader:LENS_FRAGMENT_SHADER,depthTest:false,depthWrite:false
- });
- postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),postMaterial));
- lensPoint=new THREE.Vector3();
-}
-function renderScene(){
- if(!sceneTarget||!postUniforms||!lensPoint){renderer.render(scene,camera);return}
- lensPoint.set(0,1.2,0).project(camera);
- const visible=lensPoint.z>-1&&lensPoint.z<1&&Math.abs(lensPoint.x)<1.15&&Math.abs(lensPoint.y)<1.15;
- postUniforms.uLensCenter.value.set(lensPoint.x*.5+.5,lensPoint.y*.5+.5);
- postUniforms.uVisible.value=visible?1:0;
- renderer.setRenderTarget(sceneTarget);
- renderer.clear();
- renderer.render(scene,camera);
- renderer.setRenderTarget(null);
- renderer.render(postScene,postCamera);
-}
+function renderScene(){renderer.render(scene,camera)}
 
 function populateGalaxy(glow){
  const night=['#79b6cb','#d1b18d','#b4a8cd','#91c3b6'];
@@ -734,7 +665,7 @@ function populateGalaxy(glow){
   new THREE.MeshBasicMaterial({
    map:theme==='night'?nebulaTextures.night:nebulaTextures.paper,
    side:THREE.DoubleSide,transparent:true,depthWrite:false,
-   opacity:theme==='night'?.48:.43,blending:THREE.NormalBlending
+   opacity:theme==='night'?.70:.64,blending:THREE.NormalBlending
   }));
  nebulaMesh.rotation.x=-Math.PI/2;nebulaMesh.position.y=-.65;
  nebulaPivot.add(nebulaMesh);
@@ -853,7 +784,6 @@ function init(){
  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,mobile?1.4:1.65));renderer.setSize(innerWidth,innerHeight);renderer.setClearColor(0x091b2c,0);renderer.outputEncoding=THREE.sRGBEncoding;el('scene').appendChild(renderer.domElement);
  scene=new THREE.Scene();scene.fog=new THREE.FogExp2(theme==='night'?0x0a1b35:0x4c6685,theme==='night'?.0016:.0012);
  camera=new THREE.PerspectiveCamera(52,innerWidth/innerHeight,.1,420);camera.position.set(0,mobile?50:43,mobile?103:88);
- createLensingPass();
  controls=new THREE.OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.058;controls.enablePan=true;controls.minDistance=8;controls.maxDistance=165;controls.autoRotate=!reduced;controls.autoRotateSpeed=.18;
  controls.minPolarAngle=.08;controls.maxPolarAngle=Math.PI*.9;
  galaxyGroup=new THREE.Group();scene.add(galaxyGroup);let glow=spriteTexture();
@@ -918,15 +848,7 @@ function animate(now){
  }
  controls.update();updateLabels();renderScene()
 }
-function resize(){
- if(!started)return;
- camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);
- if(sceneTarget){
-  const ratio=renderer.getPixelRatio();
-  sceneTarget.setSize(Math.max(1,Math.floor(innerWidth*ratio)),Math.max(1,Math.floor(innerHeight*ratio)));
- }
- if(postUniforms)postUniforms.uAspect.value=innerWidth/innerHeight;
- }
+function resize(){if(!started)return;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}
 function applyTheme(){
  const dawn=theme==='paper';
  document.documentElement.dataset.theme=theme;
@@ -943,7 +865,7 @@ function applyTheme(){
   });
   if(nebulaMesh){
    nebulaMesh.material.map=dawn?nebulaTextures.paper:nebulaTextures.night;
-   nebulaMesh.material.opacity=dawn?.43:.48;
+   nebulaMesh.material.opacity=dawn?.64:.70;
    nebulaMesh.material.blending=THREE.NormalBlending;
    nebulaMesh.material.needsUpdate=true;
   }
@@ -961,7 +883,6 @@ function applyTheme(){
     u.uOctaves.value=mobile?2:3;
    });
   }
-  if(postUniforms)postUniforms.uStrength.value=mobile?.34:(dawn?.42:.56);
   if(glintPoints&&glintColors){const attr=glintPoints.geometry.getAttribute('color');attr.array.set(dawn?glintColors.paper:glintColors.night);attr.needsUpdate=true;glintPoints.material.opacity=dawn?.65:.69;glintPoints.material.needsUpdate=true}
   orbitRings.forEach(r=>{r.material.color.set(dawn?'#c6c6cc':'#7a99ad');r.material.opacity=dawn?.105:.075});
   planetHalos.forEach(h=>{h.material.opacity=dawn?.16:.20;h.material.blending=THREE.NormalBlending;h.material.needsUpdate=true});
