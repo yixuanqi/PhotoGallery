@@ -695,7 +695,8 @@ function createLensingPass(){
   format:THREE.RGBAFormat,depthBuffer:true,stencilBuffer:false
  });
  postScene=new THREE.Scene();
- postCamera=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+ postCamera=new THREE.OrthographicCamera(-1,1,1,-1,.1,10);
+ postCamera.position.set(0,0,1);
  postUniforms={
   tDiffuse:{value:sceneTarget.texture},
   uLensCenter:{value:new THREE.Vector2(.5,.5)},
