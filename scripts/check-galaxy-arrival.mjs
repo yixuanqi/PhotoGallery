@@ -61,5 +61,9 @@ assert.ok(projectIds.length > 0, "at least one project planet must be registered
 assert.equal(new Set(projectIds).size, projectIds.length, "project planet IDs must be unique");
 assert.equal(coordinateCount, projectIds.length, "every project must have exactly one constellation anchor");
 assert.equal(radiusCount, projectIds.length, "every project must have exactly one base radius");
+const catalog = JSON.parse(readFileSync("docs/projects.json", "utf8"));
+const listedIds = catalog.projects.filter(project => project.id !== "galaxy").map(project => project.id);
+assert.deepEqual([...projectIds].sort(), [...listedIds].sort(), "every published catalog project must appear as a galaxy planet");
+assert.ok(projectIds.includes("star-courier"), "the new gravity-slingshot courier must have a planet");
 
 console.log("Galaxy arrival checks passed: shared portal position/clock, synchronized camera exit, and " + projectIds.length + " project planets.");

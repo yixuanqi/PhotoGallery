@@ -8,6 +8,7 @@ on:
       - "docs/web-projects/**"
       - "docs/*/index.html"
       - "scripts/validate-project-catalog.mjs"
+      - "scripts/check-star-courier.mjs"
       - "scripts/smoke-gravity-mobile.mjs"
       - "scripts/check-gravity-mobile.mjs"
       - ".github/workflows/project-catalog-validation.yml"
@@ -39,6 +40,8 @@ jobs:
         run: node scripts/validate-project-catalog.mjs
       - name: Validate galaxy black-hole arrival contract
         run: node scripts/check-galaxy-arrival.mjs
+      - name: Validate Star Courier project
+        run: node scripts/check-star-courier.mjs
       - name: Validate gravity-lens responsive controls
         run: node scripts/check-gravity-mobile.mjs
       - name: Smoke test gravity-lens mobile drawers

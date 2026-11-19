@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": 1,
+  "catalogVersion": 2,
   "repository": "yixuanqi/PhotoGallery",
   "baseUrl": "https://yixuanqi.github.io/PhotoGallery/",
   "updatedAt": "2026-11-19",
@@ -283,6 +283,32 @@
       "repositoryUrl": "https://github.com/yixuanqi/PhotoGallery",
       "sourcePath": "docs/gravity-lens/index.html",
       "sortOrder": 11
+    },
+    {
+      "id": "star-courier",
+      "name": "星际小快递 · 引力弹弓",
+      "nameEn": "Star Courier · Gravity Slingshot",
+      "kind": "interactive-web",
+      "category": "game",
+      "status": "published",
+      "summary": "驾驶手绘 Q 版小火箭，在暖阳与四颗公转星球之间借助引力弹弓穿梭，完成星际快递、收集星星糖，体验轨道预测、燃料管理和慢动作瞄准。",
+      "tags": [
+        "Three.js",
+        "引力弹弓",
+        "轨道物理",
+        "3D 互动游戏"
+      ],
+      "techStack": [
+        "Three.js",
+        "WebGL",
+        "RK4",
+        "Web Audio"
+      ],
+      "primaryUrl": "https://yixuanqi.github.io/PhotoGallery/star-courier/",
+      "primaryAction": "开始星际快递",
+      "repositoryUrl": "https://github.com/yixuanqi/PhotoGallery",
+      "sourcePath": "docs/star-courier/index.html",
+      "sortOrder": 12
     }
   ]
 }

@@ -1,0 +1,2867 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>星际小快递 · 引力弹弓</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js r128 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- 柔和手账感圆润字体 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+SC:wght@500;700;900&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --ink: #2b2436;
+      --paper: rgba(255, 250, 240, 0.92);
+      --paper-solid: #fffaf0;
+      --coral: #ff6b6b;
+      --gold: #f6b94e;
+      --mint: #5cd6a8;
+      --sky: #6ec6f5;
+      --lavender: #b794f4;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #191a32;
+      font-family: 'Fredoka', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--ink);
+    }
+
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      cursor: grab;
+    }
+
+    #canvas-container:active {
+      cursor: grabbing;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* 温暖绘本纸纹暗角覆盖层 */
+    .paper-vignette {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+      background:
+        radial-gradient(circle at 50% 50%, transparent 56%, rgba(20, 16, 36, 0.36) 100%),
+        repeating-radial-gradient(circle at 20% 30%, rgba(255, 245, 228, 0.018) 0px, rgba(255, 245, 228, 0.018) 1px, transparent 1px, transparent 4px);
+      transition: box-shadow 0.35s ease, background-color 0.35s ease;
+    }
+
+    /* Shift 慢动作瞄准时的温暖琥珀光晕边框 */
+    .paper-vignette.slowmo-active {
+      box-shadow: inset 0 0 85px rgba(255, 200, 110, 0.32), inset 0 0 18px rgba(255, 232, 175, 0.38);
+      background-color: rgba(255, 212, 130, 0.05);
+    }
+
+    /* 手账风卡片与按钮 */
+    .sketch-card {
+      background: var(--paper);
+      border: 2px solid var(--ink);
+      box-shadow: 3px 3px 0 var(--ink);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+
+    .sketch-btn {
+      background: var(--paper);
+      border: 2px solid var(--ink);
+      box-shadow: 2.5px 2.5px 0 var(--ink);
+      color: var(--ink);
+      transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.12s ease, background-color 0.15s ease;
+      cursor: pointer;
+    }
+
+    .sketch-btn:hover {
+      background: #fffdf8;
+      transform: translate(-1px, -1px);
+      box-shadow: 3.5px 3.5px 0 var(--ink);
+    }
+
+    .sketch-btn:active {
+      transform: translate(1.5px, 1.5px);
+      box-shadow: 1px 1px 0 var(--ink);
+    }
+
+    .sketch-btn.active {
+      background: #ffe8a3;
+    }
+
+    /* 按键提示胶囊高亮 */
+    .key-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      border: 1.5px solid transparent;
+      transition: background-color 0.12s ease, transform 0.12s ease, border-color 0.12s ease;
+    }
+
+    .key-pill.pressed {
+      background-color: #ffe28a;
+      border-color: var(--ink);
+      transform: translateY(-1px) scale(1.04);
+    }
+
+    .kbd-chip {
+      display: inline-block;
+      padding: 0 5px;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 18px;
+      background: #fff;
+      border: 1.5px solid var(--ink);
+      border-radius: 6px;
+      box-shadow: 1px 1px 0 var(--ink);
+    }
+
+    /* 浮动绘本提示 Toast 动画 */
+    @keyframes toastPop {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, 16px) scale(0.84) rotate(-2deg);
+      }
+      14% {
+        opacity: 1;
+        transform: translate(-50%, 0px) scale(1.04) rotate(0.8deg);
+      }
+      22% {
+        transform: translate(-50%, 0px) scale(1) rotate(0deg);
+      }
+      84% {
+        opacity: 1;
+        transform: translate(-50%, -4px) scale(1) rotate(0deg);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -18px) scale(0.92);
+      }
+    }
+
+    .toast-item {
+      position: fixed;
+      left: 50%;
+      top: 78px;
+      z-index: 30;
+      pointer-events: none;
+      animation: toastPop 2.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    /* 屏幕外目标指引浮标 */
+    #offscreen-indicator {
+      position: fixed;
+      z-index: 15;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      transition: opacity 0.2s ease;
+    }
+
+    /* 燃料条条纹微动画 */
+    .fuel-bar-fill {
+      background: linear-gradient(90deg, #ff7b6b 0%, #ffb35c 52%, #ffd966 100%);
+      transition: width 0.08s linear;
+    }
+
+    /* 触摸设备操作按钮 */
+    .touch-pad {
+      display: none;
+    }
+    @media (hover: none) and (pointer: coarse), (max-width: 768px) {
+      .touch-pad {
+        display: flex;
+      }
+      .desktop-key-guide {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- 3D 画布容器 -->
+  <div id="canvas-container"></div>
+
+  <!-- 温暖绘本纸纹暗角层 -->
+  <div id="paper-vignette" class="paper-vignette"></div>
+
+  <!-- 动态 Toast 容器 -->
+  <div id="toast-layer"></div>
+
+  <!-- 目标星球屏幕外方向指示器 -->
+  <div id="offscreen-indicator" class="hidden">
+    <div class="sketch-card rounded-full px-2.5 py-1 flex items-center gap-1.5 text-xs font-bold whitespace-nowrap">
+      <span id="offscreen-arrow" class="inline-block text-sm leading-none">➤</span>
+      <span id="offscreen-label">目标</span>
+    </div>
+  </div>
+
+  <!-- 左上角极简手账风 HUD -->
+  <aside class="fixed top-3 left-3 sm:top-4 sm:left-4 z-20 flex flex-col gap-2 max-w-[248px] sm:max-w-[266px] pointer-events-none">
+    <div class="sketch-card rounded-2xl px-3.5 py-2.5 pointer-events-auto">
+      <!-- 标题与状态徽章 -->
+      <div class="flex items-center justify-between gap-2 mb-2">
+        <div class="flex items-center gap-1.5">
+          <span class="text-lg leading-none">🚀</span>
+          <h1 class="text-sm sm:text-[15px] font-black tracking-tight text-[#2b2436]">星际小快递</h1>
+        </div>
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#ffe8a3] border border-[#2b2436]">引力弹弓</span>
+      </div>
+
+      <!-- 快递目的地提示 -->
+      <div class="flex items-center justify-between gap-2 bg-[#fff2d6] border-[1.5px] border-[#2b2436] rounded-xl px-2.5 py-1.5 mb-2">
+        <div class="flex items-center gap-1.5 min-w-0">
+          <span id="hud-target-dot" class="w-3 h-3 rounded-full border border-[#2b2436] shrink-0" style="background:#ffb58a;"></span>
+          <span class="text-[11px] font-bold text-[#6e5e78] shrink-0">送往</span>
+          <span id="hud-target-name" class="text-xs font-black truncate">蜜桃光环星</span>
+        </div>
+        <span id="hud-target-dist" class="text-[11px] font-bold text-[#9c5a2d] shrink-0">--</span>
+      </div>
+
+      <!-- 速度与当前引力场 -->
+      <div class="grid grid-cols-2 gap-1.5 mb-2 text-xs">
+        <div class="bg-white/80 border-[1.5px] border-[#2b2436] rounded-xl px-2 py-1">
+          <div class="text-[10px] font-bold text-[#7a6d85]">飞行速度</div>
+          <div class="font-black text-sm leading-tight"><span id="hud-speed">0.0</span> <span class="text-[10px] font-bold text-[#7a6d85]">km/s</span></div>
+        </div>
+        <div class="bg-white/80 border-[1.5px] border-[#2b2436] rounded-xl px-2 py-1 min-w-0">
+          <div class="text-[10px] font-bold text-[#7a6d85]">当前引力场</div>
+          <div id="hud-gravity-well" class="font-black text-xs leading-tight truncate pt-0.5 text-[#3c2f54]">暖阳太阳系</div>
+        </div>
+      </div>
+
+      <!-- 推进燃料条 -->
+      <div class="mb-2">
+        <div class="flex items-center justify-between text-[11px] font-bold mb-1">
+          <span class="text-[#5e516b]">推进燃料</span>
+          <span id="hud-fuel-text" class="font-black">100%</span>
+        </div>
+        <div class="w-full h-3 bg-[#ede4d4] border-[1.5px] border-[#2b2436] rounded-full overflow-hidden p-[1px]">
+          <div id="hud-fuel-bar" class="fuel-bar-fill h-full rounded-full" style="width: 100%;"></div>
+        </div>
+      </div>
+
+      <!-- 快递与星星糖计数 -->
+      <div class="flex items-center justify-between gap-2 pt-1 border-t border-dashed border-[#2b2436]/30 text-xs font-bold">
+        <div class="flex items-center gap-1" title="已完成星际快递">
+          <span>📦</span>
+          <span class="text-[#6e5e78]">送达</span>
+          <span id="hud-deliveries" class="font-black text-sm text-[#e05858]">0</span>
+        </div>
+        <div class="flex items-center gap-1" title="收集到的星星糖">
+          <span>⭐</span>
+          <span class="text-[#6e5e78]">星星糖</span>
+          <span id="hud-stars" class="font-black text-sm text-[#d98a16]">0</span>
+        </div>
+        <div class="flex items-center gap-1" title="引力弹弓次数">
+          <span>⚡</span>
+          <span id="hud-slingshots" class="font-black text-sm text-[#2f9e73]">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 慢动作 / 暂停小徽章 -->
+    <div id="status-pill" class="hidden self-start sketch-card rounded-full px-3 py-1 text-xs font-black items-center gap-1.5 bg-[#ffe599]">
+      <span id="status-pill-icon">⏱</span>
+      <span id="status-pill-text">慢动作瞄准 0.25×</span>
+    </div>
+  </aside>
+
+  <!-- 右上角极简控制栏 -->
+  <nav class="fixed top-3 right-3 sm:top-4 sm:right-4 z-20 flex flex-wrap justify-end gap-2 max-w-[52vw]">
+    <button id="btn-camera" class="sketch-btn rounded-xl px-2.5 py-1.5 text-xs font-bold flex items-center gap-1.5" title="切换相机模式 (V)">
+      <span>🎥</span>
+      <span id="btn-camera-label">跟随</span>
+      <span class="hidden sm:inline text-[10px] opacity-60">[V]</span>
+    </button>
+    <button id="btn-inf-fuel" class="sketch-btn rounded-xl px-2.5 py-1.5 text-xs font-bold flex items-center gap-1.5" title="切换无限燃料">
+      <span>⛽</span>
+      <span>无限燃料</span>
+    </button>
+    <button id="btn-sound" class="sketch-btn active rounded-xl px-2.5 py-1.5 text-xs font-bold flex items-center gap-1" title="开关音效">
+      <span id="btn-sound-icon">🔊</span>
+      <span class="hidden sm:inline" id="btn-sound-label">音效</span>
+    </button>
+    <button id="btn-reset" class="sketch-btn rounded-xl px-2.5 py-1.5 text-xs font-bold flex items-center gap-1" title="重新出发 (R)">
+      <span>↺</span>
+      <span>重置</span>
+      <span class="hidden sm:inline text-[10px] opacity-60">[R]</span>
+    </button>
+  </nav>
+
+  <!-- 底部居中极简按键指引栏（桌面端） -->
+  <footer class="desktop-key-guide fixed bottom-4 left-1/2 -translate-x-1/2 z-20 pointer-events-none max-w-[96vw]">
+    <div class="sketch-card rounded-full px-3.5 py-1.5 flex items-center gap-2 text-xs font-bold whitespace-nowrap pointer-events-auto">
+      <span id="key-ws" class="key-pill"><span class="kbd-chip">W/S</span> 推进减速</span>
+      <span class="opacity-30">·</span>
+      <span id="key-ad" class="key-pill"><span class="kbd-chip">A/D</span> 转向</span>
+      <span class="opacity-30">·</span>
+      <span id="key-shift" class="key-pill"><span class="kbd-chip">Shift</span> 慢动作瞄准</span>
+      <span class="opacity-30">·</span>
+      <span id="key-qe" class="key-pill"><span class="kbd-chip">Q/E</span> 缩放</span>
+      <span class="opacity-30">·</span>
+      <span id="key-space" class="key-pill"><span class="kbd-chip">Space</span> 暂停</span>
+      <span class="opacity-30">·</span>
+      <span id="key-r" class="key-pill"><span class="kbd-chip">R</span> 重置</span>
+    </div>
+  </footer>
+
+  <!-- 移动端/触屏精简操控条 -->
+  <div class="touch-pad fixed bottom-4 inset-x-4 z-20 items-end justify-between pointer-events-none">
+    <div class="flex gap-2 pointer-events-auto">
+      <button data-touch="left" class="sketch-btn rounded-2xl w-14 h-14 text-xl font-black flex items-center justify-center">↺</button>
+      <button data-touch="right" class="sketch-btn rounded-2xl w-14 h-14 text-xl font-black flex items-center justify-center">↻</button>
+    </div>
+    <div class="flex gap-2 pointer-events-auto">
+      <button data-touch="slow" class="sketch-btn rounded-2xl px-3 h-14 text-xs font-black flex flex-col items-center justify-center">
+        <span>⏱</span><span>慢动作</span>
+      </button>
+      <button data-touch="brake" class="sketch-btn rounded-2xl w-14 h-14 text-lg font-black flex items-center justify-center">🔻</button>
+      <button data-touch="thrust" class="sketch-btn active rounded-2xl w-16 h-14 text-xl font-black flex items-center justify-center">🔥</button>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * ============================================================================
+     * 星际小快递 · 引力弹弓 (Hand-Drawn Q-Version Gravity Slingshot Simulator)
+     * ----------------------------------------------------------------------------
+     * 架构概览：
+     *  1. SoundEngine        : 纯 Web Audio API 程序化绘本风格音效（柔和喷射白噪、卡林巴琴星星音、弹弓和弦）
+     *  2. ProceduralArt      : Canvas 水彩/彩铅贴图生成器 + 4阶 Toon 渐变贴图 + 反面墨线描边工具
+     *  3. PhysicsWorld       : 太阳 + 4颗公转行星的多体引力模型 + 四阶龙格-库塔 (RK4) 积分与未来220步轨迹预测
+     *  4. DioramaScene       : 暖阳、抹茶草地星、蜜桃光环星、芋泥陨石星、薄荷冰晶星、Q版小火箭、粒子与轨迹渲染
+     *  5. GameplayLoop       : 星际快递送达、引力弹弓加速/偏转判定、星星糖收集、燃料回复与温和撞击重置
+     * ============================================================================
+     */
+
+    (function () {
+      'use strict';
+
+      // =========================================================================
+      // 1. 程序化 Web Audio 音效引擎（零外部音频资源）
+      // =========================================================================
+      class SoundEngine {
+        constructor() {
+          this.ctx = null;
+          this.enabled = true;
+          this.unlocked = false;
+          this.thrustGain = null;
+          this.thrustFilter = null;
+          this.retroGain = null;
+          this.pentatonic = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5];
+          this.starNoteIdx = 0;
+        }
+
+        unlock() {
+          if (this.unlocked) {
+            if (this.ctx && this.ctx.state === 'suspended') {
+              this.ctx.resume().catch(() => {});
+            }
+            return;
+          }
+          try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            this.ctx = new AudioCtx();
+            this.unlocked = true;
+            this._setupThrusterNodes();
+          } catch (e) {
+            // 浏览器不支持或受限时静默降级
+          }
+        }
+
+        _setupThrusterNodes() {
+          if (!this.ctx) return;
+          // 生成2秒循环的柔和噪声缓冲，用来合成温暖绵密的推进喷口声音
+          const sampleRate = this.ctx.sampleRate;
+          const length = sampleRate * 2;
+          const buffer = this.ctx.createBuffer(1, length, sampleRate);
+          const data = buffer.getChannelData(0);
+          let lastOut = 0;
+          for (let i = 0; i < length; i++) {
+            const white = Math.random() * 2 - 1;
+            data[i] = (lastOut + 0.06 * white) / 1.06;
+            lastOut = data[i];
+            data[i] *= 2.4;
+          }
+
+          // 主推进器低通柔和呼呼声
+          const src1 = this.ctx.createBufferSource();
+          src1.buffer = buffer;
+          src1.loop = true;
+          this.thrustFilter = this.ctx.createBiquadFilter();
+          this.thrustFilter.type = 'lowpass';
+          this.thrustFilter.frequency.value = 320;
+          this.thrustGain = this.ctx.createGain();
+          this.thrustGain.gain.value = 0.0001;
+          src1.connect(this.thrustFilter);
+          this.thrustFilter.connect(this.thrustGain);
+          this.thrustGain.connect(this.ctx.destination);
+          src1.start();
+
+          // 反向制动器轻柔气喷声
+          const src2 = this.ctx.createBufferSource();
+          src2.buffer = buffer;
+          src2.loop = true;
+          const retroFilter = this.ctx.createBiquadFilter();
+          retroFilter.type = 'bandpass';
+          retroFilter.frequency.value = 820;
+          retroFilter.Q.value = 1.4;
+          this.retroGain = this.ctx.createGain();
+          this.retroGain.gain.value = 0.0001;
+          src2.connect(retroFilter);
+          retroFilter.connect(this.retroGain);
+          this.retroGain.connect(this.ctx.destination);
+          src2.start();
+        }
+
+        setThruster(mainLevel, retroLevel, slowMo) {
+          if (!this.ctx || !this.thrustGain || !this.retroGain) return;
+          const now = this.ctx.currentTime;
+          const targetMain = this.enabled ? mainLevel * 0.14 : 0.0001;
+          const targetRetro = this.enabled ? retroLevel * 0.09 : 0.0001;
+          this.thrustGain.gain.setTargetAtTime(Math.max(0.0001, targetMain), now, 0.05);
+          this.retroGain.gain.setTargetAtTime(Math.max(0.0001, targetRetro), now, 0.04);
+          this.thrustFilter.frequency.setTargetAtTime(slowMo ? 210 : 380, now, 0.08);
+        }
+
+        playStarPickup() {
+          if (!this.enabled || !this.ctx) return;
+          const freq = this.pentatonic[this.starNoteIdx % this.pentatonic.length];
+          this.starNoteIdx++;
+          this._playBell(freq, 0.0, 0.42, 0.12);
+          this._playBell(freq * 1.5, 0.05, 0.35, 0.06);
+        }
+
+        playSlingshot() {
+          if (!this.enabled || !this.ctx) return;
+          // 轻快上扬的竖琴/风铃滑音和弦
+          [523.25, 659.25, 783.99, 1046.5].forEach((f, idx) => {
+            this._playBell(f, idx * 0.055, 0.55, 0.09);
+          });
+        }
+
+        playDelivery() {
+          if (!this.enabled || !this.ctx) return;
+          // 温暖八音盒送达旋律
+          const notes = [523.25, 659.25, 783.99, 987.77, 1046.5];
+          notes.forEach((f, idx) => {
+            this._playBell(f, idx * 0.075, 0.7, 0.11);
+          });
+        }
+
+        playCuteCrash() {
+          if (!this.enabled || !this.ctx) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(280, now);
+          osc.frequency.exponentialRampToValueAtTime(95, now + 0.28);
+          gain.gain.setValueAtTime(0.16, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.34);
+        }
+
+        _playBell(freq, delay, duration, peakGain) {
+          const now = this.ctx.currentTime + delay;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(0.0001, now);
+          gain.gain.linearRampToValueAtTime(peakGain, now + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + duration + 0.04);
+        }
+      }
+
+      // =========================================================================
+      // 2. 手绘 Q 版材质、程序化水彩贴图与墨线描边管线
+      // =========================================================================
+      const INK_COLOR = 0x262030;
+
+      // 生成4阶柔和手绘卡通色阶 DataTexture (THREE.NearestFilter)
+      function createToonGradientMap() {
+        const steps = [128, 178, 224, 255];
+        const data = new Uint8Array(steps.length * 4);
+        for (let i = 0; i < steps.length; i++) {
+          const v = steps[i];
+          data[i * 4 + 0] = v;
+          data[i * 4 + 1] = v;
+          data[i * 4 + 2] = v;
+          data[i * 4 + 3] = 255;
+        }
+        const tex = new THREE.DataTexture(data, steps.length, 1, THREE.RGBAFormat);
+        tex.minFilter = THREE.NearestFilter;
+        tex.magFilter = THREE.NearestFilter;
+        tex.generateMipmaps = false;
+        tex.needsUpdate = true;
+        return tex;
+      }
+
+      // 为任意网格添加反面扩张墨线描边 (Inverted-Hull Ink Outline)
+      function addInkOutline(mesh, scale = 1.055, color = INK_COLOR) {
+        const outlineMat = new THREE.MeshBasicMaterial({
+          color: color,
+          side: THREE.BackSide
+        });
+        const outline = new THREE.Mesh(mesh.geometry, outlineMat);
+        if (typeof scale === 'number') {
+          outline.scale.setScalar(scale);
+        } else {
+          outline.scale.set(scale.x, scale.y, scale.z);
+        }
+        mesh.add(outline);
+        return outline;
+      }
+
+      // 通用水彩/彩铅笔触贴图生成器
+      function createWatercolorTexture(baseHex, patchColors, style = 'mottled') {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = baseHex;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 柔和渐变水彩晕染
+        if (style === 'banded') {
+          for (let i = 0; i < 16; i++) {
+            const y = (i / 16) * canvas.height;
+            const h = 14 + Math.random() * 24;
+            ctx.fillStyle = patchColors[i % patchColors.length];
+            ctx.globalAlpha = 0.28 + Math.random() * 0.25;
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            for (let x = 0; x <= canvas.width; x += 32) {
+              ctx.lineTo(x, y + Math.sin(x * 0.03 + i) * 6);
+            }
+            ctx.lineTo(canvas.width, y + h);
+            ctx.lineTo(0, y + h);
+            ctx.closePath();
+            ctx.fill();
+          }
+        } else {
+          const count = style === 'craters' ? 28 : 42;
+          for (let i = 0; i < count; i++) {
+            const x = Math.random() * canvas.width;
+            const y = Math.random() * canvas.height;
+            const rx = 16 + Math.random() * 54;
+            const ry = style === 'craters' ? rx * (0.7 + Math.random() * 0.35) : 12 + Math.random() * 34;
+            ctx.fillStyle = patchColors[i % patchColors.length];
+            ctx.globalAlpha = 0.24 + Math.random() * 0.24;
+            ctx.beginPath();
+            ctx.ellipse(x, y, rx, ry, Math.random() * Math.PI, 0, Math.PI * 2);
+            ctx.fill();
+            // 环绕无缝平铺补全
+            if (x + rx > canvas.width) {
+              ctx.beginPath();
+              ctx.ellipse(x - canvas.width, y, rx, ry, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+        }
+
+        // 细微彩铅手绘短线条肌理
+        ctx.globalAlpha = 0.14;
+        ctx.lineWidth = 1.6;
+        for (let i = 0; i < 240; i++) {
+          ctx.strokeStyle = i % 2 === 0 ? '#ffffff' : '#3a2d4a';
+          const x = Math.random() * canvas.width;
+          const y = Math.random() * canvas.height;
+          const len = 8 + Math.random() * 18;
+          const ang = (Math.random() - 0.5) * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len);
+          ctx.stroke();
+        }
+
+        ctx.globalAlpha = 1;
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.ClampToEdgeWrapping;
+        tex.encoding = THREE.sRGBEncoding;
+        return tex;
+      }
+
+      // 绘制午夜靛蓝水彩星云穹顶贴图
+      function createWatercolorSkyTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1024;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
+
+        // 深邃温暖的午夜靛蓝渐变底色
+        const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        grad.addColorStop(0.0, '#161830');
+        grad.addColorStop(0.42, '#222246');
+        grad.addColorStop(0.65, '#2b2448');
+        grad.addColorStop(1.0, '#181832');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 柔和粉彩手绘星云团
+        const nebulaPalette = [
+          'rgba(182, 134, 226, 0.13)',
+          'rgba(247, 162, 178, 0.11)',
+          'rgba(116, 198, 214, 0.11)',
+          'rgba(255, 206, 148, 0.09)',
+          'rgba(148, 152, 238, 0.12)'
+        ];
+        for (let i = 0; i < 36; i++) {
+          const x = Math.random() * canvas.width;
+          const y = 70 + Math.random() * (canvas.height - 140);
+          const r = 65 + Math.random() * 150;
+          const rg = ctx.createRadialGradient(x, y, 4, x, y, r);
+          rg.addColorStop(0, nebulaPalette[i % nebulaPalette.length]);
+          rg.addColorStop(1, 'rgba(30, 26, 54, 0)');
+          ctx.fillStyle = rg;
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // 细碎绘本小星点
+        for (let i = 0; i < 420; i++) {
+          const x = Math.random() * canvas.width;
+          const y = Math.random() * canvas.height;
+          const r = 0.6 + Math.random() * 1.4;
+          ctx.fillStyle = i % 5 === 0 ? '#ffe7b3' : (i % 7 === 0 ? '#c4ecff' : '#fffaf0');
+          ctx.globalAlpha = 0.3 + Math.random() * 0.65;
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.encoding = THREE.sRGBEncoding;
+        return tex;
+      }
+
+      // 手绘四角星光 Sprite 贴图
+      function createFourPointStarTexture(color = '#fff8e2') {
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        const c = 64;
+
+        const glow = ctx.createRadialGradient(c, c, 2, c, c, 54);
+        glow.addColorStop(0, 'rgba(255, 248, 226, 0.85)');
+        glow.addColorStop(0.4, 'rgba(255, 230, 175, 0.25)');
+        glow.addColorStop(1, 'rgba(255, 230, 175, 0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, 128, 128);
+
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(c, 12);
+        ctx.quadraticCurveTo(c + 6, c - 6, 116, c);
+        ctx.quadraticCurveTo(c + 6, c + 6, c, 116);
+        ctx.quadraticCurveTo(c - 6, c + 6, 12, c);
+        ctx.quadraticCurveTo(c - 6, c - 6, c, 12);
+        ctx.closePath();
+        ctx.fill();
+
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.encoding = THREE.sRGBEncoding;
+        return tex;
+      }
+
+      // 手绘太阳光芒圆环贴图
+      function createSunbeamTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
+        const c = 256;
+
+        // 温暖中心光晕
+        const g = ctx.createRadialGradient(c, c, 58, c, c, 245);
+        g.addColorStop(0, 'rgba(255, 232, 165, 0.85)');
+        g.addColorStop(0.45, 'rgba(255, 190, 115, 0.34)');
+        g.addColorStop(0.75, 'rgba(255, 165, 120, 0.12)');
+        g.addColorStop(1, 'rgba(255, 165, 120, 0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, 512, 512);
+
+        // 手绘风波浪/短线光芒
+        const rays = 20;
+        for (let i = 0; i < rays; i++) {
+          const ang = (i / rays) * Math.PI * 2;
+          const r1 = 128 + (i % 2) * 10;
+          const r2 = i % 2 === 0 ? 225 : 190;
+          ctx.strokeStyle = i % 2 === 0 ? 'rgba(255, 236, 175, 0.85)' : 'rgba(255, 196, 130, 0.65)';
+          ctx.lineWidth = i % 2 === 0 ? 8 : 5;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(c + Math.cos(ang) * r1, c + Math.sin(ang) * r1);
+          ctx.lineTo(c + Math.cos(ang) * r2, c + Math.sin(ang) * r2);
+          ctx.stroke();
+        }
+
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.encoding = THREE.sRGBEncoding;
+        return tex;
+      }
+
+      // 蜜桃光环星水彩半透明行星环贴图
+      function createPeachRingTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
+        const c = 256;
+
+        const bands = [
+          { r: 152, w: 20, color: 'rgba(255, 236, 206, 0.78)' },
+          { r: 178, w: 28, color: 'rgba(255, 189, 152, 0.82)' },
+          { r: 206, w: 16, color: 'rgba(247, 165, 182, 0.70)' },
+          { r: 228, w: 14, color: 'rgba(255, 241, 214, 0.62)' }
+        ];
+        bands.forEach((b) => {
+          ctx.strokeStyle = b.color;
+          ctx.lineWidth = b.w;
+          ctx.beginPath();
+          ctx.arc(c, c, b.r, 0, Math.PI * 2);
+          ctx.stroke();
+        });
+
+        // 手绘虚线墨边装饰
+        ctx.strokeStyle = 'rgba(43, 36, 54, 0.55)';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([16, 12]);
+        ctx.beginPath();
+        ctx.arc(c, c, 239, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(c, c, 139, 0, Math.PI * 2);
+        ctx.stroke();
+
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.encoding = THREE.sRGBEncoding;
+        return tex;
+      }
+
+      // 轨迹特殊标记贴图（Pe 近地点闪光 / 碰撞手绘× / 目标送达星）
+      function createMarkerSpriteTexture(type) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 160;
+        canvas.height = 160;
+        const ctx = canvas.getContext('2d');
+        const c = 80;
+
+        if (type === 'pe') {
+          // 柔和薄荷金发光圆牌 + "Pe" 字样
+          ctx.fillStyle = '#fff9e6';
+          ctx.strokeStyle = '#2b2436';
+          ctx.lineWidth = 6;
+          ctx.beginPath();
+          ctx.arc(c, c, 46, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#2f9e73';
+          ctx.font = '900 38px Fredoka, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('Pe', c, c + 2);
+        } else if (type === 'crash') {
+          // 珊瑚红手绘碰撞 X
+          ctx.fillStyle = 'rgba(255, 115, 115, 0.28)';
+          ctx.beginPath();
+          ctx.arc(c, c, 54, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.lineCap = 'round';
+          // 墨线外框
+          ctx.strokeStyle = '#2b2436';
+          ctx.lineWidth = 20;
+          ctx.beginPath();
+          ctx.moveTo(46, 46); ctx.lineTo(114, 114);
+          ctx.moveTo(114, 46); ctx.lineTo(46, 114);
+          ctx.stroke();
+          // 珊瑚红内芯
+          ctx.strokeStyle = '#ff6b6b';
+          ctx.lineWidth = 11;
+          ctx.beginPath();
+          ctx.moveTo(46, 46); ctx.lineTo(114, 114);
+          ctx.moveTo(114, 46); ctx.lineTo(46, 114);
+          ctx.stroke();
+        } else if (type === 'deliver') {
+          // 金色快递瞄准小星
+          ctx.fillStyle = '#ffe57f';
+          ctx.strokeStyle = '#2b2436';
+          ctx.lineWidth = 6;
+          ctx.beginPath();
+          for (let i = 0; i < 10; i++) {
+            const ang = (i * Math.PI) / 5 - Math.PI / 2;
+            const r = i % 2 === 0 ? 50 : 24;
+            const x = c + Math.cos(ang) * r;
+            const y = c + Math.sin(ang) * r;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.encoding = THREE.sRGBEncoding;
+        return tex;
+      }
+
+      // 创建 XZ 平面上的手绘风虚线圆环
+      function createDashedCircle(radius, color, opacity, dashSize, gapSize, segments = 128) {
+        const points = [];
+        for (let i = 0; i <= segments; i++) {
+          const theta = (i / segments) * Math.PI * 2;
+          points.push(new THREE.Vector3(Math.cos(theta) * radius, 0, Math.sin(theta) * radius));
+        }
+        const geo = new THREE.BufferGeometry().setFromPoints(points);
+        const mat = new THREE.LineDashedMaterial({
+          color: color,
+          transparent: true,
+          opacity: opacity,
+          dashSize: dashSize,
+          gapSize: gapSize
+        });
+        const line = new THREE.Line(geo, mat);
+        line.computeLineDistances();
+        return line;
+      }
+
+      // =========================================================================
+      // 3. 主模拟应用初始化
+      // =========================================================================
+      function initApp() {
+        const container = document.getElementById('canvas-container');
+        const sound = new SoundEngine();
+
+        // Renderer 配置
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.08;
+        container.appendChild(renderer.domElement);
+
+        // Scene & Camera
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1b1b36);
+
+        const camera = new THREE.PerspectiveCamera(44, window.innerWidth / window.innerHeight, 0.5, 600);
+        camera.position.set(0, 52, 46);
+
+        // 温暖绘本光照组合
+        const hemiLight = new THREE.HemisphereLight(0xfff6e5, 0x453b6e, 0.92);
+        scene.add(hemiLight);
+
+        const sunPointLight = new THREE.PointLight(0xffdfb0, 1.35, 220, 0.6);
+        sunPointLight.position.set(0, 6, 0);
+        scene.add(sunPointLight);
+
+        const rimDirLight = new THREE.DirectionalLight(0xc2e2ff, 0.45);
+        rimDirLight.position.set(-40, 50, -35);
+        scene.add(rimDirLight);
+
+        const toonGradient = createToonGradientMap();
+
+        // ---------------------------------------------------------------------
+        // 背景：水彩星空穹顶 + 轻轻闪烁的手绘四角星
+        // ---------------------------------------------------------------------
+        const skyGeo = new THREE.SphereGeometry(280, 32, 20);
+        const skyMat = new THREE.MeshBasicMaterial({
+          map: createWatercolorSkyTexture(),
+          side: THREE.BackSide,
+          depthWrite: false
+        });
+        const skyDome = new THREE.Mesh(skyGeo, skyMat);
+        scene.add(skyDome);
+
+        const starTex = createFourPointStarTexture('#fff8e0');
+        const twinkleStars = [];
+        for (let i = 0; i < 65; i++) {
+          const mat = new THREE.SpriteMaterial({
+            map: starTex,
+            color: i % 4 === 0 ? 0xffdfaa : (i % 5 === 0 ? 0xc2ecff : 0xfffaf0),
+            transparent: true,
+            opacity: 0.85,
+            depthWrite: false
+          });
+          const sp = new THREE.Sprite(mat);
+          // 散布在黄道面上下远处的绘本立体空间中
+          const dist = 95 + Math.random() * 140;
+          const theta = Math.random() * Math.PI * 2;
+          const yOffset = (Math.random() - 0.5) * 95;
+          sp.position.set(Math.cos(theta) * dist, yOffset, Math.sin(theta) * dist);
+          const baseScale = 1.6 + Math.random() * 2.8;
+          sp.scale.set(baseScale, baseScale, 1);
+          scene.add(sp);
+          twinkleStars.push({
+            sprite: sp,
+            baseScale,
+            phase: Math.random() * Math.PI * 2,
+            speed: 1.2 + Math.random() * 2.2
+          });
+        }
+
+        // ---------------------------------------------------------------------
+        // 太阳系物理参数配置（所有轨道位于 XZ 平面，Y = 0）
+        // ---------------------------------------------------------------------
+        const SUN = {
+          name: '暖阳太阳',
+          radius: 5.0,
+          gm: 280.0,
+          color: '#ffd07b'
+        };
+
+        const PLANET_DEFS = [
+          {
+            id: 'meadow',
+            name: '抹茶草地星',
+            orbitR: 22.0,
+            radius: 2.15,
+            gm: 52.0,
+            soiRadius: 7.4,
+            deliveryRadius: 4.8,
+            phase0: 0.7,
+            colorHex: '#8ce0a8',
+            ringColor: 0x8ce0a8
+          },
+          {
+            id: 'peach',
+            name: '蜜桃光环星',
+            orbitR: 35.5,
+            radius: 2.85,
+            gm: 102.0,
+            soiRadius: 10.6,
+            deliveryRadius: 6.2,
+            phase0: 2.6,
+            colorHex: '#ffb38a',
+            ringColor: 0xffb38a
+          },
+          {
+            id: 'lavender',
+            name: '芋泥陨石星',
+            orbitR: 48.5,
+            radius: 1.98,
+            gm: 56.0,
+            soiRadius: 7.6,
+            deliveryRadius: 4.6,
+            phase0: 4.5,
+            colorHex: '#c4a7f5',
+            ringColor: 0xc4a7f5
+          },
+          {
+            id: 'frost',
+            name: '薄荷冰晶星',
+            orbitR: 62.5,
+            radius: 2.45,
+            gm: 84.0,
+            soiRadius: 9.4,
+            deliveryRadius: 5.5,
+            phase0: 5.7,
+            colorHex: '#89d8f7',
+            ringColor: 0x89d8f7
+          }
+        ];
+
+        // 根据开普勒定律计算每颗行星的公转角速度，确保引力弹弓真实自然且易于瞄准
+        PLANET_DEFS.forEach((p) => {
+          p.omega = Math.sqrt(SUN.gm / Math.pow(p.orbitR, 3));
+        });
+
+        // ---------------------------------------------------------------------
+        // 构建中央暖阳（呼吸脉动 + 手绘光芒圆环）
+        // ---------------------------------------------------------------------
+        const sunGroup = new THREE.Group();
+        scene.add(sunGroup);
+
+        const sunTex = createWatercolorTexture('#ffd175', ['#ffae5c', '#fff0b3', '#ff9966'], 'mottled');
+        const sunMesh = new THREE.Mesh(
+          new THREE.SphereGeometry(SUN.radius, 32, 24),
+          new THREE.MeshBasicMaterial({ map: sunTex })
+        );
+        addInkOutline(sunMesh, 1.04, 0x5c3024);
+        sunGroup.add(sunMesh);
+
+        // 太阳手绘光芒平面（始终面朝上方偏斜以增强绘本立面感）
+        const sunbeamMat = new THREE.MeshBasicMaterial({
+          map: createSunbeamTexture(),
+          transparent: true,
+          opacity: 0.92,
+          depthWrite: false,
+          side: THREE.DoubleSide
+        });
+        const sunbeamPlane = new THREE.Mesh(new THREE.PlaneGeometry(18.5, 18.5), sunbeamMat);
+        sunbeamPlane.rotation.x = -Math.PI / 2;
+        sunbeamPlane.position.y = -0.15;
+        sunGroup.add(sunbeamPlane);
+
+        const sunbeamBillboard = new THREE.Sprite(
+          new THREE.SpriteMaterial({
+            map: createSunbeamTexture(),
+            transparent: true,
+            opacity: 0.45,
+            depthWrite: false
+          })
+        );
+        sunbeamBillboard.scale.set(17, 17, 1);
+        sunGroup.add(sunbeamBillboard);
+
+        // ---------------------------------------------------------------------
+        // 构建 4 颗 Q 版手绘行星 + 公转轨道虚线 + 引力圈 (SOI) 虚线
+        // ---------------------------------------------------------------------
+        const planets = PLANET_DEFS.map((def) => {
+          // 行星公转轨迹虚线
+          const orbitLine = createDashedCircle(def.orbitR, 0xe8e2f8, 0.2, 1.2, 1.3, 140);
+          orbitLine.position.y = -0.08;
+          scene.add(orbitLine);
+
+          const group = new THREE.Group();
+          scene.add(group);
+
+          const spinGroup = new THREE.Group();
+          group.add(spinGroup);
+
+          // 构建不同特色的手绘星球外观
+          if (def.id === 'meadow') {
+            const tex = createWatercolorTexture('#98e2a6', ['#6dc986', '#c9f2b4', '#7ed4d9', '#b2eb9f'], 'mottled');
+            const body = new THREE.Mesh(
+              new THREE.SphereGeometry(def.radius, 28, 22),
+              new THREE.MeshToonMaterial({ map: tex, gradientMap: toonGradient })
+            );
+            addInkOutline(body, 1.055);
+            spinGroup.add(body);
+
+            // 可爱圆润棒棒糖小树
+            const trunkMat = new THREE.MeshToonMaterial({ color: 0xa67458, gradientMap: toonGradient });
+            const leafColors = [0x58b878, 0x72cc7a, 0x8be086];
+            const treeDirs = [
+              new THREE.Vector3(0.4, 0.85, 0.3),
+              new THREE.Vector3(-0.6, 0.72, 0.35),
+              new THREE.Vector3(0.2, 0.78, -0.6),
+              new THREE.Vector3(-0.35, -0.78, -0.45),
+              new THREE.Vector3(0.75, 0.42, -0.45),
+              new THREE.Vector3(-0.78, 0.2, -0.58)
+            ];
+            treeDirs.forEach((dir, idx) => {
+              dir.normalize();
+              const tree = new THREE.Group();
+              const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.11, 0.38, 8), trunkMat);
+              trunk.position.y = 0.18;
+              addInkOutline(trunk, 1.15);
+              tree.add(trunk);
+
+              const canopy = new THREE.Mesh(
+                new THREE.SphereGeometry(0.32 + (idx % 2) * 0.08, 12, 10),
+                new THREE.MeshToonMaterial({ color: leafColors[idx % leafColors.length], gradientMap: toonGradient })
+              );
+              canopy.position.y = 0.52;
+              addInkOutline(canopy, 1.1);
+              tree.add(canopy);
+
+              tree.position.copy(dir).multiplyScalar(def.radius - 0.05);
+              tree.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+              spinGroup.add(tree);
+            });
+
+            // 环绕抹茶星漂浮的迷你棉花云
+            const cloudMat = new THREE.MeshToonMaterial({ color: 0xfffaf2, gradientMap: toonGradient });
+            const cloudHolder = new THREE.Group();
+            for (let c = 0; c < 3; c++) {
+              const cloud = new THREE.Group();
+              const p1 = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8), cloudMat);
+              const p2 = new THREE.Mesh(new THREE.SphereGeometry(0.21, 10, 8), cloudMat);
+              p2.position.set(0.22, -0.03, 0);
+              const p3 = new THREE.Mesh(new THREE.SphereGeometry(0.19, 10, 8), cloudMat);
+              p3.position.set(-0.2, -0.04, 0.05);
+              addInkOutline(p1, 1.12);
+              addInkOutline(p2, 1.12);
+              addInkOutline(p3, 1.12);
+              cloud.add(p1, p2, p3);
+              const ang = (c / 3) * Math.PI * 2;
+              cloud.position.set(Math.cos(ang) * (def.radius + 0.92), 0.45 + (c - 1) * 0.25, Math.sin(ang) * (def.radius + 0.92));
+              cloudHolder.add(cloud);
+            }
+            group.add(cloudHolder);
+            def._clouds = cloudHolder;
+          } else if (def.id === 'peach') {
+            const tex = createWatercolorTexture('#ffba92', ['#ff9478', '#ffd9b3', '#f59ab4', '#ffe4c4'], 'banded');
+            const body = new THREE.Mesh(
+              new THREE.SphereGeometry(def.radius, 32, 24),
+              new THREE.MeshToonMaterial({ map: tex, gradientMap: toonGradient })
+            );
+            addInkOutline(body, 1.05);
+            spinGroup.add(body);
+
+            // 倾斜水彩行星光环
+            const ringGeo = new THREE.PlaneGeometry(def.radius * 3.85, def.radius * 3.85);
+            const ringMat = new THREE.MeshBasicMaterial({
+              map: createPeachRingTexture(),
+              transparent: true,
+              side: THREE.DoubleSide,
+              depthWrite: false
+            });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = Math.PI / 2 - 0.34;
+            ring.rotation.y = 0.28;
+            group.add(ring);
+            def._ring = ring;
+          } else if (def.id === 'lavender') {
+            const tex = createWatercolorTexture('#c8aef7', ['#a788e6', '#e0d0ff', '#9c7cd9', '#f2b8d4'], 'craters');
+            const body = new THREE.Mesh(
+              new THREE.SphereGeometry(def.radius, 28, 22),
+              new THREE.MeshToonMaterial({ map: tex, gradientMap: toonGradient })
+            );
+            addInkOutline(body, 1.055);
+            spinGroup.add(body);
+
+            // 立体圆润小陨石坑圈
+            const craterRimMat = new THREE.MeshToonMaterial({ color: 0xb191eb, gradientMap: toonGradient });
+            const craterInnerMat = new THREE.MeshToonMaterial({ color: 0x8d6cc9, gradientMap: toonGradient });
+            const craterDirs = [
+              new THREE.Vector3(0.65, 0.55, 0.52),
+              new THREE.Vector3(-0.7, 0.4, 0.58),
+              new THREE.Vector3(0.15, 0.82, -0.55),
+              new THREE.Vector3(-0.55, -0.35, -0.75),
+              new THREE.Vector3(0.82, -0.25, -0.5)
+            ];
+            craterDirs.forEach((dir, idx) => {
+              dir.normalize();
+              const r = 0.28 + (idx % 3) * 0.1;
+              const crater = new THREE.Group();
+              const rim = new THREE.Mesh(new THREE.TorusGeometry(r, 0.08, 8, 16), craterRimMat);
+              rim.rotation.x = Math.PI / 2;
+              addInkOutline(rim, 1.12);
+              const pit = new THREE.Mesh(new THREE.CircleGeometry(r * 0.85, 14), craterInnerMat);
+              pit.rotation.x = -Math.PI / 2;
+              pit.position.y = -0.02;
+              crater.add(rim, pit);
+              crater.position.copy(dir).multiplyScalar(def.radius - 0.03);
+              crater.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+              spinGroup.add(crater);
+            });
+
+            // 北半球可爱的手绘小旗子
+            const flagGroup = new THREE.Group();
+            const pole = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.04, 0.04, 1.05, 8),
+              new THREE.MeshToonMaterial({ color: 0xfff3d6, gradientMap: toonGradient })
+            );
+            pole.position.y = 0.52;
+            addInkOutline(pole, 1.25);
+            const cloth = new THREE.Mesh(
+              new THREE.BoxGeometry(0.68, 0.4, 0.06),
+              new THREE.MeshToonMaterial({ color: 0xff7b7b, gradientMap: toonGradient })
+            );
+            cloth.position.set(0.35, 0.82, 0);
+            addInkOutline(cloth, { x: 1.08, y: 1.14, z: 1.6 });
+            flagGroup.add(pole, cloth);
+            const flagDir = new THREE.Vector3(0.15, 0.96, 0.22).normalize();
+            flagGroup.position.copy(flagDir).multiplyScalar(def.radius - 0.05);
+            flagGroup.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), flagDir);
+            spinGroup.add(flagGroup);
+          } else if (def.id === 'frost') {
+            const tex = createWatercolorTexture('#9be0fa', ['#6fc5f0', '#e3f9ff', '#b2f0eb', '#c8e4ff'], 'mottled');
+            const body = new THREE.Mesh(
+              new THREE.SphereGeometry(def.radius, 28, 22),
+              new THREE.MeshToonMaterial({ map: tex, gradientMap: toonGradient })
+            );
+            addInkOutline(body, 1.055);
+            spinGroup.add(body);
+
+            // 粉彩水晶尖塔
+            const crystalColors = [0xd6f7ff, 0xa8e6ff, 0xc7f7ec];
+            const spireDirs = [
+              new THREE.Vector3(0.15, 0.95, 0.25),
+              new THREE.Vector3(-0.35, 0.88, -0.3),
+              new THREE.Vector3(0.75, 0.52, -0.4),
+              new THREE.Vector3(-0.82, 0.35, 0.45),
+              new THREE.Vector3(0.32, 0.45, 0.83),
+              new THREE.Vector3(-0.2, -0.92, 0.32)
+            ];
+            spireDirs.forEach((dir, idx) => {
+              dir.normalize();
+              const h = 0.72 + (idx % 3) * 0.26;
+              const crystal = new THREE.Mesh(
+                new THREE.ConeGeometry(0.24, h, 5),
+                new THREE.MeshToonMaterial({ color: crystalColors[idx % crystalColors.length], gradientMap: toonGradient })
+              );
+              addInkOutline(crystal, 1.12);
+              const holder = new THREE.Group();
+              crystal.position.y = h * 0.42;
+              holder.add(crystal);
+              holder.position.copy(dir).multiplyScalar(def.radius - 0.08);
+              holder.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+              spinGroup.add(holder);
+            });
+          }
+
+          // 行星引力圈 (SOI) 虚线环
+          const soiRing = createDashedCircle(def.soiRadius, def.ringColor, 0.32, 0.9, 0.85, 84);
+          soiRing.position.y = -0.05;
+          group.add(soiRing);
+
+          // 进入引力圈时的涟漪光环
+          const rippleGeo = new THREE.RingGeometry(def.radius * 1.1, def.radius * 1.24, 48);
+          const rippleMat = new THREE.MeshBasicMaterial({
+            color: def.ringColor,
+            transparent: true,
+            opacity: 0,
+            side: THREE.DoubleSide,
+            depthWrite: false
+          });
+          const rippleMesh = new THREE.Mesh(rippleGeo, rippleMat);
+          rippleMesh.rotation.x = -Math.PI / 2;
+          rippleMesh.position.y = -0.03;
+          group.add(rippleMesh);
+
+          return {
+            ...def,
+            group,
+            spinGroup,
+            soiRing,
+            rippleMesh,
+            ripplePhase: 0,
+            pos: new THREE.Vector3(),
+            vel: new THREE.Vector3(),
+            insideSOI: false
+          };
+        });
+
+        // ---------------------------------------------------------------------
+        // 目标星球快递信标（发光浮空星星 + 脉动送达圆环）
+        // ---------------------------------------------------------------------
+        const beaconGroup = new THREE.Group();
+        scene.add(beaconGroup);
+
+        // 浮空 3D Q 版发光星星信标
+        const beaconStarShape = new THREE.Shape();
+        for (let i = 0; i < 10; i++) {
+          const ang = (i * Math.PI) / 5 + Math.PI / 2;
+          const r = i % 2 === 0 ? 1.05 : 0.48;
+          const x = Math.cos(ang) * r;
+          const y = Math.sin(ang) * r;
+          if (i === 0) beaconStarShape.moveTo(x, y);
+          else beaconStarShape.lineTo(x, y);
+        }
+        beaconStarShape.closePath();
+        const beaconStarGeo = new THREE.ExtrudeGeometry(beaconStarShape, {
+          depth: 0.28,
+          bevelEnabled: true,
+          bevelThickness: 0.14,
+          bevelSize: 0.1,
+          bevelSegments: 3
+        });
+        beaconStarGeo.center();
+        const beaconStarMesh = new THREE.Mesh(
+          beaconStarGeo,
+          new THREE.MeshToonMaterial({
+            color: 0xffe066,
+            emissive: 0xffae33,
+            emissiveIntensity: 0.35,
+            gradientMap: toonGradient
+          })
+        );
+        addInkOutline(beaconStarMesh, 1.1);
+        beaconGroup.add(beaconStarMesh);
+
+        // 脉动金色快递送达光环（XZ平面）
+        const deliveryHalo = createDashedCircle(1.0, 0xffe270, 0.9, 0.22, 0.14, 64);
+        deliveryHalo.position.y = 0.02;
+        beaconGroup.add(deliveryHalo);
+
+        const deliverySoftFill = new THREE.Mesh(
+          new THREE.RingGeometry(0.84, 1.0, 56),
+          new THREE.MeshBasicMaterial({
+            color: 0xffe57f,
+            transparent: true,
+            opacity: 0.24,
+            side: THREE.DoubleSide,
+            depthWrite: false
+          })
+        );
+        deliverySoftFill.rotation.x = -Math.PI / 2;
+        deliverySoftFill.position.y = 0.01;
+        beaconGroup.add(deliverySoftFill);
+
+        // ---------------------------------------------------------------------
+        // 构建 Q 版手绘小火箭（含倾斜动画、挤压拉伸、摆动小天线）
+        // ---------------------------------------------------------------------
+        const rocketRoot = new THREE.Group();
+        scene.add(rocketRoot);
+
+        // 内部姿态容器（负责左右转向滚转倾斜 & 推进挤压拉伸）
+        const rocketModel = new THREE.Group();
+        rocketRoot.add(rocketModel);
+
+        // 圆滚滚奶油白胶囊机身（沿 +Z 为前方，先沿 Y 建再旋转）
+        const bodyPoints = [
+          new THREE.Vector2(0.01, -0.78),
+          new THREE.Vector2(0.42, -0.75),
+          new THREE.Vector2(0.62, -0.45),
+          new THREE.Vector2(0.68, 0.0),
+          new THREE.Vector2(0.62, 0.48),
+          new THREE.Vector2(0.42, 0.78),
+          new THREE.Vector2(0.01, 0.85)
+        ];
+        const bodyGeo = new THREE.LatheGeometry(bodyPoints, 24);
+        bodyGeo.rotateX(Math.PI / 2); // +Z 朝前
+        const rocketBodyTex = createWatercolorTexture('#fff7e8', ['#ffeed6', '#fffdf8', '#fae7cb'], 'mottled');
+        const rocketBody = new THREE.Mesh(
+          bodyGeo,
+          new THREE.MeshToonMaterial({ map: rocketBodyTex, gradientMap: toonGradient })
+        );
+        addInkOutline(rocketBody, 1.075);
+        rocketModel.add(rocketBody);
+
+        // 珊瑚红圆润鼻锥
+        const nosePoints = [
+          new THREE.Vector2(0.56, 0.42),
+          new THREE.Vector2(0.48, 0.68),
+          new THREE.Vector2(0.30, 0.96),
+          new THREE.Vector2(0.11, 1.12),
+          new THREE.Vector2(0.01, 1.16)
+        ];
+        const noseGeo = new THREE.LatheGeometry(nosePoints, 24);
+        noseGeo.rotateX(Math.PI / 2);
+        const noseMesh = new THREE.Mesh(
+          noseGeo,
+          new THREE.MeshToonMaterial({ color: 0xff6b6b, gradientMap: toonGradient })
+        );
+        addInkOutline(noseMesh, 1.08);
+        rocketModel.add(noseMesh);
+
+        // 鼻锥与机身衔接黄铜小饰圈
+        const collar = new THREE.Mesh(
+          new THREE.TorusGeometry(0.55, 0.065, 10, 24),
+          new THREE.MeshToonMaterial({ color: 0xf4c261, gradientMap: toonGradient })
+        );
+        collar.position.z = 0.44;
+        addInkOutline(collar, 1.12);
+        rocketModel.add(collar);
+
+        // 3 片胖乎乎短尾翼
+        const finShape = new THREE.Shape();
+        finShape.moveTo(0, 0);
+        finShape.quadraticCurveTo(0.45, -0.05, 0.52, -0.45);
+        finShape.quadraticCurveTo(0.46, -0.62, 0.14, -0.58);
+        finShape.lineTo(0, -0.36);
+        finShape.closePath();
+        const finGeo = new THREE.ExtrudeGeometry(finShape, {
+          depth: 0.1,
+          bevelEnabled: true,
+          bevelThickness: 0.04,
+          bevelSize: 0.04,
+          bevelSegments: 3
+        });
+        finGeo.center();
+        const finMat = new THREE.MeshToonMaterial({ color: 0xff6b6b, gradientMap: toonGradient });
+        for (let i = 0; i < 3; i++) {
+          const ang = (i / 3) * Math.PI * 2 + Math.PI / 2;
+          const finHolder = new THREE.Group();
+          finHolder.rotation.z = ang;
+          const fin = new THREE.Mesh(finGeo, finMat);
+          fin.rotation.y = Math.PI / 2;
+          fin.rotation.x = Math.PI / 2;
+          fin.position.set(0, 0.62, -0.56);
+          addInkOutline(fin, 1.14);
+          finHolder.add(fin);
+          rocketModel.add(finHolder);
+        }
+
+        // 黄铜镶边天蓝圆舷窗（朝上偏斜，俯视视角非常清晰可爱）
+        const windowGroup = new THREE.Group();
+        windowGroup.position.set(0, 0.59, 0.08);
+        windowGroup.rotation.x = -Math.PI / 2 + 0.15;
+        const brassRim = new THREE.Mesh(
+          new THREE.TorusGeometry(0.28, 0.065, 10, 24),
+          new THREE.MeshToonMaterial({ color: 0xf4c261, gradientMap: toonGradient })
+        );
+        addInkOutline(brassRim, 1.14);
+        const glass = new THREE.Mesh(
+          new THREE.SphereGeometry(0.25, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.5),
+          new THREE.MeshToonMaterial({ color: 0x7bd5f5, gradientMap: toonGradient })
+        );
+        glass.rotation.x = Math.PI / 2;
+        glass.scale.set(1, 0.45, 1);
+        // 舷窗白色手绘高光小月牙点
+        const spec = new THREE.Mesh(
+          new THREE.SphereGeometry(0.065, 8, 8),
+          new THREE.MeshBasicMaterial({ color: 0xffffff })
+        );
+        spec.position.set(0.09, 0.08, 0.12);
+        windowGroup.add(brassRim, glass, spec);
+        rocketModel.add(windowGroup);
+
+        // 尾部主喷口
+        const nozzle = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.25, 0.36, 0.34, 16),
+          new THREE.MeshToonMaterial({ color: 0x5c536e, gradientMap: toonGradient })
+        );
+        nozzle.rotation.x = Math.PI / 2;
+        nozzle.position.z = -0.84;
+        addInkOutline(nozzle, 1.12);
+        rocketModel.add(nozzle);
+
+        // 鼻尖可爱弹跳小天线
+        const antennaPivot = new THREE.Group();
+        antennaPivot.position.set(0, 0, 1.14);
+        const antRod = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.025, 0.035, 0.38, 8),
+          new THREE.MeshToonMaterial({ color: 0xf4c261, gradientMap: toonGradient })
+        );
+        antRod.rotation.x = Math.PI / 2;
+        antRod.position.z = 0.18;
+        const antBulb = new THREE.Mesh(
+          new THREE.SphereGeometry(0.1, 12, 10),
+          new THREE.MeshBasicMaterial({ color: 0xffe27a })
+        );
+        antBulb.position.z = 0.38;
+        addInkOutline(antBulb, 1.2);
+        antennaPivot.add(antRod, antBulb);
+        rocketModel.add(antennaPivot);
+
+        // 推进时的核心发光小火苗（缩放响应推力）
+        const flameMesh = new THREE.Mesh(
+          new THREE.ConeGeometry(0.28, 0.92, 12),
+          new THREE.MeshBasicMaterial({ color: 0xffb347 })
+        );
+        flameMesh.rotation.x = -Math.PI / 2;
+        flameMesh.position.z = -1.35;
+        flameMesh.visible = false;
+        rocketModel.add(flameMesh);
+
+        // ---------------------------------------------------------------------
+        // 实时力学指示箭头：主引力方向箭头 + 速度方向指示器
+        // ---------------------------------------------------------------------
+        const gravityArrow = new THREE.ArrowHelper(
+          new THREE.Vector3(1, 0, 0),
+          new THREE.Vector3(0, 0, 0),
+          3.0,
+          0xff94a8,
+          0.75,
+          0.52
+        );
+        scene.add(gravityArrow);
+
+        const velocityArrow = new THREE.ArrowHelper(
+          new THREE.Vector3(0, 0, 1),
+          new THREE.Vector3(0, 0, 0),
+          2.6,
+          0x82dcff,
+          0.65,
+          0.42
+        );
+        scene.add(velocityArrow);
+
+        // ---------------------------------------------------------------------
+        // 实时未来轨迹预测渲染（InstancedMesh 手绘发光圆点 + Pe / × / 送达 标记）
+        // ---------------------------------------------------------------------
+        const PRED_STEPS = 220;
+        const PRED_DT = 0.085;
+        const predDotGeo = new THREE.SphereGeometry(0.24, 10, 8);
+        const predDotMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const predInstanced = new THREE.InstancedMesh(predDotGeo, predDotMat, PRED_STEPS);
+        predInstanced.frustumCulled = false;
+        const dummyObj = new THREE.Object3D();
+        const tmpColor = new THREE.Color();
+        for (let i = 0; i < PRED_STEPS; i++) {
+          dummyObj.position.set(0, -100, 0);
+          dummyObj.scale.setScalar(0.001);
+          dummyObj.updateMatrix();
+          predInstanced.setMatrixAt(i, dummyObj.matrix);
+          predInstanced.setColorAt(i, tmpColor.setHex(0xffe7a8));
+        }
+        predInstanced.instanceMatrix.needsUpdate = true;
+        if (predInstanced.instanceColor) predInstanced.instanceColor.needsUpdate = true;
+        scene.add(predInstanced);
+
+        // 近地点 "Pe" 浮标
+        const peSprite = new THREE.Sprite(
+          new THREE.SpriteMaterial({ map: createMarkerSpriteTexture('pe'), transparent: true, depthTest: false })
+        );
+        peSprite.scale.set(2.3, 2.3, 1);
+        peSprite.visible = false;
+        scene.add(peSprite);
+
+        // 预计撞击手绘 "×" 浮标
+        const crashSprite = new THREE.Sprite(
+          new THREE.SpriteMaterial({ map: createMarkerSpriteTexture('crash'), transparent: true, depthTest: false })
+        );
+        crashSprite.scale.set(2.5, 2.5, 1);
+        crashSprite.visible = false;
+        scene.add(crashSprite);
+
+        // 预计送达小星星浮标
+        const deliverPredSprite = new THREE.Sprite(
+          new THREE.SpriteMaterial({ map: createMarkerSpriteTexture('deliver'), transparent: true, depthTest: false })
+        );
+        deliverPredSprite.scale.set(2.2, 2.2, 1);
+        deliverPredSprite.visible = false;
+        scene.add(deliverPredSprite);
+
+        // ---------------------------------------------------------------------
+        // 火箭飞行手绘小点尾迹（近期真实飞行轨迹）
+        // ---------------------------------------------------------------------
+        const WAKE_COUNT = 56;
+        const wakePoints = [];
+        const wakeGeo = new THREE.SphereGeometry(0.14, 8, 6);
+        const wakeMat = new THREE.MeshBasicMaterial({ color: 0xfff5dc, transparent: true, opacity: 0.72 });
+        const wakeMesh = new THREE.InstancedMesh(wakeGeo, wakeMat, WAKE_COUNT);
+        wakeMesh.frustumCulled = false;
+        for (let i = 0; i < WAKE_COUNT; i++) {
+          dummyObj.position.set(0, -100, 0);
+          dummyObj.scale.setScalar(0.001);
+          dummyObj.updateMatrix();
+          wakeMesh.setMatrixAt(i, dummyObj.matrix);
+        }
+        wakeMesh.instanceMatrix.needsUpdate = true;
+        scene.add(wakeMesh);
+
+        // ---------------------------------------------------------------------
+        // 棉花云推进烟雾粒子 + 弹弓/送达/撞击庆祝粒子系统
+        // ---------------------------------------------------------------------
+        const MAX_PUFFS = 120;
+        const puffPool = [];
+        const puffGeo = new THREE.SphereGeometry(0.32, 10, 8);
+        for (let i = 0; i < MAX_PUFFS; i++) {
+          const mat = new THREE.MeshBasicMaterial({ color: 0xfff6e5, transparent: true, opacity: 0.9 });
+          const mesh = new THREE.Mesh(puffGeo, mat);
+          mesh.visible = false;
+          scene.add(mesh);
+          puffPool.push({
+            mesh,
+            active: false,
+            age: 0,
+            life: 0.8,
+            pos: new THREE.Vector3(),
+            vel: new THREE.Vector3(),
+            startScale: 0.5,
+            endScale: 1.8,
+            startColor: new THREE.Color(0xffaa44),
+            endColor: new THREE.Color(0xfff7e8),
+            kind: 'smoke'
+          });
+        }
+
+        function spawnPuff(pos, vel, opts = {}) {
+          let p = null;
+          for (let i = 0; i < MAX_PUFFS; i++) {
+            if (!puffPool[i].active) {
+              p = puffPool[i];
+              break;
+            }
+          }
+          if (!p) p = puffPool[0];
+          p.active = true;
+          p.age = 0;
+          p.life = opts.life || 0.75;
+          p.pos.copy(pos);
+          p.vel.copy(vel);
+          p.startScale = opts.startScale || 0.55;
+          p.endScale = opts.endScale || 1.65;
+          p.startColor.setHex(opts.startColor !== undefined ? opts.startColor : 0xffae42);
+          p.endColor.setHex(opts.endColor !== undefined ? opts.endColor : 0xfff7e8);
+          p.kind = opts.kind || 'smoke';
+          p.mesh.visible = true;
+          p.mesh.position.copy(pos);
+          p.mesh.scale.setScalar(p.startScale);
+          p.mesh.material.color.copy(p.startColor);
+          p.mesh.material.opacity = 0.92;
+        }
+
+        function spawnCelebrationBurst(pos, colors, count = 20, speed = 5.5) {
+          for (let i = 0; i < count; i++) {
+            const ang = (i / count) * Math.PI * 2 + Math.random() * 0.4;
+            const spd = speed * (0.45 + Math.random() * 0.75);
+            const vy = (Math.random() - 0.2) * 3.8;
+            const col = colors[i % colors.length];
+            spawnPuff(
+              pos,
+              new THREE.Vector3(Math.cos(ang) * spd, vy, Math.sin(ang) * spd),
+              {
+                life: 0.85 + Math.random() * 0.45,
+                startScale: 0.75,
+                endScale: 0.12,
+                startColor: col,
+                endColor: 0xffffff,
+                kind: 'spark'
+              }
+            );
+          }
+        }
+
+        // ---------------------------------------------------------------------
+        // 可收集的 3D 粉彩星星糖（分布在行星转移轨道之间）
+        // ---------------------------------------------------------------------
+        const starCandies = [];
+        const candyColors = [0xffe073, 0xffa6c9, 0x8ef2d1, 0xa8d8ff, 0xd8b4fe];
+
+        function createCandyMesh(colorHex) {
+          const group = new THREE.Group();
+          const mesh = new THREE.Mesh(
+            beaconStarGeo,
+            new THREE.MeshToonMaterial({
+              color: colorHex,
+              emissive: colorHex,
+              emissiveIntensity: 0.25,
+              gradientMap: toonGradient
+            })
+          );
+          mesh.scale.setScalar(0.68);
+          addInkOutline(mesh, 1.12);
+          group.add(mesh);
+
+          const halo = createDashedCircle(1.35, colorHex, 0.55, 0.35, 0.25, 32);
+          group.add(halo);
+          scene.add(group);
+          return group;
+        }
+
+        function spawnStarCandies() {
+          // 清理旧星星糖
+          starCandies.forEach((c) => scene.remove(c.mesh));
+          starCandies.length = 0;
+
+          // 在不同行星轨道之间的自然弹弓转移弧上放置 5 颗星星糖
+          const slots = [
+            { r: 28.5, phase: 1.65 },
+            { r: 41.5, phase: 3.45 },
+            { r: 54.5, phase: 5.15 },
+            { r: 30.0, phase: 4.9 },
+            { r: 45.0, phase: 0.85 }
+          ];
+          slots.forEach((slot, idx) => {
+            const omega = Math.sqrt(SUN.gm / Math.pow(slot.r, 3)) * 0.55;
+            const mesh = createCandyMesh(candyColors[idx % candyColors.length]);
+            starCandies.push({
+              orbitR: slot.r,
+              phase0: slot.phase + Math.random() * 0.5,
+              omega,
+              collected: false,
+              mesh,
+              pos: new THREE.Vector3(),
+              bobPhase: idx * 1.3
+            });
+          });
+        }
+
+        // ---------------------------------------------------------------------
+        // 游戏状态与物理变量
+        // ---------------------------------------------------------------------
+        const state = {
+          simTime: 0,
+          paused: false,
+          slowMo: false,
+          cameraMode: 'follow', // 'follow' | 'overview'
+          infiniteFuel: false,
+          deliveries: 0,
+          starsCollected: 0,
+          slingshotCount: 0,
+          targetPlanetIdx: 1, // 初始目的地：蜜桃光环星
+          crashed: false,
+          crashTimer: 0,
+
+          // 火箭物理状态 (XZ 平面)
+          rx: 0,
+          rz: 0,
+          vx: 0,
+          vz: 0,
+          angle: 0,        // 0 = +Z 方向，逆时针增加
+          angVel: 0,
+          bankAngle: 0,
+          squash: 1.0,
+          antennaSway: 0,
+          fuel: 100,
+
+          // 引力弹弓追踪状态
+          slingshotTracker: {
+            activePlanetIdx: -1,
+            entrySpeed: 0,
+            entryDirX: 0,
+            entryDirZ: 1,
+            minDist: 999,
+            triggered: false,
+            cooldowns: [0, 0, 0, 0]
+          },
+
+          // 相机交互控制参数
+          camZoom: 1.0,
+          camTargetZoom: 1.0,
+          camYaw: 0.0,
+          camPitch: 0.94, // 约 54° 俯视手绘微缩沙盘感
+          camLookAt: new THREE.Vector3(0, 0, 0)
+        };
+
+        // 键盘 & 触屏输入状态
+        const keys = {
+          up: false,
+          down: false,
+          left: false,
+          right: false,
+          zoomIn: false,
+          zoomOut: false,
+          shift: false
+        };
+
+        // 计算行星在任意时刻 t 的精确位置 (XZ 平面)
+        function getPlanetPosAt(p, t, out) {
+          const ang = p.phase0 + p.omega * t;
+          out.x = Math.cos(ang) * p.orbitR;
+          out.z = Math.sin(ang) * p.orbitR;
+        }
+
+        // 计算火箭在 (x, z, t) 处受到的多体总引力加速度 (太阳 + 4颗公转行星)
+        const SOFTENING_SQ = 0.38;
+        const _pPos = { x: 0, z: 0 };
+
+        function computeGravityAccel(x, z, t, outAccel) {
+          let ax = 0;
+          let az = 0;
+
+          // 1. 太阳引力
+          const r2Sun = x * x + z * z + SOFTENING_SQ;
+          const invR3Sun = 1.0 / (r2Sun * Math.sqrt(r2Sun));
+          ax -= SUN.gm * x * invR3Sun;
+          az -= SUN.gm * z * invR3Sun;
+
+          // 2. 四颗公转行星引力
+          for (let i = 0; i < planets.length; i++) {
+            const p = planets[i];
+            getPlanetPosAt(p, t, _pPos);
+            const dx = _pPos.x - x;
+            const dz = _pPos.z - z;
+            const d2 = dx * dx + dz * dz + SOFTENING_SQ;
+            const invD3 = 1.0 / (d2 * Math.sqrt(d2));
+            ax += p.gm * dx * invD3;
+            az += p.gm * dz * invD3;
+          }
+
+          outAccel.x = ax;
+          outAccel.z = az;
+        }
+
+        // 四阶龙格-库塔 (RK4) 单步积分器（同时推进火箭与行星时间 t）
+        const _k1a = { x: 0, z: 0 };
+        const _k2a = { x: 0, z: 0 };
+        const _k3a = { x: 0, z: 0 };
+        const _k4a = { x: 0, z: 0 };
+
+        function rk4Step(s, t, dt, thrustAx, thrustAz) {
+          // k1
+          computeGravityAccel(s.x, s.z, t, _k1a);
+          const k1vx = _k1a.x + thrustAx;
+          const k1vz = _k1a.z + thrustAz;
+          const k1x = s.vx;
+          const k1z = s.vz;
+
+          // k2
+          const halfDt = dt * 0.5;
+          const x2 = s.x + k1x * halfDt;
+          const z2 = s.z + k1z * halfDt;
+          const vx2 = s.vx + k1vx * halfDt;
+          const vz2 = s.vz + k1vz * halfDt;
+          computeGravityAccel(x2, z2, t + halfDt, _k2a);
+          const k2vx = _k2a.x + thrustAx;
+          const k2vz = _k2a.z + thrustAz;
+          const k2x = vx2;
+          const k2z = vz2;
+
+          // k3
+          const x3 = s.x + k2x * halfDt;
+          const z3 = s.z + k2z * halfDt;
+          const vx3 = s.vx + k2vx * halfDt;
+          const vz3 = s.vz + k2vz * halfDt;
+          computeGravityAccel(x3, z3, t + halfDt, _k3a);
+          const k3vx = _k3a.x + thrustAx;
+          const k3vz = _k3a.z + thrustAz;
+          const k3x = vx3;
+          const k3z = vz3;
+
+          // k4
+          const x4 = s.x + k3x * dt;
+          const z4 = s.z + k3z * dt;
+          const vx4 = s.vx + k3vx * dt;
+          const vz4 = s.vz + k3vz * dt;
+          computeGravityAccel(x4, z4, t + dt, _k4a);
+          const k4vx = _k4a.x + thrustAx;
+          const k4vz = _k4a.z + thrustAz;
+          const k4x = vx4;
+          const k4z = vz4;
+
+          const dt6 = dt / 6.0;
+          s.x += (k1x + 2 * k2x + 2 * k3x + k4x) * dt6;
+          s.z += (k1z + 2 * k2z + 2 * k3z + k4z) * dt6;
+          s.vx += (k1vx + 2 * k2vx + 2 * k3vx + k4vx) * dt6;
+          s.vz += (k1vz + 2 * k2vz + 2 * k3vz + k4vz) * dt6;
+        }
+
+        // 重置火箭到舒适、无碰撞风险的起始圆轨道
+        function resetRocket(showMsg = false) {
+          // 寻找抹茶草地星的对侧偏前相位作为起飞点，方便立刻向抹茶星或蜜桃星发起变轨
+          const meadow = planets[0];
+          const meadowAng = meadow.phase0 + meadow.omega * state.simTime;
+          const startAng = meadowAng - 0.92;
+          const startR = 27.5;
+          const orbSpeed = Math.sqrt(SUN.gm / startR);
+
+          state.rx = Math.cos(startAng) * startR;
+          state.rz = Math.sin(startAng) * startR;
+          // 逆时针切向速度
+          state.vx = -Math.sin(startAng) * orbSpeed;
+          state.vz = Math.cos(startAng) * orbSpeed;
+          state.angle = Math.atan2(state.vx, state.vz);
+          state.angVel = 0;
+          state.bankAngle = 0;
+          state.squash = 1.0;
+          state.fuel = 100;
+          state.crashed = false;
+          state.crashTimer = 0;
+          rocketRoot.visible = true;
+
+          // 清空尾迹与弹弓追踪
+          wakePoints.length = 0;
+          state.slingshotTracker.activePlanetIdx = -1;
+          state.slingshotTracker.triggered = false;
+
+          if (showMsg) {
+            showToast('🚀 小火箭已重新入轨，准备出发！', '#fff6dc');
+          }
+        }
+
+        // ---------------------------------------------------------------------
+        // 手账风浮动 Toast 提示
+        // ---------------------------------------------------------------------
+        const toastLayer = document.getElementById('toast-layer');
+        function showToast(text, bgColor = '#fff7d6') {
+          const el = document.createElement('div');
+          el.className = 'toast-item sketch-card rounded-full px-4 py-2 text-sm font-black whitespace-nowrap flex items-center gap-1.5';
+          el.style.backgroundColor = bgColor;
+          el.textContent = text;
+          toastLayer.appendChild(el);
+          setTimeout(() => {
+            if (el.parentNode) el.parentNode.removeChild(el);
+          }, 2500);
+        }
+
+        // ---------------------------------------------------------------------
+        // 实时未来 220 步 RK4 轨道预测与可视化更新
+        // ---------------------------------------------------------------------
+        const predState = { x: 0, z: 0, vx: 0, vz: 0 };
+        const predColorNormal = new THREE.Color(0xffe6a3);
+        const predColorSlingshot = new THREE.Color(0x7ef7c8);
+        const predColorCrash = new THREE.Color(0xff7878);
+        const predColorDeliver = new THREE.Color(0xffd25a);
+
+        function updateTrajectoryPrediction(visualTime) {
+          if (state.crashed) {
+            for (let i = 0; i < PRED_STEPS; i++) {
+              dummyObj.position.set(0, -100, 0);
+              dummyObj.scale.setScalar(0.001);
+              dummyObj.updateMatrix();
+              predInstanced.setMatrixAt(i, dummyObj.matrix);
+            }
+            predInstanced.instanceMatrix.needsUpdate = true;
+            peSprite.visible = false;
+            crashSprite.visible = false;
+            deliverPredSprite.visible = false;
+            return;
+          }
+
+          predState.x = state.rx;
+          predState.z = state.rz;
+          predState.vx = state.vx;
+          predState.vz = state.vz;
+          let t = state.simTime;
+
+          let crashedAt = -1;
+          let crashPosX = 0;
+          let crashPosZ = 0;
+
+          // 记录整个预测曲线上最具代表性的行星近地点 (Pe)
+          let bestPeDistRatio = 1.0;
+          let peFound = false;
+          let peX = 0;
+          let peZ = 0;
+          const prevPlanetDist = planets.map(() => 999);
+          const prevPrevDist = planets.map(() => 999);
+
+          let deliverHitFound = false;
+          let deliverX = 0;
+          let deliverZ = 0;
+
+          const stepPosX = new Float32Array(PRED_STEPS);
+          const stepPosZ = new Float32Array(PRED_STEPS);
+          const stepFlag = new Uint8Array(PRED_STEPS); // 0: normal, 1: slingshot SOI, 2: delivery halo
+
+          for (let i = 0; i < PRED_STEPS; i++) {
+            rk4Step(predState, t, PRED_DT, 0, 0);
+            t += PRED_DT;
+
+            stepPosX[i] = predState.x;
+            stepPosZ[i] = predState.z;
+
+            // 检测太阳碰撞
+            const distSun = Math.hypot(predState.x, predState.z);
+            if (distSun < SUN.radius + 0.55) {
+              crashedAt = i;
+              crashPosX = predState.x;
+              crashPosZ = predState.z;
+              break;
+            }
+
+            // 检测各行星碰撞、引力圈与近地点
+            let flag = 0;
+            for (let pIdx = 0; pIdx < planets.length; pIdx++) {
+              const p = planets[pIdx];
+              getPlanetPosAt(p, t, _pPos);
+              const d = Math.hypot(predState.x - _pPos.x, predState.z - _pPos.z);
+
+              if (d < p.radius + 0.52) {
+                crashedAt = i;
+                crashPosX = predState.x;
+                crashPosZ = predState.z;
+                break;
+              }
+
+              if (pIdx === state.targetPlanetIdx && d < p.deliveryRadius) {
+                flag = 2;
+                if (!deliverHitFound) {
+                  deliverHitFound = true;
+                  deliverX = predState.x;
+                  deliverZ = predState.z;
+                }
+              } else if (d < p.soiRadius) {
+                if (flag === 0) flag = 1;
+              }
+
+              // 检测局部极小值作为近地点 Pe
+              if (i >= 2 && prevPlanetDist[pIdx] < p.soiRadius * 0.92 &&
+                  prevPlanetDist[pIdx] < prevPrevDist[pIdx] && prevPlanetDist[pIdx] < d) {
+                const ratio = prevPlanetDist[pIdx] / p.soiRadius;
+                if (ratio < bestPeDistRatio) {
+                  bestPeDistRatio = ratio;
+                  peFound = true;
+                  peX = stepPosX[i - 1];
+                  peZ = stepPosZ[i - 1];
+                }
+              }
+              prevPrevDist[pIdx] = prevPlanetDist[pIdx];
+              prevPlanetDist[pIdx] = d;
+            }
+
+            if (crashedAt >= 0) break;
+            stepFlag[i] = flag;
+          }
+
+          const validCount = crashedAt >= 0 ? crashedAt : PRED_STEPS;
+          const marchPhase = visualTime * 5.2;
+
+          for (let i = 0; i < PRED_STEPS; i++) {
+            if (i < validCount) {
+              const frac = i / PRED_STEPS;
+              // 沿轨道轻轻前进的星尘脉动效果
+              const pulse = 0.82 + 0.25 * Math.sin(i * 0.55 - marchPhase);
+              const size = (1.15 - frac * 0.72) * pulse;
+              dummyObj.position.set(stepPosX[i], 0.08, stepPosZ[i]);
+              dummyObj.scale.setScalar(Math.max(0.18, size));
+              dummyObj.updateMatrix();
+              predInstanced.setMatrixAt(i, dummyObj.matrix);
+
+              if (crashedAt >= 0) {
+                // 碰撞航线：柔和珊瑚红渐变提示
+                tmpColor.copy(predColorCrash).lerp(predColorNormal, (1 - frac) * 0.22);
+              } else if (stepFlag[i] === 2) {
+                tmpColor.copy(predColorDeliver);
+              } else if (stepFlag[i] === 1) {
+                tmpColor.copy(predColorSlingshot);
+              } else {
+                tmpColor.copy(predColorNormal);
+              }
+              predInstanced.setColorAt(i, tmpColor);
+            } else {
+              dummyObj.position.set(0, -100, 0);
+              dummyObj.scale.setScalar(0.001);
+              dummyObj.updateMatrix();
+              predInstanced.setMatrixAt(i, dummyObj.matrix);
+            }
+          }
+
+          predInstanced.instanceMatrix.needsUpdate = true;
+          if (predInstanced.instanceColor) predInstanced.instanceColor.needsUpdate = true;
+
+          // 更新 Pe / 碰撞 × / 送达星 浮标
+          if (crashedAt >= 0) {
+            crashSprite.visible = true;
+            crashSprite.position.set(crashPosX, 1.4, crashPosZ);
+            const s = 2.4 + Math.sin(visualTime * 8) * 0.22;
+            crashSprite.scale.set(s, s, 1);
+            peSprite.visible = false;
+            deliverPredSprite.visible = false;
+          } else {
+            crashSprite.visible = false;
+            if (deliverHitFound) {
+              deliverPredSprite.visible = true;
+              deliverPredSprite.position.set(deliverX, 1.5, deliverZ);
+              const ds = 2.1 + Math.sin(visualTime * 6) * 0.2;
+              deliverPredSprite.scale.set(ds, ds, 1);
+            } else {
+              deliverPredSprite.visible = false;
+            }
+
+            if (peFound) {
+              peSprite.visible = true;
+              peSprite.position.set(peX, 1.45, peZ);
+              const ps = 2.15 + Math.sin(visualTime * 5) * 0.16;
+              peSprite.scale.set(ps, ps, 1);
+            } else {
+              peSprite.visible = false;
+            }
+          }
+        }
+
+        // ---------------------------------------------------------------------
+        // HUD DOM 引用与界面同步
+        // ---------------------------------------------------------------------
+        const hudTargetName = document.getElementById('hud-target-name');
+        const hudTargetDot = document.getElementById('hud-target-dot');
+        const hudTargetDist = document.getElementById('hud-target-dist');
+        const hudSpeed = document.getElementById('hud-speed');
+        const hudGravityWell = document.getElementById('hud-gravity-well');
+        const hudFuelText = document.getElementById('hud-fuel-text');
+        const hudFuelBar = document.getElementById('hud-fuel-bar');
+        const hudDeliveries = document.getElementById('hud-deliveries');
+        const hudStars = document.getElementById('hud-stars');
+        const hudSlingshots = document.getElementById('hud-slingshots');
+        const statusPill = document.getElementById('status-pill');
+        const statusPillIcon = document.getElementById('status-pill-icon');
+        const statusPillText = document.getElementById('status-pill-text');
+        const paperVignette = document.getElementById('paper-vignette');
+        const offscreenInd = document.getElementById('offscreen-indicator');
+        const offscreenArrow = document.getElementById('offscreen-arrow');
+        const offscreenLabel = document.getElementById('offscreen-label');
+
+        const btnCamera = document.getElementById('btn-camera');
+        const btnCameraLabel = document.getElementById('btn-camera-label');
+        const btnInfFuel = document.getElementById('btn-inf-fuel');
+        const btnSound = document.getElementById('btn-sound');
+        const btnSoundIcon = document.getElementById('btn-sound-icon');
+        const btnReset = document.getElementById('btn-reset');
+
+        const keyPills = {
+          ws: document.getElementById('key-ws'),
+          ad: document.getElementById('key-ad'),
+          shift: document.getElementById('key-shift'),
+          qe: document.getElementById('key-qe'),
+          space: document.getElementById('key-space'),
+          r: document.getElementById('key-r')
+        };
+
+        function updateTargetUI() {
+          const target = planets[state.targetPlanetIdx];
+          hudTargetName.textContent = target.name;
+          hudTargetDot.style.background = target.colorHex;
+          offscreenLabel.textContent = target.name;
+        }
+
+        function pickNextDestination() {
+          const prev = state.targetPlanetIdx;
+          // 优先挑选离当前位置较远的其他行星，鼓励再次利用引力弹弓
+          let candidates = [0, 1, 2, 3].filter((i) => i !== prev);
+          candidates.sort((a, b) => {
+            const da = Math.hypot(planets[a].pos.x - state.rx, planets[a].pos.z - state.rz);
+            const db = Math.hypot(planets[b].pos.x - state.rx, planets[b].pos.z - state.rz);
+            return db - da;
+          });
+          // 从最远的两颗里随机选一颗
+          state.targetPlanetIdx = candidates[Math.floor(Math.random() * Math.min(2, candidates.length))];
+          updateTargetUI();
+        }
+
+        // ---------------------------------------------------------------------
+        // 按钮与键鼠/触控事件绑定
+        // ---------------------------------------------------------------------
+        function toggleCameraMode() {
+          state.cameraMode = state.cameraMode === 'follow' ? 'overview' : 'follow';
+          btnCameraLabel.textContent = state.cameraMode === 'follow' ? '跟随' : '全景';
+          btnCamera.classList.toggle('active', state.cameraMode === 'overview');
+          showToast(state.cameraMode === 'follow' ? '🎥 切换至火箭跟随视角' : '🌌 切换至星系全景视角', '#e6f5ff');
+        }
+
+        function togglePause() {
+          state.paused = !state.paused;
+          if (state.paused) {
+            sound.setThruster(0, 0, false);
+          }
+          syncStatusPill();
+        }
+
+        function syncStatusPill() {
+          if (state.paused) {
+            statusPill.classList.remove('hidden');
+            statusPill.classList.add('flex');
+            statusPillIcon.textContent = '⏸';
+            statusPillText.textContent = '已暂停 · 按 Space 继续';
+            paperVignette.classList.remove('slowmo-active');
+          } else if (state.slowMo) {
+            statusPill.classList.remove('hidden');
+            statusPill.classList.add('flex');
+            statusPillIcon.textContent = '⏱';
+            statusPillText.textContent = '慢动作瞄准 0.25×';
+            paperVignette.classList.add('slowmo-active');
+          } else {
+            statusPill.classList.add('hidden');
+            statusPill.classList.remove('flex');
+            paperVignette.classList.remove('slowmo-active');
+          }
+        }
+
+        btnCamera.addEventListener('click', () => {
+          sound.unlock();
+          toggleCameraMode();
+        });
+
+        btnInfFuel.addEventListener('click', () => {
+          sound.unlock();
+          state.infiniteFuel = !state.infiniteFuel;
+          btnInfFuel.classList.toggle('active', state.infiniteFuel);
+          if (state.infiniteFuel) state.fuel = 100;
+          showToast(state.infiniteFuel ? '⛽ 已开启无限燃料模式' : '⛽ 已恢复标准燃料模式', '#fff2d6');
+        });
+
+        btnSound.addEventListener('click', () => {
+          sound.unlock();
+          sound.enabled = !sound.enabled;
+          btnSound.classList.toggle('active', sound.enabled);
+          btnSoundIcon.textContent = sound.enabled ? '🔊' : '🔇';
+          if (!sound.enabled) sound.setThruster(0, 0, false);
+        });
+
+        btnReset.addEventListener('click', () => {
+          sound.unlock();
+          resetRocket(true);
+        });
+
+        // 键盘控制
+        window.addEventListener('keydown', (e) => {
+          sound.unlock();
+          const code = e.code;
+          if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(code)) {
+            e.preventDefault();
+          }
+          if (code === 'KeyW' || code === 'ArrowUp') keys.up = true;
+          if (code === 'KeyS' || code === 'ArrowDown') keys.down = true;
+          if (code === 'KeyA' || code === 'ArrowLeft') keys.left = true;
+          if (code === 'KeyD' || code === 'ArrowRight') keys.right = true;
+          if (code === 'KeyQ') keys.zoomOut = true;
+          if (code === 'KeyE') keys.zoomIn = true;
+          if (code === 'ShiftLeft' || code === 'ShiftRight') {
+            keys.shift = true;
+            state.slowMo = true;
+            syncStatusPill();
+          }
+          if (code === 'Space' && !e.repeat) togglePause();
+          if (code === 'KeyV' && !e.repeat) toggleCameraMode();
+          if (code === 'KeyR' && !e.repeat) {
+            if (keyPills.r) {
+              keyPills.r.classList.add('pressed');
+              setTimeout(() => keyPills.r.classList.remove('pressed'), 220);
+            }
+            resetRocket(true);
+          }
+        });
+
+        window.addEventListener('keyup', (e) => {
+          const code = e.code;
+          if (code === 'KeyW' || code === 'ArrowUp') keys.up = false;
+          if (code === 'KeyS' || code === 'ArrowDown') keys.down = false;
+          if (code === 'KeyA' || code === 'ArrowLeft') keys.left = false;
+          if (code === 'KeyD' || code === 'ArrowRight') keys.right = false;
+          if (code === 'KeyQ') keys.zoomOut = false;
+          if (code === 'KeyE') keys.zoomIn = false;
+          if (code === 'ShiftLeft' || code === 'ShiftRight') {
+            keys.shift = false;
+            state.slowMo = false;
+            syncStatusPill();
+          }
+        });
+
+        // 窗口失焦时安全释放按键，防止卡键
+        window.addEventListener('blur', () => {
+          keys.up = keys.down = keys.left = keys.right = keys.zoomIn = keys.zoomOut = keys.shift = false;
+          state.slowMo = false;
+          syncStatusPill();
+        });
+
+        // 鼠标滚轮缩放 + 拖拽轻柔旋转俯仰观察 3D 立体微缩沙盘
+        let isDragging = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+
+        renderer.domElement.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          state.camTargetZoom *= e.deltaY > 0 ? 1.1 : 0.91;
+          state.camTargetZoom = Math.max(0.42, Math.min(2.35, state.camTargetZoom));
+        }, { passive: false });
+
+        renderer.domElement.addEventListener('mousedown', (e) => {
+          sound.unlock();
+          isDragging = true;
+          lastMouseX = e.clientX;
+          lastMouseY = e.clientY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+          if (!isDragging) return;
+          const dx = e.clientX - lastMouseX;
+          const dy = e.clientY - lastMouseY;
+          lastMouseX = e.clientX;
+          lastMouseY = e.clientY;
+          state.camYaw -= dx * 0.0065;
+          state.camPitch = Math.max(0.45, Math.min(1.42, state.camPitch + dy * 0.0055));
+        });
+
+        window.addEventListener('mouseup', () => {
+          isDragging = false;
+        });
+
+        // 移动端触屏按钮绑定
+        document.querySelectorAll('[data-touch]').forEach((btn) => {
+          const action = btn.getAttribute('data-touch');
+          const setAction = (val) => {
+            sound.unlock();
+            if (action === 'left') keys.left = val;
+            if (action === 'right') keys.right = val;
+            if (action === 'thrust') keys.up = val;
+            if (action === 'brake') keys.down = val;
+            if (action === 'slow') {
+              keys.shift = val;
+              state.slowMo = val;
+              syncStatusPill();
+            }
+          };
+          btn.addEventListener('touchstart', (e) => { e.preventDefault(); setAction(true); }, { passive: false });
+          btn.addEventListener('touchend', (e) => { e.preventDefault(); setAction(false); }, { passive: false });
+          btn.addEventListener('touchcancel', () => setAction(false));
+        });
+
+        // 响应式画布尺寸自适应
+        window.addEventListener('resize', () => {
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // ---------------------------------------------------------------------
+        // 初始化世界物体状态
+        // ---------------------------------------------------------------------
+        planets.forEach((p) => {
+          getPlanetPosAt(p, 0, _pPos);
+          p.pos.set(_pPos.x, 0, _pPos.z);
+          p.group.position.copy(p.pos);
+        });
+        spawnStarCandies();
+        resetRocket(false);
+        updateTargetUI();
+
+        // 开场友好提示
+        setTimeout(() => {
+          showToast('✨ 按 W 推进，借行星引力弹弓把快递送到目标星球！', '#fff7d6');
+        }, 500);
+
+        // ---------------------------------------------------------------------
+        // 屏幕外目的地方向指示器更新
+        // ---------------------------------------------------------------------
+        const _projVec = new THREE.Vector3();
+        function updateOffscreenIndicator() {
+          const target = planets[state.targetPlanetIdx];
+          _projVec.copy(target.pos);
+          _projVec.y += 2.0;
+          _projVec.project(camera);
+
+          const inFront = _projVec.z < 1.0;
+          const onScreen = inFront && Math.abs(_projVec.x) <= 0.92 && Math.abs(_projVec.y) <= 0.88;
+
+          if (onScreen) {
+            offscreenInd.classList.add('hidden');
+            return;
+          }
+
+          offscreenInd.classList.remove('hidden');
+          let sx = _projVec.x;
+          let sy = _projVec.y;
+          if (!inFront) {
+            sx = -sx;
+            sy = -sy;
+          }
+          const ang = Math.atan2(sy, sx);
+          const padX = window.innerWidth * 0.43;
+          const padY = window.innerHeight * 0.41;
+          const cx = window.innerWidth * 0.5;
+          const cy = window.innerHeight * 0.5;
+
+          const cosA = Math.cos(ang);
+          const sinA = Math.sin(ang);
+          const scale = Math.min(
+            Math.abs(padX / (cosA || 0.0001)),
+            Math.abs(padY / (sinA || 0.0001))
+          );
+
+          const px = Math.max(76, Math.min(window.innerWidth - 76, cx + cosA * scale));
+          const py = Math.max(66, Math.min(window.innerHeight - 66, cy - sinA * scale));
+          offscreenInd.style.left = px + 'px';
+          offscreenInd.style.top = py + 'px';
+          offscreenArrow.style.transform = `rotate(${-ang}rad)`;
+        }
+
+        // ---------------------------------------------------------------------
+        // 主动画循环 (60fps，带 clamped dt 保护)
+        // ---------------------------------------------------------------------
+        let lastFrameTime = performance.now();
+        let visualTime = 0;
+        let puffTimer = 0;
+        let wakeTimer = 0;
+        const liveState = { x: 0, z: 0, vx: 0, vz: 0 };
+
+        function animate(now) {
+          requestAnimationFrame(animate);
+
+          const rawDt = Math.min(0.05, Math.max(0.001, (now - lastFrameTime) / 1000));
+          lastFrameTime = now;
+          visualTime += rawDt;
+
+          // 底部按键指示胶囊实时高亮
+          if (keyPills.ws) keyPills.ws.classList.toggle('pressed', keys.up || keys.down);
+          if (keyPills.ad) keyPills.ad.classList.toggle('pressed', keys.left || keys.right);
+          if (keyPills.shift) keyPills.shift.classList.toggle('pressed', keys.shift);
+          if (keyPills.qe) keyPills.qe.classList.toggle('pressed', keys.zoomIn || keys.zoomOut);
+          if (keyPills.space) keyPills.space.classList.toggle('pressed', state.paused);
+
+          // 缩放输入（暂停时依然允许自由缩放观察）
+          if (keys.zoomOut) state.camTargetZoom = Math.min(2.35, state.camTargetZoom * (1 + rawDt * 1.15));
+          if (keys.zoomIn) state.camTargetZoom = Math.max(0.42, state.camTargetZoom * (1 - rawDt * 1.15));
+          state.camZoom += (state.camTargetZoom - state.camZoom) * Math.min(1, rawDt * 7.5);
+
+          // 背景星空闪烁 + 暖阳呼吸动画
+          for (let i = 0; i < twinkleStars.length; i++) {
+            const s = twinkleStars[i];
+            const tw = 0.72 + 0.35 * Math.sin(visualTime * s.speed + s.phase);
+            s.sprite.scale.set(s.baseScale * tw, s.baseScale * tw, 1);
+            s.sprite.material.opacity = 0.52 + 0.42 * tw;
+          }
+          const sunPulse = 1.0 + Math.sin(visualTime * 2.1) * 0.025;
+          sunMesh.scale.setScalar(sunPulse);
+          sunMesh.rotation.y += rawDt * 0.14;
+          sunbeamPlane.rotation.z -= rawDt * 0.16;
+
+          // 计算模拟时间步长（支持暂停与 Shift 0.25× 慢动作）
+          const timeScale = state.paused ? 0 : (state.slowMo ? 0.25 : 1.0);
+          const simDt = rawDt * timeScale;
+
+          if (simDt > 0) {
+            state.simTime += simDt;
+
+            // 更新 4 颗行星位置与自转、附属小云朵动画
+            for (let i = 0; i < planets.length; i++) {
+              const p = planets[i];
+              const prevX = p.pos.x;
+              const prevZ = p.pos.z;
+              getPlanetPosAt(p, state.simTime, _pPos);
+              p.pos.set(_pPos.x, 0, _pPos.z);
+              p.vel.set((p.pos.x - prevX) / simDt, 0, (p.pos.z - prevZ) / simDt);
+              p.group.position.copy(p.pos);
+              p.spinGroup.rotation.y += simDt * 0.42;
+              if (p._clouds) p._clouds.rotation.y -= simDt * 0.55;
+              if (p._ring) p._ring.rotation.z += simDt * 0.18;
+
+              // 弹弓冷却递减
+              if (state.slingshotTracker.cooldowns[i] > 0) {
+                state.slingshotTracker.cooldowns[i] = Math.max(0, state.slingshotTracker.cooldowns[i] - simDt);
+              }
+            }
+
+            // 更新星星糖位置与旋转
+            for (let i = 0; i < starCandies.length; i++) {
+              const c = starCandies[i];
+              if (c.collected) continue;
+              const ang = c.phase0 + c.omega * state.simTime;
+              c.pos.set(Math.cos(ang) * c.orbitR, Math.sin(visualTime * 2.8 + c.bobPhase) * 0.45, Math.sin(ang) * c.orbitR);
+              c.mesh.position.copy(c.pos);
+              c.mesh.rotation.y += simDt * 1.6;
+            }
+
+            // 撞击后的短暂自动重置倒计时
+            if (state.crashed) {
+              sound.setThruster(0, 0, false);
+              state.crashTimer -= rawDt;
+              if (state.crashTimer <= 0) {
+                resetRocket(false);
+              }
+            } else {
+              // ---------------- 火箭转向与推进控制 ----------------
+              const turnInput = (keys.left ? 1 : 0) - (keys.right ? 1 : 0);
+              const targetAngVel = turnInput * 2.85;
+              // 慢动作时允许玩家按真实手感微调朝向，瞄准更丝滑
+              const steerDt = state.slowMo ? rawDt * 0.55 : simDt;
+              state.angVel += (targetAngVel - state.angVel) * Math.min(1, steerDt * 12.0);
+              state.angle += state.angVel * steerDt;
+
+              // 可爱滚转倾斜与天线摆动
+              const targetBank = -turnInput * 0.48;
+              state.bankAngle += (targetBank - state.bankAngle) * Math.min(1, rawDt * 10.0);
+              state.antennaSway += (state.angVel * 0.18 - state.antennaSway) * Math.min(1, rawDt * 9.0);
+
+              const hasFuel = state.infiniteFuel || state.fuel > 0.1;
+              const thrusting = keys.up && hasFuel;
+              const braking = keys.down && hasFuel && !thrusting;
+
+              let thrustAx = 0;
+              let thrustAz = 0;
+              const fwdX = Math.sin(state.angle);
+              const fwdZ = Math.cos(state.angle);
+
+              if (thrusting) {
+                const thrustAccel = 5.0;
+                thrustAx = fwdX * thrustAccel;
+                thrustAz = fwdZ * thrustAccel;
+                if (!state.infiniteFuel) {
+                  state.fuel = Math.max(0, state.fuel - simDt * 6.2);
+                }
+              } else if (braking) {
+                const retroAccel = 3.0;
+                thrustAx = -fwdX * retroAccel;
+                thrustAz = -fwdZ * retroAccel;
+                if (!state.infiniteFuel) {
+                  state.fuel = Math.max(0, state.fuel - simDt * 3.8);
+                }
+              } else if (!state.infiniteFuel && state.fuel < 15) {
+                // 贴心应急微弱太阳能回充，防止玩家完全失去动力卡死
+                state.fuel = Math.min(15, state.fuel + simDt * 2.6);
+              }
+
+              // 推进挤压拉伸 + 尾焰 + 音效
+              const targetSquash = thrusting ? 1.13 : (braking ? 0.92 : 1.0);
+              state.squash += (targetSquash - state.squash) * Math.min(1, rawDt * 12.0);
+              flameMesh.visible = thrusting;
+              if (thrusting) {
+                const fScale = 0.85 + Math.random() * 0.4;
+                flameMesh.scale.set(0.95, 0.95, fScale);
+              }
+              sound.setThruster(thrusting ? 1 : 0, braking ? 1 : 0, state.slowMo);
+
+              // 生成棉花云手绘推进尾烟
+              puffTimer -= rawDt;
+              if ((thrusting || braking) && puffTimer <= 0) {
+                puffTimer = state.slowMo ? 0.08 : 0.036;
+                if (thrusting) {
+                  const backPos = new THREE.Vector3(
+                    state.rx - fwdX * 1.15 + (Math.random() - 0.5) * 0.22,
+                    (Math.random() - 0.5) * 0.18,
+                    state.rz - fwdZ * 1.15 + (Math.random() - 0.5) * 0.22
+                  );
+                  const backVel = new THREE.Vector3(
+                    state.vx - fwdX * (3.6 + Math.random() * 1.8) + (Math.random() - 0.5) * 0.9,
+                    (Math.random() - 0.5) * 0.5,
+                    state.vz - fwdZ * (3.6 + Math.random() * 1.8) + (Math.random() - 0.5) * 0.9
+                  );
+                  spawnPuff(backPos, backVel, {
+                    life: 0.72,
+                    startScale: 0.58,
+                    endScale: 1.95,
+                    startColor: 0xffa640,
+                    endColor: 0xfff8eb
+                  });
+                } else if (braking) {
+                  // 前侧两个反向喷口吐出轻柔白烟
+                  const sideX = fwdZ;
+                  const sideZ = -fwdX;
+                  [-1, 1].forEach((side) => {
+                    const pPos = new THREE.Vector3(
+                      state.rx + fwdX * 0.65 + sideX * side * 0.45,
+                      0,
+                      state.rz + fwdZ * 0.65 + sideZ * side * 0.45
+                    );
+                    const pVel = new THREE.Vector3(
+                      state.vx + fwdX * 2.8 + sideX * side * 1.1,
+                      (Math.random() - 0.5) * 0.3,
+                      state.vz + fwdZ * 2.8 + sideZ * side * 1.1
+                    );
+                    spawnPuff(pPos, pVel, {
+                      life: 0.48,
+                      startScale: 0.35,
+                      endScale: 1.15,
+                      startColor: 0xd9f2ff,
+                      endColor: 0xffffff
+                    });
+                  });
+                }
+              }
+
+              // RK4 物理步进（拆分为2个子步进一步提升极端近掠时的精度）
+              liveState.x = state.rx;
+              liveState.z = state.rz;
+              liveState.vx = state.vx;
+              liveState.vz = state.vz;
+              const subDt = simDt * 0.5;
+              rk4Step(liveState, state.simTime - simDt, subDt, thrustAx, thrustAz);
+              rk4Step(liveState, state.simTime - subDt, subDt, thrustAx, thrustAz);
+              state.rx = liveState.x;
+              state.rz = liveState.z;
+              state.vx = liveState.vx;
+              state.vz = liveState.vz;
+
+              // 记录小火箭手绘点状飞行尾迹
+              wakeTimer -= simDt;
+              if (wakeTimer <= 0) {
+                wakeTimer = 0.09;
+                wakePoints.unshift(new THREE.Vector3(state.rx, 0.02, state.rz));
+                if (wakePoints.length > WAKE_COUNT) wakePoints.pop();
+              }
+
+              // ---------------- 碰撞、快递送达、星星糖与引力弹弓判定 ----------------
+              const distSun = Math.hypot(state.rx, state.rz);
+              if (distSun < SUN.radius + 0.58) {
+                triggerCrash('哎呀，靠近太阳太烫啦！准备重新出发~');
+              } else {
+                let dominantWellName = '暖阳太阳系';
+                let strongestPull = SUN.gm / (distSun * distSun + SOFTENING_SQ);
+                let pullTargetPos = new THREE.Vector3(0, 0, 0);
+                let insideAnyPlanetIdx = -1;
+
+                for (let i = 0; i < planets.length; i++) {
+                  const p = planets[i];
+                  const d = Math.hypot(state.rx - p.pos.x, state.rz - p.pos.z);
+
+                  // 撞到行星表面
+                  if (d < p.radius + 0.55) {
+                    triggerCrash(`哎呀，轻轻撞上了${p.name}！准备重新出发~`);
+                    break;
+                  }
+
+                  // 判断引力场主导权
+                  const pPull = p.gm / (d * d + SOFTENING_SQ);
+                  if (d < p.soiRadius) {
+                    dominantWellName = p.name;
+                    insideAnyPlanetIdx = i;
+                    p.insideSOI = true;
+                  } else {
+                    p.insideSOI = false;
+                  }
+                  if (pPull > strongestPull) {
+                    strongestPull = pPull;
+                    pullTargetPos.copy(p.pos);
+                  }
+
+                  // 判断快递送达目标行星
+                  if (i === state.targetPlanetIdx && d < p.deliveryRadius) {
+                    state.deliveries++;
+                    state.fuel = 100;
+                    hudDeliveries.textContent = state.deliveries;
+                    sound.playDelivery();
+                    spawnCelebrationBurst(
+                      new THREE.Vector3(state.rx, 0.4, state.rz),
+                      [0xffe066, 0xff8fab, 0x7ef7c8, 0x89d8f7],
+                      28,
+                      6.4
+                    );
+                    showToast(`📦 快递送达 ${p.name}！燃料已加满 ✨`, '#e6fff2');
+                    pickNextDestination();
+                    // 若星星糖收集得差不多则刷新一批
+                    if (starCandies.filter((c) => !c.collected).length <= 1) {
+                      spawnStarCandies();
+                    }
+                  }
+                }
+
+                if (!state.crashed) {
+                  hudGravityWell.textContent = dominantWellName;
+
+                  // 更新实时引力箭头与速度方向箭头
+                  const pullDir = new THREE.Vector3(pullTargetPos.x - state.rx, 0, pullTargetPos.z - state.rz);
+                  if (pullDir.lengthSq() > 0.001) {
+                    pullDir.normalize();
+                    gravityArrow.position.set(state.rx, 0.15, state.rz);
+                    gravityArrow.setDirection(pullDir);
+                    const gLen = Math.min(5.2, Math.max(1.5, strongestPull * 1.45));
+                    gravityArrow.setLength(gLen, 0.72, 0.48);
+                    gravityArrow.visible = true;
+                  }
+
+                  const speed = Math.hypot(state.vx, state.vz);
+                  if (speed > 0.15) {
+                    velocityArrow.position.set(state.rx, 0.22, state.rz);
+                    velocityArrow.setDirection(new THREE.Vector3(state.vx / speed, 0, state.vz / speed));
+                    velocityArrow.setLength(Math.min(4.6, Math.max(1.6, speed * 0.62)), 0.62, 0.38);
+                    velocityArrow.visible = true;
+                  } else {
+                    velocityArrow.visible = false;
+                  }
+
+                  // 引力弹弓追踪逻辑（绕过非目标行星或高速甩尾偏转）
+                  const tr = state.slingshotTracker;
+                  if (insideAnyPlanetIdx !== -1 && insideAnyPlanetIdx !== state.targetPlanetIdx) {
+                    const p = planets[insideAnyPlanetIdx];
+                    const d = Math.hypot(state.rx - p.pos.x, state.rz - p.pos.z);
+
+                    if (tr.activePlanetIdx !== insideAnyPlanetIdx) {
+                      // 刚进入该行星引力圈
+                      tr.activePlanetIdx = insideAnyPlanetIdx;
+                      tr.entrySpeed = Math.max(0.5, speed);
+                      tr.entryDirX = speed > 0.01 ? state.vx / speed : 0;
+                      tr.entryDirZ = speed > 0.01 ? state.vz / speed : 1;
+                      tr.minDist = d;
+                      tr.triggered = false;
+                    } else {
+                      tr.minDist = Math.min(tr.minDist, d);
+                      if (!tr.triggered && tr.cooldowns[insideAnyPlanetIdx] <= 0 && tr.minDist < p.soiRadius * 0.85) {
+                        const speedGainRatio = (speed - tr.entrySpeed) / tr.entrySpeed;
+                        const dot = Math.max(-1, Math.min(1, (state.vx / (speed || 1)) * tr.entryDirX + (state.vz / (speed || 1)) * tr.entryDirZ));
+                        const deflectDeg = Math.round(Math.acos(dot) * (180 / Math.PI));
+
+                        // 当速度提升超过 10% 或引力偏转超过 26° 时触发弹弓反馈
+                        if (speedGainRatio >= 0.10 || deflectDeg >= 26) {
+                          tr.triggered = true;
+                          tr.cooldowns[insideAnyPlanetIdx] = 5.5;
+                          state.slingshotCount++;
+                          hudSlingshots.textContent = state.slingshotCount;
+                          if (!state.infiniteFuel) {
+                            state.fuel = Math.min(100, state.fuel + 15);
+                          }
+                          sound.playSlingshot();
+                          spawnCelebrationBurst(
+                            new THREE.Vector3(state.rx, 0.3, state.rz),
+                            [0xffe066, 0x7ef7c8, 0xffffff],
+                            22,
+                            5.2
+                          );
+                          const pct = Math.max(8, Math.round(speedGainRatio * 100));
+                          if (speedGainRatio >= 0.08) {
+                            showToast(`⚡ 引力弹弓加速！+${pct}% (${p.name})`, '#e2fff0');
+                          } else {
+                            showToast(`🌀 引力弹弓变轨！偏转 ${deflectDeg}° (${p.name})`, '#e6f5ff');
+                          }
+                        }
+                      }
+                    }
+                  } else if (tr.activePlanetIdx !== -1) {
+                    tr.activePlanetIdx = -1;
+                    tr.triggered = false;
+                  }
+
+                  // 星星糖拾取检测
+                  for (let i = 0; i < starCandies.length; i++) {
+                    const c = starCandies[i];
+                    if (c.collected) continue;
+                    const d = Math.hypot(state.rx - c.pos.x, state.rz - c.pos.z);
+                    if (d < 2.2) {
+                      c.collected = true;
+                      c.mesh.visible = false;
+                      state.starsCollected++;
+                      hudStars.textContent = state.starsCollected;
+                      if (!state.infiniteFuel) {
+                        state.fuel = Math.min(100, state.fuel + 22);
+                      }
+                      sound.playStarPickup();
+                      spawnCelebrationBurst(c.pos, [0xffe073, 0xffa6c9, 0xffffff], 14, 4.2);
+                      showToast('⭐ 收集到一颗星星糖！燃料 +22%', '#fff4d1');
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          // ---------------- 同步视觉网格、SOI 涟漪与目标信标 ----------------
+          rocketRoot.position.set(state.rx, 0.25, state.rz);
+          rocketRoot.rotation.y = state.angle;
+          rocketModel.rotation.z = state.bankAngle;
+          const invSq = 1 / Math.sqrt(state.squash);
+          rocketModel.scale.set(invSq, invSq, state.squash);
+          antennaPivot.rotation.y = -state.antennaSway;
+          antennaPivot.rotation.x = Math.sin(visualTime * 9.0) * 0.06;
+
+          // 更新行星引力圈发光涟漪
+          for (let i = 0; i < planets.length; i++) {
+            const p = planets[i];
+            const targetOp = p.insideSOI ? 0.85 : 0.28;
+            p.soiRing.material.opacity += (targetOp - p.soiRing.material.opacity) * Math.min(1, rawDt * 8);
+            p.soiRing.rotation.y += rawDt * (p.insideSOI ? 0.55 : 0.1);
+
+            if (p.insideSOI) {
+              p.ripplePhase = (p.ripplePhase + rawDt * 0.95) % 1.0;
+              const sc = 1.0 + p.ripplePhase * ((p.soiRadius / p.radius) - 1.0);
+              p.rippleMesh.scale.setScalar(sc);
+              p.rippleMesh.material.opacity = (1.0 - p.ripplePhase) * 0.55;
+            } else {
+              p.rippleMesh.material.opacity *= 0.88;
+            }
+          }
+
+          // 更新目标星球浮空星星信标与脉动送达圆环
+          const targetPlanet = planets[state.targetPlanetIdx];
+          beaconGroup.position.copy(targetPlanet.pos);
+          beaconStarMesh.position.y = targetPlanet.radius + 2.3 + Math.sin(visualTime * 3.2) * 0.42;
+          beaconStarMesh.rotation.y = visualTime * 1.4;
+          const haloPulse = 1.0 + Math.sin(visualTime * 3.6) * 0.045;
+          deliveryHalo.scale.setScalar(targetPlanet.deliveryRadius * haloPulse);
+          deliveryHalo.rotation.y = -visualTime * 0.45;
+          deliverySoftFill.scale.setScalar(targetPlanet.deliveryRadius * haloPulse);
+
+          // 更新飞行尾迹点阵
+          for (let i = 0; i < WAKE_COUNT; i++) {
+            if (i < wakePoints.length) {
+              const frac = i / WAKE_COUNT;
+              dummyObj.position.copy(wakePoints[i]);
+              dummyObj.scale.setScalar(Math.max(0.1, (1 - frac) * 1.0));
+              dummyObj.updateMatrix();
+              wakeMesh.setMatrixAt(i, dummyObj.matrix);
+            } else {
+              dummyObj.position.set(0, -100, 0);
+              dummyObj.scale.setScalar(0.001);
+              dummyObj.updateMatrix();
+              wakeMesh.setMatrixAt(i, dummyObj.matrix);
+            }
+          }
+          wakeMesh.instanceMatrix.needsUpdate = true;
+
+          // 更新棉花云粒子与庆祝粒子
+          for (let i = 0; i < MAX_PUFFS; i++) {
+            const p = puffPool[i];
+            if (!p.active) continue;
+            p.age += rawDt * (state.paused ? 0 : (state.slowMo ? 0.35 : 1.0));
+            if (p.age >= p.life) {
+              p.active = false;
+              p.mesh.visible = false;
+              continue;
+            }
+            const t = p.age / p.life;
+            p.pos.addScaledVector(p.vel, rawDt * (state.paused ? 0 : (state.slowMo ? 0.35 : 1.0)));
+            p.vel.multiplyScalar(0.965);
+            p.mesh.position.copy(p.pos);
+            const sc = p.startScale + (p.endScale - p.startScale) * t;
+            p.mesh.scale.setScalar(Math.max(0.05, sc));
+            p.mesh.material.color.copy(p.startColor).lerp(p.endColor, Math.min(1, t * 1.35));
+            p.mesh.material.opacity = (1 - t) * 0.88;
+          }
+
+          // 每帧实时重算未来 220 步 RK4 预测轨迹
+          updateTrajectoryPrediction(visualTime);
+
+          // ---------------- 平滑镜头跟随 / 全景模式 ----------------
+          const desiredTarget = new THREE.Vector3();
+          let baseDist = 42;
+          if (state.cameraMode === 'overview') {
+            desiredTarget.set(0, 0, 0);
+            baseDist = 112;
+          } else {
+            // 略微向火箭前方速度方向前瞻，构图更开阔
+            desiredTarget.set(
+              state.rx + state.vx * 0.9,
+              0,
+              state.rz + state.vz * 0.9
+            );
+            baseDist = 42;
+          }
+
+          state.camLookAt.lerp(desiredTarget, Math.min(1, rawDt * 5.2));
+          const camDist = baseDist * state.camZoom;
+          const horiz = Math.cos(state.camPitch) * camDist;
+          const camX = state.camLookAt.x + Math.sin(state.camYaw) * horiz;
+          const camY = Math.sin(state.camPitch) * camDist;
+          const camZ = state.camLookAt.z + Math.cos(state.camYaw) * horiz;
+          camera.position.lerp(new THREE.Vector3(camX, camY, camZ), Math.min(1, rawDt * 7.5));
+          camera.lookAt(state.camLookAt);
+
+          // ---------------- 更新 HUD 数值 ----------------
+          const curSpeed = Math.hypot(state.vx, state.vz);
+          hudSpeed.textContent = (curSpeed * 3.2).toFixed(1);
+          const distToTarget = Math.hypot(state.rx - targetPlanet.pos.x, state.rz - targetPlanet.pos.z);
+          hudTargetDist.textContent = Math.max(0, Math.round(distToTarget - targetPlanet.deliveryRadius)) + ' Mm';
+
+          const fuelPct = state.infiniteFuel ? 100 : Math.round(state.fuel);
+          hudFuelText.textContent = state.infiniteFuel ? '∞' : fuelPct + '%';
+          hudFuelBar.style.width = fuelPct + '%';
+
+          updateOffscreenIndicator();
+
+          renderer.render(scene, camera);
+        }
+
+        function triggerCrash(msg) {
+          if (state.crashed) return;
+          state.crashed = true;
+          state.crashTimer = 1.55;
+          rocketRoot.visible = false;
+          gravityArrow.visible = false;
+          velocityArrow.visible = false;
+          sound.playCuteCrash();
+          spawnCelebrationBurst(
+            new THREE.Vector3(state.rx, 0.3, state.rz),
+            [0xffe066, 0xff8585, 0xfff7e8, 0xb794f4],
+            26,
+            5.8
+          );
+          showToast('💥 ' + msg, '#ffe3e3');
+        }
+
+        // 启动主循环
+        requestAnimationFrame(animate);
+      }
+
+      // 页面加载完毕后安全启动
+      window.addEventListener('load', () => {
+        try {
+          initApp();
+        } catch (err) {
+          console.error('初始化 3D 场景失败:', err);
+          const fallback = document.createElement('div');
+          fallback.className = 'fixed inset-0 flex items-center justify-center p-6 text-center';
+          fallback.innerHTML = '<div class="sketch-card rounded-2xl p-6 max-w-md"><h2 class="text-lg font-black mb-2">小火箭启动遇到一点小波折</h2><p class="text-sm">请确认浏览器已开启 WebGL 支持并刷新页面重试。</p></div>';
+          document.body.appendChild(fallback);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
