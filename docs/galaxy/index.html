@@ -368,7 +368,7 @@ var POSTS=[
   {"id":"excavator-note","no":"08 · 挖掘机工地手记","title":"给豆豆号一片能真正挖开的土地","summary":"从履带底盘、液压挖臂到可变形沙土、泥地与水塘，把手绘工地变成一座可操作的实验场。","paragraphs":["豆豆挖掘机是一页可以直接在浏览器运行的 3D 手绘工地。四个分区分别有金沙丘陵、泥地、水塘清淤和料斗装车，铲斗挖下去之后，地形会随之变化。","玩家既能驾驶履带底盘，也能用按键和滑块控制大臂、小臂、铲斗与旋转平台，还能切换智能平斗、一键铲土和一键卸土。页面同步显示铲斗装载、累计挖运量和履带悬挂等数据。","为了让过程有趣且能实时运行，它采用离散高度场、简化的土料流动与接触模型，而不是完整的工业级颗粒或液压求解器。这第十颗星，先把挖掘和装运的乐趣装进星海。"]}
 ];
 const el=id=>document.getElementById(id),mobile=matchMedia('(max-width:640px)').matches,reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;
-let renderer,scene,camera,controls,galaxyGroup,nebulaPivot=null,nebulaMesh=null,nebulaTextures=null,coreHalo=null,glintPoints=null,glintColors=null,planets=[],meshes=[],labels=[],starGroups=[],orbitRings=[],planetHalos=[],dustCloud=null,lights=null,selected=-1,flight=null,paused=false,clock=0,last=0,speed=.7,started=false,theme='night',raycaster,pointer;
+let renderer,scene,camera,controls,galaxyGroup,nebulaPivot=null,nebulaMesh=null,nebulaTextures=null,nebulaLayers=[],shootingStars=[],coreHalo=null,glintPoints=null,glintColors=null,planets=[],meshes=[],labels=[],starGroups=[],orbitRings=[],planetHalos=[],dustCloud=null,lights=null,postScene=null,postCamera=null,postMaterial=null,postUniforms=null,sceneTarget=null,lensPoint=null,selected=-1,flight=null,paused=false,clock=0,last=0,speed=.7,started=false,theme='night',raycaster,pointer;
 const locations=[[22,1,10],[-7,1,25],[-25,2,-12],[30,1,-15],[-28,1,17],[-15,2,0],[12,2,-29],[27,1,-23],[-29,1,-29],[12,1,30]];
 try{theme=localStorage.getItem('star-theme')==='paper'?'paper':'night'}catch(e){}
 document.documentElement.dataset.theme=theme;
@@ -487,6 +487,242 @@ function nebulaTexture(isDawn){
  tex.minFilter=THREE.LinearFilter;tex.magFilter=THREE.LinearFilter;
  return tex;
 }
+
+const NEBULA_VERTEX_SHADER=[
+ 'varying vec3 vWorldPosition;',
+ 'varying vec2 vUv;',
+ 'void main(){',
+ ' vUv=uv;',
+ ' vec4 worldPosition=modelMatrix*vec4(position,1.0);',
+ ' vWorldPosition=worldPosition.xyz;',
+ ' gl_Position=projectionMatrix*viewMatrix*worldPosition;',
+ '}'
+].join('\n');
+
+const NEBULA_FRAGMENT_SHADER=[
+ 'precision highp float;',
+ 'uniform float uTime;',
+ 'uniform float uScale;',
+ 'uniform float uSeed;',
+ 'uniform float uOpacity;',
+ 'uniform float uOctaves;',
+ 'uniform vec3 uTintA;',
+ 'uniform vec3 uTintB;',
+ 'uniform vec3 uTintC;',
+ 'varying vec3 vWorldPosition;',
+ 'varying vec2 vUv;',
+ 'float hash31(vec3 p){',
+ ' p=fract(p*vec3(443.8975,397.2973,491.1871));',
+ ' p+=dot(p,p.yxz+19.19);',
+ ' return fract((p.x+p.y)*p.z);',
+ '}',
+ 'float noise3D(vec3 p){',
+ ' vec3 i=floor(p);',
+ ' vec3 f=fract(p);',
+ ' f=f*f*(3.0-2.0*f);',
+ ' float n000=hash31(i+vec3(0.0,0.0,0.0));',
+ ' float n100=hash31(i+vec3(1.0,0.0,0.0));',
+ ' float n010=hash31(i+vec3(0.0,1.0,0.0));',
+ ' float n110=hash31(i+vec3(1.0,1.0,0.0));',
+ ' float n001=hash31(i+vec3(0.0,0.0,1.0));',
+ ' float n101=hash31(i+vec3(1.0,0.0,1.0));',
+ ' float n011=hash31(i+vec3(0.0,1.0,1.0));',
+ ' float n111=hash31(i+vec3(1.0,1.0,1.0));',
+ ' float nx00=mix(n000,n100,f.x);',
+ ' float nx10=mix(n010,n110,f.x);',
+ ' float nx01=mix(n001,n101,f.x);',
+ ' float nx11=mix(n011,n111,f.x);',
+ ' return mix(mix(nx00,nx10,f.y),mix(nx01,nx11,f.y),f.z);',
+ '}',
+ 'float fbm(vec3 p){',
+ ' float value=0.0;',
+ ' float amplitude=.52;',
+ ' for(int i=0;i<3;i++){',
+ '  if(float(i)>=uOctaves) break;',
+ '  value+=amplitude*noise3D(p);',
+ '  p=p*2.04+vec3(13.7,7.1,29.3);',
+ '  amplitude*=.5;',
+ ' }',
+ ' return value;',
+ '}',
+ 'void main(){',
+ ' vec2 uv=(vUv-.5)*2.0;',
+ ' float radius=length(uv);',
+ ' float radial=1.0-smoothstep(.42,.84,radius);',
+ ' vec3 p=vec3(vWorldPosition.xz*uScale,(vWorldPosition.y+uSeed*17.0)*uScale);',
+ ' p.xy+=vec2(uTime*.014,-uTime*.010);',
+ ' float base=fbm(p);',
+ ' float detail=fbm(p*2.25+vec3(4.1,2.7,1.5));',
+ ' float angle=atan(uv.y,uv.x);',
+ ' float spiral=.5+.5*sin(angle*4.0-radius*13.0+(base-.5)*3.0);',
+ ' float arms=smoothstep(.24,.86,spiral);',
+ ' float density=smoothstep(.36,.68,base*.72+detail*.28+arms*.13);',
+ ' float dust=smoothstep(.48,.72,fbm(p*1.7+vec3(7.3,1.1,3.8)))*smoothstep(.12,.72,radius);',
+ ' float wisps=smoothstep(.43,.72,detail);',
+ ' float alpha=density*radial*(.075+wisps*.10)*uOpacity*(1.0-dust*.66);',
+ ' vec3 color=mix(uTintA,uTintB,smoothstep(.28,.76,base));',
+ ' color=mix(color,uTintC,smoothstep(.46,.82,detail)*.48);',
+ ' color+=vec3(.035,.025,.012)*exp(-radius*radius*9.0);',
+ ' gl_FragColor=vec4(color,alpha);',
+ '}'
+].join('\n');
+
+const LENS_VERTEX_SHADER=[
+ 'varying vec2 vUv;',
+ 'void main(){',
+ ' vUv=uv;',
+ ' gl_Position=vec4(position.xy,0.0,1.0);',
+ '}'
+].join('\n');
+
+const LENS_FRAGMENT_SHADER=[
+ 'precision highp float;',
+ 'uniform sampler2D tDiffuse;',
+ 'uniform vec2 uLensCenter;',
+ 'uniform float uAspect;',
+ 'uniform float uStrength;',
+ 'uniform float uVisible;',
+ 'varying vec2 vUv;',
+ '#include <encodings_pars_fragment>',
+ 'void main(){',
+ ' vec2 delta=vUv-uLensCenter;',
+ ' float r=length(vec2(delta.x*uAspect,delta.y));',
+ ' float influence=exp(-r*r*190.0)*uVisible;',
+ ' vec2 direction=delta/max(length(delta),.0001);',
+ ' vec2 warpedUv=clamp(vUv-direction*(uStrength*.004*influence),vec2(.001),vec2(.999));',
+ ' vec3 color=texture2D(tDiffuse,warpedUv).rgb;',
+ ' float ring=exp(-pow((r-.045)/.004,2.0))*uVisible;',
+ ' float halo=exp(-pow((r-.052)/.022,2.0))*uVisible;',
+ ' color+=vec3(.08,.12,.18)*ring*uStrength*.18;',
+ ' color+=vec3(.025,.04,.07)*halo*uStrength*.08;',
+ ' gl_FragColor=vec4(color,1.0);',
+ ' #include <encodings_fragment>',
+ '}'
+].join('\n');
+
+function buildNebulaLayers(){
+ const definitions=[
+  {x:-7,y:-3.2,z:4,tiltX:.018,tiltZ:.012,scale:.060,seed:1.7,flow:.30,phase:.3,drift:.48,opacity:.78},
+  {x:5,y:.4,z:-6,tiltX:-.025,tiltZ:.020,scale:.078,seed:5.7,flow:.22,phase:2.4,drift:.34,opacity:.62},
+  {x:-3,y:4.0,z:7,tiltX:.035,tiltZ:-.028,scale:.092,seed:9.2,flow:.16,phase:4.5,drift:.24,opacity:.46}
+ ];
+ const palettes=theme==='paper'
+  ?[['#557f94','#9a8ca5','#c5a68d'],['#5c8790','#9b8ba1','#c6a68f'],['#617c99','#9889a0','#bea08b']]
+  :[['#304b7a','#68658e','#a07d91'],['#315d78','#6e638f','#a77f8e'],['#294a6a','#777096','#b08a7d']];
+ (mobile?definitions.slice(0,2):definitions).forEach((d,i)=>{
+  const uniforms={
+   uTime:{value:0},uScale:{value:d.scale},uSeed:{value:d.seed},
+   uOpacity:{value:d.opacity*(theme==='paper'?.66:1)},
+   uOctaves:{value:mobile?2:3},
+   uTintA:{value:new THREE.Color(palettes[i][0])},
+   uTintB:{value:new THREE.Color(palettes[i][1])},
+   uTintC:{value:new THREE.Color(palettes[i][2])}
+  };
+  const material=new THREE.ShaderMaterial({
+   uniforms,vertexShader:NEBULA_VERTEX_SHADER,fragmentShader:NEBULA_FRAGMENT_SHADER,
+   transparent:true,depthWrite:false,depthTest:true,side:THREE.DoubleSide,
+   blending:THREE.NormalBlending
+  });
+  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(124,124),material);
+  mesh.position.set(d.x,d.y,d.z);
+  mesh.rotation.set(-Math.PI/2+d.tiltX,0,d.tiltZ);
+  galaxyGroup.add(mesh);
+  nebulaLayers.push({
+   mesh,material,baseX:d.x,baseZ:d.z,baseRotationY:0,
+   phase:d.phase,flow:d.flow,drift:d.drift,baseOpacity:d.opacity
+  });
+ });
+}
+
+function createShootingStars(glow){
+ const count=reduced?0:(mobile?1:2);
+ let seed=88231;
+ function rand(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296}
+ for(let i=0;i<count;i++){
+  const group=new THREE.Group();
+  const lineGeometry=new THREE.BufferGeometry().setFromPoints([
+   new THREE.Vector3(-4.5,0,0),new THREE.Vector3(0,0,0)
+  ]);
+  const line=new THREE.Line(lineGeometry,new THREE.LineBasicMaterial({
+   color:'#c9d8e8',transparent:true,opacity:0,depthWrite:false
+  }));
+  const head=new THREE.Sprite(new THREE.SpriteMaterial({
+   map:glow,color:'#d7e4ed',transparent:true,opacity:0,
+   blending:THREE.AdditiveBlending,depthWrite:false
+  }));
+  head.scale.set(.72,.72,1);
+  group.add(line,head);galaxyGroup.add(group);
+  const star={
+   group,line,head,start:new THREE.Vector3(),end:new THREE.Vector3(),
+   direction:new THREE.Vector3(),elapsed:0,delay:0,duration:1.5,rand
+  };
+  resetShootingStar(star);
+  star.delay=2.5+i*4+rand()*4;
+  shootingStars.push(star);
+ }
+}
+function resetShootingStar(star){
+ const rand=star.rand;
+ star.start.set((rand()-.5)*95,6+rand()*14,(rand()-.5)*95);
+ star.direction.set((rand()-.5)*.9,-.18+rand()*.36,(rand()-.5)*.9).normalize();
+ star.end.copy(star.start).addScaledVector(star.direction,28+rand()*28);
+ star.elapsed=0;star.delay=5+rand()*11;star.duration=1.0+rand()*1.3;
+ star.group.position.copy(star.start);
+ star.group.quaternion.setFromUnitVectors(new THREE.Vector3(1,0,0),star.direction);
+ star.line.material.opacity=0;star.head.material.opacity=0;
+}
+function updateShootingStars(dt){
+ shootingStars.forEach(star=>{
+  star.elapsed+=dt*speed;
+  if(star.elapsed<star.delay){
+   star.line.material.opacity=0;star.head.material.opacity=0;return;
+  }
+  const t=(star.elapsed-star.delay)/star.duration;
+  if(t>=1){resetShootingStar(star);return}
+  star.group.position.copy(star.start).lerp(star.end,t);
+  const fade=Math.min(1,t*6,(1-t)*6);
+  star.line.material.opacity=.20*fade;
+  star.head.material.opacity=.28*fade;
+ });
+}
+
+function createLensingPass(){
+ const ratio=renderer.getPixelRatio();
+ const width=Math.max(1,Math.floor(innerWidth*ratio));
+ const height=Math.max(1,Math.floor(innerHeight*ratio));
+ sceneTarget=new THREE.WebGLRenderTarget(width,height,{
+  minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,
+  format:THREE.RGBAFormat,depthBuffer:true,stencilBuffer:false
+ });
+ postScene=new THREE.Scene();
+ postCamera=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+ postUniforms={
+  tDiffuse:{value:sceneTarget.texture},
+  uLensCenter:{value:new THREE.Vector2(.5,.5)},
+  uAspect:{value:innerWidth/innerHeight},
+  uStrength:{value:mobile?.34:.56},
+  uVisible:{value:0}
+ };
+ postMaterial=new THREE.ShaderMaterial({
+  uniforms:postUniforms,vertexShader:LENS_VERTEX_SHADER,
+  fragmentShader:LENS_FRAGMENT_SHADER,depthTest:false,depthWrite:false
+ });
+ postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),postMaterial));
+ lensPoint=new THREE.Vector3();
+}
+function renderScene(){
+ if(!sceneTarget||!postUniforms||!lensPoint){renderer.render(scene,camera);return}
+ lensPoint.set(0,1.2,0).project(camera);
+ const visible=lensPoint.z>-1&&lensPoint.z<1&&Math.abs(lensPoint.x)<1.15&&Math.abs(lensPoint.y)<1.15;
+ postUniforms.uLensCenter.value.set(lensPoint.x*.5+.5,lensPoint.y*.5+.5);
+ postUniforms.uVisible.value=visible?1:0;
+ renderer.setRenderTarget(sceneTarget);
+ renderer.clear();
+ renderer.render(scene,camera);
+ renderer.setRenderTarget(null);
+ renderer.render(postScene,postCamera);
+}
+
 function populateGalaxy(glow){
  const night=['#79b6cb','#d1b18d','#b4a8cd','#91c3b6'];
  const dawn=['#8dbdc9','#d5b69c','#c4adca','#9bc6bc'];
@@ -497,10 +733,12 @@ function populateGalaxy(glow){
   new THREE.MeshBasicMaterial({
    map:theme==='night'?nebulaTextures.night:nebulaTextures.paper,
    side:THREE.DoubleSide,transparent:true,depthWrite:false,
-   opacity:theme==='night'?.70:.64,blending:THREE.NormalBlending
+   opacity:theme==='night'?.48:.43,blending:THREE.NormalBlending
   }));
  nebulaMesh.rotation.x=-Math.PI/2;nebulaMesh.position.y=-.65;
  nebulaPivot.add(nebulaMesh);
+ // Three depth-separated shader sheets add slowly evolving 3D FBM gas and dust lanes.
+ buildNebulaLayers();
  let core=glow.clone();
  coreHalo=new THREE.Sprite(new THREE.SpriteMaterial({
   map:core,color:'#dbbca0',transparent:true,opacity:.155,
@@ -585,6 +823,8 @@ function populateGalaxy(glow){
   transparent:true,blending:THREE.NormalBlending,depthWrite:false
  }));
  galaxyGroup.add(dustCloud);
+ // Rare, low-intensity streaks add scale without filling the starfield.
+ createShootingStars(glow);
 }
 
 function populatePlanets(glow){
@@ -612,6 +852,7 @@ function init(){
  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,mobile?1.4:1.65));renderer.setSize(innerWidth,innerHeight);renderer.setClearColor(0x091b2c,0);renderer.outputEncoding=THREE.sRGBEncoding;el('scene').appendChild(renderer.domElement);
  scene=new THREE.Scene();scene.fog=new THREE.FogExp2(theme==='night'?0x0a1b35:0x4c6685,theme==='night'?.0016:.0012);
  camera=new THREE.PerspectiveCamera(52,innerWidth/innerHeight,.1,420);camera.position.set(0,mobile?50:43,mobile?103:88);
+ createLensingPass();
  controls=new THREE.OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.058;controls.enablePan=true;controls.minDistance=8;controls.maxDistance=165;controls.autoRotate=!reduced;controls.autoRotateSpeed=.18;
  controls.minPolarAngle=.08;controls.maxPolarAngle=Math.PI*.9;
  galaxyGroup=new THREE.Group();scene.add(galaxyGroup);let glow=spriteTexture();
@@ -654,16 +895,37 @@ function updateLabels(){
 function animate(now){
  if(!started)return;requestAnimationFrame(animate);
  let dt=last?Math.min(.05,(now-last)/1000):0;last=now;
- if(!paused){clock+=dt*speed;starGroups.forEach(a=>a.points.rotation.y+=dt*a.speed*speed);if(nebulaPivot)nebulaPivot.rotation.y+=dt*.012*speed;if(glintPoints)glintPoints.rotation.y+=dt*.012*speed}
+ if(!paused){
+  clock+=dt*speed;
+  starGroups.forEach(a=>a.points.rotation.y+=dt*a.speed*speed);
+  if(nebulaPivot)nebulaPivot.rotation.y+=dt*.012*speed;
+  if(glintPoints)glintPoints.rotation.y+=dt*.012*speed;
+  nebulaLayers.forEach(layer=>{
+   const u=layer.material.uniforms;
+   u.uTime.value=clock*layer.flow;
+   layer.mesh.position.x=layer.baseX+Math.sin(clock*.035+layer.phase)*layer.drift;
+   layer.mesh.position.z=layer.baseZ+Math.cos(clock*.028+layer.phase)*layer.drift;
+   layer.mesh.rotation.y=layer.baseRotationY+Math.sin(clock*.02+layer.phase)*.004;
+  });
+  updateShootingStars(dt);
+ }
  planets.forEach((p,i)=>{p.position.y=p.userData.baseY+Math.sin(clock*.5+i*1.4)*.22;p.userData.mesh.rotation.y+=dt*.1;p.userData.ring.rotation.z+=dt*.10});
  if(flight){
   flight.t=Math.min(1,flight.t+dt*.88);let t=flight.t,k=t*t*(3-2*t);
   camera.position.copy(flight.from).lerp(flight.to,k);controls.target.copy(flight.lookFrom).lerp(flight.lookTo,k);
   if(t>=1){flight=null;controls.enabled=true;controls.autoRotate=selected<0&&!reduced}
  }
- controls.update();updateLabels();renderer.render(scene,camera)
+ controls.update();updateLabels();renderScene()
 }
-function resize(){if(!started)return;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}
+function resize(){
+ if(!started)return;
+ camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);
+ if(sceneTarget){
+  const ratio=renderer.getPixelRatio();
+  sceneTarget.setSize(Math.max(1,Math.floor(innerWidth*ratio)),Math.max(1,Math.floor(innerHeight*ratio)));
+ }
+ if(postUniforms)postUniforms.uAspect.value=innerWidth/innerHeight;
+ }
 function applyTheme(){
  const dawn=theme==='paper';
  document.documentElement.dataset.theme=theme;
@@ -680,11 +942,25 @@ function applyTheme(){
   });
   if(nebulaMesh){
    nebulaMesh.material.map=dawn?nebulaTextures.paper:nebulaTextures.night;
-   nebulaMesh.material.opacity=dawn?.64:.70;
+   nebulaMesh.material.opacity=dawn?.43:.48;
    nebulaMesh.material.blending=THREE.NormalBlending;
    nebulaMesh.material.needsUpdate=true;
   }
   if(coreHalo){coreHalo.material.opacity=dawn?.13:.155}
+  if(nebulaLayers.length){
+   const palettes=dawn
+    ?[['#557f94','#9a8ca5','#c5a68d'],['#5c8790','#9b8ba1','#c6a68f'],['#617c99','#9889a0','#bea08b']]
+    :[['#304b7a','#68658e','#a07d91'],['#315d78','#6e638f','#a77f8e'],['#294a6a','#777096','#b08a7d']];
+   nebulaLayers.forEach((layer,i)=>{
+    const u=layer.material.uniforms;
+    u.uTintA.value.set(palettes[i][0]);
+    u.uTintB.value.set(palettes[i][1]);
+    u.uTintC.value.set(palettes[i][2]);
+    u.uOpacity.value=layer.baseOpacity*(dawn?.66:1);
+    u.uOctaves.value=mobile?2:3;
+   });
+  }
+  if(postUniforms)postUniforms.uStrength.value=mobile?.34:(dawn?.42:.56);
   if(glintPoints&&glintColors){const attr=glintPoints.geometry.getAttribute('color');attr.array.set(dawn?glintColors.paper:glintColors.night);attr.needsUpdate=true;glintPoints.material.opacity=dawn?.65:.69;glintPoints.material.needsUpdate=true}
   orbitRings.forEach(r=>{r.material.color.set(dawn?'#c6c6cc':'#7a99ad');r.material.opacity=dawn?.105:.075});
   planetHalos.forEach(h=>{h.material.opacity=dawn?.16:.20;h.material.blending=THREE.NormalBlending;h.material.needsUpdate=true});
