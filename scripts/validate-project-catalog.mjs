@@ -39,6 +39,8 @@ const allowedStatuses = new Set(["idea","development","testing","published","arc
 const seenIds = new Set();
 const seenOrders = new Set();
 const seenSourcePaths = new Set();
+const seenJournalIds = new Set();
+const seenJournalOrders = new Set();
 let localCount = 0;
 let externalCount = 0;
 
@@ -67,6 +69,52 @@ for (const [index, project] of (catalog.projects || []).entries()) {
   }
   if (project.techStack !== undefined && (!Array.isArray(project.techStack) || project.techStack.some(x => typeof x !== "string" || !x.trim()))) {
     fail(`${prefix}.techStack must contain only non-empty strings`);
+  }
+
+  if (project.id !== "galaxy") {
+    const galaxy = project.galaxy;
+    if (!galaxy || typeof galaxy !== "object" || Array.isArray(galaxy)) {
+      fail(`${prefix}.galaxy presentation metadata is required`);
+    } else {
+      for (const field of ["icon","description","note","linkText","style"]) {
+        if (typeof galaxy[field] !== "string" || !galaxy[field].trim()) fail(`${prefix}.galaxy.${field} must be a non-empty string`);
+      }
+      if (!["online","download","lab"].includes(galaxy.category)) fail(`${prefix}.galaxy.category is unsupported`);
+      if (!Array.isArray(galaxy.palette) || galaxy.palette.length !== 3 || galaxy.palette.some(color => typeof color !== "string" || !/^#[0-9a-fA-F]{6}$/.test(color))) {
+        fail(`${prefix}.galaxy.palette must contain exactly three hex colors`);
+      }
+      for (const field of ["atmo","ring"]) {
+        if (typeof galaxy[field] !== "string" || !/^#[0-9a-fA-F]{6}$/.test(galaxy[field])) fail(`${prefix}.galaxy.${field} must be a hex color`);
+      }
+      if (!Array.isArray(galaxy.position) || galaxy.position.length !== 3 || galaxy.position.some(value => typeof value !== "number" || !Number.isFinite(value))) {
+        fail(`${prefix}.galaxy.position must contain exactly three finite numbers`);
+      }
+      if (typeof galaxy.radius !== "number" || !Number.isFinite(galaxy.radius) || galaxy.radius <= 0) fail(`${prefix}.galaxy.radius must be a positive finite number`);
+      if (galaxy.sourceUrl !== null && galaxy.sourceUrl !== undefined && !isHttpsUrl(galaxy.sourceUrl)) fail(`${prefix}.galaxy.sourceUrl must be HTTPS or null`);
+      if (galaxy.journal !== undefined) {
+        const journal = galaxy.journal;
+        if (!journal || typeof journal !== "object" || Array.isArray(journal)) {
+          fail(`${prefix}.galaxy.journal must be an object`);
+        } else {
+          if (journal.id !== project.id + "-note") fail(`${prefix}.galaxy.journal.id must equal project id plus -note`);
+          if (!Number.isInteger(journal.order) || journal.order < 1) fail(`${prefix}.galaxy.journal.order must be a positive integer`);
+          else {
+            if (seenJournalOrders.has(journal.order)) fail("duplicate galaxy journal order: " + journal.order);
+            seenJournalOrders.add(journal.order);
+          }
+          if (typeof journal.id === "string") {
+            if (seenJournalIds.has(journal.id)) fail("duplicate galaxy journal id: " + journal.id);
+            seenJournalIds.add(journal.id);
+          }
+          for (const field of ["no","title","summary"]) {
+            if (typeof journal[field] !== "string" || !journal[field].trim()) fail(`${prefix}.galaxy.journal.${field} must be a non-empty string`);
+          }
+          if (!Array.isArray(journal.paragraphs) || journal.paragraphs.length === 0 || journal.paragraphs.some(value => typeof value !== "string" || !value.trim())) {
+            fail(`${prefix}.galaxy.journal.paragraphs must contain non-empty strings`);
+          }
+        }
+      }
+    }
   }
 
   if (!Number.isInteger(project.sortOrder) || project.sortOrder < 0) fail(`${prefix}.sortOrder must be a non-negative integer`);
