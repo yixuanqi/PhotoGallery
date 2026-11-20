@@ -1,0 +1,3828 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>拾风信使 · Wind Messenger</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #8cc9e8;
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Georgia, serif;
+      color: #3d332b;
+    }
+
+    #gameCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    /* 极简轻量 HUD（零 backdrop-filter、零 mix-blend-mode、零 SVG 滤镜，避免合成器卡顿） */
+    .hud {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      z-index: 10;
+    }
+
+    .hud-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .hud-pill {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      background: rgba(254, 249, 238, 0.88);
+      border: 1.5px solid rgba(61, 51, 43, 0.22);
+      border-radius: 999px;
+      padding: 6px 15px;
+      box-shadow: 0 3px 10px rgba(68, 56, 40, 0.08);
+    }
+
+    .brand {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: #3d332b;
+      padding-right: 8px;
+      border-right: 1.5px solid rgba(61, 51, 43, 0.16);
+    }
+
+    .stat-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #5b4d3f;
+    }
+
+    .stat-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: transform 0.22s ease, color 0.22s ease;
+    }
+
+    .stat-item.done {
+      color: #c87b1e;
+    }
+
+    .stat-item.pop {
+      transform: scale(1.16);
+      color: #d67e1c;
+    }
+
+    .hud-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .hud-btn {
+      appearance: none;
+      background: rgba(254, 249, 238, 0.9);
+      border: 1.5px solid rgba(61, 51, 43, 0.22);
+      border-radius: 999px;
+      padding: 6px 13px;
+      font-family: inherit;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #3d332b;
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(68, 56, 40, 0.08);
+      transition: transform 0.14s ease, background 0.18s ease;
+    }
+
+    .hud-btn:hover {
+      background: #fffdf6;
+      transform: translateY(-1px);
+    }
+
+    .hud-btn:active {
+      transform: translateY(1px);
+    }
+
+    .fps-badge {
+      background: rgba(254, 249, 238, 0.72);
+      border: 1px solid rgba(61, 51, 43, 0.16);
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 11px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: #6b5c4d;
+    }
+
+    .hud-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      width: 100%;
+    }
+
+    .key-hints {
+      pointer-events: auto;
+      background: rgba(254, 249, 238, 0.84);
+      border: 1.4px solid rgba(61, 51, 43, 0.18);
+      border-radius: 14px;
+      padding: 7px 13px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #5d4f41;
+      transition: opacity 1.4s ease;
+      opacity: 0.96;
+    }
+
+    .key-hints.faded {
+      opacity: 0.34;
+    }
+
+    .key-hints:hover {
+      opacity: 0.96;
+    }
+
+    .key-hints b {
+      color: #3d332b;
+      font-weight: 700;
+    }
+
+    .celebration {
+      position: fixed;
+      top: 66px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-12px);
+      background: rgba(255, 250, 234, 0.95);
+      border: 2px solid rgba(212, 152, 56, 0.68);
+      border-radius: 999px;
+      padding: 8px 22px;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: #5e3f18;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.65s ease, transform 0.65s ease;
+      z-index: 15;
+      white-space: nowrap;
+    }
+
+    .celebration.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 62px;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: rgba(254, 249, 238, 0.94);
+      border: 1.5px solid rgba(61, 51, 43, 0.2);
+      border-radius: 999px;
+      padding: 7px 17px;
+      font-size: 13px;
+      color: #4d3f32;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.32s ease, transform 0.32s ease;
+      z-index: 14;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* 触控端操作键 */
+    .touch-bar {
+      display: none;
+      justify-content: space-between;
+      align-items: flex-end;
+      width: 100%;
+      pointer-events: none;
+    }
+
+    .touch-group {
+      display: flex;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .t-btn {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: rgba(254, 249, 238, 0.88);
+      border: 1.5px solid rgba(61, 51, 43, 0.25);
+      color: #3d332b;
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: none;
+    }
+
+    .t-btn.wide {
+      width: 76px;
+      border-radius: 26px;
+      font-size: 13px;
+    }
+
+    .t-btn.active {
+      background: #fae8b8;
+      transform: scale(0.94);
+    }
+
+    @media (hover: none) and (pointer: coarse), (max-width: 780px) {
+      .touch-bar { display: flex; }
+      .key-hints { display: none; }
+      .toast { bottom: 84px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+
+  <div class="hud">
+    <div class="hud-top">
+      <div class="hud-pill">
+        <span class="brand">拾风信使</span>
+        <div class="stat-group">
+          <span class="stat-item" id="statWindmill">❀ 风车 <span id="cntWindmill">0</span>/3</span>
+          <span class="stat-item" id="statMail">✈ 信件 <span id="cntMail">0</span>/4</span>
+          <span class="stat-item" id="statFlower">☀ 向日葵 <span id="cntFlower">0</span>/2</span>
+        </div>
+      </div>
+
+      <div class="hud-actions">
+        <span id="fpsBadge" class="fps-badge">60 FPS</span>
+        <button id="resetBtn" class="hud-btn" type="button">☁ 重置云朵</button>
+        <button id="muteBtn" class="hud-btn" type="button">♪ 声音: 开</button>
+      </div>
+    </div>
+
+    <div class="hud-bottom">
+      <div id="keyHints" class="key-hints">
+        <b>A / D</b> 移动 · 长按 <b>Space / W</b> 展篷滑翔 · <b>左键拖动</b> 划风推云与护送纸飞机 · <b>右键按住 / E / Shift</b> 旋风聚云与吹散雨云
+      </div>
+      <div class="touch-bar">
+        <div class="touch-group">
+          <button id="btnLeft" class="t-btn" type="button">◀</button>
+          <button id="btnRight" class="t-btn" type="button">▶</button>
+        </div>
+        <div class="touch-group">
+          <button id="btnVortex" class="t-btn wide" type="button">旋风</button>
+          <button id="btnJump" class="t-btn wide" type="button">跳/滑翔</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="celebration" class="celebration">✦ 盛夏大季风重返山谷 — 彩虹与万物乘风而歌 ✦</div>
+  <div id="toast" class="toast"></div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      /* =====================================================================
+         1. 核心全局常量与高性能画布初始化（零 alpha 合成、严格 DPR 封顶）
+         ===================================================================== */
+      const WORLD_W = 4000;
+      const WORLD_H = 1160;
+      const FIXED_DT = 1 / 60;
+      const INK = '#3d332b';
+      const MAX_STROKE_SEGS = 28;
+      const STROKE_MIN_SPACING = 36;
+      const STROKE_TTL = 2.4;
+      const MAX_PARTICLES = 150;
+      const SCARF_NODES = 12;
+      const SCARF_SEG_LEN = 7.0; // 总长度严格锁死 11 * 7.0 = 77px
+
+      const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const smoothstep = (u) => {
+        const x = clamp(u, 0, 1);
+        return x * x * (3 - 2 * x);
+      };
+      const lerpRGB = (c1, c2, t) =>
+        `rgb(${Math.round(lerp(c1[0], c2[0], t))},${Math.round(lerp(c1[1], c2[1], t))},${Math.round(lerp(c1[2], c2[2], t))})`;
+
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d', { alpha: false });
+      let viewW = window.innerWidth;
+      let viewH = window.innerHeight;
+      let dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth > 1440 ? 1.0 : 1.25);
+
+      function resizeCanvas() {
+        viewW = window.innerWidth;
+        viewH = window.innerHeight;
+        dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth > 1440 ? 1.0 : 1.25);
+        canvas.width = Math.floor(viewW * dpr);
+        canvas.height = Math.floor(viewH * dpr);
+      }
+
+      /* =====================================================================
+         2. 离屏精灵预烘焙系统（全程零 shadowBlur、循环内零 Gradient 创建）
+         ===================================================================== */
+      const Sprites = {
+        skyGrad: null,
+        skyWarmthBaked: -1,
+        sunGlow: null,
+        goldGlow: null,
+        vortexSwirl: null,
+        sunbeam: null,
+        cloudT1: null,
+        cloudT2: null,
+        cloudT3: null,
+        cloudRain: null,
+        bgCloudA: null,
+        bgCloudB: null,
+        farHills: null,
+        midHills: null,
+        particles: [] // 0:creamPetal, 1:pinkPetal, 2:goldPetal, 3:mintPetal, 4:cottonPuff, 5:dandelion, 6:spark
+      };
+
+      function bakeSkyGradient(warmth) {
+        if (!Sprites.skyGrad) {
+          Sprites.skyGrad = document.createElement('canvas');
+          Sprites.skyGrad.width = 4;
+          Sprites.skyGrad.height = 256;
+        }
+        const octx = Sprites.skyGrad.getContext('2d');
+        const g = octx.createLinearGradient(0, 0, 0, 256);
+        g.addColorStop(0, lerpRGB([104, 182, 224], [74, 162, 228], warmth));
+        g.addColorStop(0.55, lerpRGB([176, 223, 240], [172, 225, 246], warmth));
+        g.addColorStop(1, lerpRGB([252, 244, 220], [255, 228, 174], warmth));
+        octx.fillStyle = g;
+        octx.fillRect(0, 0, 4, 256);
+        Sprites.skyWarmthBaked = warmth;
+      }
+
+      function bakeRadialSprite(size, stops) {
+        const off = document.createElement('canvas');
+        off.width = size;
+        off.height = size;
+        const octx = off.getContext('2d');
+        const h = size * 0.5;
+        const g = octx.createRadialGradient(h, h, 0, h, h, h);
+        for (let i = 0; i < stops.length; i++) g.addColorStop(stops[i][0], stops[i][1]);
+        octx.fillStyle = g;
+        octx.fillRect(0, 0, size, size);
+        return off;
+      }
+
+      // 宫崎骏水彩手绘云精灵烘焙：无缝有机外轮廓 + source-atop 水彩厚涂明暗
+      function bakeCloudSprite(opts) {
+        const { w, h, lobes, outline, base, shadow, midTint, highlight, sparkles } = opts;
+        const off = document.createElement('canvas');
+        off.width = w;
+        off.height = h;
+        const octx = off.getContext('2d');
+        const cx = w * 0.5;
+        const cy = h * 0.56;
+
+        // 1) 柔和合并外轮廓（无断裂内弧）
+        octx.fillStyle = outline;
+        octx.beginPath();
+        for (let i = 0; i < lobes.length; i++) {
+          const l = lobes[i];
+          octx.moveTo(cx + l.x + l.r + 2.4, cy + l.y);
+          octx.arc(cx + l.x, cy + l.y, l.r + 2.4, 0, Math.PI * 2);
+        }
+        octx.fill();
+
+        // 2) 暖白/灰蓝主体填充
+        octx.fillStyle = base;
+        octx.beginPath();
+        for (let i = 0; i < lobes.length; i++) {
+          const l = lobes[i];
+          octx.moveTo(cx + l.x + l.r, cy + l.y);
+          octx.arc(cx + l.x, cy + l.y, l.r, 0, Math.PI * 2);
+        }
+        octx.fill();
+
+        // 3) source-atop 水彩分层着色
+        octx.globalCompositeOperation = 'source-atop';
+
+        const botGrad = octx.createLinearGradient(0, cy - h * 0.35, 0, cy + h * 0.36);
+        botGrad.addColorStop(0, 'rgba(255,255,255,0)');
+        botGrad.addColorStop(0.56, 'rgba(255,255,255,0)');
+        botGrad.addColorStop(0.84, shadow);
+        botGrad.addColorStop(1, shadow);
+        octx.fillStyle = botGrad;
+        octx.fillRect(0, 0, w, h);
+
+        octx.fillStyle = midTint;
+        octx.beginPath();
+        for (let i = 0; i < lobes.length; i++) {
+          const l = lobes[i];
+          if (l.y < -6) continue;
+          const rx = cx + l.x - 2;
+          const ry = cy + l.y + l.r * 0.42;
+          octx.moveTo(rx + l.r * 0.84, ry);
+          octx.ellipse(rx, ry, l.r * 0.84, l.r * 0.54, 0, 0, Math.PI * 2);
+        }
+        octx.fill();
+
+        octx.fillStyle = highlight;
+        octx.beginPath();
+        for (let i = 0; i < lobes.length; i++) {
+          const l = lobes[i];
+          if (l.y > 10) continue;
+          const hx = cx + l.x + 2;
+          const hy = cy + l.y - l.r * 0.3;
+          octx.moveTo(hx + l.r * 0.7, hy);
+          octx.ellipse(hx, hy, l.r * 0.7, l.r * 0.46, -0.08, 0, Math.PI * 2);
+        }
+        octx.fill();
+
+        octx.globalCompositeOperation = 'source-over';
+
+        if (sparkles) {
+          octx.fillStyle = '#ffe078';
+          for (let i = 0; i < sparkles.length; i++) {
+            const s = sparkles[i];
+            const sx = cx + s.x;
+            const sy = cy + s.y;
+            const r = s.r;
+            octx.beginPath();
+            octx.moveTo(sx, sy - r);
+            octx.quadraticCurveTo(sx, sy, sx + r, sy);
+            octx.quadraticCurveTo(sx, sy, sx, sy + r);
+            octx.quadraticCurveTo(sx, sy, sx - r, sy);
+            octx.quadraticCurveTo(sx, sy, sx, sy - r);
+            octx.fill();
+          }
+        }
+        return off;
+      }
+
+      function bakeBgCloudSprite(w, h, lobes) {
+        const off = document.createElement('canvas');
+        off.width = w;
+        off.height = h;
+        const octx = off.getContext('2d');
+        const cx = w * 0.5;
+        const cy = h * 0.6;
+        octx.fillStyle = 'rgba(255, 252, 245, 0.74)';
+        octx.beginPath();
+        for (let i = 0; i < lobes.length; i++) {
+          const l = lobes[i];
+          octx.moveTo(cx + l.x + l.r, cy + l.y);
+          octx.arc(cx + l.x, cy + l.y, l.r, 0, Math.PI * 2);
+        }
+        octx.fill();
+        octx.globalCompositeOperation = 'source-atop';
+        const g = octx.createLinearGradient(0, cy - h * 0.35, 0, cy + h * 0.35);
+        g.addColorStop(0, 'rgba(255,255,255,0.18)');
+        g.addColorStop(0.66, 'rgba(255,255,255,0)');
+        g.addColorStop(1, 'rgba(182, 212, 232, 0.44)');
+        octx.fillStyle = g;
+        octx.fillRect(0, 0, w, h);
+        octx.globalCompositeOperation = 'source-over';
+        return off;
+      }
+
+      // 预烘焙旋风气旋精灵（主循环只需单次 rotate + drawImage！）
+      function bakeVortexSprite() {
+        const size = 256;
+        const off = document.createElement('canvas');
+        off.width = size;
+        off.height = size;
+        const octx = off.getContext('2d');
+        const c = size * 0.5;
+
+        const g = octx.createRadialGradient(c, c, 8, c, c, c);
+        g.addColorStop(0, 'rgba(232, 255, 242, 0.52)');
+        g.addColorStop(0.55, 'rgba(182, 240, 224, 0.2)');
+        g.addColorStop(1, 'rgba(182, 240, 224, 0)');
+        octx.fillStyle = g;
+        octx.fillRect(0, 0, size, size);
+
+        octx.translate(c, c);
+        octx.lineCap = 'round';
+        for (let arm = 0; arm < 3; arm++) {
+          octx.save();
+          octx.rotate((arm * Math.PI * 2) / 3);
+          octx.strokeStyle = arm === 0 ? 'rgba(255, 253, 242, 0.85)' : 'rgba(216, 250, 236, 0.65)';
+          octx.lineWidth = 4.2;
+          octx.beginPath();
+          for (let t = 0; t <= 24; t++) {
+            const f = t / 24;
+            const r = 18 + f * 92;
+            const a = f * 2.85;
+            const x = Math.cos(a) * r;
+            const y = Math.sin(a) * r;
+            if (t === 0) octx.moveTo(x, y); else octx.lineTo(x, y);
+          }
+          octx.stroke();
+
+          octx.strokeStyle = 'rgba(255, 252, 232, 0.5)';
+          octx.lineWidth = 2;
+          octx.beginPath();
+          octx.arc(0, 0, 52 + arm * 22, 0.4, 1.85);
+          octx.stroke();
+          octx.restore();
+        }
+        return off;
+      }
+
+      // 预烘焙丁达尔阳光光束精灵
+      function bakeSunbeamSprite() {
+        const w = 340, h = 760;
+        const off = document.createElement('canvas');
+        off.width = w;
+        off.height = h;
+        const octx = off.getContext('2d');
+        const g = octx.createLinearGradient(w * 0.72, 0, w * 0.35, h);
+        g.addColorStop(0, 'rgba(255, 248, 206, 0.58)');
+        g.addColorStop(0.55, 'rgba(255, 238, 172, 0.28)');
+        g.addColorStop(1, 'rgba(255, 236, 165, 0)');
+        octx.fillStyle = g;
+        octx.beginPath();
+        octx.moveTo(w * 0.52, 0);
+        octx.lineTo(w * 0.96, 0);
+        octx.lineTo(w * 0.62, h);
+        octx.lineTo(w * 0.04, h);
+        octx.closePath();
+        octx.fill();
+        return off;
+      }
+
+      // 预烘焙无缝远景山丘与风车村剪影贴图（大幅减少每帧顶点数与三角函数开销）
+      function bakeParallaxHills(isMid) {
+        const w = 1024, h = 340;
+        const off = document.createElement('canvas');
+        off.width = w;
+        off.height = h;
+        const octx = off.getContext('2d');
+        const freq = (Math.PI * 2) / w;
+
+        const hillY = (x) =>
+          isMid
+            ? 145 + Math.sin(x * freq * 2 + 1.1) * 32 + Math.cos(x * freq * 4) * 12
+            : 118 + Math.sin(x * freq + 0.4) * 44 + Math.cos(x * freq * 2) * 16;
+
+        octx.fillStyle = isMid ? 'rgba(122, 175, 134, 0.52)' : 'rgba(136, 187, 198, 0.42)';
+        octx.beginPath();
+        octx.moveTo(0, h);
+        for (let x = 0; x <= w; x += 16) octx.lineTo(x, hillY(x));
+        octx.lineTo(w, h);
+        octx.closePath();
+        octx.fill();
+
+        if (isMid) {
+          // 在中景山丘上绘制两座柔和的远景风车村剪影
+          const sites = [260, 770];
+          octx.fillStyle = 'rgba(84, 126, 102, 0.52)';
+          octx.strokeStyle = 'rgba(72, 108, 88, 0.56)';
+          for (let si = 0; si < sites.length; si++) {
+            const bx = sites[si];
+            const by = hillY(bx) + 6;
+            octx.save();
+            octx.translate(bx, by);
+            for (let k = -2; k <= 1; k++) {
+              const hx = k * 24;
+              const hw = 15 + ((k + 4) % 2) * 5;
+              const hh = 15 + ((k + si + 5) % 3) * 4;
+              octx.fillRect(hx - hw * 0.5, -hh, hw, hh + 12);
+              octx.beginPath();
+              octx.moveTo(hx - hw * 0.65, -hh);
+              octx.lineTo(hx, -hh - 10);
+              octx.lineTo(hx + hw * 0.65, -hh);
+              octx.closePath();
+              octx.fill();
+            }
+            // 远景小风车剪影
+            const mx = 46;
+            octx.beginPath();
+            octx.moveTo(mx - 7, 10);
+            octx.lineTo(mx - 4, -34);
+            octx.lineTo(mx + 4, -34);
+            octx.lineTo(mx + 7, 10);
+            octx.closePath();
+            octx.fill();
+            octx.translate(mx, -32);
+            octx.rotate(0.45 + si * 0.6);
+            octx.lineWidth = 2;
+            for (let b = 0; b < 4; b++) {
+              octx.rotate(1.5708);
+              octx.beginPath();
+              octx.moveTo(0, 0);
+              octx.lineTo(0, -18);
+              octx.stroke();
+              octx.fillRect(1, -17, 5, 11);
+            }
+            octx.restore();
+          }
+        }
+        return off;
+      }
+
+      // 预烘焙微小粒子贴图（花瓣、棉絮、蒲公英、星芒）
+      function bakeParticleSprites() {
+        const makePetal = (col) => {
+          const off = document.createElement('canvas');
+          off.width = 16; off.height = 16;
+          const octx = off.getContext('2d');
+          octx.fillStyle = col;
+          octx.beginPath();
+          octx.ellipse(8, 8, 6, 3.2, 0, 0, Math.PI * 2);
+          octx.fill();
+          return off;
+        };
+        const makePuff = () => {
+          const off = document.createElement('canvas');
+          off.width = 24; off.height = 24;
+          const octx = off.getContext('2d');
+          const g = octx.createRadialGradient(12, 12, 2, 12, 12, 11);
+          g.addColorStop(0, 'rgba(255, 253, 246, 0.95)');
+          g.addColorStop(0.7, 'rgba(246, 242, 232, 0.65)');
+          g.addColorStop(1, 'rgba(246, 242, 232, 0)');
+          octx.fillStyle = g;
+          octx.fillRect(0, 0, 24, 24);
+          return off;
+        };
+        const makeDandelion = () => {
+          const off = document.createElement('canvas');
+          off.width = 20; off.height = 22;
+          const octx = off.getContext('2d');
+          octx.strokeStyle = 'rgba(255, 253, 244, 0.92)';
+          octx.lineWidth = 1.2;
+          octx.beginPath();
+          octx.moveTo(10, 16); octx.lineTo(10, 6);
+          octx.moveTo(10, 7); octx.lineTo(4, 2);
+          octx.moveTo(10, 7); octx.lineTo(16, 2);
+          octx.moveTo(10, 7); octx.lineTo(7, 1.5);
+          octx.moveTo(10, 7); octx.lineTo(13, 1.5);
+          octx.stroke();
+          octx.fillStyle = '#9e825f';
+          octx.fillRect(9, 15, 2.2, 3.6);
+          return off;
+        };
+        const makeSpark = () => {
+          const off = document.createElement('canvas');
+          off.width = 20; off.height = 20;
+          const octx = off.getContext('2d');
+          octx.fillStyle = '#ffe98c';
+          octx.beginPath();
+          octx.moveTo(10, 1);
+          octx.quadraticCurveTo(10, 10, 19, 10);
+          octx.quadraticCurveTo(10, 10, 10, 19);
+          octx.quadraticCurveTo(10, 10, 1, 10);
+          octx.quadraticCurveTo(10, 10, 10, 1);
+          octx.fill();
+          return off;
+        };
+        Sprites.particles = [
+          makePetal('#fff8e6'),
+          makePetal('#f7a99b'),
+          makePetal('#fce07e'),
+          makePetal('#bde4b4'),
+          makePuff(),
+          makeDandelion(),
+          makeSpark()
+        ];
+      }
+
+      function initSprites() {
+        bakeSkyGradient(0);
+        Sprites.sunGlow = bakeRadialSprite(240, [
+          [0, 'rgba(255, 251, 224, 0.94)'],
+          [0.34, 'rgba(255, 236, 174, 0.48)'],
+          [0.72, 'rgba(255, 234, 180, 0.12)'],
+          [1, 'rgba(255, 234, 180, 0)']
+        ]);
+        Sprites.goldGlow = bakeRadialSprite(160, [
+          [0, 'rgba(255, 236, 148, 0.72)'],
+          [0.48, 'rgba(255, 222, 118, 0.25)'],
+          [1, 'rgba(255, 222, 118, 0)']
+        ]);
+        Sprites.vortexSwirl = bakeVortexSprite();
+        Sprites.sunbeam = bakeSunbeamSprite();
+        Sprites.farHills = bakeParallaxHills(false);
+        Sprites.midHills = bakeParallaxHills(true);
+        bakeParticleSprites();
+
+        Sprites.cloudT1 = bakeCloudSprite({
+          w: 164, h: 112,
+          outline: 'rgba(116, 134, 152, 0.36)',
+          base: '#fffdf7',
+          shadow: '#d5e4f3',
+          midTint: 'rgba(208, 224, 242, 0.42)',
+          highlight: '#ffffff',
+          lobes: [
+            { x: -34, y: 12, r: 22 }, { x: -16, y: -4, r: 27 },
+            { x: 10, y: -8, r: 30 }, { x: 35, y: 10, r: 23 },
+            { x: 12, y: 15, r: 23 }, { x: -14, y: 16, r: 22 }
+          ]
+        });
+
+        Sprites.cloudT2 = bakeCloudSprite({
+          w: 236, h: 156,
+          outline: 'rgba(116, 134, 152, 0.38)',
+          base: '#fffdf7',
+          shadow: '#d4e3f3',
+          midTint: 'rgba(204, 222, 240, 0.48)',
+          highlight: '#ffffff',
+          lobes: [
+            { x: -58, y: 18, r: 27 }, { x: -34, y: -2, r: 34 },
+            { x: -4, y: -18, r: 42 }, { x: 32, y: -6, r: 36 },
+            { x: 60, y: 17, r: 28 }, { x: 32, y: 22, r: 28 },
+            { x: 0, y: 23, r: 30 }, { x: -32, y: 22, r: 27 }
+          ]
+        });
+
+        Sprites.cloudT3 = bakeCloudSprite({
+          w: 312, h: 204,
+          outline: 'rgba(206, 156, 68, 0.56)',
+          base: '#fffdf5',
+          shadow: '#d8e6f3',
+          midTint: 'rgba(218, 228, 240, 0.36)',
+          highlight: '#fff2c2',
+          lobes: [
+            { x: -82, y: 24, r: 34 }, { x: -52, y: 0, r: 44 },
+            { x: -14, y: -24, r: 54 }, { x: 32, y: -18, r: 48 },
+            { x: 66, y: 4, r: 40 }, { x: 88, y: 25, r: 31 },
+            { x: 48, y: 31, r: 35 }, { x: 2, y: 33, r: 38 },
+            { x: -46, y: 31, r: 34 }
+          ],
+          sparkles: [
+            { x: -58, y: -52, r: 7 }, { x: 10, y: -82, r: 9.5 }, { x: 74, y: -46, r: 6.5 }
+          ]
+        });
+
+        Sprites.cloudRain = bakeCloudSprite({
+          w: 272, h: 174,
+          outline: 'rgba(64, 78, 96, 0.52)',
+          base: '#8d9eae',
+          shadow: '#5d6e80',
+          midTint: 'rgba(84, 98, 114, 0.52)',
+          highlight: '#b4c3d1',
+          lobes: [
+            { x: -72, y: 18, r: 30 }, { x: -42, y: -4, r: 38 },
+            { x: -6, y: -18, r: 46 }, { x: 34, y: -10, r: 41 },
+            { x: 68, y: 16, r: 32 }, { x: 38, y: 24, r: 31 },
+            { x: 0, y: 26, r: 33 }, { x: -38, y: 24, r: 30 }
+          ]
+        });
+
+        Sprites.bgCloudA = bakeBgCloudSprite(250, 124, [
+          { x: -64, y: 18, r: 27 }, { x: -28, y: 0, r: 36 },
+          { x: 16, y: -8, r: 42 }, { x: 58, y: 10, r: 32 }, { x: 12, y: 19, r: 30 }
+        ]);
+        Sprites.bgCloudB = bakeBgCloudSprite(216, 112, [
+          { x: -50, y: 14, r: 25 }, { x: -12, y: -6, r: 35 },
+          { x: 32, y: 2, r: 31 }, { x: 60, y: 18, r: 23 }, { x: 4, y: 18, r: 27 }
+        ]);
+      }
+
+      /* =====================================================================
+         3. 程序化 Web Audio 声景（连续风噪滤波每 4 帧节流更新）
+         ===================================================================== */
+      const AudioSys = {
+        ctx: null,
+        master: null,
+        noiseBuf: null,
+        windFilter: null,
+        windGain: null,
+        vortexOsc: null,
+        vortexGain: null,
+        muted: false,
+        ready: false,
+        notes: [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5, 1174.66, 1318.5],
+
+        init() {
+          if (this.ready) {
+            if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+            return;
+          }
+          try {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return;
+            this.ctx = new AC();
+            this.master = this.ctx.createGain();
+            this.master.gain.value = this.muted ? 0 : 0.62;
+            this.master.connect(this.ctx.destination);
+
+            const len = this.ctx.sampleRate * 2;
+            const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+            const ch = buf.getChannelData(0);
+            let b0 = 0, b1 = 0, b2 = 0;
+            for (let i = 0; i < len; i++) {
+              const w = Math.random() * 2 - 1;
+              b0 = 0.997 * b0 + w * 0.03;
+              b1 = 0.985 * b1 + w * 0.05;
+              b2 = 0.95 * b2 + w * 0.08;
+              ch[i] = (b0 + b1 + b2 + w * 0.04) * 0.4;
+            }
+            this.noiseBuf = buf;
+
+            const src = this.ctx.createBufferSource();
+            src.buffer = buf;
+            src.loop = true;
+
+            this.windFilter = this.ctx.createBiquadFilter();
+            this.windFilter.type = 'bandpass';
+            this.windFilter.frequency.value = 310;
+            this.windFilter.Q.value = 1.6;
+
+            this.windGain = this.ctx.createGain();
+            this.windGain.gain.value = 0.022;
+
+            src.connect(this.windFilter);
+            this.windFilter.connect(this.windGain);
+            this.windGain.connect(this.master);
+            src.start();
+
+            this.vortexOsc = this.ctx.createOscillator();
+            this.vortexOsc.type = 'sine';
+            this.vortexOsc.frequency.value = 280;
+            this.vortexGain = this.ctx.createGain();
+            this.vortexGain.gain.value = 0.0001;
+            this.vortexOsc.connect(this.vortexGain);
+            this.vortexGain.connect(this.master);
+            this.vortexOsc.start();
+
+            this.ready = true;
+          } catch (_) {
+            // 容错
+          }
+        },
+
+        toggleMute() {
+          this.muted = !this.muted;
+          if (!this.muted && !this.ready) this.init();
+          if (this.master && this.ctx) {
+            this.master.gain.setTargetAtTime(this.muted ? 0 : 0.62, this.ctx.currentTime, 0.05);
+          }
+          return this.muted;
+        },
+
+        updateWind(relSpeed, glideBlend, strokeEnergy, vortexActive) {
+          if (!this.ready || !this.ctx || this.muted) return;
+          const now = this.ctx.currentTime;
+          const s = clamp(relSpeed / 460, 0, 1);
+          const freq = 240 + s * 600 + glideBlend * 135 + strokeEnergy * 350 + (vortexActive ? 200 : 0);
+          const gain = Math.min(0.24, 0.022 + s * 0.1 + glideBlend * 0.038 + strokeEnergy * 0.1 + (vortexActive ? 0.06 : 0));
+          this.windFilter.frequency.setTargetAtTime(freq, now, 0.12);
+          this.windGain.gain.setTargetAtTime(gain, now, 0.12);
+          this.vortexGain.gain.setTargetAtTime(vortexActive ? 0.05 : 0.0001, now, 0.09);
+          this.vortexOsc.frequency.setTargetAtTime(275 + Math.sin(now * 5.8) * 22, now, 0.09);
+        },
+
+        playChime(noteIdx, vol = 0.19, dur = 1.45) {
+          if (!this.ready || !this.ctx || this.muted) return;
+          const now = this.ctx.currentTime;
+          const freq = this.notes[noteIdx % this.notes.length];
+          const osc = this.ctx.createOscillator();
+          const over = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          const og = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now);
+          over.type = 'triangle';
+          over.frequency.setValueAtTime(freq * 2.004, now);
+          og.gain.value = 0.13;
+          g.gain.setValueAtTime(0.0001, now);
+          g.gain.linearRampToValueAtTime(vol, now + 0.014);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+          osc.connect(g); over.connect(og); og.connect(g); g.connect(this.master);
+          osc.start(now); over.start(now);
+          osc.stop(now + dur + 0.04); over.stop(now + dur + 0.04);
+        },
+
+        playBounce(tier) {
+          if (!this.ready || !this.ctx || this.muted) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          const f0 = tier >= 3 ? 150 : (tier === 2 ? 185 : 220);
+          const f1 = tier >= 3 ? 490 : (tier === 2 ? 420 : 360);
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(f0, now);
+          osc.frequency.exponentialRampToValueAtTime(f1, now + 0.1);
+          osc.frequency.exponentialRampToValueAtTime(f0 * 1.4, now + 0.25);
+          g.gain.setValueAtTime(0.0001, now);
+          g.gain.linearRampToValueAtTime(0.24 + tier * 0.03, now + 0.015);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+          osc.connect(g); g.connect(this.master);
+          osc.start(now); osc.stop(now + 0.32);
+          if (tier >= 3) {
+            this.playChime(3, 0.12, 0.85);
+            setTimeout(() => this.playChime(5, 0.12, 0.95), 55);
+          }
+        },
+
+        playCloudMerge(tier) {
+          const seq = tier >= 3 ? [0, 2, 3, 5] : [0, 2, 4];
+          seq.forEach((n, i) => setTimeout(() => this.playChime(n, 0.13, 1.15), i * 50));
+        },
+
+        playMailDeliver() {
+          [0, 2, 3, 5, 7].forEach((n, i) => setTimeout(() => this.playChime(n, 0.17, 1.45), i * 65));
+        },
+
+        playSunflowerBloom() {
+          [0, 1, 2, 3, 5, 6].forEach((n, i) => setTimeout(() => this.playChime(n, 0.16, 1.55), i * 75));
+        },
+
+        playAwaken(isGrand) {
+          const seq = isGrand ? [0, 2, 3, 4, 5, 6, 7, 5] : [0, 2, 3, 5];
+          seq.forEach((n, i) => setTimeout(() => this.playChime(n, isGrand ? 0.21 : 0.17, isGrand ? 2.2 : 1.65), i * 90));
+        }
+      };
+
+      /* =====================================================================
+         4. 4000px 阳光山谷地形 + 3 座浮空草岛 + 预分配 150 槽位粒子池（零 GC）
+         ===================================================================== */
+      function getGroundY(x) {
+        const cx = clamp(x, 0, WORLD_W);
+        let y = 885 - Math.sin(cx * 0.0022) * 28 - Math.cos(cx * 0.005) * 12;
+        y -= Math.exp(-Math.pow((cx - 950) / 235, 2)) * 108;  // 草坡风车丘
+        y += Math.exp(-Math.pow((cx - 1350) / 240, 2)) * 102; // 向日葵细雨谷
+        y += Math.exp(-Math.pow((cx - 2350) / 300, 2)) * 122; // 云海裂谷
+        y -= Math.exp(-Math.pow((cx - 3520) / 460, 2)) * 320; // 高崖观景台
+        return clamp(y, 510, 1025);
+      }
+
+      const islands = [
+        { id: 0, cx: 1600, y: 515, halfW: 195, depth: 92, curve: 14, vines: [-132, -48, 44, 128] },
+        { id: 1, cx: 2280, y: 380, halfW: 155, depth: 82, curve: 12, vines: [-98, -10, 84] },
+        { id: 2, cx: 3760, y: 315, halfW: 138, depth: 76, curve: 12, vines: [-82, 0, 78] }
+      ];
+
+      function getIslandSurfaceY(isl, x) {
+        const u = (x - isl.cx) / isl.halfW;
+        if (u < -1 || u > 1) return null;
+        return isl.y + u * u * isl.curve;
+      }
+
+      const fences = [
+        { x: 110, posts: 5, gap: 28 },
+        { x: 790, posts: 4, gap: 26 },
+        { x: 3250, posts: 5, gap: 28 }
+      ];
+
+      // 预分配 150 槽位固定粒子对象池（零 push / splice / 运行期对象分配）
+      const particlePool = new Array(MAX_PARTICLES);
+      for (let i = 0; i < MAX_PARTICLES; i++) {
+        particlePool[i] = {
+          active: false, x: 0, y: 0, vx: 0, vy: 0,
+          scale: 1, rot: 0, rSpd: 0, age: 0, maxAge: 1,
+          spriteIdx: 0, gravity: 0, drag: 0.45, windCouple: 0
+        };
+      }
+      let poolCursor = 0;
+
+      function spawnParticle(x, y, vx, vy, scale, spriteIdx, maxAge, gravity, windCouple) {
+        let p = null;
+        for (let tries = 0; tries < MAX_PARTICLES; tries++) {
+          const idx = (poolCursor + tries) % MAX_PARTICLES;
+          if (!particlePool[idx].active) {
+            p = particlePool[idx];
+            poolCursor = (idx + 1) % MAX_PARTICLES;
+            break;
+          }
+        }
+        if (!p) {
+          p = particlePool[poolCursor];
+          poolCursor = (poolCursor + 1) % MAX_PARTICLES;
+        }
+        p.active = true;
+        p.x = x; p.y = y; p.vx = vx; p.vy = vy;
+        p.scale = scale;
+        p.rot = Math.random() * 6.283;
+        p.rSpd = (Math.random() - 0.5) * 4.5;
+        p.age = 0;
+        p.maxAge = maxAge;
+        p.spriteIdx = spriteIdx;
+        p.gravity = gravity || 0;
+        p.drag = 0.45;
+        p.windCouple = windCouple || 0;
+      }
+
+      const floatingTexts = [];
+      function addFloatingText(x, y, text, col) {
+        if (floatingTexts.length > 8) floatingTexts.shift();
+        floatingTexts.push({ x, y, text, col, age: 0, maxAge: 1.3 });
+      }
+
+      /* =====================================================================
+         5. 零分配统一解析风场 sampleWind(x, y, t, out) + 28 段 AABB 划风池
+         ===================================================================== */
+      function makeCurrent(id, points, radius, strength, active, tint) {
+        const segs = [];
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (let i = 0; i < points.length - 1; i++) {
+          const a = points[i], b = points[i + 1];
+          const dx = b.x - a.x, dy = b.y - a.y;
+          const lenSq = dx * dx + dy * dy || 1;
+          const len = Math.sqrt(lenSq);
+          segs.push({
+            x1: a.x, y1: a.y, x2: b.x, y2: b.y,
+            dirX: dx / len, dirY: dy / len, lenSq,
+            radius, rSq: radius * radius, strength,
+            minX: Math.min(a.x, b.x) - radius,
+            maxX: Math.max(a.x, b.x) + radius,
+            minY: Math.min(a.y, b.y) - radius,
+            maxY: Math.max(a.y, b.y) + radius
+          });
+          minX = Math.min(minX, a.x, b.x);
+          minY = Math.min(minY, a.y, b.y);
+          maxX = Math.max(maxX, a.x, b.x);
+          maxY = Math.max(maxY, a.y, b.y);
+        }
+        return {
+          id, points, segs, radius, active,
+          progress: active ? 1 : 0, tint,
+          minX: minX - radius, minY: minY - radius,
+          maxX: maxX + radius, maxY: maxY + radius
+        };
+      }
+
+      const windCurrents = [
+        makeCurrent('start_updraft', [
+          { x: 560, y: 895 }, { x: 554, y: 720 }, { x: 566, y: 550 }, { x: 560, y: 385 }
+        ], 106, 385, true, 'rgba(255, 251, 226, 0.56)'),
+        makeCurrent('rift_updraft', [
+          { x: 2450, y: 995 }, { x: 2442, y: 800 }, { x: 2458, y: 600 }, { x: 2450, y: 395 }
+        ], 116, 405, true, 'rgba(240, 252, 232, 0.54)'),
+        makeCurrent('wm_current_0', [
+          { x: 1000, y: 685 }, { x: 1205, y: 575 }, { x: 1405, y: 495 }, { x: 1560, y: 455 }
+        ], 116, 425, false, 'rgba(255, 240, 180, 0.72)'),
+        makeCurrent('wm_current_1', [
+          { x: 1680, y: 440 }, { x: 1965, y: 345 }, { x: 2335, y: 310 }, { x: 2770, y: 360 }, { x: 3160, y: 445 }
+        ], 120, 440, false, 'rgba(255, 236, 168, 0.74)'),
+        makeCurrent('wm_current_2', [
+          { x: 3560, y: 395 }, { x: 3000, y: 200 }, { x: 2180, y: 150 }, { x: 1260, y: 180 }, { x: 400, y: 275 }
+        ], 144, 465, false, 'rgba(255, 230, 146, 0.8)')
+      ];
+
+      // 预分配 28 段划风胶囊池，每段带独立预计算 AABB 实现 sampleWind 内 O(1) 剔除
+      const strokeSegPool = new Array(MAX_STROKE_SEGS);
+      for (let i = 0; i < MAX_STROKE_SEGS; i++) {
+        strokeSegPool[i] = {
+          active: false, strokeId: 0,
+          x1: 0, y1: 0, x2: 0, y2: 0,
+          dirX: 1, dirY: 0, lenSq: 1,
+          radius: 104, rSq: 104 * 104, strength: 495,
+          minX: 0, maxX: 0, minY: 0, maxY: 0,
+          age: 0, maxAge: STROKE_TTL
+        };
+      }
+      let strokeSegCursor = 0;
+      let strokeIdSeq = 1;
+      const activeRibbons = []; // 仅用于极速单遍渲染划风丝带（最多 4 条活跃轨迹）
+
+      const vortex = {
+        active: false, x: 0, y: 0,
+        radius: 182, rSq: 182 * 182,
+        alpha: 0, spin: 0
+      };
+
+      const chimePulses = [];
+      let awakenedWindmills = 0;
+      let deliveredMails = 0;
+      let bloomedSunflowers = 0;
+      let monsoonAwakened = false;
+      let allCompleted = false;
+      let rainbowAlpha = 0;
+      let skyWarmth = 0;
+      let simTime = 0;
+
+      const _capTmp = { vx: 0, vy: 0 };
+
+      function sampleCapsuleInto(seg, px, py, env, pullRatio, acc) {
+        if (px < seg.minX || px > seg.maxX || py < seg.minY || py > seg.maxY) return 0;
+        const dx = seg.x2 - seg.x1;
+        const dy = seg.y2 - seg.y1;
+        const t = clamp(((px - seg.x1) * dx + (py - seg.y1) * dy) / seg.lenSq, 0, 1);
+        const cx = seg.x1 + t * dx;
+        const cy = seg.y1 + t * dy;
+        const rx = px - cx;
+        const ry = py - cy;
+        const dSq = rx * rx + ry * ry;
+        if (dSq >= seg.rSq) return 0;
+
+        const d = Math.sqrt(dSq);
+        const invR = 1 / seg.radius;
+        const falloff = smoothstep(1 - d * invR) * env;
+        const invD = d > 0.001 ? 1 / d : 0;
+        const pull = pullRatio * d * invR;
+        acc.vx = (seg.dirX * seg.strength - rx * invD * seg.strength * pull) * falloff;
+        acc.vy = (seg.dirY * seg.strength - ry * invD * seg.strength * pull) * falloff;
+        return falloff;
+      }
+
+      // 严格写入调用方传入的可复用对象 out（绝对零对象分配）
+      function sampleWind(x, y, t, out) {
+        const boost = monsoonAwakened ? 44 : awakenedWindmills * 11;
+        const w1 = Math.sin(x * 0.0033 - t * 1.24 + Math.cos(y * 0.004 + t * 0.56));
+        const w2 = Math.cos(x * 0.0066 - t * 1.6 + y * 0.0045);
+        let vx = 18 + boost + w1 * 19 + w2 * 7;
+        let vy = -3 + Math.sin(x * 0.0038 + t * 1.04) * 6 + w2 * 4;
+        let strokeVx = 0;
+        let strokeVy = 0;
+
+        // 1) 固定与唤醒天空风道
+        for (let i = 0; i < windCurrents.length; i++) {
+          const cur = windCurrents[i];
+          if (cur.progress <= 0.01) continue;
+          if (x < cur.minX || x > cur.maxX || y < cur.minY || y > cur.maxY) continue;
+          let bw = 0, bvx = 0, bvy = 0;
+          const segs = cur.segs;
+          for (let s = 0; s < segs.length; s++) {
+            const w = sampleCapsuleInto(segs[s], x, y, cur.progress, 0.22, _capTmp);
+            if (w > bw) { bw = w; bvx = _capTmp.vx; bvy = _capTmp.vy; }
+          }
+          vx += bvx; vy += bvy;
+        }
+
+        // 2) 最多 28 段玩家划风胶囊（每段 O(1) AABB 即刻裁剪）
+        let bestW = 0, bestVx = 0, bestVy = 0;
+        for (let i = 0; i < MAX_STROKE_SEGS; i++) {
+          const seg = strokeSegPool[i];
+          if (!seg.active) continue;
+          if (x < seg.minX || x > seg.maxX || y < seg.minY || y > seg.maxY) continue;
+          const remain = 1 - seg.age / seg.maxAge;
+          if (remain <= 0) continue;
+          const env = Math.min(1, seg.age * 10) * Math.sin(remain * 1.5708);
+          const w = sampleCapsuleInto(seg, x, y, env, 0.25, _capTmp);
+          if (w > bestW) { bestW = w; bestVx = _capTmp.vx; bestVy = _capTmp.vy; }
+        }
+        strokeVx += bestVx;
+        strokeVy += bestVy;
+        vx += bestVx;
+        vy += bestVy;
+
+        // 3) 右键 / E / Shift 旋风聚气
+        if (vortex.alpha > 0.04) {
+          const dx = x - vortex.x;
+          const dy = y - vortex.y;
+          const dSq = dx * dx + dy * dy;
+          if (dSq < vortex.rSq && dSq > 1) {
+            const d = Math.sqrt(dSq);
+            const u = 1 - d / vortex.radius;
+            const env = u * u * vortex.alpha;
+            const nx = dx / d;
+            const ny = dy / d;
+            const sx = (-ny * 320 - nx * 200) * env;
+            const sy = (nx * 320 - ny * 200 - 92) * env;
+            vx += sx; vy += sy;
+            strokeVx += sx * 0.7; strokeVy += sy * 0.7;
+          }
+        }
+
+        // 4) 风铃上升脉冲
+        for (let i = 0; i < chimePulses.length; i++) {
+          const p = chimePulses[i];
+          const dx = x - p.x;
+          const dy = y - p.y;
+          const dSq = dx * dx + dy * dy;
+          if (dSq < p.rSq) {
+            const d = Math.sqrt(dSq);
+            const u = 1 - d / p.radius;
+            const env = (1 - p.age / p.maxAge) * u * u;
+            vy -= 410 * env;
+            vx += (dx / (d || 1)) * 66 * env;
+          }
+        }
+
+        out.vx = vx;
+        out.vy = vy;
+        out.strokeVx = strokeVx;
+        out.strokeVy = strokeVy;
+        return out;
+      }
+
+      /* =====================================================================
+         6. 主角物理（零闪烁状态机）+ 12 节零拉伸 Verlet 围巾系统
+         ===================================================================== */
+      const START_X = 225;
+      const START_Y = getGroundY(START_X) - 22;
+
+      const player = {
+        x: START_X, y: START_Y,
+        prevX: START_X, prevY: START_Y,
+        vx: 0, vy: 0,
+        facing: 1,
+        facingDriftTimer: 0,
+        visualFacing: 1, prevVisualFacing: 1,
+        grounded: true,
+        groundedIsland: null,
+        isGliding: false,
+        glideBlend: 0, prevGlideBlend: 0,
+        airBlend: 0, prevAirBlend: 0,
+        cloakBillow: 0, prevCloakBillow: 0,
+        bodyTilt: 0, prevBodyTilt: 0,
+        jumpLockTimer: 0,   // 0.14s 起跳防误开篷锁
+        groundSnapLock: 0,  // 0.16s 离地防回吸锁
+        coyoteTimer: 0,
+        jumpBuffer: 0,
+        runPhase: 0, prevRunPhase: 0,
+        energy: 100, maxEnergy: 100,
+        chimeCombo: 0, comboTimer: 0, groundComboClear: 0,
+        puffs: []
+      };
+
+      const _neckTmp = { x: 0, y: 0 };
+      function getNeckWorldPos(px, py, tilt, vFacing, out) {
+        const lx = -vFacing * 2;
+        const ly = -9;
+        const c = Math.cos(tilt);
+        const s = Math.sin(tilt);
+        out.x = px + lx * c - ly * s;
+        out.y = py + lx * s + ly * c;
+        return out;
+      }
+
+      const scarf = new Array(SCARF_NODES);
+      let scarfPrevAnchorX = 0;
+      let scarfPrevAnchorY = 0;
+
+      function scarfHalfWidth(i) {
+        const f = i / (SCARF_NODES - 1);
+        return (3.9 + Math.sin(f * Math.PI) * 3.0) * (1 - f * 0.34);
+      }
+
+      function clampScarfAboveSurface(n, i) {
+        const pad = scarfHalfWidth(i) + 2;
+        const gy = getGroundY(n.x) - pad;
+        if (n.y > gy) {
+          n.y = gy;
+          n.oldX += (n.x - n.oldX) * 0.25;
+        }
+        for (let k = 0; k < islands.length; k++) {
+          const isl = islands[k];
+          const sy = getIslandSurfaceY(isl, n.x);
+          if (sy !== null && n.y > sy - pad && n.y < isl.y + isl.depth) {
+            n.y = sy - pad;
+            n.oldX += (n.x - n.oldX) * 0.25;
+          }
+        }
+      }
+
+      function initScarf() {
+        getNeckWorldPos(player.x, player.y, player.bodyTilt, player.visualFacing, _neckTmp);
+        scarfPrevAnchorX = _neckTmp.x;
+        scarfPrevAnchorY = _neckTmp.y;
+        for (let i = 0; i < SCARF_NODES; i++) {
+          const x = _neckTmp.x - i * SCARF_SEG_LEN * player.facing;
+          const y = _neckTmp.y + Math.min(i * 1.1, 10);
+          scarf[i] = {
+            x, y, oldX: x, oldY: y, px: x, py: y,
+            lastDirX: -player.facing, lastDirY: 0
+          };
+          if (i > 0) {
+            clampScarfAboveSurface(scarf[i], i);
+            scarf[i].oldX = scarf[i].px = scarf[i].x;
+            scarf[i].oldY = scarf[i].py = scarf[i].y;
+          }
+        }
+      }
+
+      /* =====================================================================
+         7. 五大风元素玩法实体（10 朵云、4 架纸飞机、2 处雨云向日葵、3 风车、12 风铃）
+         ===================================================================== */
+      const bouncyClouds = [];
+      const cloudLinks = [];
+
+      function cloudTierFromMass(mass) {
+        return mass <= 1 ? 1 : (mass === 2 ? 2 : 3);
+      }
+      function cloudRadiusForTier(tier) {
+        return tier <= 1 ? 36 : (tier === 2 ? 56 : 78);
+      }
+
+      function initBouncyClouds() {
+        bouncyClouds.length = 0;
+        cloudLinks.length = 0;
+        const presets = [
+          // 簇 1：开局草坡低空（3 朵）
+          { x: 335, y: 755, hx: 440, hy: 715, rx: 320, ry: 210 },
+          { x: 440, y: 710, hx: 440, hy: 715, rx: 320, ry: 210 },
+          { x: 545, y: 752, hx: 440, hy: 715, rx: 320, ry: 210 },
+          // 簇 2：草坡到浮空岛 1（3 朵）
+          { x: 1090, y: 642, hx: 1185, hy: 602, rx: 330, ry: 220 },
+          { x: 1200, y: 588, hx: 1185, hy: 602, rx: 330, ry: 220 },
+          { x: 1840, y: 550, hx: 1935, hy: 522, rx: 330, ry: 220 },
+          // 簇 3：云海裂谷（2 朵）
+          { x: 2160, y: 608, hx: 2260, hy: 565, rx: 350, ry: 240 },
+          { x: 2345, y: 562, hx: 2260, hy: 565, rx: 350, ry: 240 },
+          // 簇 4：高崖前云梯（2 朵）
+          { x: 3040, y: 490, hx: 3165, hy: 452, rx: 350, ry: 230 },
+          { x: 3230, y: 442, hx: 3165, hy: 452, rx: 350, ry: 230 }
+        ];
+        for (let i = 0; i < presets.length; i++) {
+          const p = presets[i];
+          const r = cloudRadiusForTier(1);
+          bouncyClouds.push({
+            x: p.x, y: p.y, prevX: p.x, prevY: p.y,
+            vx: 0, vy: 0,
+            homeX: p.hx, homeY: p.hy, roamX: p.rx, roamY: p.ry,
+            mass: 1, tier: 1, r, targetR: r,
+            squash: 0, squashVel: 0, prevSquash: 0,
+            offsetY: 0, offsetVelY: 0, prevOffsetY: 0,
+            bounceCd: 0, mergeCd: 0, glow: 0,
+            bobPhase: i * 1.7
+          });
+        }
+      }
+
+      const mailboxes = [
+        { id: 0, x: 1515, y: getIslandSurfaceY(islands[0], 1515), col: '#e46a56', label: '珊瑚红邮筒', delivered: false, flag: 0, phase: 0 },
+        { id: 1, x: 2285, y: getIslandSurfaceY(islands[1], 2285), col: '#569bd5', label: '晴空蓝邮筒', delivered: false, flag: 0, phase: 1.4 },
+        { id: 2, x: 3200, y: getGroundY(3200), col: '#e8b238', label: '向阳黄邮筒', delivered: false, flag: 0, phase: 2.8 },
+        { id: 3, x: 3770, y: getIslandSurfaceY(islands[2], 3770), col: '#54ab8b', label: '薄荷绿邮筒', delivered: false, flag: 0, phase: 4.1 }
+      ];
+
+      const paperPlanes = [
+        { id: 0, homeX: 710, homeY: getGroundY(710) - 18, col: '#e46a56', targetId: 0 },
+        { id: 1, homeX: 1890, homeY: getGroundY(1890) - 18, col: '#569bd5', targetId: 1 },
+        { id: 2, homeX: 2640, homeY: getGroundY(2640) - 18, col: '#e8b238', targetId: 2 },
+        { id: 3, homeX: 3390, homeY: getGroundY(3390) - 18, col: '#54ab8b', targetId: 3 }
+      ].map((p) => ({
+        ...p,
+        x: p.homeX, y: p.homeY, prevX: p.homeX, prevY: p.homeY,
+        vx: 0, vy: 0, angle: -0.15, state: 'idle',
+        trailX: new Float32Array(12), trailY: new Float32Array(12),
+        trailCount: 0, trailTimer: 0, bob: p.id * 1.9
+      }));
+
+      const weatherPuzzles = [
+        {
+          id: 0, name: '花谷向日葵',
+          sx: 1350, baseY: getGroundY(1350), maxH: 265,
+          cloudHomeX: 1350, cloudHomeY: 625,
+          cx: 1350, cy: 625, cvx: 0, cvy: 0,
+          integrity: 1, dispersed: false, growth: 0, beamAlpha: 0,
+          leaves: [
+            { side: -1, hRatio: 0.36, len: 64, bend: 0, vel: 0, cd: 0 },
+            { side: 1, hRatio: 0.62, len: 68, bend: 0, vel: 0, cd: 0 },
+            { side: -1, hRatio: 0.84, len: 62, bend: 0, vel: 0, cd: 0 }
+          ],
+          headBend: 0, headVel: 0, headCd: 0
+        },
+        {
+          id: 1, name: '崖底向日葵',
+          sx: 2820, baseY: getGroundY(2820), maxH: 272,
+          cloudHomeX: 2820, cloudHomeY: 570,
+          cx: 2820, cy: 570, cvx: 0, cvy: 0,
+          integrity: 1, dispersed: false, growth: 0, beamAlpha: 0,
+          leaves: [
+            { side: 1, hRatio: 0.36, len: 66, bend: 0, vel: 0, cd: 0 },
+            { side: -1, hRatio: 0.62, len: 68, bend: 0, vel: 0, cd: 0 },
+            { side: 1, hRatio: 0.84, len: 64, bend: 0, vel: 0, cd: 0 }
+          ],
+          headBend: 0, headVel: 0, headCd: 0
+        }
+      ];
+
+      const windmills = [
+        { id: 0, name: '草坡风车', x: 950, baseY: getGroundY(950), towerH: 136, bladeLen: 72, angle: 0.25, angVel: 0.24, charge: 0, awakened: false, currentId: 'wm_current_0', glow: 0 },
+        { id: 1, name: '浮岛风车', x: 1645, baseY: getIslandSurfaceY(islands[0], 1645), towerH: 130, bladeLen: 68, angle: 0.9, angVel: 0.22, charge: 0, awakened: false, currentId: 'wm_current_1', glow: 0 },
+        { id: 2, name: '高崖风车', x: 3520, baseY: getGroundY(3520), towerH: 146, bladeLen: 75, angle: 0.48, angVel: 0.2, charge: 0, awakened: false, currentId: 'wm_current_2', glow: 0 }
+      ];
+
+      const chimes = [
+        { x: 665, y: 625, note: 0, col: '#e67e66' },
+        { x: 815, y: 560, note: 1, col: '#f2c15a' },
+        { x: 1145, y: 540, note: 2, col: '#6db59c' },
+        { x: 1415, y: 460, note: 3, col: '#78b0d9' },
+        { x: 1865, y: 410, note: 4, col: '#e67e66' },
+        { x: 2070, y: 355, note: 5, col: '#f2c15a' },
+        { x: 2530, y: 425, note: 2, col: '#6db59c' },
+        { x: 2715, y: 370, note: 3, col: '#78b0d9' },
+        { x: 3055, y: 375, note: 4, col: '#e67e66' },
+        { x: 3325, y: 315, note: 5, col: '#f2c15a' },
+        { x: 2350, y: 205, note: 6, col: '#6db59c' },
+        { x: 1185, y: 245, note: 5, col: '#78b0d9' }
+      ].map((c) => ({ ...c, sway: 0, vel: 0, cd: 0, glow: 0 }));
+
+      // 160 簇水彩手绘草丛（渲染阶段每帧仅更新视锥内弯曲，并用严格 3 次批量路径绘制！）
+      const grassTufts = [];
+      const bgClouds = [];
+      const ambientFloaters = [];
+      const currentDots = [];
+
+      function initScenery() {
+        grassTufts.length = 0;
+        const addTuft = (x, y) => {
+          grassTufts.push({
+            x, y: y + 3, angle: 0,
+            h0: 15 + Math.random() * 11,
+            h1: 18 + Math.random() * 12,
+            h2: 13 + Math.random() * 10,
+            lean0: -0.26 - Math.random() * 0.08,
+            lean1: (Math.random() - 0.5) * 0.14,
+            lean2: 0.25 + Math.random() * 0.09,
+            hasFlower: Math.random() < 0.28
+          });
+        };
+
+        for (let i = 0; i < 124; i++) {
+          const x = 28 + (i / 124) * (WORLD_W - 56) + (Math.random() - 0.5) * 12;
+          addTuft(x, getGroundY(x));
+        }
+        const islCounts = [15, 11, 10]; // 共 36 簇 -> 总计精确 160 簇
+        islands.forEach((isl, idx) => {
+          const n = islCounts[idx];
+          for (let i = 0; i < n; i++) {
+            const x = isl.cx - isl.halfW * 0.88 + ((i + 0.5) / n) * isl.halfW * 1.76;
+            const sy = getIslandSurfaceY(isl, x);
+            if (sy !== null) addTuft(x, sy);
+          }
+        });
+
+        bgClouds.length = 0;
+        for (let i = 0; i < 11; i++) {
+          bgClouds.push({
+            x: (i / 11) * (WORLD_W * 0.72) + Math.random() * 120,
+            y: 44 + Math.random() * 195,
+            scale: 0.78 + Math.random() * 0.68,
+            spd: 4 + Math.random() * 4.5,
+            px: 0.1 + Math.random() * 0.08,
+            kind: i % 2
+          });
+        }
+
+        ambientFloaters.length = 0;
+        for (let i = 0; i < 42; i++) {
+          ambientFloaters.push({
+            x: Math.random() * WORLD_W,
+            y: 70 + Math.random() * 860,
+            vx: 20, vy: 10,
+            scale: 0.65 + Math.random() * 0.55,
+            rot: Math.random() * 6.28,
+            rSpd: (Math.random() - 0.5) * 2.8,
+            spriteIdx: i < 12 ? 5 : (i % 4)
+          });
+        }
+
+        currentDots.length = 0;
+        windCurrents.forEach((cur, idx) => {
+          const cnt = idx === 4 ? 22 : 11;
+          for (let i = 0; i < cnt; i++) {
+            currentDots.push({
+              ci: idx, t: Math.random(),
+              off: (Math.random() - 0.5) * cur.radius * 1.02,
+              spd: 0.16 + Math.random() * 0.14,
+              size: 2.3 + Math.random() * 2.0
+            });
+          }
+        });
+      }
+
+      /* =====================================================================
+         8. 输入控制、划风丝带记录与 HUD 提示
+         ===================================================================== */
+      const keys = { left: false, right: false, jumpHeld: false, vortexKey: false };
+      const pointer = {
+        drawing: false, vortexMouse: false,
+        clientX: 0, clientY: 0,
+        lastX: 0, lastY: 0,
+        activeRibbon: null,
+        energy: 0
+      };
+      const camera = { x: 0, y: 240, prevX: 0, prevY: 240, shake: 0 };
+
+      let toastTimer = null;
+      function showToast(msg) {
+        const el = document.getElementById('toast');
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => el.classList.remove('show'), 3600);
+      }
+
+      function updateHudCounts(popId) {
+        document.getElementById('cntWindmill').textContent = awakenedWindmills;
+        document.getElementById('cntMail').textContent = deliveredMails;
+        document.getElementById('cntFlower').textContent = bloomedSunflowers;
+        if (awakenedWindmills >= 3) document.getElementById('statWindmill').classList.add('done');
+        if (deliveredMails >= 4) document.getElementById('statMail').classList.add('done');
+        if (bloomedSunflowers >= 2) document.getElementById('statFlower').classList.add('done');
+
+        if (popId) {
+          const el = document.getElementById(popId);
+          if (el) {
+            el.classList.remove('pop');
+            void el.offsetWidth;
+            el.classList.add('pop');
+            setTimeout(() => el.classList.remove('pop'), 340);
+          }
+        }
+
+        // 三座风车全醒即唤醒盛夏大季风与柔和水彩彩虹
+        if (!monsoonAwakened && awakenedWindmills >= 3) {
+          monsoonAwakened = true;
+          document.getElementById('celebration').classList.add('show');
+          AudioSys.playAwaken(true);
+          showToast('🌈 三座风车齐鸣，盛夏大季风与水彩彩虹重返天空！');
+          for (let k = 0; k < 28; k++) {
+            const ang = Math.random() * 6.28;
+            const spd = 85 + Math.random() * 190;
+            spawnParticle(player.x, player.y - 36, Math.cos(ang) * spd, Math.sin(ang) * spd - 90,
+              0.9 + Math.random() * 0.5, k % 4, 2.2, 78, 0.25);
+          }
+        }
+
+        // 全部额外探索（4 信件 + 2 向日葵 + 3 风车）圆满达成额外庆典
+        if (!allCompleted && awakenedWindmills >= 3 && deliveredMails >= 4 && bloomedSunflowers >= 2) {
+          allCompleted = true;
+          const cel = document.getElementById('celebration');
+          cel.textContent = '✦ 圆满达成：大季风、云帆邮路与向日葵谷全部苏醒 ✦';
+          cel.classList.add('show');
+          AudioSys.playAwaken(true);
+          showToast('✦ 完美拾风信使！所有风车、云帆信件与向日葵皆已苏醒！');
+        }
+      }
+
+      function pressJump() {
+        AudioSys.init();
+        player.jumpBuffer = 0.12;
+        keys.jumpHeld = true;
+      }
+
+      window.addEventListener('keydown', (e) => {
+        if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+        AudioSys.init();
+        if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
+        if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = true;
+        if (e.code === 'KeyE' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.vortexKey = true;
+        if (e.code === 'Space' || e.code === 'KeyW' || e.code === 'ArrowUp') {
+          if (!e.repeat) pressJump();
+          keys.jumpHeld = true;
+        }
+      });
+
+      window.addEventListener('keyup', (e) => {
+        if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = false;
+        if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = false;
+        if (e.code === 'KeyE' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.vortexKey = false;
+        if (e.code === 'Space' || e.code === 'KeyW' || e.code === 'ArrowUp') keys.jumpHeld = false;
+      });
+
+      window.addEventListener('blur', () => {
+        keys.left = keys.right = keys.jumpHeld = keys.vortexKey = false;
+        pointer.drawing = false;
+        pointer.vortexMouse = false;
+        pointer.activeRibbon = null;
+      });
+
+      canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+      const _worldTmp = { x: 0, y: 0 };
+      function toWorld(cx, cy) {
+        const r = canvas.getBoundingClientRect();
+        _worldTmp.x = cx - r.left + camera.x;
+        _worldTmp.y = cy - r.top + camera.y;
+        return _worldTmp;
+      }
+
+      function addStrokeSegment(x1, y1, x2, y2, strokeId) {
+        const seg = strokeSegPool[strokeSegCursor];
+        strokeSegCursor = (strokeSegCursor + 1) % MAX_STROKE_SEGS;
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const lenSq = dx * dx + dy * dy || 1;
+        const len = Math.sqrt(lenSq);
+        const rad = 104;
+        seg.active = true;
+        seg.strokeId = strokeId;
+        seg.x1 = x1; seg.y1 = y1; seg.x2 = x2; seg.y2 = y2;
+        seg.dirX = dx / len; seg.dirY = dy / len; seg.lenSq = lenSq;
+        seg.radius = rad; seg.rSq = rad * rad; seg.strength = 495;
+        seg.minX = (x1 < x2 ? x1 : x2) - rad;
+        seg.maxX = (x1 > x2 ? x1 : x2) + rad;
+        seg.minY = (y1 < y2 ? y1 : y2) - rad;
+        seg.maxY = (y1 > y2 ? y1 : y2) + rad;
+        seg.age = 0;
+        seg.maxAge = STROKE_TTL;
+      }
+
+      canvas.addEventListener('pointerdown', (e) => {
+        AudioSys.init();
+        pointer.clientX = e.clientX;
+        pointer.clientY = e.clientY;
+        if (e.pointerType === 'mouse' && e.button === 2) {
+          pointer.vortexMouse = true;
+          return;
+        }
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+        const w = toWorld(e.clientX, e.clientY);
+        pointer.drawing = true;
+        pointer.lastX = w.x;
+        pointer.lastY = w.y;
+
+        const rib = {
+          id: strokeIdSeq++,
+          pts: [{ x: w.x, y: w.y, age: 0 }],
+          age: 0, maxAge: STROKE_TTL
+        };
+        if (activeRibbons.length >= 4) activeRibbons.shift();
+        activeRibbons.push(rib);
+        pointer.activeRibbon = rib;
+        if (player.energy > 5) AudioSys.playChime(3 + Math.floor(Math.random() * 3), 0.045, 0.5);
+      });
+
+      window.addEventListener('pointermove', (e) => {
+        pointer.clientX = e.clientX;
+        pointer.clientY = e.clientY;
+        if (!pointer.drawing || !pointer.activeRibbon) return;
+
+        const w = toWorld(e.clientX, e.clientY);
+        const dx = w.x - pointer.lastX;
+        const dy = w.y - pointer.lastY;
+        const dist = Math.hypot(dx, dy);
+        if (dist < STROKE_MIN_SPACING) return;
+
+        const steps = Math.min(2, Math.floor(dist / STROKE_MIN_SPACING));
+        const rib = pointer.activeRibbon;
+        for (let s = 1; s <= steps; s++) {
+          if (player.energy < 1.5) break;
+          const nx = pointer.lastX + (dx / steps) * s;
+          const ny = pointer.lastY + (dy / steps) * s;
+          const prev = rib.pts[rib.pts.length - 1];
+          addStrokeSegment(prev.x, prev.y, nx, ny, rib.id);
+          rib.pts.push({ x: nx, y: ny, age: 0 });
+          if (rib.pts.length > 22) rib.pts.shift();
+          rib.age = 0;
+
+          player.energy = Math.max(0, player.energy - 2.3);
+          pointer.energy = Math.min(1, pointer.energy + 0.36);
+
+          if (Math.random() < 0.35) {
+            const sl = Math.hypot(nx - prev.x, ny - prev.y) || 1;
+            spawnParticle(
+              nx + (Math.random() - 0.5) * 18, ny + (Math.random() - 0.5) * 18,
+              ((nx - prev.x) / sl) * 135, ((ny - prev.y) / sl) * 135,
+              0.68, 0, 1.15, 0, 0.45
+            );
+          }
+        }
+        pointer.lastX = w.x;
+        pointer.lastY = w.y;
+      });
+
+      const endPointer = (e) => {
+        if (e && e.button === 2) pointer.vortexMouse = false;
+        else {
+          pointer.drawing = false;
+          pointer.activeRibbon = null;
+          if (!e || e.pointerType !== 'mouse') pointer.vortexMouse = false;
+        }
+      };
+      window.addEventListener('pointerup', endPointer);
+      window.addEventListener('pointercancel', () => { pointer.drawing = false; pointer.vortexMouse = false; pointer.activeRibbon = null; });
+
+      const muteBtn = document.getElementById('muteBtn');
+      muteBtn.addEventListener('click', () => {
+        const m = AudioSys.toggleMute();
+        muteBtn.textContent = m ? '✕ 声音: 关' : '♪ 声音: 开';
+      });
+
+      document.getElementById('resetBtn').addEventListener('click', () => {
+        AudioSys.init();
+        initBouncyClouds();
+        for (let i = 0; i < paperPlanes.length; i++) {
+          const pl = paperPlanes[i];
+          if (pl.state !== 'delivered') {
+            pl.x = pl.prevX = pl.homeX;
+            pl.y = pl.prevY = pl.homeY;
+            pl.vx = pl.vy = 0;
+            pl.angle = -0.15;
+            pl.state = 'idle';
+            pl.trailCount = 0;
+          }
+        }
+        for (let i = 0; i < weatherPuzzles.length; i++) {
+          const wp = weatherPuzzles[i];
+          if (!wp.dispersed) {
+            wp.cx = wp.cloudHomeX; wp.cy = wp.cloudHomeY;
+            wp.cvx = wp.cvy = 0; wp.integrity = 1;
+          }
+        }
+        player.energy = player.maxEnergy;
+        AudioSys.playChime(2, 0.14, 0.95);
+        showToast('已重置散落云朵、未投递纸飞机与未吹散雨云（已解锁进度保留）');
+      });
+
+      function bindTouch(id, downFn, upFn) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('pointerdown', (e) => { e.stopPropagation(); el.classList.add('active'); downFn(); });
+        const up = (e) => { e.stopPropagation(); el.classList.remove('active'); upFn(); };
+        el.addEventListener('pointerup', up);
+        el.addEventListener('pointercancel', up);
+        el.addEventListener('pointerleave', up);
+      }
+      bindTouch('btnLeft', () => { keys.left = true; }, () => { keys.left = false; });
+      bindTouch('btnRight', () => { keys.right = true; }, () => { keys.right = false; });
+      bindTouch('btnJump', () => { pressJump(); }, () => { keys.jumpHeld = false; });
+      bindTouch('btnVortex', () => { AudioSys.init(); keys.vortexKey = true; }, () => { keys.vortexKey = false; });
+
+      /* =====================================================================
+         9. 固定步长物理引擎 (FIXED_DT = 1/60s，零热循环堆分配)
+         ===================================================================== */
+      const _pWind = { vx: 0, vy: 0, strokeVx: 0, strokeVy: 0 };
+      const _qWind = { vx: 0, vy: 0, strokeVx: 0, strokeVy: 0 };
+
+      function stepPhysics(dt) {
+        simTime += dt;
+        pointer.energy = Math.max(0, pointer.energy - dt * 1.9);
+
+        camera.prevX = camera.x;
+        camera.prevY = camera.y;
+        player.prevX = player.x;
+        player.prevY = player.y;
+        player.prevGlideBlend = player.glideBlend;
+        player.prevAirBlend = player.airBlend;
+        player.prevCloakBillow = player.cloakBillow;
+        player.prevBodyTilt = player.bodyTilt;
+        player.prevVisualFacing = player.visualFacing;
+        player.prevRunPhase = player.runPhase;
+
+        const warmthTarget = clamp((awakenedWindmills * 1.0 + bloomedSunflowers * 0.45 + deliveredMails * 0.25) / 4.2, 0, 1);
+        skyWarmth += (warmthTarget - skyWarmth) * (1 - Math.exp(-0.9 * dt));
+        if (Math.abs(skyWarmth - Sprites.skyWarmthBaked) > 0.02) bakeSkyGradient(skyWarmth);
+        if (monsoonAwakened) rainbowAlpha = Math.min(1, rainbowAlpha + dt * 0.45);
+
+        // 旋风聚气更新
+        const wantVortex = (pointer.vortexMouse || keys.vortexKey) && player.energy > 1;
+        vortex.active = wantVortex;
+        if (wantVortex) {
+          if (pointer.vortexMouse) {
+            const w = toWorld(pointer.clientX, pointer.clientY);
+            vortex.x = w.x;
+            vortex.y = w.y;
+          } else {
+            vortex.x = player.x + player.facing * 88;
+            vortex.y = player.y - 18;
+          }
+          vortex.alpha = Math.min(1, vortex.alpha + dt * 6.5);
+          vortex.spin += dt * 7.6;
+          player.energy = Math.max(0, player.energy - 10.5 * dt);
+          if (Math.random() < 0.28) {
+            const ang = Math.random() * 6.283;
+            const r = 34 + Math.random() * 88;
+            spawnParticle(
+              vortex.x + Math.cos(ang) * r, vortex.y + Math.sin(ang) * r,
+              -Math.sin(ang) * 115, Math.cos(ang) * 115,
+              0.52, 6, 0.42, 0, 0
+            );
+          }
+        } else {
+          vortex.alpha = Math.max(0, vortex.alpha - dt * 5.2);
+          vortex.spin += dt * 3.2;
+        }
+
+        // 划风段池与丝带老化
+        for (let i = 0; i < MAX_STROKE_SEGS; i++) {
+          const seg = strokeSegPool[i];
+          if (!seg.active) continue;
+          seg.age += dt;
+          if (seg.age >= seg.maxAge) seg.active = false;
+        }
+        for (let i = activeRibbons.length - 1; i >= 0; i--) {
+          const rib = activeRibbons[i];
+          rib.age += dt;
+          const pts = rib.pts;
+          for (let p = pts.length - 1; p >= 0; p--) {
+            pts[p].age += dt;
+            if (pts[p].age >= rib.maxAge) pts.splice(p, 1);
+          }
+          if (pts.length < 2 && rib !== pointer.activeRibbon) activeRibbons.splice(i, 1);
+        }
+
+        for (let i = 0; i < windCurrents.length; i++) {
+          const cur = windCurrents[i];
+          if (cur.active && cur.progress < 1) cur.progress = Math.min(1, cur.progress + dt * 0.62);
+        }
+        for (let i = chimePulses.length - 1; i >= 0; i--) {
+          chimePulses[i].age += dt;
+          if (chimePulses[i].age >= chimePulses[i].maxAge) chimePulses.splice(i, 1);
+        }
+
+        updateBouncyClouds(dt);
+        updateWeatherPuzzles(dt);
+        updatePaperPlanes(dt);
+        updatePlayer(dt);
+        updateScarf(dt);
+        updateWindmills(dt);
+        updateChimes(dt);
+        updateParticlesAndAmbience(dt);
+
+        // 平滑弹簧跟随镜头
+        const targetX = clamp(player.x + player.vx * 0.23 + player.facing * 48 - viewW * 0.5, 0, Math.max(0, WORLD_W - viewW));
+        const targetY = clamp(player.y + player.vy * 0.08 - 42 - viewH * 0.54, 0, Math.max(0, WORLD_H - viewH));
+        camera.x += (targetX - camera.x) * (1 - Math.exp(-5.4 * dt));
+        camera.y += (targetY - camera.y) * (1 - Math.exp(-4.8 * dt));
+        camera.shake = Math.max(0, camera.shake - dt * 16);
+      }
+
+      // 10 朵宫崎骏积云（最大质量 mass = 4，Lv1/Lv2/Lv3 融合）
+      function updateBouncyClouds(dt) {
+        cloudLinks.length = 0;
+        for (let i = 0; i < bouncyClouds.length; i++) {
+          const c = bouncyClouds[i];
+          c.prevX = c.x; c.prevY = c.y;
+          c.prevOffsetY = c.offsetY; c.prevSquash = c.squash;
+          c.bounceCd = Math.max(0, c.bounceCd - dt);
+          c.mergeCd = Math.max(0, c.mergeCd - dt);
+          c.glow = Math.max(0, c.glow - dt * 1.4);
+          c.r += (c.targetR - c.r) * (1 - Math.exp(-10 * dt));
+
+          sampleWind(c.x, c.y, simTime, _qWind);
+          const inertia = 1 / (0.72 + c.tier * 0.28);
+          let ax = _qWind.strokeVx * 2.05 * inertia + (_qWind.vx - _qWind.strokeVx) * 0.07 * inertia;
+          let ay = _qWind.strokeVy * 2.05 * inertia + (_qWind.vy - _qWind.strokeVy) * 0.07 * inertia;
+
+          // 旋风聚气吸聚附近白云，轻松合成巨型阳光积云
+          if (vortex.alpha > 0.08) {
+            const dx = vortex.x - c.x;
+            const dy = vortex.y - c.y;
+            const dSq = dx * dx + dy * dy;
+            if (dSq < 340 * 340 && dSq > 4) {
+              const d = Math.sqrt(dSq);
+              const pull = (1 - d / 340) * 620 * vortex.alpha * inertia;
+              ax += (dx / d) * pull;
+              ay += (dy / d) * pull;
+            }
+          }
+
+          c.vx += ax * dt;
+          c.vy += ay * dt;
+
+          const dxH = c.x - c.homeX;
+          const dyH = c.y - c.homeY;
+          if (Math.abs(dxH) > c.roamX) c.vx -= Math.sign(dxH) * (Math.abs(dxH) - c.roamX) * 1.35 * dt;
+          if (Math.abs(dyH) > c.roamY) c.vy -= Math.sign(dyH) * (Math.abs(dyH) - c.roamY) * 1.55 * dt;
+
+          const drag = Math.pow(0.24, dt);
+          c.vx = clamp(c.vx * drag, -360, 360);
+          c.vy = clamp(c.vy * drag, -300, 300);
+          c.x = clamp(c.x + c.vx * dt, c.r + 36, WORLD_W - c.r - 36);
+          c.y = clamp(c.y + c.vy * dt, 110, getGroundY(c.x) - c.r - 44);
+
+          c.offsetVelY += (-64 * c.offsetY - 8.4 * c.offsetVelY) * dt;
+          c.offsetY = clamp(c.offsetY + c.offsetVelY * dt, -34, 42);
+          c.squashVel += (-96 * c.squash - 9.2 * c.squashVel) * dt;
+          c.squash = clamp(c.squash + c.squashVel * dt, -0.4, 0.34);
+        }
+
+        for (let i = 0; i < bouncyClouds.length; i++) {
+          const a = bouncyClouds[i];
+          for (let j = i + 1; j < bouncyClouds.length; j++) {
+            const b = bouncyClouds[j];
+            if (a.mass >= 4 && b.mass >= 4) continue;
+            const dx = b.x - a.x;
+            const dy = b.y - a.y;
+            const dSq = dx * dx + dy * dy;
+            const mergeDist = (a.r + b.r) * 0.78;
+            const hintDist = (a.r + b.r) * 2.35;
+            if (dSq > hintDist * hintDist) continue;
+
+            const dist = Math.sqrt(dSq);
+            if (dist < mergeDist && a.mergeCd <= 0 && b.mergeCd <= 0) {
+              const sum = a.mass + b.mass;
+              const newMass = Math.min(4, sum);
+              const newTier = cloudTierFromMass(newMass);
+              a.x = (a.x * a.mass + b.x * b.mass) / sum;
+              a.y = (a.y * a.mass + b.y * b.mass) / sum;
+              a.prevX = a.x; a.prevY = a.y;
+              a.homeX = (a.homeX * a.mass + b.homeX * b.mass) / sum;
+              a.homeY = (a.homeY * a.mass + b.homeY * b.mass) / sum;
+              a.mass = newMass;
+              a.tier = newTier;
+              a.targetR = cloudRadiusForTier(newTier) * (newMass === 4 ? 1.07 : 1.0);
+              a.squash = -0.32;
+              a.squashVel = 3.1;
+              a.offsetVelY = -68;
+              a.glow = 1;
+              a.mergeCd = 0.25;
+
+              for (let k = 0; k < 10; k++) {
+                const ang = (k / 10) * 6.283;
+                spawnParticle(a.x, a.y, Math.cos(ang) * 115, Math.sin(ang) * 72 - 18,
+                  newTier >= 3 ? 1.15 : 0.9, newTier >= 3 && (k & 1) ? 6 : 4, 0.68, -10, 0.2);
+              }
+              AudioSys.playCloudMerge(newTier);
+              if (newTier >= 3) showToast('✦ 聚合成金色阳光大积云！踩上去可超高弹射直冲云霄');
+              bouncyClouds.splice(j, 1);
+              j--;
+            } else {
+              const alpha = 1 - clamp((dist - mergeDist) / (hintDist - mergeDist), 0, 1);
+              cloudLinks.push({ a, b, alpha });
+              if (dist < (a.r + b.r) * 1.15 && dist > 1) {
+                const pull = 62 * dt;
+                a.vx += (dx / dist) * pull; a.vy += (dy / dist) * pull;
+                b.vx -= (dx / dist) * pull; b.vy -= (dy / dist) * pull;
+              }
+            }
+          }
+        }
+      }
+
+      // 2 处灰雨云与巨型向日葵阶梯
+      function updateWeatherPuzzles(dt) {
+        for (let i = 0; i < weatherPuzzles.length; i++) {
+          const wp = weatherPuzzles[i];
+          if (!wp.dispersed) {
+            sampleWind(wp.cx, wp.cy, simTime, _qWind);
+            const strokeMag = Math.hypot(_qWind.strokeVx, _qWind.strokeVy);
+            wp.cvx += _qWind.strokeVx * 1.35 * dt;
+            wp.cvy += _qWind.strokeVy * 1.15 * dt;
+            if (strokeMag > 55) wp.integrity -= (0.28 + strokeMag * 0.0009) * dt;
+
+            if (vortex.alpha > 0.1) {
+              const dx = wp.cx - vortex.x;
+              const dy = wp.cy - vortex.y;
+              if (dx * dx + dy * dy < 235 * 235) {
+                wp.integrity -= 0.72 * vortex.alpha * dt;
+                wp.cvx += (dx >= 0 ? 1 : -1) * 165 * dt;
+                wp.cvy -= 75 * dt;
+                if (Math.random() < 0.3) {
+                  spawnParticle(wp.cx + (Math.random() - 0.5) * 90, wp.cy + (Math.random() - 0.5) * 40,
+                    (Math.random() - 0.5) * 120, -65 - Math.random() * 55, 0.95, 4, 0.65, -12, 0.25);
+                }
+              }
+            }
+
+            const offX = wp.cx - wp.cloudHomeX;
+            if (Math.abs(offX) > 225) wp.integrity -= 0.9 * dt;
+            else {
+              wp.cvx -= offX * 0.32 * dt;
+              wp.cvy -= (wp.cy - wp.cloudHomeY) * 0.45 * dt;
+            }
+            const drag = Math.pow(0.28, dt);
+            wp.cvx *= drag; wp.cvy *= drag;
+            wp.cx += wp.cvx * dt;
+            wp.cy = clamp(wp.cy + wp.cvy * dt, 180, wp.baseY - 172);
+
+            if (wp.integrity <= 0) {
+              wp.dispersed = true;
+              wp.integrity = 0;
+              bloomedSunflowers++;
+              camera.shake = 4.0;
+              AudioSys.playSunflowerBloom();
+              updateHudCounts('statFlower');
+              showToast(`☀ 拨云见日！「${wp.name}」沐浴阳光绽放为弹跳阶梯！`);
+              for (let k = 0; k < 14; k++) {
+                const ang = (k / 14) * 6.283;
+                spawnParticle(wp.cx, wp.cy, Math.cos(ang) * 135, Math.sin(ang) * 85 - 28,
+                  1.15, k % 3 === 0 ? 6 : 4, 0.9, -15, 0.2);
+              }
+            }
+          } else {
+            wp.beamAlpha = Math.min(1, wp.beamAlpha + dt * 1.1);
+            wp.growth += (1 - wp.growth) * (1 - Math.exp(-3.4 * dt));
+          }
+
+          for (let l = 0; l < wp.leaves.length; l++) {
+            const lf = wp.leaves[l];
+            lf.cd = Math.max(0, lf.cd - dt);
+            lf.vel += (-82 * lf.bend - 8.5 * lf.vel) * dt;
+            lf.bend += lf.vel * dt;
+          }
+          wp.headCd = Math.max(0, wp.headCd - dt);
+          wp.headVel += (-78 * wp.headBend - 8.2 * wp.headVel) * dt;
+          wp.headBend += wp.headVel * dt;
+        }
+      }
+
+      // 4 架彩色纸飞机与天空邮筒
+      function updatePaperPlanes(dt) {
+        for (let i = 0; i < mailboxes.length; i++) {
+          const mb = mailboxes[i];
+          if (mb.delivered) mb.flag += (1 - mb.flag) * Math.min(1, 7 * dt);
+        }
+
+        for (let i = 0; i < paperPlanes.length; i++) {
+          const pl = paperPlanes[i];
+          pl.prevX = pl.x; pl.prevY = pl.y;
+          if (pl.state === 'delivered') continue;
+
+          sampleWind(pl.x, pl.y, simTime, _qWind);
+          const strokeMag = Math.hypot(_qWind.strokeVx, _qWind.strokeVy);
+
+          let inVortex = false;
+          if (vortex.alpha > 0.12) {
+            const dx = vortex.x - pl.x;
+            const dy = vortex.y - pl.y;
+            if (dx * dx + dy * dy < 215 * 215) inVortex = true;
+          }
+
+          if (pl.state === 'idle') {
+            const nearP = Math.abs(player.x - pl.x) < 42 && Math.abs(player.y - pl.y) < 42 && Math.hypot(player.vx, player.vy) > 90;
+            if (strokeMag > 55 || inVortex || nearP) {
+              pl.state = 'flying';
+              pl.vy = -155;
+              pl.vx = (_qWind.strokeVx !== 0 ? Math.sign(_qWind.strokeVx) : player.facing) * 145;
+              AudioSys.playChime(2 + pl.id, 0.12, 0.85);
+            }
+          }
+
+          if (pl.state === 'flying') {
+            if (inVortex) {
+              const tx = vortex.x + Math.cos(simTime * 4.5 + pl.id) * 26;
+              const ty = vortex.y - 14 + Math.sin(simTime * 4.5 + pl.id) * 18;
+              pl.vx += ((tx - pl.x) * 7.5 - pl.vx * 3.8) * dt;
+              pl.vy += ((ty - pl.y) * 7.5 - pl.vy * 3.8) * dt;
+            } else {
+              pl.vx += (_qWind.strokeVx * 1.9 + (_qWind.vx - _qWind.strokeVx) * 0.45 - pl.vx * 0.85) * dt;
+              const airLift = clamp(Math.abs(pl.vx) * 0.52, 0, 155);
+              pl.vy += (_qWind.strokeVy * 1.9 + (_qWind.vy - _qWind.strokeVy) * 0.45 + (195 - airLift) - pl.vy * 1.35) * dt;
+            }
+
+            pl.vx = clamp(pl.vx, -460, 460);
+            pl.vy = clamp(pl.vy, -420, 220);
+            pl.x = clamp(pl.x + pl.vx * dt, 45, WORLD_W - 45);
+            pl.y = Math.max(55, pl.y + pl.vy * dt);
+
+            const spd = Math.hypot(pl.vx, pl.vy);
+            if (spd > 16) {
+              const targetAng = Math.atan2(pl.vy, pl.vx);
+              let diff = targetAng - pl.angle;
+              while (diff > Math.PI) diff -= Math.PI * 2;
+              while (diff < -Math.PI) diff += Math.PI * 2;
+              pl.angle += diff * Math.min(1, 8 * dt);
+            }
+
+            // 零分配定长尾迹数组更新
+            pl.trailTimer += dt;
+            if (pl.trailTimer > 0.06) {
+              pl.trailTimer = 0;
+              if (pl.trailCount < 12) {
+                pl.trailX[pl.trailCount] = pl.x;
+                pl.trailY[pl.trailCount] = pl.y;
+                pl.trailCount++;
+              } else {
+                for (let t = 0; t < 11; t++) {
+                  pl.trailX[t] = pl.trailX[t + 1];
+                  pl.trailY[t] = pl.trailY[t + 1];
+                }
+                pl.trailX[11] = pl.x;
+                pl.trailY[11] = pl.y;
+              }
+            }
+
+            const gy = getGroundY(pl.x) - 14;
+            if (pl.y >= gy && pl.vy > 0) {
+              pl.y = gy; pl.vy = 0; pl.vx *= 0.85;
+              if (Math.abs(pl.vx) < 28 && strokeMag < 30 && !inVortex) {
+                pl.state = 'idle'; pl.angle = -0.15;
+              }
+            }
+            for (let k = 0; k < islands.length; k++) {
+              const sy = getIslandSurfaceY(islands[k], pl.x);
+              if (sy !== null && pl.y >= sy - 14 && pl.y <= sy + 18 && pl.vy > 0) {
+                pl.y = sy - 14; pl.vy = 0; pl.vx *= 0.85;
+              }
+            }
+
+            const mb = mailboxes[pl.targetId];
+            if (!mb.delivered) {
+              const dx = pl.x - mb.x;
+              const dy = pl.y - (mb.y - 38);
+              if (dx * dx + dy * dy < 66 * 66) {
+                pl.state = 'delivered';
+                mb.delivered = true;
+                deliveredMails++;
+                player.energy = player.maxEnergy;
+                camera.shake = 3.8;
+                AudioSys.playMailDeliver();
+                updateHudCounts('statMail');
+                addFloatingText(mb.x, mb.y - 76, '✉ 信件送达!', '#d97a1e');
+                showToast(`✈ 成功将纸飞机护送至「${mb.label}」(${deliveredMails}/4)！`);
+                for (let k = 0; k < 18; k++) {
+                  const ang = (k / 18) * 6.283 + Math.random() * 0.2;
+                  const sp = 85 + Math.random() * 165;
+                  spawnParticle(mb.x, mb.y - 42, Math.cos(ang) * sp, Math.sin(ang) * sp - 70,
+                    0.85 + Math.random() * 0.4, k % 4, 1.5, 75, 0.2);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // 主角物理更新（严格零闪烁状态机 + 积云/向日葵弹跳）
+      function updatePlayer(dt) {
+        const prevY = player.y;
+        const move = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+        sampleWind(player.x, player.y, simTime, _pWind);
+        const windSpeed = Math.hypot(_pWind.vx, _pWind.vy);
+
+        // 朝向死区防抖：无按键时仅 |vx| > 110 持续 > 0.15s 才翻转
+        if (move !== 0) {
+          player.facing = move;
+          player.facingDriftTimer = 0;
+        } else if (Math.abs(player.vx) > 110) {
+          const driftDir = player.vx > 0 ? 1 : -1;
+          if (driftDir !== player.facing) {
+            player.facingDriftTimer += dt;
+            if (player.facingDriftTimer > 0.15) {
+              player.facing = driftDir;
+              player.facingDriftTimer = 0;
+            }
+          } else {
+            player.facingDriftTimer = 0;
+          }
+        } else {
+          player.facingDriftTimer = 0;
+        }
+        player.visualFacing += (player.facing - player.visualFacing) * (1 - Math.exp(-14 * dt));
+
+        player.coyoteTimer = player.grounded ? 0.12 : Math.max(0, player.coyoteTimer - dt);
+        player.jumpBuffer = Math.max(0, player.jumpBuffer - dt);
+        player.jumpLockTimer = Math.max(0, player.jumpLockTimer - dt);
+        player.groundSnapLock = Math.max(0, player.groundSnapLock - dt);
+
+        if (player.comboTimer > 0) {
+          player.comboTimer -= dt;
+          if (player.comboTimer <= 0) player.chimeCombo = 0;
+        }
+        if (player.grounded) {
+          player.groundComboClear += dt;
+          if (player.groundComboClear > 0.38) player.chimeCombo = 0;
+        } else {
+          player.groundComboClear = 0;
+        }
+
+        if (player.jumpBuffer > 0 && player.coyoteTimer > 0) {
+          player.vy = -450;
+          player.grounded = false;
+          player.groundedIsland = null;
+          player.isGliding = false;
+          player.jumpLockTimer = 0.14;
+          player.groundSnapLock = 0.16;
+          player.coyoteTimer = 0;
+          player.jumpBuffer = 0;
+          player.puffs.push({ x: player.x, y: player.y + 18, r: 8, maxR: 32, a: 0.65 });
+        }
+
+        // 严格滑翔状态机滞后：展开后绝不因负 vy 退出，仅松开按键或真正落地时退出
+        if (player.grounded) {
+          player.isGliding = false;
+        } else if (!keys.jumpHeld) {
+          player.isGliding = false;
+        } else if (!player.isGliding && player.jumpLockTimer <= 0) {
+          player.isGliding = true;
+          if (player.vy > 70) {
+            player.vy *= 0.45;
+            player.puffs.push({ x: player.x, y: player.y + 8, r: 10, maxR: 44, a: 0.7 });
+          }
+        }
+
+        if (player.grounded) {
+          const targetVx = move * 256;
+          player.vx += (targetVx - player.vx) * Math.min(1, 7.8 * dt);
+          if (move === 0 && Math.abs(player.vx) < 4) player.vx = 0;
+
+          if (windSpeed > 210) {
+            player.vx += _pWind.vx * 0.4 * dt;
+            if (_pWind.vy < -195) {
+              player.vy = Math.min(player.vy, Math.min(-185, _pWind.vy * 0.72));
+              player.y -= 5;
+              player.grounded = false;
+              player.groundedIsland = null;
+              player.groundSnapLock = 0.16;
+              player.jumpLockTimer = 0.06;
+            }
+          }
+          player.runPhase += Math.abs(player.vx) * dt * 0.055;
+          player.energy = Math.min(player.maxEnergy, player.energy + 52 * dt);
+        } else {
+          player.vx += move * (player.isGliding ? 535 : 710) * dt;
+          const k = player.isGliding ? 4.1 : 0.75;
+          player.vx += (_pWind.vx - player.vx) * k * dt;
+          if (player.vy > -490 || _pWind.vy < player.vy) {
+            player.vy += (_pWind.vy - player.vy) * (player.isGliding ? k * 0.94 : k * 0.45) * dt;
+          }
+          player.vy += (player.isGliding ? 260 : 1040) * dt;
+          if (player.isGliding) {
+            const maxSink = Math.max(40, 64 - Math.min(22, Math.abs(player.vx) * 0.06));
+            if (player.vy > maxSink) player.vy += (maxSink - player.vy) * Math.min(1, 8.5 * dt);
+            player.vx *= Math.pow(0.86, dt);
+          } else {
+            player.vx *= Math.pow(0.76, dt);
+            if (player.vy > 750) player.vy = 750;
+          }
+          player.energy = Math.min(player.maxEnergy, player.energy + (12 + (windSpeed > 180 ? 24 : 0)) * dt);
+        }
+
+        player.vx = clamp(player.vx, -620, 620);
+        player.vy = clamp(player.vy, -940, 750);
+        player.x = clamp(player.x + player.vx * dt, 40, WORLD_W - 40);
+        player.y = Math.max(38, player.y + player.vy * dt);
+
+        const feetOff = 22;
+        const prevFeet = prevY + feetOff;
+        const currFeet = player.y + feetOff;
+        let bounced = false;
+
+        // 积云弹射（vy = -470 / -670 / -860）
+        if (player.vy >= -30) {
+          for (let i = 0; i < bouncyClouds.length; i++) {
+            const c = bouncyClouds[i];
+            if (c.bounceCd > 0) continue;
+            const halfSpan = c.r * 1.15;
+            const dx = player.x - c.x;
+            if (Math.abs(dx) > halfSpan) continue;
+            const u = dx / halfSpan;
+            const bobY = Math.sin(simTime * 1.7 + c.bobPhase) * 3.2;
+            const topY = (c.y + c.offsetY + bobY) - c.r * 0.48 * Math.sqrt(Math.max(0.08, 1 - u * u * 0.7));
+
+            if (prevFeet <= topY + 26 && currFeet >= topY - 8) {
+              const launchVy = c.tier <= 1 ? -470 : (c.tier === 2 ? -670 : -860);
+              player.y = topY - feetOff - 2;
+              player.vy = launchVy;
+              player.grounded = false;
+              player.groundedIsland = null;
+              player.groundSnapLock = 0.16;
+              player.coyoteTimer = 0;
+              player.energy = Math.min(player.maxEnergy, player.energy + (c.tier >= 3 ? 100 : (c.tier === 2 ? 64 : 42)));
+              if (!keys.jumpHeld) {
+                player.isGliding = false;
+                player.jumpLockTimer = 0.08;
+              }
+              c.bounceCd = 0.16;
+              c.offsetVelY += 195 + c.tier * 40;
+              c.squash = Math.min(c.squash, -0.2);
+              c.squashVel -= 4.4 + c.tier * 0.7;
+              c.glow = 1;
+              for (let k = 0; k < 8; k++) {
+                const a = (k / 8) * Math.PI + Math.PI;
+                spawnParticle(player.x, topY + 4, Math.cos(a) * 140, Math.sin(a) * 55,
+                  0.8 + Math.random() * 0.35, c.tier >= 3 && (k & 1) ? 6 : 4, 0.62, -10, 0.15);
+              }
+              player.puffs.push({ x: player.x, y: topY + 2, r: 12, maxR: 40 + c.tier * 12, a: 0.78 });
+              AudioSys.playBounce(c.tier);
+              if (c.tier >= 3) camera.shake = 3.2;
+              bounced = true;
+              break;
+            }
+          }
+        }
+
+        // 巨型向日葵叶片与花盘弹跳
+        if (!bounced && player.vy >= -30) {
+          for (let i = 0; i < weatherPuzzles.length; i++) {
+            const wp = weatherPuzzles[i];
+            if (wp.growth < 0.45) continue;
+            const stemH = wp.maxH * wp.growth;
+            for (let l = 0; l < wp.leaves.length; l++) {
+              const lf = wp.leaves[l];
+              if (lf.cd > 0) continue;
+              const ly = wp.baseY - stemH * lf.hRatio + lf.bend * 12;
+              const lx = wp.sx + lf.side * (lf.len * 0.56);
+              if (Math.abs(player.x - lx) <= lf.len * 0.56 && prevFeet <= ly + 22 && currFeet >= ly - 8) {
+                player.y = ly - feetOff - 2;
+                player.vy = -530;
+                player.grounded = false;
+                player.groundedIsland = null;
+                player.groundSnapLock = 0.16;
+                player.energy = Math.min(player.maxEnergy, player.energy + 40);
+                if (!keys.jumpHeld) { player.isGliding = false; player.jumpLockTimer = 0.08; }
+                lf.cd = 0.18; lf.vel += 14;
+                AudioSys.playBounce(2);
+                spawnParticle(player.x, ly, (Math.random() - 0.5) * 90, -50, 0.85, 3, 0.6, 20, 0.2);
+                bounced = true;
+                break;
+              }
+            }
+            if (bounced) break;
+
+            const headY = wp.baseY - stemH - 12 + wp.headBend * 10;
+            if (wp.headCd <= 0 && Math.abs(player.x - wp.sx) <= 44 && prevFeet <= headY + 24 && currFeet >= headY - 8) {
+              player.y = headY - feetOff - 2;
+              player.vy = -660;
+              player.grounded = false;
+              player.groundedIsland = null;
+              player.groundSnapLock = 0.16;
+              player.energy = player.maxEnergy;
+              if (!keys.jumpHeld) { player.isGliding = false; player.jumpLockTimer = 0.08; }
+              wp.headCd = 0.18; wp.headVel += 16;
+              AudioSys.playBounce(3);
+              for (let k = 0; k < 6; k++) {
+                spawnParticle(wp.sx, headY, (Math.random() - 0.5) * 160, -60 - Math.random() * 80, 0.9, 2, 0.78, 35, 0.2);
+              }
+              bounced = true;
+              break;
+            }
+          }
+        }
+
+        // 地面与 3 座浮空岛着陆（受 0.16s 防回吸保护）
+        let landed = false;
+        if (!bounced && player.groundSnapLock <= 0) {
+          for (let i = 0; i < islands.length; i++) {
+            const isl = islands[i];
+            const sy = getIslandSurfaceY(isl, player.x);
+            if (sy === null) continue;
+            const stay = player.grounded && player.groundedIsland === isl && player.vy >= -12;
+            const drop = prevFeet <= sy + 18 && currFeet >= sy - 3 && player.vy >= -12;
+            if (stay || drop) {
+              player.y = sy - feetOff; player.vy = 0;
+              player.grounded = true; player.groundedIsland = isl; player.isGliding = false;
+              landed = true;
+              break;
+            }
+          }
+          if (!landed) {
+            const gy = getGroundY(player.x);
+            if (currFeet >= gy - 2 && player.vy >= -12) {
+              player.y = gy - feetOff; player.vy = 0;
+              player.grounded = true; player.groundedIsland = null; player.isGliding = false;
+              landed = true;
+            }
+          }
+        }
+        if (!landed) {
+          player.grounded = false;
+          player.groundedIsland = null;
+        }
+
+        // 连续渲染形变系数与安全有界倾角
+        player.glideBlend += ((player.isGliding ? 1 : 0) - player.glideBlend) * (1 - Math.exp(-10 * dt));
+        player.airBlend += ((player.grounded ? 0 : 1) - player.airBlend) * (1 - Math.exp(-10 * dt));
+        const targetBillow = clamp((windSpeed + Math.hypot(player.vx, player.vy)) / 420, 0, 1);
+        player.cloakBillow += (targetBillow - player.cloakBillow) * (1 - Math.exp(-8 * dt));
+        const targetTilt = clamp(player.vx / 380, -0.32, 0.32);
+        player.bodyTilt += (targetTilt - player.bodyTilt) * (1 - Math.exp(-9 * dt));
+
+        for (let i = player.puffs.length - 1; i >= 0; i--) {
+          const p = player.puffs[i];
+          p.r += (p.maxR - p.r) * 7 * dt;
+          p.a -= dt * 2.1;
+          if (p.a <= 0) player.puffs.splice(i, 1);
+        }
+      }
+
+      /* =====================================================================
+         10. 数学保证绝对零拉伸 12 节 Verlet 围巾解算（根到梢硬投影 + 位移限幅）
+         ===================================================================== */
+      function updateScarf(dt) {
+        getNeckWorldPos(player.x, player.y, player.bodyTilt, player.visualFacing, _neckTmp);
+        const anchorDx = _neckTmp.x - scarfPrevAnchorX;
+        const anchorDy = _neckTmp.y - scarfPrevAnchorY;
+        scarfPrevAnchorX = _neckTmp.x;
+        scarfPrevAnchorY = _neckTmp.y;
+
+        // 记录插值前坐标
+        for (let i = 0; i < SCARF_NODES; i++) {
+          scarf[i].px = scarf[i].x;
+          scarf[i].py = scarf[i].y;
+        }
+
+        // 将 0.35 倍锚点位移带入非锚点节点的 oldX/oldY，高速飞行/弹射时杜绝猛拽
+        const carryX = anchorDx * 0.35;
+        const carryY = anchorDy * 0.35;
+
+        scarf[0].x = scarf[0].oldX = _neckTmp.x;
+        scarf[0].y = scarf[0].oldY = _neckTmp.y;
+
+        for (let i = 1; i < SCARF_NODES; i++) {
+          const n = scarf[i];
+          n.oldX += carryX;
+          n.oldY += carryY;
+
+          // 积分前单步 Verlet 位移严格限幅 <= 12px
+          let vx = (n.x - n.oldX) * 0.90;
+          let vy = (n.y - n.oldY) * 0.90;
+          const vSq = vx * vx + vy * vy;
+          if (vSq > 144) {
+            const inv = 12 / Math.sqrt(vSq);
+            vx *= inv;
+            vy *= inv;
+          }
+
+          n.oldX = n.x;
+          n.oldY = n.y;
+
+          // 采样围巾风场并严格限幅至 <= 280 px/s
+          sampleWind(n.x, n.y, simTime, _qWind);
+          let wx = _qWind.vx;
+          let wy = _qWind.vy;
+          let wSpd = Math.hypot(wx, wy);
+          if (wSpd > 280) {
+            const invW = 280 / wSpd;
+            wx *= invW;
+            wy *= invW;
+            wSpd = 280;
+          }
+
+          const gate = smoothstep((wSpd - 45) / 135);
+          const perpX = wSpd > 1 ? -wy / wSpd : 0;
+          const perpY = wSpd > 1 ? wx / wSpd : -1;
+          const flutter = Math.sin(i * 0.72 - simTime * 9.2) * Math.min(wSpd * 0.25, 66) * gate;
+
+          const ax = wx * 2.65 + perpX * flutter;
+          const ay = wy * 2.65 + perpY * flutter + 195;
+
+          n.x += vx + ax * dt * dt;
+          n.y += vy + ay * dt * dt;
+        }
+
+        // 步骤 A：2 次柔和对称松弛迭代
+        for (let iter = 0; iter < 2; iter++) {
+          scarf[0].x = _neckTmp.x;
+          scarf[0].y = _neckTmp.y;
+          for (let i = 0; i < SCARF_NODES - 1; i++) {
+            const a = scarf[i], b = scarf[i + 1];
+            const dx = b.x - a.x, dy = b.y - a.y;
+            const d = Math.hypot(dx, dy);
+            if (d > 0.0001) {
+              const diff = (d - SCARF_SEG_LEN) / d;
+              if (i === 0) {
+                b.x -= dx * diff;
+                b.y -= dy * diff;
+              } else {
+                const h = diff * 0.5;
+                a.x += dx * h; a.y += dy * h;
+                b.x -= dx * h; b.y -= dy * h;
+              }
+            } else {
+              b.x = a.x + a.lastDirX * SCARF_SEG_LEN;
+              b.y = a.y + a.lastDirY * SCARF_SEG_LEN;
+            }
+          }
+        }
+
+        // 步骤 B：轻柔推离地形与浮空岛表面
+        for (let i = 1; i < SCARF_NODES; i++) {
+          clampScarfAboveSurface(scarf[i], i);
+        }
+
+        // 步骤 C：2 次严格根到梢前向硬投影（数学确保每节精确 7.0px，总长恒定 77px！）
+        for (let pass = 0; pass < 2; pass++) {
+          scarf[0].x = _neckTmp.x;
+          scarf[0].y = _neckTmp.y;
+          for (let i = 0; i < SCARF_NODES - 1; i++) {
+            const a = scarf[i], b = scarf[i + 1];
+            const dx = b.x - a.x, dy = b.y - a.y;
+            const d = Math.hypot(dx, dy);
+            if (d > 0.0001) {
+              const sc = SCARF_SEG_LEN / d;
+              b.x = a.x + dx * sc;
+              b.y = a.y + dy * sc;
+            } else {
+              b.x = a.x + a.lastDirX * SCARF_SEG_LEN;
+              b.y = a.y + a.lastDirY * SCARF_SEG_LEN;
+            }
+          }
+        }
+
+        // 步骤 D：约束后限速（将 |n - old| 钳制在 14px 内，杜绝约束注入爆炸速度）
+        for (let i = 1; i < SCARF_NODES; i++) {
+          const n = scarf[i];
+          const dvx = n.x - n.oldX;
+          const dvy = n.y - n.oldY;
+          const dvSq = dvx * dvx + dvy * dvy;
+          if (dvSq > 196) {
+            const inv = 14 / Math.sqrt(dvSq);
+            n.oldX = n.x - dvx * inv;
+            n.oldY = n.y - dvy * inv;
+          }
+        }
+      }
+
+      // 3 座古老木质风车
+      function updateWindmills(dt) {
+        for (let i = 0; i < windmills.length; i++) {
+          const wm = windmills[i];
+          const hubY = wm.baseY - wm.towerH + 14;
+          let torque = 0;
+          let strokePow = 0;
+
+          for (let b = 0; b < 4; b++) {
+            const theta = wm.angle + b * 1.5708;
+            const arm = wm.bladeLen * 0.62;
+            sampleWind(wm.x + Math.sin(theta) * arm, hubY - Math.cos(theta) * arm, simTime, _qWind);
+            torque += (_qWind.vx * Math.cos(theta) + _qWind.vy * Math.sin(theta)) * 0.0044;
+            strokePow += Math.hypot(_qWind.strokeVx, _qWind.strokeVy);
+          }
+
+          const assistDir = wm.angVel >= -0.2 ? 1 : -1;
+          const centerAssist = Math.max(0, (strokePow * 0.25 - 40) * 0.016) * assistDir;
+          const idleSpin = wm.awakened ? 2.65 : 0.24;
+          wm.angVel = clamp(wm.angVel + (torque + centerAssist) * dt + (idleSpin - wm.angVel) * 0.85 * dt, -7.5, 7.5);
+          wm.angle += wm.angVel * dt;
+
+          const spinAbs = Math.abs(wm.angVel);
+          if (!wm.awakened) {
+            if (spinAbs > 1.6) wm.charge = Math.min(1, wm.charge + (spinAbs - 1.1) * 0.34 * dt);
+            else wm.charge = Math.max(0, wm.charge - 0.1 * dt);
+            if (wm.charge >= 1) {
+              wm.awakened = true;
+              wm.charge = 1;
+              wm.angVel = (wm.angVel >= 0 ? 1 : -1) * Math.max(spinAbs, 4.6);
+              awakenedWindmills++;
+              player.energy = player.maxEnergy;
+              camera.shake = 4.8;
+              const cur = windCurrents.find((c) => c.id === wm.currentId);
+              if (cur) cur.active = true;
+              if (awakenedWindmills < 3) AudioSys.playAwaken(false);
+              updateHudCounts('statWindmill');
+              if (awakenedWindmills < 3) showToast(`❀ 唤醒了「${wm.name}」，新的金色天空风道已连通！`);
+              for (let k = 0; k < 20; k++) {
+                const ang = (k / 20) * 6.283;
+                const sp = 95 + Math.random() * 185;
+                spawnParticle(wm.x, hubY, Math.cos(ang) * sp, Math.sin(ang) * sp - 45,
+                  0.9 + Math.random() * 0.35, k % 4, 1.65, 72, 0.2);
+              }
+            }
+          } else {
+            wm.glow = Math.min(1, wm.glow + dt * 1.4);
+          }
+        }
+      }
+
+      // 12 枚五声音阶风铃
+      function updateChimes(dt) {
+        const minX = camera.x - 220;
+        const maxX = camera.x + viewW + 220;
+        for (let i = 0; i < chimes.length; i++) {
+          const c = chimes[i];
+          c.cd = Math.max(0, c.cd - dt);
+          c.glow = Math.max(0, c.glow - dt * 1.15);
+          if (c.x < minX || c.x > maxX) continue;
+
+          sampleWind(c.x, c.y, simTime, _qWind);
+          const mag = Math.hypot(_qWind.vx, _qWind.vy);
+          const target = clamp(_qWind.vx / 260, -0.75, 0.75);
+          c.vel += ((target - c.sway) * 24 - c.vel * 3.8) * dt;
+          c.sway += c.vel * dt;
+
+          const dx = player.x - c.x;
+          const dy = player.y - c.y;
+          const dSq = dx * dx + dy * dy;
+          if (c.cd <= 0 && (dSq < 54 * 54 || mag > 260)) {
+            c.cd = 1.4;
+            c.glow = 1;
+            c.vel += (_qWind.vx >= 0 ? 1 : -1) * 4.5;
+            chimePulses.push({ x: c.x, y: c.y, radius: 144, rSq: 144 * 144, age: 0, maxAge: 1.25 });
+
+            if (dSq < 138 * 138) {
+              player.chimeCombo++;
+              player.comboTimer = 4.6;
+              player.energy = Math.min(player.maxEnergy, player.energy + 46);
+              if (!player.grounded) {
+                player.vy = Math.min(player.vy, -280 - Math.min(player.chimeCombo, 6) * 24);
+                player.vx += player.facing * Math.min(player.chimeCombo * 16, 75);
+              }
+              AudioSys.playChime(c.note + Math.min(player.chimeCombo - 1, 4), 0.21, 1.55);
+              if (player.chimeCombo >= 2) {
+                addFloatingText(c.x, c.y - 34, `乘风连击 ×${player.chimeCombo}`, '#d67a1e');
+              }
+            } else {
+              AudioSys.playChime(c.note, 0.15, 1.4);
+            }
+          }
+        }
+      }
+
+      function updateParticlesAndAmbience(dt) {
+        for (let i = 0; i < bgClouds.length; i++) {
+          const c = bgClouds[i];
+          c.x += (c.spd + awakenedWindmills * 3) * dt;
+          if (c.x > WORLD_W * 0.78 + 200) c.x = -200;
+        }
+
+        const minX = camera.x - 160;
+        const maxX = camera.x + viewW + 160;
+        for (let i = 0; i < ambientFloaters.length; i++) {
+          const p = ambientFloaters[i];
+          if (p.x >= minX && p.x <= maxX) {
+            sampleWind(p.x, p.y, simTime, _qWind);
+            p.vx += (_qWind.vx * 0.65 - p.vx) * 2.2 * dt;
+            p.vy += (_qWind.vy * 0.65 + (p.spriteIdx === 5 ? 7 : 18) - p.vy) * 2.2 * dt;
+          } else {
+            p.vx = 28 + awakenedWindmills * 10;
+            p.vy = 10;
+          }
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.rot += (p.rSpd + p.vx * 0.01) * dt;
+          if (p.x > WORLD_W + 40) p.x = -35;
+          if (p.x < -40) p.x = WORLD_W + 35;
+          if (p.y > WORLD_H + 20) p.y = 40;
+          if (p.y < -20) p.y = WORLD_H - 120;
+        }
+
+        for (let i = 0; i < MAX_PARTICLES; i++) {
+          const p = particlePool[i];
+          if (!p.active) continue;
+          p.age += dt;
+          if (p.age >= p.maxAge) { p.active = false; continue; }
+          if (p.windCouple > 0 && p.x >= minX && p.x <= maxX) {
+            sampleWind(p.x, p.y, simTime, _qWind);
+            p.vx += (_qWind.vx * p.windCouple - p.vx) * 2.0 * dt;
+            p.vy += (_qWind.vy * p.windCouple - p.vy) * 2.0 * dt;
+          } else {
+            const d = Math.pow(p.drag, dt);
+            p.vx *= d;
+            p.vy = p.vy * d + p.gravity * dt;
+          }
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.rot += p.rSpd * dt;
+        }
+
+        for (let i = floatingTexts.length - 1; i >= 0; i--) {
+          const ft = floatingTexts[i];
+          ft.age += dt;
+          ft.y -= 28 * dt;
+          if (ft.age >= ft.maxAge) floatingTexts.splice(i, 1);
+        }
+
+        for (let i = 0; i < currentDots.length; i++) {
+          const d = currentDots[i];
+          if (windCurrents[d.ci].progress > 0.01) d.t = (d.t + d.spd * dt) % 1;
+        }
+      }
+
+      /* =====================================================================
+         11. 锁 60 FPS 极速渲染管线（零 shadowBlur · 零循环渐变 · 3 批次草丛）
+         ===================================================================== */
+      function render(alpha, frameDt) {
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const camX = lerp(camera.prevX, camera.x, alpha);
+        const camY = lerp(camera.prevY, camera.y, alpha);
+        const cullMinX = camX - 180;
+        const cullMaxX = camX + viewW + 180;
+
+        // 1) 预烘焙天空渐变贴图 + 彩虹 + 太阳光晕贴图
+        ctx.drawImage(Sprites.skyGrad, 0, 0, viewW, viewH);
+        drawRainbowAndSun(camX, camY);
+        drawBgClouds(camX, camY);
+        drawParallaxHills(camX, camY);
+
+        ctx.save();
+        const sx = camera.shake > 0 ? (Math.random() - 0.5) * camera.shake : 0;
+        const sy = camera.shake > 0 ? (Math.random() - 0.5) * camera.shake : 0;
+        ctx.translate(-(camX + sx), -(camY + sy));
+
+        drawWindCurrents(cullMinX, cullMaxX);
+        drawWeatherSunbeams(cullMinX, cullMaxX);
+        drawAmbientFloaters(cullMinX, cullMaxX);
+        drawIslands(cullMinX, cullMaxX);
+        drawTerrain(camX);
+        drawFences(cullMinX, cullMaxX);
+        drawSunflowers(cullMinX, cullMaxX);
+        drawWindmills(cullMinX, cullMaxX);
+        drawMailboxes(cullMinX, cullMaxX);
+        updateAndDrawGrassBatched(frameDt, camX - 70, camX + viewW + 70);
+        drawChimes(cullMinX, cullMaxX);
+        drawCloudLinks(cullMinX, cullMaxX);
+        drawBouncyClouds(alpha, cullMinX, cullMaxX);
+        drawRainclouds(cullMinX, cullMaxX);
+        drawPaperPlanes(alpha, camX);
+        drawPlayerAndScarf(alpha);
+        drawWindRibbons();
+        drawVortexSprite();
+        drawParticlePool(cullMinX, cullMaxX);
+        drawFloatingTexts();
+
+        ctx.restore();
+      }
+
+      function drawRainbowAndSun(camX, camY) {
+        if (rainbowAlpha > 0.01) {
+          ctx.save();
+          ctx.globalAlpha = rainbowAlpha * 0.34;
+          const rcx = viewW * 0.52 - camX * 0.04;
+          const rcy = viewH * 0.86;
+          const baseR = Math.min(viewW, viewH) * 0.82;
+          const bands = ['#f28c7d', '#f6c370', '#f7e58b', '#9fd6a0', '#8ec8eb', '#b6a6e6'];
+          ctx.lineWidth = 14;
+          for (let i = 0; i < bands.length; i++) {
+            ctx.strokeStyle = bands[i];
+            ctx.beginPath();
+            ctx.arc(rcx, rcy, baseR - i * 12.5, Math.PI * 1.08, Math.PI * 1.92);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+
+        const sunX = viewW * 0.82 - camX * 0.015;
+        const sunY = viewH * 0.16 - camY * 0.015;
+        const halo = lerp(300, 410, skyWarmth);
+        ctx.drawImage(Sprites.sunGlow, sunX - halo * 0.5, sunY - halo * 0.5, halo, halo);
+        ctx.fillStyle = '#fff9de';
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, 30, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function drawBgClouds(camX, camY) {
+        for (let i = 0; i < bgClouds.length; i++) {
+          const c = bgClouds[i];
+          const x = c.x - camX * c.px;
+          if (x < -200 || x > viewW + 200) continue;
+          const y = c.y - camY * c.px * 0.5;
+          const spr = c.kind === 0 ? Sprites.bgCloudA : Sprites.bgCloudB;
+          const w = spr.width * c.scale;
+          const h = spr.height * c.scale;
+          ctx.drawImage(spr, x - w * 0.5, y - h * 0.5, w, h);
+        }
+      }
+
+      // 使用预烘焙离屏山丘与风车村贴图平铺（每帧仅 4~6 次 drawImage）
+      function drawParallaxHills(camX, camY) {
+        const farW = Sprites.farHills.width;
+        const farH = Sprites.farHills.height;
+        const farOff = -((camX * 0.14) % farW);
+        const farY = viewH - farH * 0.92 - camY * 0.08;
+        for (let x = farOff - farW; x < viewW + farW; x += farW) {
+          ctx.drawImage(Sprites.farHills, x, farY);
+        }
+
+        const midW = Sprites.midHills.width;
+        const midH = Sprites.midHills.height;
+        const midOff = -((camX * 0.28) % midW);
+        const midY = viewH - midH * 0.84 - camY * 0.15;
+        for (let x = midOff - midW; x < viewW + midW; x += midW) {
+          ctx.drawImage(Sprites.midHills, x, midY);
+        }
+      }
+
+      function drawWindCurrents(minX, maxX) {
+        for (let i = 0; i < windCurrents.length; i++) {
+          const cur = windCurrents[i];
+          if (cur.progress <= 0.01 || cur.maxX < minX || cur.minX > maxX) continue;
+          ctx.save();
+          ctx.lineCap = 'round';
+          ctx.strokeStyle = cur.tint;
+          ctx.setLineDash([42, 34]);
+          for (let r = -1; r <= 1; r++) {
+            ctx.beginPath();
+            for (let p = 0; p < cur.points.length; p++) {
+              const pt = cur.points[p];
+              const wave = Math.sin(simTime * 2.3 + p * 1.2 + r * 2.1) * 12;
+              const px = pt.x + r * 24 + wave * 0.4;
+              const py = pt.y + r * 12 + wave;
+              if (p === 0) ctx.moveTo(px, py);
+              else {
+                const prev = cur.points[p - 1];
+                ctx.quadraticCurveTo((prev.x + pt.x) * 0.5 + r * 24, (prev.y + pt.y) * 0.5 + r * 12 + wave, px, py);
+              }
+            }
+            ctx.globalAlpha = cur.progress * (r === 0 ? 0.52 : 0.28);
+            ctx.lineWidth = r === 0 ? 7.5 : 3.2;
+            ctx.lineDashOffset = -simTime * (88 + r * 14);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+
+        ctx.fillStyle = '#fffdf2';
+        for (let i = 0; i < currentDots.length; i++) {
+          const d = currentDots[i];
+          const cur = windCurrents[d.ci];
+          if (cur.progress <= 0.02 || cur.maxX < minX || cur.minX > maxX) continue;
+          const segF = d.t * cur.segs.length;
+          const idx = Math.min(cur.segs.length - 1, Math.floor(segF));
+          const seg = cur.segs[idx];
+          const loc = segF - idx;
+          const x = lerp(seg.x1, seg.x2, loc) - seg.dirY * d.off;
+          if (x < minX || x > maxX) continue;
+          const y = lerp(seg.y1, seg.y2, loc) + seg.dirX * d.off;
+          ctx.globalAlpha = cur.progress * Math.sin(d.t * Math.PI) * 0.78;
+          ctx.beginPath();
+          ctx.arc(x, y, d.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      // 预烘焙丁达尔阳光光束精灵
+      function drawWeatherSunbeams(minX, maxX) {
+        for (let i = 0; i < weatherPuzzles.length; i++) {
+          const wp = weatherPuzzles[i];
+          if (wp.beamAlpha <= 0.01 || wp.sx + 260 < minX || wp.sx - 220 > maxX) continue;
+          ctx.save();
+          ctx.globalAlpha = wp.beamAlpha * (0.68 + Math.sin(simTime * 1.8 + i) * 0.08);
+          ctx.drawImage(Sprites.sunbeam, wp.sx - 120, wp.baseY - 720, 340, 740);
+          ctx.restore();
+        }
+      }
+
+      function drawSunflowers(minX, maxX) {
+        for (let i = 0; i < weatherPuzzles.length; i++) {
+          const wp = weatherPuzzles[i];
+          if (wp.sx < minX || wp.sx > maxX) continue;
+          const stemH = lerp(52, wp.maxH, wp.growth);
+          const sway = Math.sin(simTime * 1.8 + i) * 4 * wp.growth;
+          const topX = wp.sx + sway;
+          const topY = wp.baseY - stemH;
+
+          ctx.strokeStyle = '#4c893b';
+          ctx.lineWidth = lerp(7, 13, wp.growth);
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(wp.sx, wp.baseY + 4);
+          ctx.quadraticCurveTo(wp.sx + sway * 0.4, wp.baseY - stemH * 0.5, topX, topY);
+          ctx.stroke();
+
+          ctx.strokeStyle = INK;
+          ctx.lineWidth = 1.7;
+          ctx.beginPath();
+          ctx.moveTo(wp.sx - 5, wp.baseY);
+          ctx.quadraticCurveTo(wp.sx + sway * 0.4 - 5, wp.baseY - stemH * 0.5, topX - 4, topY);
+          ctx.stroke();
+
+          if (wp.growth > 0.25) {
+            const ls = smoothstep((wp.growth - 0.25) / 0.75);
+            for (let l = 0; l < wp.leaves.length; l++) {
+              const lf = wp.leaves[l];
+              const ly = wp.baseY - stemH * lf.hRatio;
+              const len = lf.len * ls;
+              ctx.save();
+              ctx.translate(wp.sx + sway * lf.hRatio, ly);
+              ctx.rotate(lf.side * (0.08 + lf.bend * 0.14));
+              ctx.fillStyle = '#6fb04b';
+              ctx.strokeStyle = INK;
+              ctx.lineWidth = 1.9;
+              ctx.beginPath();
+              ctx.moveTo(0, 0);
+              ctx.quadraticCurveTo(lf.side * len * 0.55, -22 * ls, lf.side * len, -2);
+              ctx.quadraticCurveTo(lf.side * len * 0.55, 19 * ls, 0, 5);
+              ctx.closePath();
+              ctx.fill();
+              ctx.stroke();
+              ctx.strokeStyle = '#9fd36f';
+              ctx.lineWidth = 1.5;
+              ctx.beginPath(); ctx.moveTo(lf.side * 6, 1); ctx.lineTo(lf.side * len * 0.82, -2); ctx.stroke();
+              ctx.restore();
+            }
+          }
+
+          ctx.save();
+          ctx.translate(topX, topY + wp.headBend * 8);
+          if (wp.growth < 0.35) ctx.rotate(0.55 * (1 - wp.growth * 2.5));
+          const headR = lerp(18, 34, wp.growth);
+          if (wp.growth > 0.6) ctx.drawImage(Sprites.goldGlow, -72, -72, 144, 144);
+
+          ctx.fillStyle = wp.growth > 0.3 ? '#f8ca46' : '#c9b468';
+          ctx.strokeStyle = INK;
+          ctx.lineWidth = 1.6;
+          for (let p = 0; p < 12; p++) {
+            const ang = (p / 12) * 6.283 + simTime * 0.14 * wp.growth;
+            ctx.save();
+            ctx.rotate(ang);
+            ctx.beginPath();
+            ctx.ellipse(headR * 0.92, 0, headR * 0.45, headR * 0.21, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          ctx.fillStyle = '#6e492e';
+          ctx.beginPath(); ctx.arc(0, 0, headR * 0.6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#3b2415';
+          if (wp.growth > 0.5) {
+            ctx.beginPath(); ctx.arc(-6, -3, 2, 0, Math.PI * 2); ctx.arc(6, -3, 2, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#f8ca46'; ctx.lineWidth = 1.6;
+            ctx.beginPath(); ctx.arc(0, 1, 6, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+          } else {
+            ctx.strokeStyle = '#3b2415'; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.arc(-5, 0, 3, 0, Math.PI); ctx.moveTo(8, 0); ctx.arc(5, 0, 3, 0, Math.PI); ctx.stroke();
+          }
+          ctx.restore();
+        }
+      }
+
+      function drawRainclouds(minX, maxX) {
+        const spr = Sprites.cloudRain;
+        for (let i = 0; i < weatherPuzzles.length; i++) {
+          const wp = weatherPuzzles[i];
+          if (wp.dispersed || wp.cx + 160 < minX || wp.cx - 160 > maxX) continue;
+          const a = clamp(wp.integrity, 0.15, 1);
+          const sc = 0.72 + a * 0.34;
+          const bob = Math.sin(simTime * 1.9 + i) * 4;
+
+          ctx.save();
+          ctx.strokeStyle = `rgba(148, 178, 206, ${(a * 0.54).toFixed(2)})`;
+          ctx.lineWidth = 1.5;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          for (let r = 0; r < 10; r++) {
+            const rx = wp.cx - 68 + r * 15 + ((simTime * 18 + r * 31) % 10);
+            const span = Math.max(80, wp.baseY - wp.cy - 25);
+            const ry = wp.cy + 26 + ((simTime * 270 + r * 73) % span);
+            ctx.moveTo(rx, ry);
+            ctx.lineTo(rx - 5, ry + 15);
+          }
+          ctx.stroke();
+
+          ctx.globalAlpha = a;
+          const w = spr.width * sc;
+          const h = spr.height * sc;
+          ctx.drawImage(spr, wp.cx - w * 0.5, wp.cy + bob - h * 0.54, w, h);
+          ctx.restore();
+        }
+      }
+
+      function drawMailboxes(minX, maxX) {
+        for (let i = 0; i < mailboxes.length; i++) {
+          const mb = mailboxes[i];
+          if (mb.x < minX || mb.x > maxX) continue;
+          ctx.save();
+          ctx.translate(mb.x, mb.y);
+          if (mb.delivered) ctx.drawImage(Sprites.goldGlow, -56, -90, 112, 112);
+
+          ctx.fillStyle = '#9a714a';
+          ctx.strokeStyle = INK;
+          ctx.lineWidth = 2;
+          ctx.fillRect(-5, -34, 10, 38);
+          ctx.strokeRect(-5, -34, 10, 38);
+
+          const sway = Math.sin(simTime * 3.4 + mb.phase) * 6;
+          ctx.fillStyle = mb.delivered ? '#fff7dc' : '#f5efe0';
+          ctx.beginPath();
+          ctx.moveTo(0, -68);
+          ctx.quadraticCurveTo(22 + sway, -58, 16 + sway * 0.7, -42);
+          ctx.lineTo(0, -45);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(0, -34); ctx.lineTo(0, -72); ctx.stroke();
+
+          ctx.fillStyle = '#f6ebd2';
+          ctx.beginPath(); ctx.roundRect(-18, -50, 36, 22, [11, 11, 4, 4]); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = mb.col; ctx.fillRect(-17, -38, 34, 6);
+          ctx.fillStyle = '#4e3f32'; ctx.fillRect(-10, -45, 20, 3.5);
+
+          ctx.save();
+          ctx.translate(16, -42);
+          ctx.rotate(lerp(1.2, 0, mb.flag));
+          ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -18); ctx.stroke();
+          ctx.fillStyle = mb.col;
+          ctx.fillRect(0, -18, 10, 7);
+          ctx.strokeRect(0, -18, 10, 7);
+          ctx.restore();
+          ctx.restore();
+        }
+      }
+
+      function drawPaperPlanes(alpha, camX) {
+        const minX = camX - 220;
+        const maxX = camX + viewW + 220;
+        for (let i = 0; i < paperPlanes.length; i++) {
+          const pl = paperPlanes[i];
+          if (pl.state === 'delivered') continue;
+          const px = lerp(pl.prevX, pl.x, alpha);
+          const py = lerp(pl.prevY, pl.y, alpha);
+          if (px < minX || px > maxX) continue;
+
+          if (pl.trailCount > 1) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255, 252, 240, 0.72)';
+            ctx.lineWidth = 2.0;
+            ctx.setLineDash([6, 7]);
+            ctx.beginPath();
+            ctx.moveTo(pl.trailX[0], pl.trailY[0]);
+            for (let t = 1; t < pl.trailCount; t++) ctx.lineTo(pl.trailX[t], pl.trailY[t]);
+            ctx.lineTo(px, py);
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          if (pl.state === 'idle') {
+            const by = py - 34 + Math.sin(simTime * 3 + pl.bob) * 4;
+            ctx.save();
+            ctx.translate(px, by);
+            ctx.fillStyle = 'rgba(255, 252, 244, 0.92)';
+            ctx.strokeStyle = pl.col;
+            ctx.lineWidth = 1.6;
+            ctx.beginPath(); ctx.roundRect(-12, -9, 24, 16, 4); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-11, -8); ctx.lineTo(0, 1); ctx.lineTo(11, -8); ctx.stroke();
+            ctx.restore();
+          }
+
+          const nearP = Math.abs(player.x - px) < 250 && Math.abs(player.y - py) < 210;
+          if (pl.state === 'flying' || nearP) {
+            const mb = mailboxes[pl.targetId];
+            const dx = mb.x - px;
+            const dy = (mb.y - 42) - py;
+            if (dx * dx + dy * dy > 85 * 85) {
+              const ang = Math.atan2(dy, dx);
+              ctx.save();
+              ctx.translate(px + Math.cos(ang) * 34, py + Math.sin(ang) * 34);
+              ctx.rotate(ang);
+              ctx.fillStyle = pl.col;
+              ctx.strokeStyle = '#fffdf6';
+              ctx.lineWidth = 1.5;
+              ctx.beginPath();
+              ctx.moveTo(10, 0); ctx.lineTo(-4, -6); ctx.lineTo(-1, 0); ctx.lineTo(-4, 6);
+              ctx.closePath(); ctx.fill(); ctx.stroke();
+              ctx.restore();
+            }
+          }
+
+          ctx.save();
+          ctx.translate(px, py + (pl.state === 'idle' ? Math.sin(simTime * 2.5 + pl.bob) * 2 : 0));
+          ctx.rotate(pl.angle);
+          ctx.strokeStyle = INK;
+          ctx.lineWidth = 1.8;
+          ctx.lineJoin = 'round';
+          ctx.fillStyle = '#fffdf7';
+          ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(-14, -10); ctx.lineTo(-9, 1); ctx.closePath(); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = pl.col;
+          ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(-9, 1); ctx.lineTo(-13, 8); ctx.closePath(); ctx.fill(); ctx.stroke();
+          ctx.restore();
+        }
+      }
+
+      function drawCloudLinks(minX, maxX) {
+        if (cloudLinks.length === 0) return;
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.setLineDash([7, 9]);
+        ctx.lineDashOffset = -simTime * 26;
+        ctx.lineWidth = 2.0;
+        for (let i = 0; i < cloudLinks.length; i++) {
+          const lnk = cloudLinks[i];
+          if (lnk.a.x < minX && lnk.b.x < minX) continue;
+          if (lnk.a.x > maxX && lnk.b.x > maxX) continue;
+          const ax = lnk.a.x, ay = lnk.a.y + lnk.a.offsetY;
+          const bx = lnk.b.x, by = lnk.b.y + lnk.b.offsetY;
+          ctx.strokeStyle = `rgba(255, 250, 232, ${(lnk.alpha * 0.62).toFixed(2)})`;
+          ctx.beginPath();
+          ctx.moveTo(ax, ay);
+          ctx.quadraticCurveTo((ax + bx) * 0.5, (ay + by) * 0.5 - 12 * Math.sin(simTime * 2.4 + i), bx, by);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawBouncyClouds(alpha, minX, maxX) {
+        for (let i = 0; i < bouncyClouds.length; i++) {
+          const c = bouncyClouds[i];
+          const cx = lerp(c.prevX, c.x, alpha);
+          if (cx + c.r * 2 < minX || cx - c.r * 2 > maxX) continue;
+          const cy = lerp(c.prevY, c.y, alpha);
+          const offY = lerp(c.prevOffsetY, c.offsetY, alpha);
+          const sq = lerp(c.prevSquash, c.squash, alpha);
+          const bob = Math.sin(simTime * 1.7 + c.bobPhase) * 3.2;
+
+          const scaleY = clamp(1 + sq, 0.68, 1.35);
+          const scaleX = 1 / Math.sqrt(scaleY);
+          const spr = c.tier <= 1 ? Sprites.cloudT1 : (c.tier === 2 ? Sprites.cloudT2 : Sprites.cloudT3);
+          const growRatio = c.r / cloudRadiusForTier(c.tier);
+
+          ctx.save();
+          ctx.translate(cx, cy + offY + bob);
+          if (c.tier >= 3 || c.glow > 0.04) {
+            ctx.globalAlpha = c.tier >= 3 ? (0.45 + c.glow * 0.35) : c.glow * 0.42;
+            const gSize = c.r * 3.0;
+            ctx.drawImage(Sprites.goldGlow, -gSize * 0.5, -gSize * 0.5, gSize, gSize);
+            ctx.globalAlpha = 1;
+          }
+          ctx.scale(scaleX * growRatio, scaleY * growRatio);
+          ctx.drawImage(spr, -spr.width * 0.5, -spr.height * 0.56);
+          ctx.restore();
+        }
+      }
+
+      // 地形仅绘制视锥范围 [camX - 100, camX + viewW + 100] 内的顶点
+      function drawTerrain(camX) {
+        const startX = Math.max(0, Math.floor((camX - 100) / 20) * 20);
+        const endX = Math.min(WORLD_W, Math.ceil((camX + viewW + 100) / 20) * 20);
+
+        ctx.fillStyle = '#b98c62';
+        ctx.beginPath();
+        ctx.moveTo(startX, WORLD_H + 60);
+        for (let x = startX; x <= endX; x += 20) ctx.lineTo(x, getGroundY(x));
+        ctx.lineTo(endX, WORLD_H + 60);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#9c714c';
+        ctx.beginPath();
+        ctx.moveTo(startX, WORLD_H + 60);
+        for (let x = startX; x <= endX; x += 24) ctx.lineTo(x, getGroundY(x) + 88 + Math.sin(x * 0.015) * 14);
+        ctx.lineTo(endX, WORLD_H + 60);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#7bb454';
+        ctx.beginPath();
+        for (let x = startX; x <= endX; x += 20) {
+          const y = getGroundY(x);
+          if (x === startX) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        for (let x = endX; x >= startX; x -= 20) {
+          ctx.lineTo(x, getGroundY(x) + 28 + Math.sin(x * 0.036) * 5);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(61, 51, 43, 0.72)';
+        ctx.lineWidth = 2.1;
+        ctx.beginPath();
+        for (let x = startX; x <= endX; x += 18) {
+          const y = getGroundY(x);
+          if (x === startX) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+
+      function drawFences(minX, maxX) {
+        ctx.fillStyle = '#c59d6e';
+        ctx.strokeStyle = 'rgba(61, 51, 43, 0.74)';
+        ctx.lineWidth = 1.6;
+        for (let i = 0; i < fences.length; i++) {
+          const f = fences[i];
+          if (f.x + f.posts * f.gap < minX || f.x > maxX) continue;
+          const x0 = f.x;
+          const x1 = f.x + (f.posts - 1) * f.gap;
+          const y0 = getGroundY(x0);
+          const y1 = getGroundY(x1);
+          ctx.beginPath();
+          ctx.moveTo(x0 - 4, y0 - 19); ctx.lineTo(x1 + 4, y1 - 19);
+          ctx.moveTo(x0 - 4, y0 - 10); ctx.lineTo(x1 + 4, y1 - 10);
+          ctx.stroke();
+          for (let p = 0; p < f.posts; p++) {
+            const px = f.x + p * f.gap;
+            const py = getGroundY(px);
+            ctx.fillRect(px - 3, py - 26, 6, 28);
+            ctx.strokeRect(px - 3, py - 26, 6, 28);
+          }
+        }
+      }
+
+      function drawIslands(minX, maxX) {
+        for (let i = 0; i < islands.length; i++) {
+          const isl = islands[i];
+          if (isl.cx + isl.halfW < minX || isl.cx - isl.halfW > maxX) continue;
+          sampleWind(isl.cx, isl.y + isl.depth, simTime, _qWind);
+          const sway = clamp(_qWind.vx * 0.06, -16, 16);
+
+          ctx.strokeStyle = '#5c9347';
+          ctx.lineWidth = 2.1;
+          ctx.beginPath();
+          for (let vi = 0; vi < isl.vines.length; vi++) {
+            const vx = isl.cx + isl.vines[vi];
+            const vy = isl.y + isl.depth * 0.68;
+            const len = 34 + (vi % 3) * 14;
+            ctx.moveTo(vx, vy);
+            ctx.quadraticCurveTo(vx + sway * 0.6, vy + len * 0.55, vx + sway + Math.sin(simTime * 2 + vi) * 4, vy + len);
+          }
+          ctx.stroke();
+
+          ctx.fillStyle = '#b4875e';
+          ctx.strokeStyle = 'rgba(61, 51, 43, 0.8)';
+          ctx.lineWidth = 2.0;
+          ctx.beginPath();
+          ctx.moveTo(isl.cx - isl.halfW, isl.y + isl.curve);
+          ctx.quadraticCurveTo(isl.cx - isl.halfW * 0.6, isl.y + isl.depth, isl.cx, isl.y + isl.depth * 1.05);
+          ctx.quadraticCurveTo(isl.cx + isl.halfW * 0.6, isl.y + isl.depth, isl.cx + isl.halfW, isl.y + isl.curve);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#7bb454';
+          ctx.beginPath();
+          for (let s = -10; s <= 10; s++) {
+            const x = isl.cx + (s / 10) * isl.halfW;
+            const y = getIslandSurfaceY(isl, x);
+            if (s === -10) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          }
+          for (let s = 10; s >= -10; s--) {
+            const x = isl.cx + (s / 10) * isl.halfW;
+            ctx.lineTo(x, getIslandSurfaceY(isl, x) + 22 + Math.sin(s * 1.4) * 4);
+          }
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.beginPath();
+          for (let s = -10; s <= 10; s++) {
+            const x = isl.cx + (s / 10) * isl.halfW;
+            const y = getIslandSurfaceY(isl, x);
+            if (s === -10) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+      }
+
+      // 160 簇手绘水彩草丛：每渲染帧更新一次视锥内风弯，严格合并为 3 次批量绘制！
+      function updateAndDrawGrassBatched(frameDt, minX, maxX) {
+        const smooth = 1 - Math.exp(-8.5 * frameDt);
+        const pfY = player.y + 18;
+
+        // 1) 更新视锥内草丛平滑风弯
+        for (let i = 0; i < grassTufts.length; i++) {
+          const c = grassTufts[i];
+          if (c.x < minX || c.x > maxX) continue;
+          sampleWind(c.x, c.y - 12, simTime, _qWind);
+          let push = 0;
+          const dx = c.x - player.x;
+          if (Math.abs(dx) < 36 && Math.abs(c.y - pfY) < 36) {
+            push = (dx >= 0 ? 1 : -1) * (1 - Math.abs(dx) / 36) * 0.88;
+          }
+          const target = clamp(Math.atan2(_qWind.vx, 200) + push, -1.02, 1.02);
+          c.angle += (target - c.angle) * smooth;
+        }
+
+        ctx.lineCap = 'round';
+
+        // 批次 1：后层深绿微弯草叶（1 次 stroke）
+        ctx.strokeStyle = '#4e8839';
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        for (let i = 0; i < grassTufts.length; i++) {
+          const c = grassTufts[i];
+          if (c.x < minX || c.x > maxX) continue;
+          const a = c.angle + c.lean0;
+          const bx = c.x - 3.5;
+          const by = c.y;
+          ctx.moveTo(bx, by);
+          ctx.quadraticCurveTo(
+            bx + Math.sin(a * 0.45) * c.h0 * 0.56, by - Math.cos(a * 0.45) * c.h0 * 0.56,
+            bx + Math.sin(a) * c.h0, by - Math.cos(a) * c.h0
+          );
+        }
+        ctx.stroke();
+
+        // 批次 2：前层嫩绿错落草叶（1 次 stroke）
+        ctx.strokeStyle = '#6eab4b';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        for (let i = 0; i < grassTufts.length; i++) {
+          const c = grassTufts[i];
+          if (c.x < minX || c.x > maxX) continue;
+          const a1 = c.angle + c.lean1;
+          ctx.moveTo(c.x, c.y);
+          ctx.quadraticCurveTo(
+            c.x + Math.sin(a1 * 0.45) * c.h1 * 0.56, c.y - Math.cos(a1 * 0.45) * c.h1 * 0.56,
+            c.x + Math.sin(a1) * c.h1, c.y - Math.cos(a1) * c.h1
+          );
+          const a2 = c.angle + c.lean2;
+          const bx2 = c.x + 3.8;
+          ctx.moveTo(bx2, c.y);
+          ctx.quadraticCurveTo(
+            bx2 + Math.sin(a2 * 0.45) * c.h2 * 0.56, c.y - Math.cos(a2 * 0.45) * c.h2 * 0.56,
+            bx2 + Math.sin(a2) * c.h2, c.y - Math.cos(a2) * c.h2
+          );
+        }
+        ctx.stroke();
+
+        // 批次 3：暖阳小野花圆点（1 次 fill）
+        ctx.fillStyle = '#fff2a8';
+        ctx.beginPath();
+        for (let i = 0; i < grassTufts.length; i++) {
+          const c = grassTufts[i];
+          if (!c.hasFlower || c.x < minX || c.x > maxX) continue;
+          const a1 = c.angle + c.lean1;
+          const fx = c.x + Math.sin(a1) * c.h1;
+          const fy = c.y - Math.cos(a1) * c.h1;
+          ctx.moveTo(fx + 3.2, fy);
+          ctx.arc(fx, fy, 3.2, 0, Math.PI * 2);
+        }
+        ctx.fill();
+      }
+
+      function drawWindmills(minX, maxX) {
+        for (let i = 0; i < windmills.length; i++) {
+          const wm = windmills[i];
+          if (wm.x < minX || wm.x > maxX) continue;
+          const hubY = wm.baseY - wm.towerH + 14;
+
+          ctx.save();
+          if (wm.glow > 0.01 || wm.charge > 0.05) {
+            ctx.globalAlpha = wm.glow * 0.7 + wm.charge * 0.28;
+            const gSize = 152 + wm.glow * 56;
+            ctx.drawImage(Sprites.goldGlow, wm.x - gSize * 0.5, hubY - gSize * 0.5, gSize, gSize);
+            ctx.globalAlpha = 1;
+          }
+
+          ctx.fillStyle = wm.awakened ? '#f9efd6' : '#ece0c6';
+          ctx.strokeStyle = INK;
+          ctx.lineWidth = 2.0;
+          ctx.beginPath();
+          ctx.moveTo(wm.x - 28, wm.baseY + 4);
+          ctx.lineTo(wm.x - 16, wm.baseY - wm.towerH + 16);
+          ctx.lineTo(wm.x + 16, wm.baseY - wm.towerH + 16);
+          ctx.lineTo(wm.x + 28, wm.baseY + 4);
+          ctx.closePath();
+          ctx.fill(); ctx.stroke();
+
+          ctx.fillStyle = '#cf6d53';
+          ctx.beginPath();
+          ctx.moveTo(wm.x - 22, wm.baseY - wm.towerH + 18);
+          ctx.lineTo(wm.x, wm.baseY - wm.towerH - 16);
+          ctx.lineTo(wm.x + 22, wm.baseY - wm.towerH + 18);
+          ctx.closePath();
+          ctx.fill(); ctx.stroke();
+
+          ctx.fillStyle = wm.awakened ? '#ffdc78' : '#7b6a58';
+          ctx.beginPath();
+          ctx.arc(wm.x, wm.baseY - wm.towerH * 0.45, 7, Math.PI, 0);
+          ctx.lineTo(wm.x + 7, wm.baseY - wm.towerH * 0.45 + 11);
+          ctx.lineTo(wm.x - 7, wm.baseY - wm.towerH * 0.45 + 11);
+          ctx.closePath();
+          ctx.fill(); ctx.stroke();
+
+          if (!wm.awakened && wm.charge > 0.02) {
+            ctx.strokeStyle = '#e69d2c';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(wm.x, hubY, 22, -1.5708, -1.5708 + wm.charge * 6.2832);
+            ctx.stroke();
+          }
+
+          ctx.translate(wm.x, hubY);
+          ctx.rotate(wm.angle);
+          for (let b = 0; b < 4; b++) {
+            ctx.rotate(1.5708);
+            ctx.fillStyle = wm.awakened ? '#fff6d6' : '#faf2df';
+            ctx.strokeStyle = INK;
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.moveTo(4, -14); ctx.lineTo(22, -16); ctx.lineTo(19, -wm.bladeLen); ctx.lineTo(4, -wm.bladeLen + 3);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+            ctx.strokeStyle = '#8b6240';
+            ctx.lineWidth = 3.0;
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -wm.bladeLen - 4); ctx.stroke();
+          }
+          ctx.fillStyle = wm.awakened ? '#f2b844' : '#a87d52';
+          ctx.strokeStyle = INK;
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          ctx.restore();
+        }
+      }
+
+      function drawChimes(minX, maxX) {
+        for (let i = 0; i < chimes.length; i++) {
+          const c = chimes[i];
+          if (c.x < minX || c.x > maxX) continue;
+          ctx.save();
+          ctx.translate(c.x, c.y);
+
+          if (c.glow > 0.02) {
+            ctx.globalAlpha = c.glow * 0.68;
+            ctx.drawImage(Sprites.goldGlow, -46, -46, 92, 92);
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = `rgba(255, 240, 178, ${(c.glow * 0.82).toFixed(2)})`;
+            ctx.lineWidth = 2.4;
+            ctx.beginPath();
+            ctx.arc(0, 0, 18 + (1 - c.glow) * 46, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          ctx.rotate(c.sway);
+          ctx.strokeStyle = INK;
+          ctx.lineWidth = 1.6;
+          ctx.beginPath(); ctx.moveTo(0, -24); ctx.lineTo(0, -10); ctx.stroke();
+
+          ctx.fillStyle = c.col;
+          ctx.beginPath();
+          ctx.arc(0, -2, 10, Math.PI, 0);
+          ctx.lineTo(11, 5); ctx.lineTo(-11, 5);
+          ctx.closePath();
+          ctx.fill(); ctx.stroke();
+
+          ctx.fillStyle = '#fff9ea';
+          ctx.fillRect(-4, 9, 8, 17);
+          ctx.strokeRect(-4, 9, 8, 17);
+          ctx.restore();
+        }
+      }
+
+      /* =====================================================================
+         12. 零闪烁 6 层连续角色绘制 + 三点法线平滑 12 节零拉伸长围巾
+         ===================================================================== */
+      const _sPts = Array.from({ length: SCARF_NODES }, () => ({ x: 0, y: 0 }));
+      const _sRawN = Array.from({ length: SCARF_NODES }, () => ({ x: 0, y: -1 }));
+      const _sL = Array.from({ length: SCARF_NODES }, () => ({ x: 0, y: 0 }));
+      const _sR = Array.from({ length: SCARF_NODES }, () => ({ x: 0, y: 0 }));
+
+      function drawPlayerAndScarf(alpha) {
+        const px = lerp(player.prevX, player.x, alpha);
+        const py = lerp(player.prevY, player.y, alpha);
+        const g = lerp(player.prevGlideBlend, player.glideBlend, alpha);
+        const air = lerp(player.prevAirBlend, player.airBlend, alpha);
+        const billow = lerp(player.prevCloakBillow, player.cloakBillow, alpha);
+        const tilt = lerp(player.prevBodyTilt, player.bodyTilt, alpha);
+        const vf = lerp(player.prevVisualFacing, player.visualFacing, alpha);
+        const dir = vf >= 0 ? 1 : -1;
+        const runP = lerp(player.prevRunPhase, player.runPhase, alpha);
+
+        for (let i = 0; i < player.puffs.length; i++) {
+          const pf = player.puffs[i];
+          ctx.strokeStyle = `rgba(255, 252, 238, ${pf.a.toFixed(2)})`;
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.ellipse(pf.x, pf.y, pf.r, pf.r * 0.42, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // LAYER 1: 后背连续斗篷 / 滑翔穹顶（无任何 if(isGliding) 分支）
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(tilt);
+        const flutter = Math.sin(simTime * 11) * (1.2 + billow * 2.2) * (0.3 + air * 0.7);
+        const wingSpan = lerp(11 + billow * 3, 36 + billow * 2.5, g);
+        const wingLift = lerp(15 - air * 3, -18, g) + flutter * 0.35;
+        const domeY = lerp(-8, -33 - billow * 2, g);
+        const hemY = lerp(16, -2, g) + flutter * 0.25;
+
+        ctx.fillStyle = '#d7e6d4';
+        ctx.beginPath();
+        ctx.moveTo(-wingSpan * 0.92, wingLift + 3);
+        ctx.quadraticCurveTo(0, domeY + 8, wingSpan * 0.92, wingLift + 3);
+        ctx.quadraticCurveTo(0, hemY + 3, -wingSpan * 0.92, wingLift + 3);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#4e8a7c';
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 2.0;
+        ctx.beginPath();
+        ctx.moveTo(-7, -9);
+        ctx.quadraticCurveTo(-wingSpan * 0.65, domeY, -wingSpan, wingLift);
+        ctx.quadraticCurveTo(0, hemY, wingSpan, wingLift);
+        ctx.quadraticCurveTo(wingSpan * 0.65, domeY, 7, -9);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.strokeStyle = `rgba(61, 51, 43, ${(0.22 + g * 0.35).toFixed(2)})`;
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(0, -10);
+        ctx.quadraticCurveTo(0, lerp(4, -20, g), 0, hemY - 2);
+        ctx.stroke();
+
+        // LAYER 2: 双腿
+        const walkAmp = (1 - air) * clamp(Math.abs(player.vx) / 210, 0, 1) * (1 - g);
+        const swing = Math.sin(runP) * 7 * walkAmp;
+        const legBottom = lerp(22, 15, g);
+        const legTrail = -dir * lerp(0, 6, Math.max(g, air * 0.45));
+
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 3.2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(-3.2, 8); ctx.lineTo(-3.2 + swing + legTrail, legBottom);
+        ctx.moveTo(3.2, 8); ctx.lineTo(3.2 - swing + legTrail, legBottom);
+        ctx.stroke();
+
+        // LAYER 3: 短袍与双臂
+        ctx.fillStyle = '#f5eedb';
+        ctx.lineWidth = 2.0;
+        ctx.beginPath();
+        ctx.moveTo(-7, -9); ctx.lineTo(7, -9); ctx.lineTo(9.5, 11);
+        ctx.quadraticCurveTo(0, 13.5, -9.5, 11);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        const armX = lerp(9, 17.5, g);
+        const armY = lerp(3 - air * 3, -11.5, g);
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(-6, -5); ctx.lineTo(-armX, armY);
+        ctx.moveTo(6, -5); ctx.lineTo(armX, armY);
+        ctx.stroke();
+        ctx.restore();
+
+        // LAYER 4: 12 节零拉伸珊瑚红长围巾 + 三点平滑法线 + 金色风力能量丝
+        drawScarfRibbon(alpha, px, py, tilt, vf);
+
+        // LAYER 5 & 6: 头部与宽檐草帽 + 前襟领扣
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(tilt);
+
+        ctx.fillStyle = '#f9e0c4';
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(0, -14.5, 7.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+        ctx.fillStyle = INK;
+        ctx.beginPath(); ctx.arc(dir * 2.8, -14.5, 1.35, 0, Math.PI * 2); ctx.fill();
+
+        ctx.fillStyle = '#e7c57c';
+        ctx.beginPath(); ctx.ellipse(0, -19.5, 15.5, 4.4, dir * -0.06, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, -19.5, 8.2, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+        ctx.strokeStyle = '#cf5e4a';
+        ctx.lineWidth = 2.3;
+        ctx.beginPath(); ctx.moveTo(-7.6, -19.8); ctx.lineTo(7.6, -19.8); ctx.stroke();
+
+        ctx.fillStyle = '#e15c48';
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.ellipse(0, -8.8, 7.4, 3.2, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#f6d167';
+        ctx.beginPath(); ctx.arc(dir * 2.2, -8.5, 2.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawScarfRibbon(alpha, px, py, tilt, vf) {
+        getNeckWorldPos(px, py, tilt, vf, _neckTmp);
+        _sPts[0].x = _neckTmp.x;
+        _sPts[0].y = _neckTmp.y;
+        for (let i = 1; i < SCARF_NODES; i++) {
+          _sPts[i].x = lerp(scarf[i].px, scarf[i].x, alpha);
+          _sPts[i].y = lerp(scarf[i].py, scarf[i].y, alpha);
+        }
+
+        // 渲染子帧插值后再做一次极快单遍根到梢定长投影，确保视觉上绝对恒定 77px！
+        for (let i = 0; i < SCARF_NODES - 1; i++) {
+          const a = _sPts[i], b = _sPts[i + 1];
+          const dx = b.x - a.x, dy = b.y - a.y;
+          const d = Math.hypot(dx, dy);
+          if (d > 0.0001) {
+            const sc = SCARF_SEG_LEN / d;
+            b.x = a.x + dx * sc;
+            b.y = a.y + dy * sc;
+          } else {
+            b.x = a.x + scarf[i].lastDirX * SCARF_SEG_LEN;
+            b.y = a.y + scarf[i].lastDirY * SCARF_SEG_LEN;
+          }
+        }
+
+        // 切线记忆 + 原始法线
+        for (let i = 0; i < SCARF_NODES; i++) {
+          const prev = _sPts[i > 0 ? i - 1 : 0];
+          const next = _sPts[i < SCARF_NODES - 1 ? i + 1 : SCARF_NODES - 1];
+          let tx = next.x - prev.x;
+          let ty = next.y - prev.y;
+          const len = Math.hypot(tx, ty);
+          const node = scarf[i];
+          if (len > 0.01) {
+            tx /= len; ty /= len;
+            if (tx * node.lastDirX + ty * node.lastDirY < -0.45) {
+              tx = lerp(node.lastDirX, tx, 0.25);
+              ty = lerp(node.lastDirY, ty, 0.25);
+              const l2 = Math.hypot(tx, ty) || 1;
+              tx /= l2; ty /= l2;
+            }
+            node.lastDirX = tx;
+            node.lastDirY = ty;
+          } else {
+            tx = node.lastDirX; ty = node.lastDirY;
+          }
+          _sRawN[i].x = -ty;
+          _sRawN[i].y = tx;
+        }
+
+        // 三点加权法线平滑（彻底避免急转弯拧麻花/翻转）
+        for (let i = 0; i < SCARF_NODES; i++) {
+          const n0 = _sRawN[i > 0 ? i - 1 : 0];
+          const n1 = _sRawN[i];
+          const n2 = _sRawN[i < SCARF_NODES - 1 ? i + 1 : SCARF_NODES - 1];
+          let nx = n0.x * 0.25 + n1.x * 0.5 + n2.x * 0.25;
+          let ny = n0.y * 0.25 + n1.y * 0.5 + n2.y * 0.25;
+          const nl = Math.hypot(nx, ny) || 1;
+          nx /= nl; ny /= nl;
+          const hw = scarfHalfWidth(i);
+          _sL[i].x = _sPts[i].x + nx * hw;
+          _sL[i].y = _sPts[i].y + ny * hw;
+          _sR[i].x = _sPts[i].x - nx * hw;
+          _sR[i].y = _sPts[i].y - ny * hw;
+        }
+
+        ctx.fillStyle = '#e15c48';
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 1.7;
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(_sL[0].x, _sL[0].y);
+        for (let i = 1; i < SCARF_NODES - 1; i++) {
+          ctx.quadraticCurveTo(_sL[i].x, _sL[i].y, (_sL[i].x + _sL[i + 1].x) * 0.5, (_sL[i].y + _sL[i + 1].y) * 0.5);
+        }
+        ctx.lineTo(_sL[SCARF_NODES - 1].x, _sL[SCARF_NODES - 1].y);
+        ctx.lineTo(_sR[SCARF_NODES - 1].x, _sR[SCARF_NODES - 1].y);
+        for (let i = SCARF_NODES - 2; i > 0; i--) {
+          ctx.quadraticCurveTo(_sR[i].x, _sR[i].y, (_sR[i].x + _sR[i - 1].x) * 0.5, (_sR[i].y + _sR[i - 1].y) * 0.5);
+        }
+        ctx.lineTo(_sR[0].x, _sR[0].y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // 金色风力能量丝（双层描边替代 shadowBlur）
+        const ratio = clamp(player.energy / player.maxEnergy, 0, 1);
+        if (ratio > 0.04) {
+          const lit = Math.max(1, Math.floor(ratio * (SCARF_NODES - 1)));
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(_sPts[0].x, _sPts[0].y);
+          for (let i = 1; i <= lit; i++) {
+            const p0 = _sPts[i - 1], p1 = _sPts[i];
+            ctx.quadraticCurveTo(p0.x, p0.y, (p0.x + p1.x) * 0.5, (p0.y + p1.y) * 0.5);
+          }
+          ctx.strokeStyle = 'rgba(255, 224, 112, 0.36)';
+          ctx.lineWidth = 5.0;
+          ctx.stroke();
+          ctx.strokeStyle = '#fff2b0';
+          ctx.lineWidth = 1.9;
+          ctx.stroke();
+        }
+      }
+
+      // 极速单遍平滑水彩划风丝带（每条轨迹仅 2 次 stroke，彻底告别划风掉帧）
+      function drawWindRibbons() {
+        if (activeRibbons.length === 0) return;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        for (let i = 0; i < activeRibbons.length; i++) {
+          const rib = activeRibbons[i];
+          const pts = rib.pts;
+          if (pts.length < 2) continue;
+          const midAge = pts[Math.floor(pts.length * 0.5)].age;
+          const remain = clamp(1 - midAge / rib.maxAge, 0, 1);
+          if (remain <= 0.01) continue;
+          const fade = Math.min(1, midAge * 9 + 0.25) * Math.sin(remain * 1.5708);
+
+          // 柔和主水彩气带
+          ctx.beginPath();
+          ctx.moveTo(pts[0].x, pts[0].y);
+          for (let p = 1; p < pts.length - 1; p++) {
+            ctx.quadraticCurveTo(pts[p].x, pts[p].y, (pts[p].x + pts[p + 1].x) * 0.5, (pts[p].y + pts[p + 1].y) * 0.5);
+          }
+          ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+          ctx.strokeStyle = `rgba(218, 248, 236, ${(fade * 0.42).toFixed(2)})`;
+          ctx.lineWidth = 14 * (0.5 + fade * 0.5);
+          ctx.stroke();
+
+          // 内部高光流线
+          ctx.strokeStyle = `rgba(255, 253, 240, ${(fade * 0.84).toFixed(2)})`;
+          ctx.lineWidth = 4.6 * (0.5 + fade * 0.5);
+          ctx.stroke();
+        }
+      }
+
+      // 旋风聚气：仅单次 rotate + drawImage 预烘焙旋风精灵！
+      function drawVortexSprite() {
+        if (vortex.alpha <= 0.02) return;
+        const sc = 0.82 + vortex.alpha * 0.22;
+        ctx.save();
+        ctx.translate(vortex.x, vortex.y);
+        ctx.rotate(vortex.spin);
+        ctx.scale(sc, sc);
+        ctx.globalAlpha = vortex.alpha * 0.88;
+        ctx.drawImage(Sprites.vortexSwirl, -128, -128);
+        ctx.restore();
+      }
+
+      function drawAmbientFloaters(minX, maxX) {
+        const sprites = Sprites.particles;
+        for (let i = 0; i < ambientFloaters.length; i++) {
+          const p = ambientFloaters[i];
+          if (p.x < minX || p.x > maxX) continue;
+          const spr = sprites[p.spriteIdx];
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          const w = spr.width * p.scale;
+          const h = spr.height * p.scale;
+          ctx.drawImage(spr, -w * 0.5, -h * 0.5, w, h);
+          ctx.restore();
+        }
+      }
+
+      function drawParticlePool(minX, maxX) {
+        const sprites = Sprites.particles;
+        for (let i = 0; i < MAX_PARTICLES; i++) {
+          const p = particlePool[i];
+          if (!p.active || p.x < minX || p.x > maxX) continue;
+          const life = 1 - p.age / p.maxAge;
+          const spr = sprites[p.spriteIdx];
+          const sc = p.scale * (0.5 + life * 0.55);
+          ctx.save();
+          ctx.globalAlpha = life * 0.9;
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          const w = spr.width * sc;
+          const h = spr.height * sc;
+          ctx.drawImage(spr, -w * 0.5, -h * 0.5, w, h);
+          ctx.restore();
+        }
+      }
+
+      function drawFloatingTexts() {
+        if (floatingTexts.length === 0) return;
+        ctx.save();
+        ctx.font = '700 15px "PingFang SC", "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'center';
+        for (let i = 0; i < floatingTexts.length; i++) {
+          const ft = floatingTexts[i];
+          ctx.globalAlpha = clamp(1 - ft.age / ft.maxAge, 0, 1);
+          ctx.lineWidth = 3.2;
+          ctx.strokeStyle = 'rgba(255, 252, 242, 0.92)';
+          ctx.strokeText(ft.text, ft.x, ft.y);
+          ctx.fillStyle = ft.col;
+          ctx.fillText(ft.text, ft.x, ft.y);
+        }
+        ctx.restore();
+      }
+
+      /* =====================================================================
+         13. 锁 60 FPS 固定步长主循环（每帧最多 2 次物理子步 + 4 帧音频节流 + FPS 监视）
+         ===================================================================== */
+      let lastTs = 0;
+      let accumulator = 0;
+      let frameCount = 0;
+      let fpsFrames = 0;
+      let fpsTimer = 0;
+      const fpsBadge = document.getElementById('fpsBadge');
+
+      function gameLoop(ts) {
+        if (!lastTs) lastTs = ts;
+        const rawDt = (ts - lastTs) / 1000;
+        lastTs = ts;
+        const frameDt = Math.min(0.04, Math.max(0.001, rawDt));
+
+        accumulator += frameDt;
+        let substeps = 0;
+        while (accumulator >= FIXED_DT && substeps < 2) {
+          stepPhysics(FIXED_DT);
+          accumulator -= FIXED_DT;
+          substeps++;
+        }
+        if (accumulator > FIXED_DT * 2) accumulator = 0;
+
+        render(clamp(accumulator / FIXED_DT, 0, 1), frameDt);
+
+        // 每 4 帧节流更新连续风声滤波参数
+        frameCount++;
+        if ((frameCount & 3) === 0) {
+          const relAir = Math.hypot(player.vx - _pWind.vx * 0.35, player.vy - _pWind.vy * 0.35);
+          AudioSys.updateWind(relAir, player.glideBlend, pointer.energy, vortex.active);
+        }
+
+        // 轻量 FPS 指示器（每 0.35 秒更新一次 DOM，绝不每帧触碰 DOM）
+        fpsFrames++;
+        fpsTimer += rawDt;
+        if (fpsTimer >= 0.35) {
+          const fps = Math.min(144, Math.round(fpsFrames / fpsTimer));
+          fpsBadge.textContent = `${fps} FPS`;
+          fpsFrames = 0;
+          fpsTimer = 0;
+        }
+
+        requestAnimationFrame(gameLoop);
+      }
+
+      window.addEventListener('resize', resizeCanvas);
+      window.onload = function () {
+        resizeCanvas();
+        initSprites();
+        initScarf();
+        initBouncyClouds();
+        initScenery();
+        camera.x = camera.prevX = 0;
+        camera.y = camera.prevY = clamp(player.y - viewH * 0.56, 0, Math.max(0, WORLD_H - viewH));
+        showToast('左键划风、右键或按 E 旋风聚气：聚云成塔、护送纸飞机、吹散雨云唤醒向日葵！');
+        setTimeout(() => {
+          const kh = document.getElementById('keyHints');
+          if (kh) kh.classList.add('faded');
+        }, 12000);
+        requestAnimationFrame(gameLoop);
+      };
+    })();
+  </script>
+</body>
+</html>
