@@ -1,0 +1,65 @@
+name: Apply Ashen Bell V17.4 release patch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/deploy-patches/v17.4/trigger.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply-v17-4:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Reconstruct and verify patch
+        shell: bash
+        run: |
+          cat .github/deploy-patches/v17.4/part-01.b64 \
+              .github/deploy-patches/v17.4/part-02.b64 \
+              .github/deploy-patches/v17.4/part-03.b64 \
+              .github/deploy-patches/v17.4/part-04.b64 \
+            | tr -d '\r\n ' | base64 --decode | gzip --decompress > /tmp/v17.4.patch
+          echo "79f99c5ea4a7e88f1fa1a9c10aa7b7cd233e122d89e95ca4be6296d4eea9d3ce  /tmp/v17.4.patch" | sha256sum --check
+          git apply --check /tmp/v17.4.patch
+
+      - name: Apply V17.4 and update release notes
+        shell: bash
+        run: |
+          git apply /tmp/v17.4.patch
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path("docs/ashen-bell-vow/README.md")
+          content = path.read_text(encoding="utf-8")
+          lines = content.splitlines()
+          if lines:
+              lines[0] = re.sub(r"v17\\.\\d+", "v17.4", lines[0], count=1)
+          content = "\\n".join(lines) + "\\n"
+          if "## V17.4 发布说明" not in content:
+              section = (
+                  "## V17.4 发布说明\\n\\n"
+                  "- 主印、副印及 8 枚遗物新增程序化 SVG 徽章，统一圣物槽位视觉体系。\\n"
+                  "- 精修祭坛圣物交换界面、徽章尺寸与文字布局。\\n"
+                  "- 优化 HUD 血条/魂火条更新方式，并调整灯笼阴影缓存与动态光照绘制路径。\\n\\n"
+              )
+              marker = "## V17.3 发布说明"
+              content = content.replace(marker, section + marker, 1) if marker in content else lines[0] + "\\n\\n" + section + content
+          path.write_text(content, encoding="utf-8")
+          PY
+          rm -f .github/deploy-patches/v17.4/part-*.b64
+          rm -f .github/workflows/apply-v17-4.yml
+          git add -A docs/ashen-bell-vow .github/deploy-patches/v17.4 .github/workflows
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "release(ashen-bell-vow): deploy v17.4"
+          git push origin HEAD:main
