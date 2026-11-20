@@ -20,6 +20,10 @@ assert.match(html, /window\.setTimeout\(function \(\) \{[\s\S]*cosmos-arrival-re
 assert.doesNotMatch(html, /source:\s*view\.sourceUrl/, "galaxy project data must not carry source-link URLs");
 assert.doesNotMatch(html, /查看源码/, "galaxy project cards must not render source-code links");
 
+// The return action must occupy the full card width and be larger than the base links.
+assert.match(html, /back\.className = 'back'/, "project detail return link must use its dedicated class");
+assert.match(html, /\.card-actions a\.back,[\s\S]*?grid-column:\s*1\s*\/\s*-1;[\s\S]*?min-height:\s*52px;/, "return button must span the full row and use the larger hit area");
+
 // Compile every inline script without executing browser-dependent code.
 const inlineScripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)];
 for (const [index, match] of inlineScripts.entries()) {
