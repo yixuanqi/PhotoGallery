@@ -24,7 +24,8 @@ try{
  await page.waitForFunction(()=>document.querySelectorAll("#index-items button").length===13,null,{timeout:10000});
  assert.equal(catalogResponses.length,1,"galaxy must fetch catalog exactly once");
  assert.equal(catalogResponses[0].status,200,"canonical catalog must load");
- await page.locator("#index").click();
+ if(await page.locator("#fail-index").isVisible()) await page.locator("#fail-index").click();
+ else await page.locator("#index").click();
  await page.waitForFunction(()=>document.getElementById("drawer").classList.contains("show"),null,{timeout:5000});
  assert.equal(await page.locator("#index-items button").count(),13,"catalog must populate all 13 planets");
  assert.match(await page.locator("#index-items").innerText(),/灰钟残誓/,"new project must appear in index");
