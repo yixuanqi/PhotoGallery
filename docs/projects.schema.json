@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PhotoGallery Public Project Catalog",
-  "description": "Public project catalog consumed by the future yixuanqi.github.io portal.",
+  "description": "Canonical PhotoGallery project catalog, including metadata and presentation data consumed by the galaxy portal.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -143,6 +143,133 @@
         "lastUpdated": {
           "type": "string",
           "format": "date"
+        },
+        "galaxy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "icon",
+            "category",
+            "description",
+            "note",
+            "linkText",
+            "sourceUrl",
+            "palette",
+            "atmo",
+            "ring",
+            "style",
+            "position",
+            "radius"
+          ],
+          "properties": {
+            "icon": {
+              "type": "string",
+              "minLength": 1
+            },
+            "category": {
+              "type": "string",
+              "enum": [
+                "online",
+                "download",
+                "lab"
+              ]
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "note": {
+              "type": "string",
+              "minLength": 1
+            },
+            "linkText": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceUrl": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uri"
+            },
+            "palette": {
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 3,
+              "items": {
+                "type": "string",
+                "pattern": "^#[0-9a-fA-F]{6}$"
+              }
+            },
+            "atmo": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "ring": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "style": {
+              "type": "string",
+              "minLength": 1
+            },
+            "position": {
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 3,
+              "items": {
+                "type": "number"
+              }
+            },
+            "radius": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "journal": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "order",
+                "id",
+                "no",
+                "title",
+                "summary",
+                "paragraphs"
+              ],
+              "properties": {
+                "order": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                },
+                "no": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "summary": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "paragraphs": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
