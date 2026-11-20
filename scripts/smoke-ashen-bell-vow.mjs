@@ -32,12 +32,29 @@ async function smokeViewport(viewport, mobile) {
     const canvas = document.getElementById("gameCanvas");
     return { title: document.title, canvasWidth: canvas.width, canvasHeight: canvas.height,
       titleVisible: !document.getElementById("title-screen").classList.contains("hidden"),
-      touchControlsDisplay: getComputedStyle(document.getElementById("touch-controls")).display };
+      touchControlsDisplay: getComputedStyle(document.getElementById("touch-controls")).display,
+      isMobile: document.body.classList.contains("is-mobile"),
+      forceLandscape: document.body.classList.contains("force-landscape"),
+      gameRootWidth: document.getElementById("game-root").clientWidth,
+      gameRootHeight: document.getElementById("game-root").clientHeight,
+      joystickDisplay: getComputedStyle(document.getElementById("joystick-zone")).display,
+      actionFanDisplay: getComputedStyle(document.getElementById("action-fan")).display };
   });
   assert.match(initial.title, /灰钟残誓/);
   assert.ok(initial.canvasWidth >= 320 && initial.canvasHeight >= 240, "canvas must initialize");
   assert.equal(initial.titleVisible, true, "title screen must be visible before start");
-  if (mobile) assert.equal(initial.touchControlsDisplay, "flex", "touch controls must be visible on touch devices");
+  if (mobile) {
+    assert.equal(initial.isMobile, true, "mobile class must activate on touch devices");
+    assert.equal(initial.forceLandscape, viewport.height > viewport.width,
+      "portrait touch devices must use virtual landscape; physical landscape must not rotate twice");
+    assert.ok(initial.touchControlsDisplay !== "none", "touch control overlay must be visible");
+    assert.ok(initial.joystickDisplay !== "none", "virtual joystick must be visible");
+    assert.ok(initial.actionFanDisplay !== "none", "action button fan must be visible");
+    assert.ok(Math.abs(initial.gameRootWidth - Math.max(viewport.width, viewport.height)) <= 2,
+      "game root must occupy landscape width");
+    assert.ok(Math.abs(initial.gameRootHeight - Math.min(viewport.width, viewport.height)) <= 2,
+      "game root must occupy landscape height");
+  }
   await page.locator("#btn-start").click();
   await page.waitForFunction(() => {
     const title = document.getElementById("title-screen");
@@ -54,7 +71,8 @@ async function smokeViewport(viewport, mobile) {
   assert.equal(playing.titleHidden, true, "start action must dismiss title overlay");
   assert.ok(playing.hpText.length > 0, "player HUD must initialize");
   assert.ok(playing.canvasWidth >= 320 && playing.canvasHeight >= 240, "canvas must remain valid");
-  if (mobile) assert.equal(playing.touchControlsDisplay, "flex", "touch controls must remain available");
+  if (mobile) assert.notEqual(playing.touchControlsDisplay, "none",
+    "touch controls must remain available after starting the game");
   assert.deepEqual(pageErrors, [], "game must not emit uncaught page or console errors");
   await page.screenshot({ path: resolve("screenshots/ashen-bell-vow-" + (mobile ? "mobile" : "desktop") + ".png") });
   console.log("PASS Ashen Bell Vow", mobile ? "mobile" : "desktop", viewport.width + "x" + viewport.height);
@@ -66,6 +84,7 @@ try {
   browser = await chromium.launch({ executablePath: process.env.CHROME_BIN || "/usr/bin/google-chrome", headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
   await smokeViewport({ width: 1365, height: 900 }, false);
   await smokeViewport({ width: 390, height: 844 }, true);
+  await smokeViewport({ width: 844, height: 390 }, true);
 } finally {
   if (browser) await browser.close();
   server.kill("SIGTERM");
