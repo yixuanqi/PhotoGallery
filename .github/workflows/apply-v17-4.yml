@@ -43,17 +43,19 @@ jobs:
           content = path.read_text(encoding="utf-8")
           lines = content.splitlines()
           if lines:
-              lines[0] = re.sub(r"v17\\.\\d+", "v17.4", lines[0], count=1)
-          content = "\\n".join(lines) + "\\n"
+              lines[0] = re.sub(r"v17[.][0-9]+", "v17.4", lines[0], count=1)
+          nl = chr(10)
+          content = nl.join(lines) + nl
           if "## V17.4 发布说明" not in content:
-              section = (
-                  "## V17.4 发布说明\\n\\n"
-                  "- 主印、副印及 8 枚遗物新增程序化 SVG 徽章，统一圣物槽位视觉体系。\\n"
-                  "- 精修祭坛圣物交换界面、徽章尺寸与文字布局。\\n"
-                  "- 优化 HUD 血条/魂火条更新方式，并调整灯笼阴影缓存与动态光照绘制路径。\\n\\n"
-              )
+              section = nl.join([
+                  "## V17.4 发布说明",
+                  "",
+                  "- 主印、副印及 8 枚遗物新增程序化 SVG 徽章，统一圣物槽位视觉体系。",
+                  "- 精修祭坛圣物交换界面、徽章尺寸与文字布局。",
+                  "- 优化 HUD 血条/魂火条更新方式，并调整灯笼阴影缓存与动态光照绘制路径。"
+              ])
               marker = "## V17.3 发布说明"
-              content = content.replace(marker, section + marker, 1) if marker in content else lines[0] + "\\n\\n" + section + content
+              content = content.replace(marker, section + nl + nl + marker, 1) if marker in content else lines[0] + nl + nl + section + nl + content
           path.write_text(content, encoding="utf-8")
           PY
           rm -f .github/deploy-patches/v17.4/part-*.b64
