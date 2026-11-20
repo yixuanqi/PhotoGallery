@@ -35,6 +35,8 @@ jobs:
         run: node scripts/check-star-courier.mjs
       - name: Validate gravity-lens responsive controls
         run: node scripts/check-gravity-mobile.mjs
+      - name: Check Ashen Bell Vow grapple occlusion
+        run: node scripts/check-ashen-grapple.mjs
       - name: Install browser smoke-test dependency
         run: npm install --no-save --no-package-lock playwright-core@1.56.1
       - name: Smoke test gravity-lens mobile drawers

@@ -3,16 +3,17 @@ import {
   COLORS, GRAPPLE_ANCHORS, PENDULUMS, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, ENEMY_ECHO_REWARDS
 } from './config.js';
 import {
-  G, hooks, getLivingFoes, getRelicStats, getBladeDamageMult, getSmithPostureMult,
+  G, hooks, getLivingFoes, getAwakeBoss, isWorldPosExplored, getRelicStats, getBladeDamageMult, getSmithPostureMult,
   getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks,
   scheduleOutcome, addShake, kickCamera, punchZoom
 } from './state.js';
+import { getRoomAt } from './levelLoader.js';
 import { audio } from './audio.js';
 import { triggerHaptic, getActionKeyLabel } from './input.js';
 import {
   spawnParticles, spawnShockwave, spawnImpactBurst, spawnHitMark, spawnFloatText
 } from './vfx.js';
-import { aabbOverlap } from './physics.js';
+import { aabbOverlap, hasLineOfSight } from './physics.js';
 
 export function rallyPlayerGrayHp(amount) {
   if (G.player.grayHp <= 0) return;
@@ -353,6 +354,8 @@ export function findBestGrappleTarget() {
     });
   }
 
+  const activeBoss = getAwakeBoss();
+  const playerRoom = getRoomAt(px, py);
   let best = null;
   let bestScore = Infinity;
   for (const c of candidates) {
@@ -360,6 +363,17 @@ export function findBestGrappleTarget() {
     const dy = c.y - py;
     const dist = Math.hypot(dx, dy);
     if (dist > 410 || dist < 58) continue;
+    // 1. Boss arena boundary clamp: never lock onto targets outside/below an active Boss arena
+    if (activeBoss) {
+      if (c.x < activeBoss.arenaMinX || c.x > activeBoss.arenaMaxX || c.y < activeBoss.arenaTopY || c.y > activeBoss.arenaFloorY) continue;
+    }
+    // 2. Prevent locking downward into an unexplored lower room (e.g., unopened crypt beneath one-way hatch)
+    if (playerRoom && dy > 40) {
+      const targetRoom = getRoomAt(c.x, c.y);
+      if (targetRoom && targetRoom.id !== playerRoom.id && !isWorldPosExplored(c.x, c.y)) continue;
+    }
+    // 3. Solid geometry line-of-sight check (blocks targeting through floors, pillars, closed gates & secret walls)
+    if (!hasLineOfSight(px, py, c.x, c.y)) continue;
     const inFront = dx * G.player.facing >= -45;
     const score = dist * (inFront ? 1.0 : 1.85) * c.bias;
     if (score < bestScore) {

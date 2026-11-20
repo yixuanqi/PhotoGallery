@@ -116,6 +116,53 @@ export function moveAndCollide(ent, dt, respectBossBarrier = false) {
   }
 }
 
+function segmentIntersectsRect(x1, y1, x2, y2, rx, ry, rw, rh) {
+  if (rw <= 0 || rh <= 0) return false;
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  let tmin = 0.02;
+  let tmax = 0.96;
+  if (Math.abs(dx) < 1e-6) {
+    if (x1 < rx || x1 > rx + rw) return false;
+  } else {
+    const inv = 1 / dx;
+    let t1 = (rx - x1) * inv;
+    let t2 = (rx + rw - x1) * inv;
+    if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
+    if (t1 > tmin) tmin = t1;
+    if (t2 < tmax) tmax = t2;
+    if (tmin > tmax) return false;
+  }
+  if (Math.abs(dy) < 1e-6) {
+    if (y1 < ry || y1 > ry + rh) return false;
+  } else {
+    const inv = 1 / dy;
+    let t1 = (ry - y1) * inv;
+    let t2 = (ry + rh - y1) * inv;
+    if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
+    if (t1 > tmin) tmin = t1;
+    if (t2 < tmax) tmax = t2;
+    if (tmin > tmax) return false;
+  }
+  return true;
+}
+
+// Checks unobstructed line-of-sight against solid ground, pillars, closed gates & unbroken secret walls
+// (One-way thin platforms remain grapple-transparent so vertical shaft movement stays fluid.)
+export function hasLineOfSight(x1, y1, x2, y2) {
+  for (let i = 0; i < SOLIDS.length; i++) {
+    const s = SOLIDS[i];
+    if (s.type === 'platform') continue;
+    if (segmentIntersectsRect(x1, y1, x2, y2, s.x, s.y, s.w, s.h)) return false;
+  }
+  const dynBlockers = refreshDynamicBlockers();
+  for (let i = 0; i < dynBlockers.length; i++) {
+    const b = dynBlockers[i];
+    if (segmentIntersectsRect(x1, y1, x2, y2, b.x, b.y, b.w, b.h)) return false;
+  }
+  return true;
+}
+
 export function getGroundSurfaceY(cx, footY) {
   let bestY = WORLD_H;
   for (const s of SOLIDS) {
