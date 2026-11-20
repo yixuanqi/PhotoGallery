@@ -1,36 +1,27 @@
 name: Project catalog validation
-
 on:
   pull_request:
     paths:
-      - "docs/projects.json"
-      - "docs/projects.schema.json"
-      - "docs/web-projects/**"
-      - "docs/*/index.html"
-      - "scripts/validate-project-catalog.mjs"
-      - "scripts/check-star-courier.mjs"
-      - "scripts/smoke-gravity-mobile.mjs"
-      - "scripts/check-gravity-mobile.mjs"
-      - ".github/workflows/project-catalog-validation.yml"
+      - "docs/**"
+      - "scripts/**"
+      - ".github/workflows/**"
   push:
     branches: [main]
     paths:
-      - "docs/projects.json"
-      - "docs/projects.schema.json"
-      - "docs/web-projects/**"
-      - "docs/*/index.html"
-      - "scripts/validate-project-catalog.mjs"
-      - ".github/workflows/project-catalog-validation.yml"
+      - "docs/**"
+      - "scripts/**"
+      - ".github/workflows/**"
   workflow_dispatch:
-
 permissions:
   contents: read
-
+concurrency:
+  group: project-catalog-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   validate-project-catalog:
     name: Validate public project catalog and local entries
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -38,20 +29,29 @@ jobs:
           node-version: "22"
       - name: Validate catalog contract and local entry files
         run: node scripts/validate-project-catalog.mjs
-      - name: Validate galaxy black-hole arrival contract
+      - name: Validate galaxy portal and catalog consistency
         run: node scripts/check-galaxy-arrival.mjs
       - name: Validate Star Courier project
         run: node scripts/check-star-courier.mjs
       - name: Validate gravity-lens responsive controls
         run: node scripts/check-gravity-mobile.mjs
+      - name: Install browser smoke-test dependency
+        run: npm install --no-save --no-package-lock playwright-core@1.56.1
       - name: Smoke test gravity-lens mobile drawers
         run: |
-          npm install --no-save --no-package-lock playwright-core@1.56.1
-          CHROME_BIN="$(command -v google-chrome || command -v chromium)" node scripts/smoke-gravity-mobile.mjs
-      - name: Preserve mobile layout screenshots
+          CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME_BIN"
+          CHROME_BIN="$CHROME_BIN" node scripts/smoke-gravity-mobile.mjs
+      - name: Smoke test Ashen Bell Vow on desktop and mobile
+        run: |
+          CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME_BIN"
+          CHROME_BIN="$CHROME_BIN" node scripts/smoke-ashen-bell-vow.mjs
+      - name: Preserve browser regression screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: gravity-mobile-layout
-          path: screenshots/gravity/
+          name: project-browser-regression
+          path: screenshots/
+          retention-days: 30
           if-no-files-found: ignore
