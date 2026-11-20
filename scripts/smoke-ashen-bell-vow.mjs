@@ -28,6 +28,12 @@ async function smokeViewport(viewport, mobile) {
   });
   await page.goto(origin + "/ashen-bell-vow/", { waitUntil: "domcontentloaded", timeout: 45000 });
   await page.locator("#btn-start").waitFor({ state: "visible", timeout: 10000 });
+  // The title button exists in static HTML before the async room-data bootstrap finishes.
+  // Wait for resizeCanvas() to run so mobile tests do not race the seven room JSON fetches.
+  await page.waitForFunction(() => {
+    const canvas = document.getElementById("gameCanvas");
+    return canvas && canvas.width >= 320 && canvas.height >= 240;
+  }, null, { timeout: 15000 });
   const initial = await page.evaluate(() => {
     const canvas = document.getElementById("gameCanvas");
     return { title: document.title, canvasWidth: canvas.width, canvasHeight: canvas.height,
