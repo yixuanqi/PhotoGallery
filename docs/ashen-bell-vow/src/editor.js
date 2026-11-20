@@ -10,7 +10,7 @@ const statusPosEl = document.getElementById('status-pos');
 const statusInfoEl = document.getElementById('status-info');
 const toastEl = document.getElementById('ed-toast');
 
-const RECT_TOOLS = new Set(['ground', 'pillar', 'platform', 'crumble', 'secretWall', 'river']);
+const RECT_TOOLS = new Set(['ground', 'pillar', 'platform', 'crumble', 'secretWall', 'voidBarrier', 'river']);
 
 const state = {
   bundle: null, // { world, rooms: [...] }
@@ -142,6 +142,7 @@ function getRoomObjects(rm) {
   (rm.solids || []).forEach((o, i) => addRect('solid', rm.solids, i, o, o.w, o.h, true));
   (rm.crumblePlatforms || []).forEach((o, i) => addRect('crumble', rm.crumblePlatforms, i, o, o.w, o.h, true));
   (rm.secretWalls || []).forEach((o, i) => addRect('secretWall', rm.secretWalls, i, o, o.w, o.h, true));
+  (rm.voidBarriers || []).forEach((o, i) => addRect('voidBarrier', rm.voidBarriers, i, o, o.w, o.h, true));
   (rm.gates || []).forEach((o, i) => addRect('gate', rm.gates, i, o, o.w, o.h, true));
   (rm.rivers || []).forEach((o, i) => addRect('river', rm.rivers, i, o, o.w, 22, true));
   (rm.enemies || []).forEach((o, i) => {
@@ -276,6 +277,15 @@ function drawRoomContents(rm, isGhost = false) {
     ctx.lineWidth = 2 / state.cam.zoom;
     ctx.fillRect(ox + sw.x, oy + sw.y, sw.w, sw.h);
     ctx.strokeRect(ox + sw.x, oy + sw.y, sw.w, sw.h);
+  }
+
+  // Void Barriers
+  for (const vb of (rm.voidBarriers || [])) {
+    ctx.fillStyle = 'rgba(168, 85, 247, 0.34)';
+    ctx.strokeStyle = '#d8b4fe';
+    ctx.lineWidth = 2 / state.cam.zoom;
+    ctx.fillRect(ox + vb.x, oy + vb.y, vb.w, vb.h);
+    ctx.strokeRect(ox + vb.x, oy + vb.y, vb.w, vb.h);
   }
 
   // Gates
@@ -871,6 +881,10 @@ function createRectObject(tool, lx, ly, w, h) {
   } else if (tool === 'secretWall') {
     rm.secretWalls.push({ id: uid, x: lx, y: ly, w, h, maxHp: 3 });
     state.selection = { kind: 'secretWall', idx: rm.secretWalls.length - 1 };
+  } else if (tool === 'voidBarrier') {
+    if (!Array.isArray(rm.voidBarriers)) rm.voidBarriers = [];
+    rm.voidBarriers.push({ id: uid, x: lx, y: ly, w: Math.max(18, w), h });
+    state.selection = { kind: 'voidBarrier', idx: rm.voidBarriers.length - 1 };
   } else if (tool === 'river') {
     rm.rivers.push({ id: uid, x: lx, y: ly, w });
     state.selection = { kind: 'river', idx: rm.rivers.length - 1 };

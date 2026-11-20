@@ -6,8 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="screen-orientation" content="landscape" />
 <meta name="x5-orientation" content="landscape" />
-<title>灰钟残誓 v15.3 — 钩锁实心遮挡射线与Boss场地边界锁定修复</title>
-<link rel="stylesheet" href="./styles.css?v=15.3" />
+<title>灰钟残誓 v16.0 — 里程碑A：魂系残响灯影跑尸 · 绝技幽影穿身 · 老图回溯暗室</title>
+<link rel="stylesheet" href="./styles.css?v=16.0" />
 </head>
 <body>
 <div id="game-root">
@@ -21,6 +21,7 @@
           <span id="hp-text">100 / 100</span>
           <div style="display:flex;gap:5px;align-items:center;">
             <span id="ability-tag" class="ability-badge" title="已习得墨翼步：空中可再按 Space 二段跳">墨翼步</span>
+            <span id="ability-shade-tag" class="ability-badge shade" title="已习得幽影穿身：按 Shift 穿透暗蚀结界与敌人并触发残爆">幽影穿身</span>
             <span id="relic-tag" class="relic-badge">噬痛荆棘</span>
           </div>
         </div>
@@ -157,6 +158,8 @@
         <span class="legend-item"><span class="legend-dot" style="background:#64748b;"></span>未点燃祭坛</span>
         <span class="legend-item"><span class="legend-dot" style="background:#f59e0b;"></span>高空捷径 / 秘密奖励</span>
         <span class="legend-item"><span class="legend-dot" style="background:#f87171;"></span>首领殿堂</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#a855f7;box-shadow:0 0 6px #a855f7;"></span>暗蚀结界</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#bae6fd;border:1px solid #fde047;"></span>遗落残响灯影</span>
         <span class="legend-item"><span class="legend-dot" style="background:#ffffff;"></span>当前位置</span>
       </div>
       <button id="btn-close-map" class="primary-btn">收起舆图 [M]</button>
@@ -409,6 +412,6 @@
   }, 8000);
 })();
 </script>
-<script type="module" src="./src/main.js?v=15.3"></script>
+<script type="module" src="./src/main.js?v=16.0"></script>
 </body>
 </html>

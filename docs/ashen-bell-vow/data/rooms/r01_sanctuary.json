@@ -85,6 +85,13 @@
       "w": 220,
       "h": 22,
       "type": "platform"
+    },
+    {
+      "x": 20,
+      "y": 420,
+      "w": 114,
+      "h": 20,
+      "type": "pillar"
     }
   ],
   "crumblePlatforms": [],
@@ -128,6 +135,15 @@
       "y": 170,
       "name": "苍穹秘宝 · 古钟心核",
       "desc": "墨印上限 +1，弹反回血，居合/断钟返增伤 25%！"
+    },
+    {
+      "id": "pickup_relic_shade",
+      "kind": "relic",
+      "relicId": "shadecurtain",
+      "x": 64,
+      "y": 580,
+      "name": "暗室秘宝 · 幽影钟幕",
+      "desc": "解锁穿影圣物「幽影钟幕」，可在祭坛铭刻！"
     }
   ],
   "resonancePuzzles": [],
@@ -172,6 +188,12 @@
       "x": 195,
       "y": 468,
       "text": "「盲眼老铸钟匠 · 以残响淬炼断刃」"
+    },
+    {
+      "x": 145,
+      "y": 398,
+      "text": "「暗蚀结界 · 非幽影穿身不可渡」",
+      "hideWhenShadeDash": true
     }
   ],
   "props": {
@@ -205,6 +227,11 @@
         "x": 392,
         "y": 580,
         "count": 3
+      },
+      {
+        "x": 45,
+        "y": 580,
+        "count": 3
       }
     ],
     "boneCairns": [
@@ -218,6 +245,15 @@
       "name": "老铸钟匠 · 砺",
       "x": 195,
       "y": 580
+    }
+  ],
+  "voidBarriers": [
+    {
+      "id": "vb_sanctuary",
+      "x": 112,
+      "y": 440,
+      "w": 22,
+      "h": 140
     }
   ]
 }

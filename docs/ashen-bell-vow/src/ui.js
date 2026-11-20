@@ -1,7 +1,7 @@
 // HUD synchronization, parchment map rendering, modals, altar/relics & Vow Echoes flow
 import {
   COLORS, RELICS, RELIC_SYNERGIES, SMITH_UPGRADES, ACTION_META, ROOMS, SOLIDS, ALTARS, NPCS, LORE_TABLETS, PICKUPS_DEF,
-  SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF,
+  SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, VOID_BARRIERS,
   ABYSSAL_RIVERS, WORLD_W, WORLD_H, FLOOR_Y, WELL_BOTTOM_Y,
   MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H, ECHO_GRADE_ORDER
 } from './config.js';
@@ -28,6 +28,7 @@ export const HUD_DOM = {
   hpText: document.getElementById('hp-text'),
   relicTag: document.getElementById('relic-tag'),
   abilityTag: document.getElementById('ability-tag'),
+  abilityShadeTag: document.getElementById('ability-shade-tag'),
   soulFill: document.getElementById('soul-fill'),
   soulText: document.getElementById('soul-text'),
   flaskWrap: document.getElementById('flask-pips'),
@@ -116,7 +117,7 @@ export function refreshTitleSaveUI() {
     const pct = typeof data.explorePct === 'number' ? data.explorePct : 0;
     const relicCount = Array.isArray(data.unlockedRelics) ? data.unlockedRelics.length : 3;
     const bossTag = data.boss2Defeated ? ' · 2/2 Bosses' : data.bossDefeated ? ' · 1/2 Bosses' : '';
-    const wingTag = data.abilities && data.abilities.doubleJump ? ' · InkWing' : '';
+    const wingTag = (data.abilities && data.abilities.doubleJump ? ' · 墨翼步' : '') + (data.abilities && data.abilities.shadeDash ? ' · 幽影穿身' : '');
     HUD_DOM.titleSaveInfo.textContent = t('slot.selectedInfo', G.activeSaveSlot + 1, altar.shortName, pct, relicCount, RELICS.length, bossTag, wingTag);
     HUD_DOM.titleSaveInfo.style.display = 'block';
     HUD_DOM.btnContinue.style.display = 'inline-block';
@@ -152,6 +153,7 @@ export function syncHUD(force = false) {
   const totalPctStr = Math.max(0, Math.min(100, ((G.player.hp + G.player.grayHp) / G.player.maxHp) * 100)).toFixed(1) + '%';
   const hpTextStr = `${Math.ceil(G.player.hp)} / ${G.player.maxHp}` + (G.player.grayHp >= 1 ? ` (+${Math.ceil(G.player.grayHp)} 内伤)` : '');
   const hasDoubleJump = !!(G.worldState && G.worldState.abilities.doubleJump);
+  const hasShadeDash = !!(G.worldState && G.worldState.abilities.shadeDash);
 
   if (force || hudCache.realPctStr !== realPctStr) {
     hudCache.realPctStr = realPctStr;
@@ -176,6 +178,10 @@ export function syncHUD(force = false) {
   if (force || hudCache.hasDoubleJump !== hasDoubleJump) {
     hudCache.hasDoubleJump = hasDoubleJump;
     HUD_DOM.abilityTag.classList.toggle('unlocked', hasDoubleJump);
+  }
+  if (HUD_DOM.abilityShadeTag && (force || hudCache.hasShadeDash !== hasShadeDash)) {
+    hudCache.hasShadeDash = hasShadeDash;
+    HUD_DOM.abilityShadeTag.classList.toggle('unlocked', hasShadeDash);
   }
 
   const soulPctStr = Math.max(0, Math.min(100, (G.player.soul / G.player.maxSoul) * 100)).toFixed(1) + '%';
@@ -207,9 +213,11 @@ export function syncHUD(force = false) {
   }
 
   const echoesVal = G.worldState ? (G.worldState.echoes || 0) : 0;
-  if (HUD_DOM.echoesText && (force || hudCache.echoesVal !== echoesVal)) {
-    hudCache.echoesVal = echoesVal;
-    HUD_DOM.echoesText.textContent = String(echoesVal);
+  const lostAmt = (G.worldState && G.worldState.lostEchoes) ? G.worldState.lostEchoes.amount : 0;
+  const echoHudStr = lostAmt > 0 ? `${echoesVal} (遗${lostAmt})` : String(echoesVal);
+  if (HUD_DOM.echoesText && (force || hudCache.echoHudStr !== echoHudStr)) {
+    hudCache.echoHudStr = echoHudStr;
+    HUD_DOM.echoesText.textContent = echoHudStr;
   }
 
   const sealWrap = HUD_DOM.sealWrap;
@@ -475,6 +483,12 @@ export function renderParchmentMap(targetCanvas, detailed = false) {
     mctx.fillRect(padX + sw.x * sx, padTop + sw.y * sy, Math.max(2.5, sw.w * sx), Math.max(4, sw.h * sy));
   }
 
+  // Void Barriers (violet vertical markers)
+  for (const vb of VOID_BARRIERS) {
+    mctx.fillStyle = G.worldState.abilities.shadeDash ? 'rgba(216, 180, 254, 0.58)' : '#a855f7';
+    mctx.fillRect(padX + vb.x * sx, padTop + vb.y * sy, Math.max(2.6, vb.w * sx), Math.max(5, vb.h * sy));
+  }
+
   // Crumbling Stone Platforms
   if (G.crumblePlatforms) {
     mctx.fillStyle = detailed ? 'rgba(245, 158, 11, 0.72)' : 'rgba(245, 158, 11, 0.6)';
@@ -553,6 +567,23 @@ export function renderParchmentMap(targetCanvas, detailed = false) {
     }
   }
 
+  // Lost Echo Lantern Shade Marker (always visible above fog so corpse-run route is clear)
+  if (G.worldState.lostEchoes && G.worldState.lostEchoes.amount > 0) {
+    const lx = padX + G.worldState.lostEchoes.x * sx;
+    const ly = padTop + G.worldState.lostEchoes.y * sy;
+    const pulseL = 1 + Math.sin(G.globalTime * 7) * 0.25;
+    const rL = (detailed ? 5.2 : 2.9) * pulseL;
+    mctx.save();
+    mctx.translate(lx, ly);
+    mctx.rotate(Math.PI * 0.25);
+    mctx.fillStyle = COLORS.cyanBright;
+    mctx.strokeStyle = COLORS.goldBright;
+    mctx.lineWidth = detailed ? 1.5 : 1;
+    mctx.fillRect(-rL, -rL, rL * 2, rL * 2);
+    mctx.strokeRect(-rL, -rL, rL * 2, rL * 2);
+    mctx.restore();
+  }
+
   // Live Player Marker (drawn on top of fog)
   if (G.player) {
     const px = padX + (G.player.x + G.player.w / 2) * sx;
@@ -577,7 +608,8 @@ export function renderParchmentMap(targetCanvas, detailed = false) {
     const secretCount = G.worldState.pickups.filter(p => p.collected).length;
     document.getElementById('map-modal-sub').textContent =
       `晦渊全境 · 已探索 ${getExplorationPercent()}% · 祭坛 ${litCount}/${ALTARS.length} · 秘宝 ${secretCount}/${PICKUPS_DEF.length}` +
-      (G.worldState.abilities.doubleJump ? ' · 已习得墨翼步' : '') +
+      (G.worldState.abilities.doubleJump ? ' · 墨翼步' : '') +
+      (G.worldState.abilities.shadeDash ? ' · 幽影穿身' : '') +
       (G.worldState.bossDefeated ? ' · 钟井已通' : '');
   }
 }
@@ -851,7 +883,8 @@ export function renderRelicChoices() {
     bellthread: '尚未发现。传闻藏于起点左侧高空的墨蚀壁龛之内，需以钩索攀跃并击碎裂纹暗墙。',
     bellcore: '尚未发现。传闻悬于第一区悬灯之上的苍穹残钟阁，唯有习得「墨翼步」方可踏足。',
     clapper: '尚未发现。需在枯骨长廊限时齐鸣三口青铜共鸣钟，震开封印钟笼。',
-    ironheart: '尚未发现。需在沉渊钟井上层钟阁限时齐鸣三口青铜共鸣钟，解开钟笼封印。'
+    ironheart: '尚未发现。需在沉渊钟井上层钟阁限时齐鸣三口青铜共鸣钟，解开钟笼封印。',
+    shadecurtain: '尚未发现。藏于起点熄灯祭坛最西侧的暗蚀结界之后，需习得「幽影穿身」穿行取得。'
   };
 
   for (const relic of RELICS) {
@@ -1220,7 +1253,9 @@ export function showDeath() {
   } else {
     retryEchoBtn.style.display = 'none';
     retryAltarBtn.textContent = '于祭坛重燃';
-    deathSub.textContent = '残破人偶坠入墨蚀深渊';
+    deathSub.textContent = (G.worldState && G.worldState.lastDeathEchoMsg)
+      ? G.worldState.lastDeathEchoMsg
+      : '残破人偶坠入墨蚀深渊';
   }
   document.getElementById('death-modal').classList.remove('hidden');
 }

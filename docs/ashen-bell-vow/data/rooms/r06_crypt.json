@@ -89,7 +89,7 @@
     },
     {
       "x": 385,
-      "y": 490,
+      "y": 530,
       "w": 130,
       "h": 22,
       "type": "platform"
@@ -109,11 +109,11 @@
       "type": "platform"
     },
     {
-      "x": 30,
+      "x": 0,
       "y": 520,
-      "w": 130,
+      "w": 182,
       "h": 22,
-      "type": "platform"
+      "type": "pillar"
     }
   ],
   "crumblePlatforms": [
@@ -153,10 +153,19 @@
       "id": "pickup_echo_crypt",
       "kind": "echoCache",
       "echoAmount": 220,
-      "x": 205,
-      "y": 410,
+      "x": 78,
+      "y": 640,
       "name": "秘库古钟残响匣",
       "desc": "获得大量残响，可回老铸钟匠处淬炼断刃！"
+    },
+    {
+      "id": "pickup_shade_dash",
+      "kind": "ability",
+      "abilityId": "shadeDash",
+      "x": 195,
+      "y": 410,
+      "name": "绝技 · 幽影穿身",
+      "desc": "闪避进化！可穿透「暗蚀结界」与敌人身躯并触发「幽影残爆」！"
     }
   ],
   "resonancePuzzles": [],
@@ -257,6 +266,12 @@
       "x": 450,
       "y": 115,
       "text": "「暗梯直通礼拜堂前 · 断索祭坛 ↑」"
+    },
+    {
+      "x": 215,
+      "y": 355,
+      "text": "「习得幽影穿身 · Shift 穿破下方暗蚀结界」",
+      "hideWhenShadeDash": true
     }
   ],
   "props": {
@@ -302,5 +317,14 @@
       660,
       1495
     ]
-  }
+  },
+  "voidBarriers": [
+    {
+      "id": "vb_crypt",
+      "x": 160,
+      "y": 542,
+      "w": 22,
+      "h": 98
+    }
+  ]
 }

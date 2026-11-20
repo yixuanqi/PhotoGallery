@@ -1,5 +1,5 @@
 // World hazards, pendulums, Abyssal River, projectiles, talismans, tides & camera
-import { COLORS, ROOM_THEMES, SOLIDS, WORLD_W, WORLD_H, FLOOR_Y, PENDULUMS, ABYSSAL_RIVERS, PUDDLES } from './config.js';
+import { COLORS, ROOM_THEMES, SOLIDS, VOID_BARRIERS, WORLD_W, WORLD_H, FLOOR_Y, PENDULUMS, ABYSSAL_RIVERS, PUDDLES } from './config.js';
 import {
   G, hooks, getLivingFoes, getAwakeBoss, getRelicStats, scheduleOutcome, addShake, punchZoom
 } from './state.js';
@@ -12,7 +12,8 @@ import {
 import { aabbOverlap, getGroundSurfaceY } from './physics.js';
 import {
   applyIncomingAttackToPlayer, damageEnemyHP, addPostureToEnemy,
-  rallyPlayerGrayHp, damageSecretWall, tryQuellChapelTideByLantern, ringResonanceBell
+  rallyPlayerGrayHp, damageSecretWall, tryQuellChapelTideByLantern, ringResonanceBell,
+  dropPlayerEchoesOnDeath, reclaimLostEchoes
 } from './combat.js';
 
 export function updateWorldEffects(dt) {
@@ -123,6 +124,7 @@ export function updateWorldEffects(dt) {
         G.player.deathTimer = 0.65;
         G.player.vx = 0;
         G.player.vy = -120;
+        dropPlayerEchoesOnDeath(true);
         scheduleOutcome(hooks.showDeath, 650, false);
       } else {
         G.player.x = G.player.lastSafeX;
@@ -181,6 +183,21 @@ export function updateWorldEffects(dt) {
           rallyPlayerGrayHp(isCrimson ? 18 : 10);
           spawnParticles(t.x + t.w / 2, t.y + t.h * 0.45, 16, { color: pCol, speed: 240, spark: true, life: 0.34 });
           spawnShockwave(t.x + t.w / 2, t.y + t.h * 0.45, isCrimson ? 70 : 58, pCol, 2.8, 0.22);
+        }
+      }
+
+      // Reclaim Lost Echo Lantern Shade with Soul Wave!
+      if (G.worldState && G.worldState.lostEchoes && !G.echoSession) {
+        const le = G.worldState.lostEchoes;
+        if (aabbOverlap(pBox, { x: le.x - 24, y: le.y - 28, w: 48, h: 56 })) reclaimLostEchoes();
+      }
+
+      // Void Barriers absorb Soul Waves
+      for (let vi = 0; vi < VOID_BARRIERS.length; vi++) {
+        if (aabbOverlap(pBox, VOID_BARRIERS[vi])) {
+          pr.life = 0;
+          spawnParticles(pr.x, pr.y, 12, { color: COLORS.violetBright, speed: 180, spark: true, life: 0.3 });
+          break;
         }
       }
 

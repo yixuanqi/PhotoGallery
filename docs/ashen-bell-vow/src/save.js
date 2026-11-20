@@ -129,8 +129,9 @@ export function saveProgress(showToast = false) {
     bonusMaxHp: G.worldState.bonusMaxHp || 0,
     bonusMaxSoul: G.worldState.bonusMaxSoul || 0,
     echoes: G.worldState.echoes || 0,
+    lostEchoes: G.worldState.lostEchoes ? { ...G.worldState.lostEchoes } : null,
     smithUpgrades: { ...(G.worldState.smithUpgrades || { blade: 0, posture: 0, forge: 0 }) },
-    abilities: { doubleJump: !!G.worldState.abilities.doubleJump },
+    abilities: { doubleJump: !!G.worldState.abilities.doubleJump, shadeDash: !!G.worldState.abilities.shadeDash },
     unlockedRelics: [...G.worldState.unlockedRelics],
     exploredStr,
     explorePct: getExplorationPercent()
@@ -164,12 +165,23 @@ export function applySaveData(data) {
   G.worldState.bonusMaxHp = Number(data.bonusMaxHp) || 0;
   G.worldState.bonusMaxSoul = Number(data.bonusMaxSoul) || 0;
   G.worldState.echoes = Math.max(0, Number(data.echoes) || 0);
+  G.worldState.lostEchoes = (data.lostEchoes && Number(data.lostEchoes.amount) > 0)
+    ? {
+        amount: Math.floor(Number(data.lostEchoes.amount)),
+        x: Number(data.lostEchoes.x) || 330,
+        y: Number(data.lostEchoes.y) || 548,
+        roomId: data.lostEchoes.roomId || 'r01_sanctuary'
+      }
+    : null;
   G.worldState.smithUpgrades = {
     blade: Math.max(0, Math.min(5, Number(data.smithUpgrades && data.smithUpgrades.blade) || 0)),
     posture: Math.max(0, Math.min(3, Number(data.smithUpgrades && data.smithUpgrades.posture) || 0)),
     forge: Math.max(0, Math.min(3, Number(data.smithUpgrades && data.smithUpgrades.forge) || 0))
   };
-  G.worldState.abilities = { doubleJump: !!(data.abilities && data.abilities.doubleJump) };
+  G.worldState.abilities = {
+    doubleJump: !!(data.abilities && data.abilities.doubleJump),
+    shadeDash: !!(data.abilities && data.abilities.shadeDash)
+  };
   G.worldState.unlockedRelics = new Set(Array.isArray(data.unlockedRelics) && data.unlockedRelics.length ? data.unlockedRelics : ['thorn', 'mirror', 'ember']);
 
   const brokenSet = new Set(Array.isArray(data.brokenWalls) ? data.brokenWalls : []);

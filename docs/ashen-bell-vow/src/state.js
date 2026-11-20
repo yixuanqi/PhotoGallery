@@ -142,8 +142,10 @@ export function createFreshWorldState() {
     bonusMaxHp: 0,
     bonusMaxSoul: 0,
     echoes: 0,
+    lostEchoes: null,
+    lastDeathEchoMsg: '',
     smithUpgrades: { blade: 0, posture: 0, forge: 0 },
-    abilities: { doubleJump: false },
+    abilities: { doubleJump: false, shadeDash: false },
     unlockedRelics: new Set(['thorn', 'mirror', 'ember']),
     explored: Array.from({ length: MAP_ROWS }, () => new Array(MAP_COLS).fill(false))
   };
@@ -192,18 +194,22 @@ export function getRelicStats() {
   let postureDmgMult = active.reduce((acc, r) => acc * (r.postureDmgMult || 1.0), 1.0);
   let iaiChargeTime = Math.min(0.42, ...active.map(r => r.iaiChargeTime || 0.42));
   let bellTimerBonus = active.reduce((acc, r) => acc + (r.bellTimerBonus || 0), 0);
+  let shadeDashCd = Math.min(1.6, ...active.map(r => r.shadeDashCd || 1.6));
+  let shadeBurstMult = active.reduce((acc, r) => acc * (r.shadeBurstMult || 1.0), 1.0);
+  let shadePassHeal = active.reduce((acc, r) => acc + (r.shadePassHeal || 0), 0);
 
   return {
     parryWindowMs, blockWindowMs, parryPostureMult, parryReflectDmg, parryHeal,
     grayDuration, rallyMult, maxFlasks, maxSeals, execHealPct, execFullSoul,
     grappleCd, spellCost, quakeCost, spellPostureBonus, heavySkillMult,
     soulGainMult, spellDmgMult, spellRadiusMult, postureDmgMult,
-    iaiChargeTime, bellTimerBonus,
+    iaiChargeTime, bellTimerBonus, shadeDashCd, shadeBurstMult, shadePassHeal,
     synergies,
     synGrappleQuake: !!synFlags.synGrappleQuake,
     synMirrorEmber: !!synFlags.synMirrorEmber,
     synBloodIai: !!synFlags.synBloodIai,
-    synCoreCounter: !!synFlags.synCoreCounter
+    synCoreCounter: !!synFlags.synCoreCounter,
+    synShadeThread: !!synFlags.synShadeThread
   };
 }
 

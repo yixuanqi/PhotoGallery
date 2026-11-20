@@ -8,7 +8,9 @@ export const COLORS = {
   crimson: '#dc2626',
   crimsonBright: '#f87171',
   cyan: '#38bdf8',
-  cyanBright: '#bae6fd'
+  cyanBright: '#bae6fd',
+  violet: '#a855f7',
+  violetBright: '#d8b4fe'
 };
 
 export const RELICS = [
@@ -120,6 +122,23 @@ export const RELICS = [
     postureDmgMult: 1.25,
     iaiChargeTime: 0.30,
     hidden: true
+  },
+  {
+    id: 'shadecurtain',
+    name: '幽影钟幕',
+    desc: '暗室秘宝 · 穿影刺杀流：幽影穿身残爆冷却缩至 0.95 秒，穿身残爆伤害与削势 +55%，穿敌后回血 8 点并刷新空中闪避。',
+    parryWindowMs: 140,
+    blockWindowMs: 260,
+    parryPostureMult: 1.05,
+    parryReflectDmg: 0,
+    grayDuration: 3.6,
+    rallyMult: 1.15,
+    maxFlasks: 3,
+    execHealPct: 0.14,
+    shadeDashCd: 0.95,
+    shadeBurstMult: 1.55,
+    shadePassHeal: 8,
+    hidden: true
   }
 ];
 
@@ -155,6 +174,7 @@ export const SHORTCUT_GATE_DEF = { id: 'gate_skyway', x: 1380, y: 0, w: 0, h: 0,
 export const CHAPEL_EXIT_GATE_DEF = { id: 'gate_chapel_exit', x: 3740, y: 480, w: 0, h: 0 };
 export const FOUNDRY_ENTRY_GATE_DEF = { id: 'gate_foundry_entry', x: 5540, y: 1240, w: 0, h: 0 };
 export const SECRET_WALLS_DEF = [];
+export const VOID_BARRIERS = [];
 export const PICKUPS_DEF = [];
 export const RESONANCE_PUZZLES_DEF = [];
 export const CRUMBLE_PLATFORMS_DEF = [];
@@ -199,6 +219,13 @@ export const RELIC_SYNERGIES = [
     name: '碎心绝响',
     flag: 'synCoreCounter',
     desc: '弹反派生「断钟返」架势摧毁提升至 1.5 倍，且命中瞬间立即引爆目标身上的墨印符箓造成 1.35 倍爆伤！'
+  },
+  {
+    id: 'shade_thread',
+    relics: ['shadecurtain', 'bellthread'],
+    name: '墨影断鸣',
+    flag: 'synShadeThread',
+    desc: '幽影穿身穿过敌人瞬间立即刷新幽丝钩索冷却，且 2.2 秒内下一次钩索突袭触发 2 倍破势与强效魂火汲取！'
   }
 ];
 

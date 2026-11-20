@@ -289,6 +289,12 @@
     display: none;
   }
 
+  .ability-badge.shade {
+    color: #e9d5ff;
+    background: rgba(168, 85, 247, 0.22);
+    border-color: rgba(216, 180, 254, 0.58);
+  }
+
   .ability-badge.unlocked {
     display: inline-block;
   }

@@ -1,6 +1,6 @@
 // Player movement, buffering, combo/iai/parry/grapple/spell state machine
 import {
-  COLORS, GRAVITY, FLOOR_Y, ALTARS, NPCS, LORE_TABLETS, SHORTCUT_GATE_DEF, ABYSSAL_RIVERS, PUDDLES
+  COLORS, GRAVITY, FLOOR_Y, ALTARS, NPCS, LORE_TABLETS, SHORTCUT_GATE_DEF, VOID_BARRIERS, ABYSSAL_RIVERS, PUDDLES
 } from './config.js';
 import { G, hooks, getLivingFoes, getRelicStats, markMapExplored, addShake, punchZoom } from './state.js';
 import { audio } from './audio.js';
@@ -8,12 +8,13 @@ import { isActionHeld, consumeActionPress, consumeActionRelease } from './input.
 import {
   updateCloak, spawnParticles, spawnShockwave, spawnFloatText, spawnWeatherRipple
 } from './vfx.js';
-import { moveAndCollide } from './physics.js';
+import { aabbOverlap, moveAndCollide } from './physics.js';
+import { triggerHaptic } from './input.js';
 import {
   findBestGrappleTarget, performExecution, updatePlayerActiveAttack,
   evaluatePlayerSealLunge, triggerPlayerAttack, openSkywayShortcut,
   collectPickup, isPickupUnlocked, ringResonanceBell, castBellQuake, triggerMiniBellQuake,
-  damageEnemyHP, addPostureToEnemy
+  damageEnemyHP, addPostureToEnemy, reclaimLostEchoes
 } from './combat.js';
 
 export function capturePlayerInputBuffers() {
@@ -78,6 +79,10 @@ export function updatePlayer(dt) {
     if (G.player.parryStreakTimer <= 0) G.player.parryStreak = 0;
   }
   if (G.player.dashCd > 0) G.player.dashCd -= dt;
+  if (G.player.shadeDashCd > 0) G.player.shadeDashCd = Math.max(0, G.player.shadeDashCd - dt);
+  if (G.player.shadePassTimer > 0) G.player.shadePassTimer = Math.max(0, G.player.shadePassTimer - dt);
+  if (G.player.shadeGrappleBoostTimer > 0) G.player.shadeGrappleBoostTimer = Math.max(0, G.player.shadeGrappleBoostTimer - dt);
+  if (G.player.barrierHintCd > 0) G.player.barrierHintCd = Math.max(0, G.player.barrierHintCd - dt);
   if (G.player.iframeTimer > 0) G.player.iframeTimer -= dt;
   if (G.player.hurtTimer > 0) {
     G.player.hurtTimer -= dt;
@@ -249,22 +254,37 @@ export function updatePlayer(dt) {
     spawnParticles(sx, sy, 16, { color: COLORS.cyanBright, speed: 240, spark: true, life: 0.32, grav: 40 });
   }
 
-  // Ink Dash [Shift] (buffered)
+  // Ink Dash / Evolved Shade Cloak Dash [Shift] (buffered)
   if (G.player.dashBufTimer > 0 && G.player.dashCd <= 0 && G.player.detonateLungeTimer <= 0 && G.player.iaiLungeTimer <= 0 && G.player.grappleState === 'none' && G.player.healTimer <= 0) {
     G.player.dashBufTimer = 0;
     G.player.dashDir = moveDir !== 0 ? moveDir : G.player.facing;
     G.player.facing = G.player.dashDir;
-    G.player.dashTimer = 0.16;
+    const hasShade = !!(G.worldState && G.worldState.abilities.shadeDash);
+    const rsDash = getRelicStats();
+    const triggerShadeBurst = hasShade && G.player.shadeDashCd <= 0;
+    G.player.dashTimer = hasShade ? 0.18 : 0.16;
     G.player.dashCd = 0.44;
-    G.player.iframeTimer = Math.max(G.player.iframeTimer, 0.20);
+    G.player.shadePassTimer = hasShade ? 0.24 : 0;
+    G.player.shadeDashActive = triggerShadeBurst;
+    if (triggerShadeBurst) {
+      G.player.shadeDashCd = rsDash.shadeDashCd;
+      G.player.shadeHitIds = new Set();
+      G.player.iframeTimer = Math.max(G.player.iframeTimer, 0.28);
+      audio.playShadeDash();
+      spawnShockwave(G.player.x + G.player.w / 2, G.player.y + 28, 62, COLORS.violetBright, 3.2, 0.22);
+      spawnParticles(G.player.x + G.player.w / 2, G.player.y + 28, 16, { color: COLORS.violetBright, speed: 210, spark: true, grav: 0, life: 0.34 });
+    } else {
+      G.player.shadeHitIds = null;
+      G.player.iframeTimer = Math.max(G.player.iframeTimer, hasShade ? 0.22 : 0.20);
+      audio.playSlash(1.32);
+      spawnParticles(G.player.x + G.player.w / 2, G.player.y + 28, 12, { color: COLORS.ink, speed: 160, grav: 0, life: 0.32 });
+    }
     G.player.parryActive = false;
     G.player.activeAttack = null;
     G.player.isCharging = false;
     G.player.chargeTime = 0;
     G.player.squashX = 1.32;
     G.player.squashY = 0.76;
-    audio.playSlash(1.32);
-    spawnParticles(G.player.x + G.player.w / 2, G.player.y + 28, 12, { color: COLORS.ink, speed: 160, grav: 0, life: 0.32 });
   }
 
   // Parry [K] (buffered)
@@ -416,9 +436,15 @@ export function updatePlayer(dt) {
           audio.playHit(false);
           G.hitstopTimer = 0.035;
           addShake(5.5);
-          damageEnemyHP(foe, 12, true);
-          addPostureToEnemy(foe, 18);
-          G.player.soul = Math.min(G.player.maxSoul, G.player.soul + 14);
+          const boosted = G.player.shadeGrappleBoostTimer > 0;
+          G.player.shadeGrappleBoostTimer = 0;
+          damageEnemyHP(foe, boosted ? 24 : 12, true);
+          addPostureToEnemy(foe, boosted ? 36 : 18);
+          G.player.soul = Math.min(G.player.maxSoul, G.player.soul + (boosted ? 26 : 14));
+          if (boosted) {
+            spawnShockwave(foe.x + foe.w / 2, foe.y + foe.h * 0.45, 76, COLORS.violetBright, 3.6, 0.26);
+            spawnFloatText(foe.x + foe.w / 2, foe.y - 36, '羁绊 · 墨影断鸣！', COLORS.violetBright, 18, 0.9);
+          }
           if (foe.kind === 'wraith' && foe.state === 'windup') {
             foe.state = 'recover';
             foe.stateTimer = 0.85;
@@ -452,10 +478,15 @@ export function updatePlayer(dt) {
     G.afterimages.push({ x: G.player.x, y: G.player.y, facing: G.player.facing, life: 0.18, maxLife: 0.18, color: COLORS.goldBright });
   } else if (G.player.dashTimer > 0) {
     G.player.dashTimer -= dt;
-    G.player.vx = G.player.dashDir * 680;
+    const isShade = !!G.player.shadeDashActive;
+    G.player.vx = G.player.dashDir * (isShade ? 740 : 680);
     G.player.vy = 0;
-    if (Math.random() < 0.75) {
-      G.afterimages.push({ x: G.player.x, y: G.player.y, facing: G.player.facing, life: 0.18, maxLife: 0.18, color: COLORS.ink });
+    if (Math.random() < 0.8) {
+      G.afterimages.push({ x: G.player.x, y: G.player.y, facing: G.player.facing, life: 0.2, maxLife: 0.2, color: isShade ? COLORS.violetBright : COLORS.ink });
+    }
+    if (G.player.dashTimer <= 0) {
+      G.player.shadeDashActive = false;
+      G.player.shadeHitIds = null;
     }
   } else {
     // Standard Run & Air Control
@@ -623,6 +654,57 @@ export function updatePlayer(dt) {
 
   updateCloak(G.player.cloak, footMidX - G.player.facing * 5, G.player.y + 18 + G.player.landCrouch * 5, G.player.facing, -G.player.vx * 0.45 + brakeWhip, dt);
   updateCloak(G.player.scarf, footMidX - G.player.facing * 3, G.player.y + 16 + G.player.landCrouch * 5, G.player.facing, -G.player.vx * 0.6 - G.player.facing * 60 + brakeWhip * 1.15, dt);
+
+  // Shade Cloak Combat Burst when phasing through enemies + Barrier pass feedback
+  if (G.player.dashTimer > 0 && G.player.shadeDashActive && G.player.shadeHitIds) {
+    const rsShade = getRelicStats();
+    const pBox = { x: G.player.x - 8, y: G.player.y - 4, w: G.player.w + 16, h: G.player.h + 8 };
+    for (const foe of getLivingFoes()) {
+      if (G.player.shadeHitIds.has(foe.id)) continue;
+      if (aabbOverlap(pBox, foe)) {
+        G.player.shadeHitIds.add(foe.id);
+        const fx = foe.x + foe.w * 0.5;
+        const fy = foe.y + foe.h * 0.45;
+        audio.playShadeBurst();
+        triggerHaptic('heavyHit', 0.85);
+        G.hitstopTimer = Math.max(G.hitstopTimer, 0.036);
+        addShake(7.5);
+        damageEnemyHP(foe, Math.round(24 * rsShade.shadeBurstMult), true);
+        addPostureToEnemy(foe, Math.round(26 * rsShade.shadeBurstMult));
+        G.player.soul = Math.min(G.player.maxSoul, G.player.soul + Math.round(16 * rsShade.soulGainMult));
+        if (rsShade.shadePassHeal > 0) {
+          G.player.hp = Math.min(G.player.maxHp, G.player.hp + rsShade.shadePassHeal);
+          G.player.dashCd = 0;
+        }
+        if (rsShade.synShadeThread) {
+          G.player.grappleCd = 0;
+          G.player.shadeGrappleBoostTimer = 2.2;
+        }
+        spawnShockwave(fx, fy, 86, COLORS.violetBright, 3.8, 0.28);
+        spawnParticles(fx, fy, 20, { color: COLORS.violetBright, speed: 280, spark: true, life: 0.4 });
+        spawnParticles(fx, fy, 12, { color: COLORS.ink, speed: 200, grav: 240, life: 0.38 });
+        spawnFloatText(fx, foe.y - 24, '幽影残爆!', COLORS.violetBright, 19, 0.85);
+      }
+    }
+  }
+  if (G.player.dashTimer > 0 && G.worldState && !G.worldState.abilities.shadeDash && G.player.barrierHintCd <= 0) {
+    const probe = { x: G.player.x - 8, y: G.player.y, w: G.player.w + 16, h: G.player.h };
+    for (let i = 0; i < VOID_BARRIERS.length; i++) {
+      if (aabbOverlap(probe, VOID_BARRIERS[i])) {
+        G.player.barrierHintCd = 1.2;
+        spawnFloatText(VOID_BARRIERS[i].x + 11, G.player.y - 24, '暗蚀结界 · 需于残钟地窖习得「幽影穿身」', COLORS.violetBright, 16, 1.35);
+        break;
+      }
+    }
+  }
+
+  // Touch-Reclaim Lost Echo Lantern Shade
+  if (G.worldState && G.worldState.lostEchoes && !G.echoSession) {
+    const le = G.worldState.lostEchoes;
+    if (Math.hypot((G.player.x + G.player.w * 0.5) - le.x, (G.player.y + G.player.h * 0.5) - le.y) < 48) {
+      reclaimLostEchoes();
+    }
+  }
 
   // Update 2D Map Exploration & Touch-Collect Glowing Pickups
   markMapExplored(G.player.x + G.player.w / 2, G.player.y + G.player.h / 2);

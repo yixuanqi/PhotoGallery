@@ -2,7 +2,7 @@
 import {
   COLORS, SOLIDS, ALTARS, NPCS, ALTAR_POS, LORE_TABLETS,
   SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF,
-  PENDULUMS, ABYSSAL_RIVERS, WALL_INSCRIPTIONS, GRAPPLE_ANCHORS,
+  PENDULUMS, VOID_BARRIERS, ABYSSAL_RIVERS, WALL_INSCRIPTIONS, GRAPPLE_ANCHORS,
   PUDDLES, BANNERS, CANDLE_CLUSTERS, BONE_CAIRNS, WORLD_W, FLOOR_Y, WELL_BOTTOM_Y
 } from './config.js';
 import { G, getAwakeBoss, getRelicStats } from './state.js';
@@ -60,6 +60,8 @@ export function render() {
   drawChapelExitGate();
   drawFoundryEntryGate();
   drawSecretWalls();
+  drawVoidBarriers();
+  drawLostEchoes();
   drawPickups();
   drawResonancePuzzles();
   drawLoreTablets();
@@ -698,6 +700,7 @@ function drawWallInscriptions() {
   for (const ins of WALL_INSCRIPTIONS) {
     if (ins.hideWhenShortcutOpen && G.worldState && G.worldState.shortcutOpen) continue;
     if (ins.hideWhenDoubleJump && G.worldState && G.worldState.abilities.doubleJump) continue;
+    if (ins.hideWhenShadeDash && G.worldState && G.worldState.abilities.shadeDash) continue;
     if (ins.hideWhenPuzzleSolved && G.worldState && G.worldState.solvedPuzzles && G.worldState.solvedPuzzles.has(ins.hideWhenPuzzleSolved)) continue;
     if (ins.x < G.cam.x - 180 || ins.x > G.cam.x + G.canvasW + 180) continue;
     const dist = G.player ? Math.abs((G.player.x + G.player.w / 2) - ins.x) : 999;
@@ -1026,6 +1029,93 @@ function drawSecretWalls() {
   }
 }
 
+function drawVoidBarriers() {
+  if (!VOID_BARRIERS.length) return;
+  const unlocked = !!(G.worldState && G.worldState.abilities.shadeDash);
+  for (let i = 0; i < VOID_BARRIERS.length; i++) {
+    const vb = VOID_BARRIERS[i];
+    if (vb.x + vb.w < G.cam.x - 80 || vb.x > G.cam.x + G.canvasW + 80) continue;
+    const cx = vb.x + vb.w * 0.5;
+    const cy = vb.y + vb.h * 0.5;
+    G.ctx.save();
+    drawGlowSprite('violet', cx, cy, Math.max(44, vb.h * 0.52), unlocked ? 0.44 : 0.62);
+    // Obsidian-violet ink curtain body
+    const grad = G.ctx.createLinearGradient(vb.x, vb.y, vb.x + vb.w, vb.y);
+    grad.addColorStop(0, 'rgba(30, 12, 48, 0.35)');
+    grad.addColorStop(0.5, 'rgba(10, 5, 18, 0.94)');
+    grad.addColorStop(1, 'rgba(30, 12, 48, 0.35)');
+    G.ctx.fillStyle = grad;
+    G.ctx.fillRect(vb.x, vb.y, vb.w, vb.h);
+    // Shimmering vertical void-ink streams
+    G.ctx.strokeStyle = unlocked ? 'rgba(216, 180, 254, 0.72)' : 'rgba(168, 85, 247, 0.88)';
+    G.ctx.lineWidth = 1.8;
+    boilLine(G.ctx, vb.x + 3, vb.y, vb.x + 3, vb.y + vb.h, 9600 + i * 31, 1.8, 5);
+    boilLine(G.ctx, vb.x + vb.w - 3, vb.y, vb.x + vb.w - 3, vb.y + vb.h, 9650 + i * 31, 1.8, 5);
+    // Rising spectral void particles inside the curtain
+    G.ctx.fillStyle = COLORS.violetBright;
+    for (let k = 0; k < 5; k++) {
+      const p = ((G.globalTime * 0.65 + k * 0.21 + i * 0.13) % 1);
+      const px = cx + Math.sin(G.globalTime * 5 + k * 2.1) * (vb.w * 0.28);
+      const py = vb.y + vb.h - p * vb.h;
+      G.ctx.globalAlpha = Math.sin(p * Math.PI) * 0.85;
+      G.ctx.beginPath(); G.ctx.arc(px, py, 2.2, 0, Math.PI * 2); G.ctx.fill();
+    }
+    // Top & bottom anchor seal plates
+    G.ctx.globalAlpha = 1;
+    G.ctx.fillStyle = '#1b1426';
+    G.ctx.strokeStyle = COLORS.violetBright;
+    G.ctx.lineWidth = 1.4;
+    G.ctx.fillRect(vb.x - 4, vb.y - 3, vb.w + 8, 7);
+    G.ctx.strokeRect(vb.x - 4, vb.y - 3, vb.w + 8, 7);
+    G.ctx.fillRect(vb.x - 4, vb.y + vb.h - 4, vb.w + 8, 7);
+    G.ctx.strokeRect(vb.x - 4, vb.y + vb.h - 4, vb.w + 8, 7);
+    G.ctx.restore();
+  }
+}
+
+function drawLostEchoes() {
+  if (!G.worldState || !G.worldState.lostEchoes || G.echoSession) return;
+  const le = G.worldState.lostEchoes;
+  if (le.x < G.cam.x - 140 || le.x > G.cam.x + G.canvasW + 140) return;
+  const bob = Math.sin(G.globalTime * 3.8) * 6;
+  const x = le.x;
+  const y = le.y + bob;
+  G.ctx.save();
+  drawGlowSprite('cyan', x, y, 56, 0.72);
+  drawGlowSprite('gold', x, y, 28, 0.58);
+  // Orbiting spectral ink-soul rings
+  G.ctx.strokeStyle = 'rgba(186, 230, 253, 0.72)';
+  G.ctx.lineWidth = 1.6;
+  boilCircle(G.ctx, x, y, 20 + Math.sin(G.globalTime * 6) * 2, 9820, 1.6, 14);
+  G.ctx.stroke();
+  for (let k = 0; k < 3; k++) {
+    const a = G.globalTime * 2.9 + (k * Math.PI * 2) / 3;
+    const ox = x + Math.cos(a) * 22;
+    const oy = y + Math.sin(a) * 12;
+    G.ctx.fillStyle = k === 0 ? COLORS.goldBright : COLORS.cyanBright;
+    G.ctx.beginPath(); G.ctx.arc(ox, oy, 2.8, 0, Math.PI * 2); G.ctx.fill();
+  }
+  // Spectral Lantern Shade silhouette
+  G.ctx.fillStyle = '#0d1828';
+  G.ctx.strokeStyle = COLORS.cyanBright;
+  G.ctx.lineWidth = 1.9;
+  G.ctx.beginPath();
+  G.ctx.moveTo(x - 9, y - 14); G.ctx.lineTo(x + 9, y - 14);
+  G.ctx.lineTo(x + 12, y + 8); G.ctx.lineTo(x, y + 18); G.ctx.lineTo(x - 12, y + 8);
+  G.ctx.closePath();
+  G.ctx.fill(); G.ctx.stroke();
+  G.ctx.fillStyle = COLORS.goldBright;
+  G.ctx.beginPath(); G.ctx.arc(x, y - 2, 4.8, 0, Math.PI * 2); G.ctx.fill();
+  // Amount Label
+  G.ctx.font = 'bold 12px "Noto Serif SC", serif';
+  G.ctx.textAlign = 'center';
+  G.ctx.fillStyle = '#06080d';
+  G.ctx.fillText(`✦ 残响灯影 · ${le.amount}`, x + 1, y - 28);
+  G.ctx.fillStyle = COLORS.cyanBright;
+  G.ctx.fillText(`✦ 残响灯影 · ${le.amount}`, x, y - 29);
+  G.ctx.restore();
+}
+
 function drawPickups() {
   if (!G.worldState) return;
   for (const p of G.worldState.pickups) {
@@ -1035,11 +1125,12 @@ function drawPickups() {
     const py = p.y - 28 + bob;
     const isFlask = p.kind === 'flaskCore';
     const isAbility = p.kind === 'ability';
-    const col = isFlask || isAbility ? COLORS.cyanBright : COLORS.goldBright;
+    const isShade = (isAbility && p.abilityId === 'shadeDash') || p.kind === 'statCore';
+    const col = isShade ? COLORS.violetBright : (isFlask || isAbility ? COLORS.cyanBright : COLORS.goldBright);
 
     G.ctx.save();
     const g = G.ctx.createRadialGradient(p.x, py, 3, p.x, py, isAbility ? 62 : 46);
-    g.addColorStop(0, isAbility ? 'rgba(125, 211, 252, 0.56)' : isFlask ? 'rgba(56, 189, 248, 0.42)' : 'rgba(245, 158, 11, 0.44)');
+    g.addColorStop(0, isShade ? 'rgba(168, 85, 247, 0.56)' : isAbility ? 'rgba(125, 211, 252, 0.56)' : isFlask ? 'rgba(56, 189, 248, 0.42)' : 'rgba(245, 158, 11, 0.44)');
     g.addColorStop(1, 'transparent');
     G.ctx.fillStyle = g;
     G.ctx.beginPath(); G.ctx.arc(p.x, py, 46, 0, Math.PI * 2); G.ctx.fill();
@@ -1429,8 +1520,12 @@ function drawPuppet(x, y, facing, isGhost = false, ghostColor = null) {
     G.ctx.fillStyle = lg;
     G.ctx.beginPath(); G.ctx.arc(cx, y + 26, 95, 0, Math.PI * 2); G.ctx.fill();
 
-    // Dual Spring-Physics Cloak + Torn Crimson-Ash Scarf
-    drawCloakMesh(G.player.cloak, '#101521', 'rgba(216, 207, 184, 0.52)', 17, 100);
+    // Dual Spring-Physics Cloak + Torn Crimson-Ash Scarf (violet-lit rim when Shade Cloak burst is ready!)
+    const shadeReady = !!(G.worldState && G.worldState.abilities.shadeDash && G.player.shadeDashCd <= 0);
+    if (shadeReady) {
+      drawGlowSprite('violet', cx, y + 26, 36, 0.34 + Math.sin(G.globalTime * 6) * 0.08);
+    }
+    drawCloakMesh(G.player.cloak, shadeReady ? '#191228' : '#101521', shadeReady ? 'rgba(216, 180, 254, 0.72)' : 'rgba(216, 207, 184, 0.52)', 17, 100);
     drawCloakMesh(G.player.scarf, '#4f1b24', 'rgba(248, 113, 113, 0.42)', 8.5, 200);
   }
 

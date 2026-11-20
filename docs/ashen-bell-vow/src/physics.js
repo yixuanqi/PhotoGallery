@@ -1,6 +1,6 @@
 // AABB collision, zero-allocation dynamic blockers & grounding queries
 import {
-  SOLIDS, WORLD_H, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF
+  SOLIDS, VOID_BARRIERS, WORLD_H, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF
 } from './config.js';
 import { G, getAwakeBoss } from './state.js';
 
@@ -29,13 +29,22 @@ export function refreshDynamicBlockers() {
       if (!walls[i].broken) _dynBlockers.push(walls[i]);
     }
   }
+  for (let i = 0; i < VOID_BARRIERS.length; i++) {
+    _dynBlockers.push(VOID_BARRIERS[i]);
+  }
   return _dynBlockers;
+}
+
+function canPhaseVoidBarrier(ent) {
+  return ent === G.player && G.worldState && G.worldState.abilities.shadeDash &&
+    (ent.dashTimer > 0 || ent.shadePassTimer > 0);
 }
 
 function resolveHorizontalAgainst(ent, list) {
   for (let i = 0; i < list.length; i++) {
     const s = list[i];
     if (s.type === 'platform') continue; // platforms are one-way from above
+    if (s.isVoidBarrier && canPhaseVoidBarrier(ent)) continue;
     if (aabbOverlap(ent, s)) {
       if (ent.vx > 0) {
         ent.x = s.x - ent.w;
@@ -52,6 +61,7 @@ function resolveHorizontalAgainst(ent, list) {
 function resolveVerticalAgainst(ent, prevBottom, list) {
   for (let i = 0; i < list.length; i++) {
     const s = list[i];
+    if (s.isVoidBarrier && canPhaseVoidBarrier(ent)) continue;
     if (s.type === 'platform') {
       if (s.crumble && s.state === 'broken') continue;
       if (ent === G.player && ent.dropThroughTimer > 0) continue;
@@ -113,6 +123,17 @@ export function moveAndCollide(ent, dt, respectBossBarrier = false) {
   resolveVerticalAgainst(ent, prevBottom, dynBlockers);
   if (G.crumblePlatforms && G.crumblePlatforms.length > 0) {
     resolveVerticalAgainst(ent, prevBottom, G.crumblePlatforms);
+  }
+
+  // Prevent player from ever getting wedged inside a Void Barrier if Shade Dash ends mid-curtain
+  if (ent === G.player && VOID_BARRIERS.length > 0 && !canPhaseVoidBarrier(ent)) {
+    for (let i = 0; i < VOID_BARRIERS.length; i++) {
+      const vb = VOID_BARRIERS[i];
+      if (aabbOverlap(ent, vb)) {
+        const dir = ent.dashDir || ent.facing || 1;
+        ent.x = dir > 0 ? (vb.x + vb.w + 1) : (vb.x - ent.w - 1);
+      }
+    }
   }
 }
 

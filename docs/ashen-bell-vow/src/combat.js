@@ -1,6 +1,6 @@
 // Combat resolution: 3-tier parry, posture break, executions, active hitboxes & pickups
 import {
-  COLORS, GRAPPLE_ANCHORS, PENDULUMS, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, ENEMY_ECHO_REWARDS
+  COLORS, GRAPPLE_ANCHORS, PENDULUMS, VOID_BARRIERS, ABYSSAL_RIVERS, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, ENEMY_ECHO_REWARDS
 } from './config.js';
 import {
   G, hooks, getLivingFoes, getAwakeBoss, isWorldPosExplored, getRelicStats, getBladeDamageMult, getSmithPostureMult,
@@ -13,7 +13,69 @@ import { triggerHaptic, getActionKeyLabel } from './input.js';
 import {
   spawnParticles, spawnShockwave, spawnImpactBurst, spawnHitMark, spawnFloatText
 } from './vfx.js';
-import { aabbOverlap, hasLineOfSight } from './physics.js';
+import { aabbOverlap, hasLineOfSight, getGroundSurfaceY } from './physics.js';
+
+// Soulslike Corpse-Run: Drop held Echoes as a retrievable spectral Lantern Shade on death
+export function dropPlayerEchoesOnDeath(fromRiver = false) {
+  if (!G.worldState || G.echoSession || !G.player) return;
+  const hadOld = !!(G.worldState.lostEchoes && G.worldState.lostEchoes.amount > 0);
+  const oldAmt = hadOld ? G.worldState.lostEchoes.amount : 0;
+  const held = Math.max(0, Math.floor(G.worldState.echoes || 0));
+  if (held > 0) {
+    const rawX = G.player.x + G.player.w * 0.5;
+    const rawY = G.player.y + G.player.h;
+    const overRiver = fromRiver || ABYSSAL_RIVERS.some(rv => rv.w > 0 && rawX >= rv.x - 6 && rawX <= rv.x + rv.w + 6 && rawY >= rv.y - 40);
+    const dropX = overRiver ? (G.player.lastSafeX + G.player.w * 0.5) : rawX;
+    const baseFootY = overRiver ? (G.player.lastSafeY + G.player.h) : rawY;
+    const surfY = getGroundSurfaceY(dropX, baseFootY - 12);
+    const dropY = Math.min(baseFootY, surfY) - 34;
+    const rm = getRoomAt(dropX, dropY);
+    G.worldState.lostEchoes = {
+      amount: held,
+      x: Math.round(dropX),
+      y: Math.round(dropY),
+      roomId: rm ? rm.id : 'r01_sanctuary'
+    };
+    G.worldState.echoes = 0;
+    G.worldState.lastDeathEchoMsg = hadOld
+      ? `先前遗落的 ${oldAmt} 残响已消散 · 本次遗落 ${held} 残响，重返灯影处即可回收`
+      : `遗落 ${held} 残响于死亡处 · 返回触碰或斩破幽蓝灯影即可全额回收`;
+    spawnShockwave(dropX, dropY, 82, COLORS.cyanBright, 3.6, 0.42);
+    spawnFloatText(dropX, dropY - 26, `遗落残响 · ${held}`, COLORS.cyanBright, 18, 1.35);
+  } else if (hadOld) {
+    G.worldState.lostEchoes = null;
+    G.worldState.lastDeathEchoMsg = `先前遗落的 ${oldAmt} 残响灯影已彻底消散于墨渊`;
+  } else {
+    G.worldState.lastDeathEchoMsg = '';
+  }
+  G.minimapDirty = true;
+  hooks.saveProgress(false);
+  hooks.syncHUD(true);
+}
+
+export function reclaimLostEchoes() {
+  if (!G.worldState || !G.worldState.lostEchoes || G.echoSession) return false;
+  const lost = G.worldState.lostEchoes;
+  const amt = Math.max(0, Math.floor(lost.amount || 0));
+  G.worldState.lostEchoes = null;
+  G.worldState.lastDeathEchoMsg = '';
+  if (amt > 0) {
+    G.worldState.echoes = (G.worldState.echoes || 0) + amt;
+    audio.playEchoReclaim();
+    triggerHaptic('shieldBreak', 0.72);
+    addShake(7);
+    G.screenFlash = { alpha: 0.16, color: COLORS.cyanBright };
+    spawnShockwave(lost.x, lost.y, 115, COLORS.cyanBright, 4.2, 0.36);
+    spawnShockwave(lost.x, lost.y, 76, COLORS.goldBright, 2.8, 0.28);
+    spawnParticles(lost.x, lost.y, 28, { color: COLORS.cyanBright, speed: 250, spark: true, life: 0.55 });
+    spawnParticles(lost.x, lost.y, 16, { color: COLORS.goldBright, speed: 200, spark: true, life: 0.45 });
+    spawnFloatText(lost.x, lost.y - 34, `残响归位！+${amt}`, COLORS.goldBright, 22, 1.55);
+  }
+  G.minimapDirty = true;
+  hooks.saveProgress(true);
+  hooks.syncHUD(true);
+  return true;
+}
 
 export function rallyPlayerGrayHp(amount) {
   if (G.player.grayHp <= 0) return;
@@ -315,6 +377,7 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
     G.player.vy = -120;
     spawnParticles(G.player.x + G.player.w / 2, G.player.y + 24, 24, { color: COLORS.ink, speed: 180, grav: 120, life: 0.65 });
     spawnParticles(G.player.x + G.player.w / 2, G.player.y + 24, 14, { color: COLORS.cyanBright, speed: 140, grav: -110, life: 0.6 });
+    dropPlayerEchoesOnDeath(false);
     scheduleOutcome(hooks.showDeath, 650, false);
   }
 }
@@ -686,6 +749,26 @@ export function evaluatePlayerActiveAttack() {
           }
         }
       }
+    }
+  }
+
+  // Slash Lost Echo Lantern Shade to reclaim immediately
+  if (G.worldState && G.worldState.lostEchoes && !G.echoSession) {
+    const le = G.worldState.lostEchoes;
+    if (aabbOverlap(box, { x: le.x - 24, y: le.y - 28, w: 48, h: 56 })) {
+      reclaimLostEchoes();
+    }
+  }
+
+  // Melee clang feedback against impenetrable Void Barriers
+  for (let i = 0; i < VOID_BARRIERS.length; i++) {
+    const vb = VOID_BARRIERS[i];
+    if (!atk.hitIds.has(vb.id) && aabbOverlap(box, vb)) {
+      atk.hitIds.add(vb.id);
+      audio.playParry(false);
+      spawnParticles(vb.x + vb.w * 0.5, G.player.y + 24, 12, { color: COLORS.violetBright, speed: 190, spark: true, life: 0.34 });
+      const hint = (G.worldState && G.worldState.abilities.shadeDash) ? '按 [Shift] 幽影穿身穿过结界' : '暗蚀结界 · 寻常攻击无法斩断';
+      spawnFloatText(vb.x + vb.w * 0.5, G.player.y - 26, hint, COLORS.violetBright, 16, 1.05);
     }
   }
 
@@ -1069,6 +1152,12 @@ export function castBellQuake() {
     }
   }
 
+  // Bell-Quake also reclaims nearby Lost Echo Lantern Shade
+  if (G.worldState && G.worldState.lostEchoes && !G.echoSession) {
+    const le = G.worldState.lostEchoes;
+    if (Math.hypot(le.x - px, le.y - py) <= radius + 36) reclaimLostEchoes();
+  }
+
   // Crack nearby secret walls
   if (G.worldState) {
     for (const w of G.worldState.secretWalls) {
@@ -1178,18 +1267,31 @@ export function collectPickup(p) {
     G.player.soul = G.player.maxSoul;
   }
 
+  if (p.echoAmount && p.kind !== 'echoCache') {
+    G.worldState.echoes = (G.worldState.echoes || 0) + Number(p.echoAmount);
+  }
+
   if (p.kind === 'flaskCore') {
     G.worldState.bonusFlasks++;
     G.player.maxFlasks = getPlayerMaxFlasks();
     G.player.flasks = G.player.maxFlasks;
-    spawnFloatText(p.x, p.y - 54, `${p.name} · ${p.desc}`, COLORS.cyanBright, 20, 1.7);
+    spawnFloatText(p.x, p.y - 54, `${p.name} · ${p.desc}`, COLORS.cyanBright, 20, 1.85);
+  } else if (p.kind === 'statCore') {
+    spawnFloatText(p.x, p.y - 54, `${p.name} · ${p.desc}`, COLORS.violetBright, 20, 1.95);
   } else if (p.kind === 'ability') {
     G.worldState.abilities[p.abilityId] = true;
     G.player.airJumpsLeft = 1;
-    audio.playWingJump();
-    punchZoom(1.045);
-    spawnShockwave(p.x, p.y - 26, 150, COLORS.cyanBright, 5, 0.48);
-    spawnFloatText(p.x, p.y - 58, `${p.name} · 二段跳已解锁！`, COLORS.cyanBright, 22, 2.2);
+    if (p.abilityId === 'shadeDash') {
+      audio.playShadeDash();
+      punchZoom(1.05);
+      spawnShockwave(p.x, p.y - 26, 160, COLORS.violetBright, 5.2, 0.5);
+      spawnFloatText(p.x, p.y - 58, `${p.name} · 闪避可穿结界并触发残爆！`, COLORS.violetBright, 22, 2.4);
+    } else {
+      audio.playWingJump();
+      punchZoom(1.045);
+      spawnShockwave(p.x, p.y - 26, 150, COLORS.cyanBright, 5, 0.48);
+      spawnFloatText(p.x, p.y - 58, `${p.name} · 二段跳已解锁！`, COLORS.cyanBright, 22, 2.2);
+    }
   } else if (p.kind === 'echoCache') {
     const amt = Number(p.echoAmount) || 180;
     G.worldState.echoes = (G.worldState.echoes || 0) + amt;

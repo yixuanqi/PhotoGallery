@@ -2,7 +2,7 @@
 import {
   ROOMS, SOLIDS, ALTARS, NPCS, ALTAR_POS, LORE_TABLETS,
   SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF,
-  SECRET_WALLS_DEF, PICKUPS_DEF, RESONANCE_PUZZLES_DEF, CRUMBLE_PLATFORMS_DEF,
+  SECRET_WALLS_DEF, VOID_BARRIERS, PICKUPS_DEF, RESONANCE_PUZZLES_DEF, CRUMBLE_PLATFORMS_DEF,
   PENDULUMS, ABYSSAL_RIVERS, ABYSSAL_RIVER, WALL_INSCRIPTIONS, GRAPPLE_ANCHORS,
   LANTERNS_DEF, ENEMIES_DEF, BOSSES_DEF, PUDDLES, BANNERS, CANDLE_CLUSTERS, BONE_CAIRNS,
   PREVIEW_STORAGE_KEY, setWorldMetrics
@@ -41,6 +41,7 @@ export function hydrateWorldBundle(bundle) {
   resetArray(NPCS);
   resetArray(LORE_TABLETS);
   resetArray(SECRET_WALLS_DEF);
+  resetArray(VOID_BARRIERS);
   resetArray(PICKUPS_DEF);
   resetArray(RESONANCE_PUZZLES_DEF);
   resetArray(CRUMBLE_PLATFORMS_DEF);
@@ -169,6 +170,17 @@ export function hydrateWorldBundle(bundle) {
         ...sw,
         x: ox + sw.x,
         y: oy + sw.y,
+        roomId: room.id
+      });
+    }
+
+    for (const vb of (room.voidBarriers || [])) {
+      VOID_BARRIERS.push({
+        ...vb,
+        x: ox + vb.x,
+        y: oy + vb.y,
+        type: 'pillar',
+        isVoidBarrier: true,
         roomId: room.id
       });
     }

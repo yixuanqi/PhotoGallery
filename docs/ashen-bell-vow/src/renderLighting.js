@@ -1,5 +1,5 @@
 // Real-time 2D lantern hard shadows & volumetric light shafts (blocked by stone geometry)
-import { SOLIDS, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF } from './config.js';
+import { SOLIDS, VOID_BARRIERS, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF } from './config.js';
 import { G } from './state.js';
 import { drawGlowSprite } from './vfx.js';
 
@@ -74,6 +74,10 @@ function collectShadowCasters(lx, ly, radius) {
     if (!G.worldState.abilities.doubleJump && !G.echoSession && FOUNDRY_ENTRY_GATE_DEF.w > 0) {
       pushRect(FOUNDRY_ENTRY_GATE_DEF.x, FOUNDRY_ENTRY_GATE_DEF.y, FOUNDRY_ENTRY_GATE_DEF.w, FOUNDRY_ENTRY_GATE_DEF.h);
     }
+  }
+  for (let i = 0; i < VOID_BARRIERS.length; i++) {
+    const vb = VOID_BARRIERS[i];
+    pushRect(vb.x, vb.y, vb.w, vb.h);
   }
   return _casterPool;
 }
