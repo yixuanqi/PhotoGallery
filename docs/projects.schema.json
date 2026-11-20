@@ -271,7 +271,33 @@
             }
           }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "const": "galaxy"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "galaxy"
+              ]
+            }
+          },
+          "else": {
+            "required": [
+              "galaxy"
+            ]
+          }
+        }
+      ]
     }
   }
 }
