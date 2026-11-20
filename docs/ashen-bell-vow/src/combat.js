@@ -414,63 +414,63 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
    ========================================================================= */
 export function findBestGrappleTarget() {
   if (!G.player) return null;
-  const px = G.player.x + G.player.w / 2;
+  const px = G.player.x + G.player.w * 0.5;
   const py = G.player.y + 22;
-  const candidates = [];
+  const activeBoss = getAwakeBoss();
+  const playerRoom = getRoomAt(px, py);
+  const facing = G.player.facing;
 
-  for (const l of G.lanterns) {
-    const lx = l.x + Math.sin(l.angle) * l.len;
-    const ly = l.anchorY + Math.cos(l.angle) * l.len;
-    candidates.push({ type: 'lantern', ref: l, x: lx, y: ly, bias: 1.0 });
+  let best = null;
+  let bestScore = Infinity;
+
+  const evalCandidate = (type, ref, x, y, bias, puzzle) => {
+    const dx = x - px;
+    const dy = y - py;
+    // Fast bounding-box pre-cull before Math.hypot or raycast
+    if (dx > 410 || dx < -410 || dy > 410 || dy < -410) return;
+    const distSq = dx * dx + dy * dy;
+    if (distSq > 168100 || distSq < 3364) return;
+    if (activeBoss) {
+      if (x < activeBoss.arenaMinX || x > activeBoss.arenaMaxX || y < activeBoss.arenaTopY || y > activeBoss.arenaFloorY) return;
+    }
+    const dist = Math.sqrt(distSq);
+    const score = dist * (dx * facing >= -45 ? 1.0 : 1.85) * bias;
+    if (score >= bestScore) return;
+    if (playerRoom && dy > 40) {
+      const targetRoom = getRoomAt(x, y);
+      if (targetRoom && targetRoom.id !== playerRoom.id && !isWorldPosExplored(x, y)) return;
+    }
+    if (!hasLineOfSight(px, py, x, y)) return;
+    bestScore = score;
+    best = puzzle ? { type, ref, puzzle, x, y, bias } : { type, ref, x, y, bias };
+  };
+
+  for (let i = 0; i < G.lanterns.length; i++) {
+    const l = G.lanterns[i];
+    if (Math.abs(l.x - px) > 560) continue;
+    evalCandidate('lantern', l, l.x + Math.sin(l.angle) * l.len, l.anchorY + Math.cos(l.angle) * l.len, 1.0, null);
   }
-  for (const a of GRAPPLE_ANCHORS) {
-    candidates.push({ type: 'anchor', ref: a, x: a.x, y: a.y, bias: 0.96 });
+  for (let i = 0; i < GRAPPLE_ANCHORS.length; i++) {
+    const a = GRAPPLE_ANCHORS[i];
+    evalCandidate('anchor', a, a.x, a.y, 0.96, null);
   }
   if (G.resonancePuzzles) {
-    for (const pz of G.resonancePuzzles) {
-      for (const b of pz.bells) {
-        candidates.push({ type: 'resBell', ref: b, puzzle: pz, x: b.x, y: b.y, bias: 0.95 });
+    for (let i = 0; i < G.resonancePuzzles.length; i++) {
+      const pz = G.resonancePuzzles[i];
+      for (let j = 0; j < pz.bells.length; j++) {
+        const b = pz.bells[j];
+        evalCandidate('resBell', b, b.x, b.y, 0.95, pz);
       }
     }
   }
-  const foes = getLivingFoes().filter(e => !e.isBoss || e.awake);
-  for (const f of foes) {
-    candidates.push({
-      type: 'enemy',
-      ref: f,
-      x: f.x + f.w / 2,
-      y: f.y + f.h * 0.35,
-      bias: f.kind === 'priest' ? 0.78 : f.kind === 'wraith' ? 0.88 : 1.05
-    });
+  for (let i = 0; i < G.enemies.length; i++) {
+    const f = G.enemies[i];
+    if (!f || !f.alive) continue;
+    evalCandidate('enemy', f, f.x + f.w * 0.5, f.y + f.h * 0.35, f.kind === 'priest' ? 0.78 : f.kind === 'wraith' ? 0.88 : 1.05, null);
   }
-
-  const activeBoss = getAwakeBoss();
-  const playerRoom = getRoomAt(px, py);
-  let best = null;
-  let bestScore = Infinity;
-  for (const c of candidates) {
-    const dx = c.x - px;
-    const dy = c.y - py;
-    const dist = Math.hypot(dx, dy);
-    if (dist > 410 || dist < 58) continue;
-    // 1. Boss arena boundary clamp: never lock onto targets outside/below an active Boss arena
-    if (activeBoss) {
-      if (c.x < activeBoss.arenaMinX || c.x > activeBoss.arenaMaxX || c.y < activeBoss.arenaTopY || c.y > activeBoss.arenaFloorY) continue;
-    }
-    // 2. Prevent locking downward into an unexplored lower room (e.g., unopened crypt beneath one-way hatch)
-    if (playerRoom && dy > 40) {
-      const targetRoom = getRoomAt(c.x, c.y);
-      if (targetRoom && targetRoom.id !== playerRoom.id && !isWorldPosExplored(c.x, c.y)) continue;
-    }
-    // 3. Solid geometry line-of-sight check (blocks targeting through floors, pillars, closed gates & secret walls)
-    if (!hasLineOfSight(px, py, c.x, c.y)) continue;
-    const inFront = dx * G.player.facing >= -45;
-    const score = dist * (inFront ? 1.0 : 1.85) * c.bias;
-    if (score < bestScore) {
-      bestScore = score;
-      best = c;
-    }
-  }
+  if (G.boss && G.boss.alive && G.boss.awake) evalCandidate('enemy', G.boss, G.boss.x + G.boss.w * 0.5, G.boss.y + G.boss.h * 0.35, 1.05, null);
+  if (G.boss2 && G.boss2.alive && G.boss2.awake) evalCandidate('enemy', G.boss2, G.boss2.x + G.boss2.w * 0.5, G.boss2.y + G.boss2.h * 0.35, 1.05, null);
+  if (G.boss3 && G.boss3.alive && G.boss3.awake) evalCandidate('enemy', G.boss3, G.boss3.x + G.boss3.w * 0.5, G.boss3.y + G.boss3.h * 0.35, 1.05, null);
   return best;
 }
 

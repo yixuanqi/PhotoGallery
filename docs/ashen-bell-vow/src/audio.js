@@ -18,6 +18,7 @@ export class SoundEngine {
     this.windFilter = null;
     this.distantBellTimer = 11;
     this.heartbeatTimer = 0.6;
+    this._lastSfxTime = {};
     // D-Phrygian Dynamic Interactive Music Sequencer (0KB procedural score)
     this.musicStep = 0;
     this.musicAccum = 0;
@@ -359,8 +360,17 @@ export class SoundEngine {
     this.musicStep = (this.musicStep + 1) % 32;
   }
 
+  _canPlaySfx(key, minGap = 0.028) {
+    if (!this.ctx || this.muted) return false;
+    const t = this.ctx.currentTime;
+    const prev = this._lastSfxTime[key] || -1;
+    if (t - prev < minGap) return false;
+    this._lastSfxTime[key] = t;
+    return true;
+  }
+
   playSlash(pitch = 1.0, heavy = false) {
-    if (!this.ctx || this.muted) return;
+    if (!this._canPlaySfx('slash', 0.03)) return;
     const t = this.ctx.currentTime;
     // Filtered air-cut swoosh
     const n = this.ctx.createBufferSource();
@@ -389,7 +399,7 @@ export class SoundEngine {
   }
 
   playHit(heavy = false, comboStep = 1) {
-    if (!this.ctx || this.muted) return;
+    if (!this._canPlaySfx('hit', 0.024)) return;
     const t = this.ctx.currentTime;
     const stepPitch = 1 + Math.max(0, comboStep - 1) * 0.08;
 
@@ -676,7 +686,7 @@ export class SoundEngine {
   }
 
   playGrappleLaunch() {
-    if (!this.ctx || this.muted) return;
+    if (!this._canPlaySfx('grapple', 0.04)) return;
     const t = this.ctx.currentTime;
     const n = this.ctx.createBufferSource();
     n.buffer = this.noiseBuf;

@@ -17,7 +17,10 @@ export const RELICS = [
   {
     id: 'thorn',
     name: '噬痛荆棘',
-    desc: '标准弹反窗口 (140ms)；普通格挡产生的内伤灰血持续加倍，挥刀命中可大幅吸回实血。',
+    tag: '抢血续航',
+    effect: '灰血留存翻倍 · 攻击吸血 +65%',
+    usage: '格挡吃内伤后立刻挥刀吸回实血',
+    desc: '灰血留存翻倍，挥刀强效吸回实血。',
     parryWindowMs: 140,
     blockWindowMs: 260,
     parryPostureMult: 1.0,
@@ -30,7 +33,10 @@ export const RELICS = [
   {
     id: 'mirror',
     name: '碎镜之眼',
-    desc: '极限打铁流：弹反窗口收窄至 100ms，但完美弹反附带反伤并造成 1.6 倍架势摧毁。',
+    tag: '极限弹反',
+    effect: '弹反削势 ×1.6 + 反伤 16（窗口 100ms）',
+    usage: '抓金芒精准打铁，极速震崩首领架势',
+    desc: '弹反窗口 100ms，完美弹反附带反伤与 1.6 倍削势。',
     parryWindowMs: 100,
     blockWindowMs: 220,
     parryPostureMult: 1.6,
@@ -43,7 +49,10 @@ export const RELICS = [
   {
     id: 'ember',
     name: '孤灯余烬',
-    desc: '处决续航流：灯油上限减 1（共 2 瓶），但每次成功处决立刻回复 35% 最大生命并充满魂火。',
+    tag: '处决回满',
+    effect: '处决回血 35% + 回满魂火（灯油 -1）',
+    usage: '打崩敌方架势近身处决，以战养战',
+    desc: '灯油 -1，处决立刻回血 35% 并回满魂火。',
     parryWindowMs: 140,
     blockWindowMs: 260,
     parryPostureMult: 1.15,
@@ -56,7 +65,11 @@ export const RELICS = [
   {
     id: 'bellthread',
     name: '幽丝断钟',
-    desc: '隐藏圣物 · 机动法术流：幽丝钩索冷却减半 (0.28s)，幽鸣灵刃魂耗降至 22 且额外摧毁架势。',
+    tag: '钩索灵刃',
+    effect: '钩索冷却减半 · 灵刃耗魂降至 22',
+    usage: '高频钩跃追击，穿插灵刃远程破势',
+    hint: '起点左上高空 · 钩索攀跃击碎暗墙',
+    desc: '钩索冷却 0.28s，灵刃耗魂降至 22 并额外削势。',
     parryWindowMs: 130,
     blockWindowMs: 250,
     parryPostureMult: 1.15,
@@ -73,7 +86,11 @@ export const RELICS = [
   {
     id: 'bellcore',
     name: '古钟心核',
-    desc: '苍穹秘宝 · 终极打铁流：墨印上限增至 4 枚，每次完美弹反回复 6 点生命，居合与断钟返伤害提升 25%。',
+    tag: '终极打铁',
+    effect: '墨印上限 4 · 弹反回血 6 · 居合/反击 +25%',
+    usage: '弹反接断钟返或居合爆发，攒 4 印贴符',
+    hint: '起点悬灯苍穹高阁 · 需「墨翼步」抵达',
+    desc: '墨印上限 4，弹反回血 6，居合与断钟返增伤 25%。',
     parryWindowMs: 145,
     blockWindowMs: 265,
     parryPostureMult: 1.25,
@@ -90,7 +107,11 @@ export const RELICS = [
   {
     id: 'clapper',
     name: '回响钟舌',
-    desc: '共鸣秘宝 · 法术震域流：魂火获取 +35%，灵刃与镇魂钟鸣伤害 +30% 且范围扩大 25%，钟鸣耗魂降至 30。',
+    tag: '魂火震域',
+    effect: '回魂 +35% · 法术伤害 +30% / 范围 +25%',
+    usage: '多用 W+法术「镇魂钟鸣」范围清场破盾',
+    hint: '枯骨长廊 · 限时齐鸣三口青铜共鸣钟',
+    desc: '回魂 +35%，灵刃与镇魂钟鸣伤害 +30%、范围 +25%。',
     parryWindowMs: 140,
     blockWindowMs: 260,
     parryPostureMult: 1.05,
@@ -109,7 +130,11 @@ export const RELICS = [
   {
     id: 'ironheart',
     name: '裂钟铁心',
-    desc: '深井秘宝 · 重势破防流：全招式架势摧毁 +25%，居合一闪蓄力大幅缩短 (0.30s)，内伤灰血持续 +1.5 秒。',
+    tag: '速蓄居合',
+    effect: '全招式削势 +25% · 居合蓄力缩至 0.30s',
+    usage: '长按攻击极速收刀居合，正面劈碎重盾',
+    hint: '沉渊钟井上层 · 限时齐鸣三口青铜钟',
+    desc: '全招式削势 +25%，居合蓄力缩至 0.30s。',
     parryWindowMs: 140,
     blockWindowMs: 260,
     parryPostureMult: 1.25,
@@ -126,7 +151,11 @@ export const RELICS = [
   {
     id: 'shadecurtain',
     name: '幽影钟幕',
-    desc: '暗室秘宝 · 穿影刺杀流：幽影穿身残爆冷却缩至 0.95 秒，穿身残爆伤害与削势 +55%，穿敌后回血 8 点并刷新空中闪避。',
+    tag: '穿影刺杀',
+    effect: '穿身冷却 0.95s · 残爆 +55% · 穿敌回血 8',
+    usage: '按 Shift 穿透敌身引爆残爆并刷新闪避',
+    hint: '起点最西侧暗蚀结界后 · 需「幽影穿身」',
+    desc: '穿身冷却 0.95s，残爆 +55%，穿敌回血 8 并刷新闪避。',
     parryWindowMs: 140,
     blockWindowMs: 260,
     parryPostureMult: 1.05,
@@ -199,35 +228,35 @@ export const RELIC_SYNERGIES = [
     relics: ['bellthread', 'clapper'],
     name: '幽鸣共振',
     flag: 'synGrappleQuake',
-    desc: '幽丝钩索命中敌人落点时，自动免费爆发一次小型「镇魂钟鸣」，破盾削势并震响周边悬灯与共鸣钟！'
+    desc: '钩索撞敌自动爆发免费「镇魂钟鸣」，范围破盾并震响悬灯与共鸣钟。'
   },
   {
     id: 'mirror_ember',
     relics: ['mirror', 'ember'],
     name: '镜烬印记',
     flag: 'synMirrorEmber',
-    desc: '达成 3 连完美弹反后，下一次近战斩击自动免费为目标贴上 1 枚引爆墨印符箓（不消耗现有墨印）。'
+    desc: '3 连完美弹反后，下次近战命中免费贴 1 枚引爆墨印符箓。'
   },
   {
     id: 'blood_iai',
     relics: ['thorn', 'ironheart'],
     name: '血铁居合',
     flag: 'synBloodIai',
-    desc: '持有内伤灰血时，居合一闪蓄力再提速 28%，斩出时额外发射穿透「猩红剑气」并吸回大量实血！'
+    desc: '带灰血时居合再提速 28%，额外斩出穿透「猩红剑气」并强效回血。'
   },
   {
     id: 'core_counter',
     relics: ['bellcore', 'mirror'],
     name: '碎心绝响',
     flag: 'synCoreCounter',
-    desc: '弹反派生「断钟返」架势摧毁提升至 1.5 倍，且命中瞬间立即引爆目标身上的墨印符箓造成 1.35 倍爆伤！'
+    desc: '断钟返削势 ×1.5，命中立刻引爆目标身上墨印造成 1.35 倍爆伤。'
   },
   {
     id: 'shade_thread',
     relics: ['shadecurtain', 'bellthread'],
     name: '墨影断鸣',
     flag: 'synShadeThread',
-    desc: '幽影穿身穿过敌人瞬间立即刷新幽丝钩索冷却，且 2.2 秒内下一次钩索突袭触发 2 倍破势与强效魂火汲取！'
+    desc: '幽影穿敌立刻刷新钩索冷却，2.2s 内下次钩袭双倍破势并大幅回魂。'
   }
 ];
 

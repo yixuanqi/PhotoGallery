@@ -62,11 +62,14 @@ export function buildGlowSprites() {
 export function drawGlowSprite(key, x, y, radius, alpha = 0.85) {
   const spr = GLOW_SPRITES[key];
   if (!spr) return;
-  G.ctx.save();
-  G.ctx.globalCompositeOperation = 'lighter';
-  G.ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-  G.ctx.drawImage(spr, x - radius, y - radius, radius * 2, radius * 2);
-  G.ctx.restore();
+  const ctx = G.ctx;
+  const prevComp = ctx.globalCompositeOperation;
+  const prevAlpha = ctx.globalAlpha;
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = alpha < 0 ? 0 : (alpha > 1 ? 1 : alpha);
+  ctx.drawImage(spr, x - radius, y - radius, radius * 2, radius * 2);
+  ctx.globalAlpha = prevAlpha;
+  ctx.globalCompositeOperation = prevComp;
 }
 
 export function hash2(seed, frame) {
@@ -263,12 +266,15 @@ export function spawnWeatherRipple(x, y, maxR = 26, color = 'rgba(186, 230, 253,
   G.weatherRipples.push({ x, y, r: 2, maxR, color, life: 0.52, maxLife: 0.52 });
 }
 
+const MAX_PARTICLES = 150;
 export function spawnParticles(x, y, count, opts = {}) {
   const col = opts.color || COLORS.parchment;
   const spd = opts.speed || 200;
   const grav = opts.grav !== undefined ? opts.grav : 420;
   const life = opts.life || 0.42;
   const spark = !!opts.spark;
+  const overflow = G.particles.length + count - MAX_PARTICLES;
+  if (overflow > 0) G.particles.splice(0, Math.min(G.particles.length, overflow));
   for (let i = 0; i < count; i++) {
     const ang = opts.angle !== undefined
       ? opts.angle + (Math.random() - 0.5) * (opts.spread || 1.2)
@@ -290,10 +296,12 @@ export function spawnParticles(x, y, count, opts = {}) {
 }
 
 export function spawnShockwave(x, y, maxR, color, width = 3, life = 0.28) {
+  if (G.shockwaves.length >= 24) G.shockwaves.shift();
   G.shockwaves.push({ x, y, r: 8, maxR, color, width, life, maxLife: life });
 }
 
 export function spawnImpactBurst(x, y, kind = 'parry', scale = 1.0) {
+  if (G.impactBursts.length >= 16) G.impactBursts.shift();
   const life = kind === 'parry' ? 0.26 : 0.20;
   G.impactBursts.push({
     x, y,
@@ -306,6 +314,7 @@ export function spawnImpactBurst(x, y, kind = 'parry', scale = 1.0) {
 }
 
 export function spawnHitMark(x, y, angle, color, len = 64, width = 6) {
+  if (G.hitMarks.length >= 20) G.hitMarks.shift();
   G.hitMarks.push({
     x, y,
     angle,
@@ -318,5 +327,6 @@ export function spawnHitMark(x, y, angle, color, len = 64, width = 6) {
 }
 
 export function spawnFloatText(x, y, text, color, size = 18, life = 0.85) {
+  if (G.floatTexts.length >= 18) G.floatTexts.shift();
   G.floatTexts.push({ x, y, text, color, size, life, maxLife: life, vy: -52 });
 }

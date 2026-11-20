@@ -36,6 +36,7 @@ export function saveUserSettings() {
     parryWindowMult: G.settings.parryWindowMult,
     damageTakenMult: G.settings.damageTakenMult,
     haptics: !!G.settings.haptics,
+    dynamicLighting: G.settings.dynamicLighting !== false,
     musicEnabled: G.settings.musicEnabled !== false,
     masterVol: G.settings.masterVol,
     musicVol: G.settings.musicVol,
@@ -53,6 +54,7 @@ export function loadUserSettings() {
   if ([1.0, 1.35, 1.7].includes(Number(s.parryWindowMult))) G.settings.parryWindowMult = Number(s.parryWindowMult);
   if ([1.0, 0.7, 0.5].includes(Number(s.damageTakenMult))) G.settings.damageTakenMult = Number(s.damageTakenMult);
   if (typeof s.haptics === 'boolean') G.settings.haptics = s.haptics;
+  if (typeof s.dynamicLighting === 'boolean') G.settings.dynamicLighting = s.dynamicLighting;
   if (typeof s.musicEnabled === 'boolean') {
     G.settings.musicEnabled = s.musicEnabled;
     audio.setMusicEnabled(s.musicEnabled);
@@ -138,8 +140,18 @@ export function saveProgress(showToast = false) {
     exploredStr,
     explorePct: getExplorationPercent()
   };
-  storage.setJSON(slotKey(G.activeSaveSlot), payload);
+  const targetKey = slotKey(G.activeSaveSlot);
   G.saveDirtyTimer = 0;
+  if (!showToast && G.gameState === 'playing') {
+    const writeNow = () => storage.setJSON(targetKey, payload);
+    if (typeof window.requestIdleCallback === 'function') {
+      window.requestIdleCallback(writeNow, { timeout: 1200 });
+    } else {
+      window.setTimeout(writeNow, 16);
+    }
+  } else {
+    storage.setJSON(targetKey, payload);
+  }
   if (G.gameState === 'title') hooks.refreshTitleSaveUI();
   if (showToast && G.player && G.gameState === 'playing') {
     spawnFloatText(G.player.x + G.player.w * 0.5, G.player.y - 68, `档案 ${G.activeSaveSlot + 1} · 灯火已铭刻`, COLORS.cyanBright, 14, 1.0);

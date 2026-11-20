@@ -191,3 +191,17 @@
     border-color: var(--cyan-b);
     color: var(--cyan-b);
   }
+
+  .ed-sidebar, .ed-inspector {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(245, 158, 11, 0.45) rgba(7, 10, 16, 0.72);
+  }
+  .ed-sidebar::-webkit-scrollbar, .ed-inspector::-webkit-scrollbar { width: 6px; }
+  .ed-sidebar::-webkit-scrollbar-track, .ed-inspector::-webkit-scrollbar-track { background: rgba(6, 9, 15, 0.75); }
+  .ed-sidebar::-webkit-scrollbar-thumb, .ed-inspector::-webkit-scrollbar-thumb {
+    background: rgba(216, 207, 184, 0.32);
+    border-radius: 999px;
+  }
+  .ed-sidebar::-webkit-scrollbar-thumb:hover, .ed-inspector::-webkit-scrollbar-thumb:hover {
+    background: rgba(245, 158, 11, 0.72);
+  }

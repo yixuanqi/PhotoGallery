@@ -51,7 +51,7 @@ Object.assign(hooks, {
 
 // Initialize Canvas context on central state
 G.canvas = document.getElementById('gameCanvas');
-G.ctx = G.canvas.getContext('2d');
+G.ctx = G.canvas.getContext('2d', { alpha: false }) || G.canvas.getContext('2d');
 
 function resizeCanvas() {
   const { mobile } = updateMobileOrientationLayout();
@@ -142,8 +142,11 @@ function gameLoop(timestamp) {
     }
     if (G.saveDirtyTimer > 0) {
       G.saveDirtyTimer -= dt;
-      const busyAction = G.player && (G.player.grappleState !== 'none' || G.player.dashTimer > 0 || G.player.iaiLungeTimer > 0 || G.player.attackTimer > 0);
-      if (G.saveDirtyTimer <= 0 && !busyAction) saveProgress(false);
+      if (G.saveDirtyTimer <= 0) {
+        const busyAction = G.player && (G.player.grappleState !== 'none' || G.player.dashTimer > 0 || G.player.iaiLungeTimer > 0 || G.player.attackTimer > 0);
+        if (busyAction) G.saveDirtyTimer = 0.6;
+        else saveProgress(false);
+      }
     }
     syncHUD();
   } else if (G.gameState === 'title') {
@@ -256,6 +259,14 @@ if (langEn) langEn.addEventListener('click', () => {
   refreshTitleSaveUI();
   syncHUD(true);
 });
+const lightBtn = document.getElementById('btn-lighting-toggle');
+if (lightBtn) {
+  lightBtn.addEventListener('click', () => {
+    G.settings.dynamicLighting = G.settings.dynamicLighting === false;
+    saveUserSettings();
+    renderSettingsModal();
+  });
+}
 document.getElementById('btn-haptics-toggle').addEventListener('click', () => {
   G.settings.haptics = !G.settings.haptics;
   saveUserSettings();

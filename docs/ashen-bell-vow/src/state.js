@@ -41,6 +41,7 @@ export const G = {
     parryWindowMult: 1.0,
     damageTakenMult: 1.0,
     haptics: true,
+    dynamicLighting: true,
     musicEnabled: true,
     masterVol: 0.85,
     musicVol: 0.75,
@@ -165,20 +166,31 @@ export function getActiveAltar() {
   return ALTARS.find(a => a.id === id) || ALTARS[0];
 }
 
-export function getActiveSynergies() {
-  const active = (G.equippedRelics || [G.currentRelic]).filter(Boolean);
-  const ids = new Set(active.map(r => r.id));
-  return RELIC_SYNERGIES.filter(syn => syn.relics.every(id => ids.has(id)));
-}
+let _relicCacheKey = '';
+let _cachedSynergies = [];
+let _cachedRelicStats = null;
 
-export function getRelicStats() {
-  const active = (G.equippedRelics || [G.currentRelic]).filter(Boolean);
-  if (active.length === 0) active.push(RELICS[0]);
-  const has = id => active.some(r => r.id === id);
-  const synergies = getActiveSynergies();
-  const synFlags = {};
-  for (let i = 0; i < synergies.length; i++) synFlags[synergies[i].flag] = true;
+function _ensureRelicCache() {
+  const eq = G.equippedRelics;
+  const r0 = (eq && eq[0]) || G.currentRelic || RELICS[0];
+  const r1 = (eq && eq[1]) || null;
   const pMult = (G.settings && G.settings.parryWindowMult) ? G.settings.parryWindowMult : 1.0;
+  const key = `${r0 ? r0.id : ''}|${r1 ? r1.id : ''}|${pMult}`;
+  if (key === _relicCacheKey && _cachedRelicStats) return;
+  _relicCacheKey = key;
+
+  const active = r1 ? [r0, r1] : [r0];
+  const has = id => (r0 && r0.id === id) || (r1 && r1.id === id);
+  const synergies = [];
+  const synFlags = {};
+  for (let i = 0; i < RELIC_SYNERGIES.length; i++) {
+    const syn = RELIC_SYNERGIES[i];
+    if (has(syn.relics[0]) && has(syn.relics[1])) {
+      synergies.push(syn);
+      synFlags[syn.flag] = true;
+    }
+  }
+  _cachedSynergies = synergies;
 
   let parryWindowMs = Math.round((has('mirror') ? 100 : Math.max(...active.map(r => r.parryWindowMs || 140))) * pMult);
   let blockWindowMs = Math.round((has('mirror') ? 225 : Math.max(...active.map(r => r.blockWindowMs || 260))) * (1 + (pMult - 1) * 0.65));
@@ -207,7 +219,7 @@ export function getRelicStats() {
   let shadeBurstMult = active.reduce((acc, r) => acc * (r.shadeBurstMult || 1.0), 1.0);
   let shadePassHeal = active.reduce((acc, r) => acc + (r.shadePassHeal || 0), 0);
 
-  return {
+  _cachedRelicStats = {
     parryWindowMs, blockWindowMs, parryPostureMult, parryReflectDmg, parryHeal,
     grayDuration, rallyMult, maxFlasks, maxSeals, execHealPct, execFullSoul,
     grappleCd, spellCost, quakeCost, spellPostureBonus, heavySkillMult,
@@ -220,6 +232,16 @@ export function getRelicStats() {
     synCoreCounter: !!synFlags.synCoreCounter,
     synShadeThread: !!synFlags.synShadeThread
   };
+}
+
+export function getActiveSynergies() {
+  _ensureRelicCache();
+  return _cachedSynergies;
+}
+
+export function getRelicStats() {
+  _ensureRelicCache();
+  return _cachedRelicStats;
 }
 
 export function getEquippedRelicLabel() {

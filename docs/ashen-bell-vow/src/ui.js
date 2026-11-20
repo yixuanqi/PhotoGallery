@@ -21,6 +21,7 @@ import { spawnParticles, spawnShockwave, spawnFloatText } from './vfx.js';
 import { createPlayer, createSentinels, createBoss, createBoss2, createBoss3 } from './entities.js';
 import { readSaveData, listSaveSlots, deleteSaveSlot, saveProgress, applySaveData, saveUserSettings } from './save.js';
 import { t, getLocale } from './i18n.js';
+import { SLOT_EMBLEMS, getRelicEmblemSvg } from './emblems.js';
 
 export const HUD_DOM = {
   hpReal: document.getElementById('hp-real'),
@@ -153,32 +154,35 @@ export function continueSavedGame() {
 export function syncHUD(force = false) {
   if (!G.player) return;
 
-  const realPctStr = Math.max(0, Math.min(100, (G.player.hp / G.player.maxHp) * 100)).toFixed(1) + '%';
-  const totalPctStr = Math.max(0, Math.min(100, ((G.player.hp + G.player.grayHp) / G.player.maxHp) * 100)).toFixed(1) + '%';
+  const realRatio = Math.max(0, Math.min(1, G.player.hp / G.player.maxHp)).toFixed(3);
+  const totalRatio = Math.max(0, Math.min(1, (G.player.hp + G.player.grayHp) / G.player.maxHp)).toFixed(3);
   const hpTextStr = `${Math.ceil(G.player.hp)} / ${G.player.maxHp}` + (G.player.grayHp >= 1 ? ` (+${Math.ceil(G.player.grayHp)} 内伤)` : '');
   const hasDoubleJump = !!(G.worldState && G.worldState.abilities.doubleJump);
   const hasShadeDash = !!(G.worldState && G.worldState.abilities.shadeDash);
   const hasDawnSigil = !!(G.worldState && G.worldState.keyItems && G.worldState.keyItems.dawnSigil);
 
-  if (force || hudCache.realPctStr !== realPctStr) {
-    hudCache.realPctStr = realPctStr;
-    HUD_DOM.hpReal.style.width = realPctStr;
+  if (force || hudCache.realRatio !== realRatio) {
+    hudCache.realRatio = realRatio;
+    HUD_DOM.hpReal.style.transform = `scaleX(${realRatio})`;
   }
-  if (force || hudCache.totalPctStr !== totalPctStr) {
-    hudCache.totalPctStr = totalPctStr;
-    HUD_DOM.hpGray.style.width = totalPctStr;
+  if (force || hudCache.totalRatio !== totalRatio) {
+    hudCache.totalRatio = totalRatio;
+    HUD_DOM.hpGray.style.transform = `scaleX(${totalRatio})`;
   }
   if (force || hudCache.hpTextStr !== hpTextStr) {
     hudCache.hpTextStr = hpTextStr;
     HUD_DOM.hpText.textContent = hpTextStr;
   }
   const activeSyns = getActiveSynergies();
-  const relicLabel = activeSyns.length > 0
-    ? `${getEquippedRelicLabel()} ✦${activeSyns[0].name}`
-    : getEquippedRelicLabel();
-  if (force || hudCache.relicName !== relicLabel) {
-    hudCache.relicName = relicLabel;
-    HUD_DOM.relicTag.textContent = relicLabel;
+  const r0 = (G.equippedRelics && G.equippedRelics[0]) || G.currentRelic || RELICS[0];
+  const r1 = (G.equippedRelics && G.equippedRelics[1]) || null;
+  const relicKey = `${r0 ? r0.id : ''}|${r1 ? r1.id : ''}|${activeSyns.length ? activeSyns[0].id : ''}`;
+  if (force || hudCache.relicKey !== relicKey) {
+    hudCache.relicKey = relicKey;
+    const icon0 = r0 ? `<span class="hud-relic-ico" title="主印 · ${r0.name}">${getRelicEmblemSvg(r0.id)}</span>` : '';
+    const icon1 = r1 ? `<span class="hud-relic-ico sub" title="副印 · ${r1.name}">${getRelicEmblemSvg(r1.id)}</span>` : '';
+    const synHtml = activeSyns.length > 0 ? `<span class="hud-syn-pill">✦${activeSyns[0].name}</span>` : '';
+    HUD_DOM.relicTag.innerHTML = `${icon0}${icon1}<span class="hud-relic-names">${getEquippedRelicLabel()}</span>${synHtml}`;
   }
   if (force || hudCache.hasDoubleJump !== hasDoubleJump) {
     hudCache.hasDoubleJump = hasDoubleJump;
@@ -193,11 +197,11 @@ export function syncHUD(force = false) {
     HUD_DOM.keyDawnTag.classList.toggle('unlocked', hasDawnSigil);
   }
 
-  const soulPctStr = Math.max(0, Math.min(100, (G.player.soul / G.player.maxSoul) * 100)).toFixed(1) + '%';
+  const soulRatio = Math.max(0, Math.min(1, G.player.soul / G.player.maxSoul)).toFixed(3);
   const soulTextStr = `魂火 ${Math.floor(G.player.soul)}`;
-  if (force || hudCache.soulPctStr !== soulPctStr) {
-    hudCache.soulPctStr = soulPctStr;
-    HUD_DOM.soulFill.style.width = soulPctStr;
+  if (force || hudCache.soulRatio !== soulRatio) {
+    hudCache.soulRatio = soulRatio;
+    HUD_DOM.soulFill.style.transform = `scaleX(${soulRatio})`;
   }
   if (force || hudCache.soulTextStr !== soulTextStr) {
     hudCache.soulTextStr = soulTextStr;
@@ -270,7 +274,8 @@ export function syncHUD(force = false) {
   }
 
   const miniElapsed = G.globalTime - G.lastMinimapRenderTime;
-  if (force || (miniElapsed >= 0.11 && (G.minimapDirty || miniElapsed >= 0.14))) {
+  const busyAct = G.player.grappleState !== 'none' || G.player.dashTimer > 0 || G.player.iaiLungeTimer > 0 || G.player.attackTimer > 0;
+  if (force || (!busyAct && miniElapsed >= 0.15 && (G.minimapDirty || miniElapsed >= 0.22))) {
     renderParchmentMap(HUD_DOM.minimapCanvas, false);
     G.minimapDirty = false;
     G.lastMinimapRenderTime = G.globalTime;
@@ -287,20 +292,20 @@ export function syncHUD(force = false) {
   }
   if (bossVisible) {
     const bossNameStr = G.echoSession ? `${activeBoss.name} · 回响` : activeBoss.name;
-    const bossHpStr = `${Math.max(0, activeBoss.hp / activeBoss.maxHp * 100).toFixed(1)}%`;
-    const bossPosStr = `${Math.max(0, activeBoss.posture / activeBoss.maxPosture * 100).toFixed(1)}%`;
+    const bossHpRatio = Math.max(0, Math.min(1, activeBoss.hp / activeBoss.maxHp)).toFixed(3);
+    const bossPosRatio = Math.max(0, Math.min(1, activeBoss.posture / activeBoss.maxPosture)).toFixed(3);
     const bossPhaseStr = activeBoss.phase === 3 ? (activeBoss.phase3Title || activeBoss.phase2Title) : activeBoss.phase === 2 ? activeBoss.phase2Title : activeBoss.phase1Title;
     if (force || hudCache.bossNameStr !== bossNameStr) {
       hudCache.bossNameStr = bossNameStr;
       HUD_DOM.bossNameLabel.textContent = bossNameStr;
     }
-    if (force || hudCache.bossHpStr !== bossHpStr) {
-      hudCache.bossHpStr = bossHpStr;
-      HUD_DOM.bossHpFill.style.width = bossHpStr;
+    if (force || hudCache.bossHpRatio !== bossHpRatio) {
+      hudCache.bossHpRatio = bossHpRatio;
+      HUD_DOM.bossHpFill.style.transform = `scaleX(${bossHpRatio})`;
     }
-    if (force || hudCache.bossPosStr !== bossPosStr) {
-      hudCache.bossPosStr = bossPosStr;
-      HUD_DOM.bossPostureFill.style.width = bossPosStr;
+    if (force || hudCache.bossPosRatio !== bossPosRatio) {
+      hudCache.bossPosRatio = bossPosRatio;
+      HUD_DOM.bossPostureFill.style.transform = `scaleX(${bossPosRatio})`;
     }
     if (force || hudCache.bossPhaseStr !== bossPhaseStr) {
       hudCache.bossPhaseStr = bossPhaseStr;
@@ -840,6 +845,13 @@ export function renderSettingsModal() {
     musBtn.classList.toggle('active', on);
   }
 
+  const lightBtn = document.getElementById('btn-lighting-toggle');
+  if (lightBtn) {
+    const highLight = G.settings.dynamicLighting !== false;
+    lightBtn.textContent = highLight ? '动态光影: 标准' : '动态光影: 轻量 (极致流畅)';
+    lightBtn.classList.toggle('active', highLight);
+  }
+
   const hapBtn = document.getElementById('btn-haptics-toggle');
   if (hapBtn) {
     hapBtn.textContent = G.settings.haptics ? '震动: 开' : '震动: 关';
@@ -881,9 +893,18 @@ export function renderRelicChoices() {
     slotBar.innerHTML = '';
     [0, 1].forEach(idx => {
       const r = G.equippedRelics[idx];
+      const isPrimary = idx === 0;
       const btn = document.createElement('button');
-      btn.className = `relic-slot-pill${G.activeRelicSlot === idx ? ' active' : ''}`;
-      btn.innerHTML = `<span class="slot-tag">${idx === 0 ? '主印' : '副印'}</span><span>${r ? r.name : '空置 · 点击下方铭刻'}</span>`;
+      btn.type = 'button';
+      btn.className = `relic-slot-medallion ${isPrimary ? 'primary' : 'secondary'}${G.activeRelicSlot === idx ? ' active' : ''}${r ? ' filled' : ' vacant'}`;
+      btn.innerHTML = `
+        <span class="slot-crest">${isPrimary ? SLOT_EMBLEMS.primary : SLOT_EMBLEMS.secondary}</span>
+        <span class="slot-emblem-box">${r ? getRelicEmblemSvg(r.id) : SLOT_EMBLEMS.empty}</span>
+        <span class="slot-info">
+          <span class="slot-kicker">${isPrimary ? '主印 · 烈日钟纹' : '副印 · 残月幽丝'}</span>
+          <span class="slot-val">${r ? r.name : '点击下方圣物铭刻'}</span>
+        </span>
+      `;
       btn.addEventListener('click', () => {
         G.activeRelicSlot = idx;
         renderRelicChoices();
@@ -924,32 +945,42 @@ export function renderRelicChoices() {
   const list = document.getElementById('relic-list');
   list.innerHTML = '';
 
-  const lockedHints = {
-    bellthread: '尚未发现。传闻藏于起点左侧高空的墨蚀壁龛之内，需以钩索攀跃并击碎裂纹暗墙。',
-    bellcore: '尚未发现。传闻悬于第一区悬灯之上的苍穹残钟阁，唯有习得「墨翼步」方可踏足。',
-    clapper: '尚未发现。需在枯骨长廊限时齐鸣三口青铜共鸣钟，震开封印钟笼。',
-    ironheart: '尚未发现。需在沉渊钟井上层钟阁限时齐鸣三口青铜共鸣钟，解开钟笼封印。',
-    shadecurtain: '尚未发现。藏于起点熄灯祭坛最西侧的暗蚀结界之后，需习得「幽影穿身」穿行取得。'
-  };
-
   for (const relic of RELICS) {
     const unlocked = !relic.hidden || (G.worldState && G.worldState.unlockedRelics.has(relic.id));
     const eqSlot = unlocked ? G.equippedRelics.findIndex(r => r && r.id === relic.id) : -1;
     const card = document.createElement('div');
     card.className = `relic-card${eqSlot >= 0 ? ' equipped' : ''}${eqSlot === 1 ? ' equipped-sub' : ''}${unlocked ? '' : ' locked'}`;
 
-    const name = document.createElement('div');
-    name.className = 'relic-name';
+    const head = document.createElement('div');
+    head.className = 'relic-card-head';
+    const emblemWrap = document.createElement('div');
+    emblemWrap.className = 'relic-emblem-wrap';
+    emblemWrap.innerHTML = unlocked ? getRelicEmblemSvg(relic.id) : getRelicEmblemSvg('locked');
+
+    const titleCol = document.createElement('div');
+    titleCol.className = 'relic-title-col';
     if (unlocked) {
-      const tagHtml = eqSlot === 0 ? '<span class="relic-slot-badge primary">主印</span>' : eqSlot === 1 ? '<span class="relic-slot-badge secondary">副印</span>' : '';
-      name.innerHTML = `<span>${relic.name}</span>${tagHtml}`;
+      const slotIcon = eqSlot === 0
+        ? `<span class="relic-slot-badge primary" title="已铭刻为主印">${SLOT_EMBLEMS.primary}主印</span>`
+        : eqSlot === 1
+          ? `<span class="relic-slot-badge secondary" title="已铭刻为副印">${SLOT_EMBLEMS.secondary}副印</span>`
+          : (relic.tag ? `<span class="relic-style-tag">${relic.tag}</span>` : '');
+      titleCol.innerHTML = `<div class="relic-name"><span>${relic.name}</span></div><div class="relic-badge-row">${slotIcon}</div>`;
     } else {
-      name.textContent = '？？？ · 隐秘圣物';
+      titleCol.innerHTML = `<div class="relic-name"><span>？？？</span></div><div class="relic-badge-row"><span class="relic-style-tag locked">未寻得</span></div>`;
     }
-    const desc = document.createElement('div');
-    desc.className = 'relic-desc';
-    desc.textContent = unlocked ? relic.desc : (lockedHints[relic.id] || '尚未发现的隐秘圣物。');
-    card.append(name, desc);
+    head.append(emblemWrap, titleCol);
+
+    const body = document.createElement('div');
+    body.className = 'relic-body';
+    if (unlocked) {
+      body.innerHTML =
+        `<div class="relic-effect">${relic.effect || relic.desc}</div>` +
+        (relic.usage ? `<div class="relic-usage"><span>用法</span>${relic.usage}</div>` : '');
+    } else {
+      body.innerHTML = `<div class="relic-hint">${relic.hint || '隐匿于晦渊秘境之中'}</div>`;
+    }
+    card.append(head, body);
 
     if (unlocked) {
       card.tabIndex = 0;

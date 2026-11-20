@@ -568,11 +568,7 @@ function drawWorldBackdrop() {
   // F. Flickering Wax Candle Clusters
   CANDLE_CLUSTERS.forEach((cl, idx) => {
     if (!isInView(cl.x - 48, cl.y - 64, 96, 70, 80)) return;
-    const g = G.ctx.createRadialGradient(cl.x, cl.y - 16, 2, cl.x, cl.y - 16, 48);
-    g.addColorStop(0, 'rgba(245, 158, 11, 0.24)');
-    g.addColorStop(1, 'transparent');
-    G.ctx.fillStyle = g;
-    G.ctx.beginPath(); G.ctx.arc(cl.x, cl.y - 16, 48, 0, Math.PI * 2); G.ctx.fill();
+    drawGlowSprite('gold', cl.x, cl.y - 16, 46, 0.24);
     for (let i = 0; i < cl.count; i++) {
       const cx = cl.x + (i - (cl.count - 1) / 2) * 8;
       const ch = 10 + ((idx + i * 3) % 3) * 5;
@@ -850,11 +846,7 @@ function drawAltars() {
 
     G.ctx.save();
     if (isLit) {
-      const glow = G.ctx.createRadialGradient(x, y - 48, 4, x, y - 48, isActive ? 132 : 105);
-      glow.addColorStop(0, isActive ? 'rgba(56, 189, 248, 0.42)' : 'rgba(56, 189, 248, 0.28)');
-      glow.addColorStop(1, 'transparent');
-      G.ctx.fillStyle = glow;
-      G.ctx.beginPath(); G.ctx.arc(x, y - 48, isActive ? 132 : 105, 0, Math.PI * 2); G.ctx.fill();
+      drawGlowSprite('cyan', x, y - 48, isActive ? 128 : 100, isActive ? 0.40 : 0.26);
     }
 
     // Stone Pedestal & Brazier
@@ -1301,11 +1293,7 @@ function drawPickups() {
     const col = isKey ? '#fef9c3' : (isShade ? COLORS.violetBright : (isFlask || isAbility ? COLORS.cyanBright : COLORS.goldBright));
 
     G.ctx.save();
-    const g = G.ctx.createRadialGradient(p.x, py, 3, p.x, py, isAbility ? 62 : 46);
-    g.addColorStop(0, isShade ? 'rgba(168, 85, 247, 0.56)' : isAbility ? 'rgba(125, 211, 252, 0.56)' : isFlask ? 'rgba(56, 189, 248, 0.42)' : 'rgba(245, 158, 11, 0.44)');
-    g.addColorStop(1, 'transparent');
-    G.ctx.fillStyle = g;
-    G.ctx.beginPath(); G.ctx.arc(p.x, py, 46, 0, Math.PI * 2); G.ctx.fill();
+    drawGlowSprite(isShade ? 'violet' : (isFlask || isAbility ? 'cyan' : 'gold'), p.x, py, isAbility ? 60 : 46, isAbility ? 0.54 : 0.42);
 
     // Stone miniature shrine plinth
     G.ctx.fillStyle = '#182132';
@@ -1696,11 +1684,7 @@ function drawPuppet(x, y, facing, isGhost = false, ghostColor = null) {
   G.ctx.save();
   if (!isGhost) {
     // Soft ambient soul lantern glow around protagonist
-    const lg = G.ctx.createRadialGradient(cx - facing * 8, y + 32, 4, cx, y + 26, 95);
-    lg.addColorStop(0, G.player.chargeReadyPlayed ? 'rgba(253, 224, 71, 0.25)' : 'rgba(56, 189, 248, 0.16)');
-    lg.addColorStop(1, 'transparent');
-    G.ctx.fillStyle = lg;
-    G.ctx.beginPath(); G.ctx.arc(cx, y + 26, 95, 0, Math.PI * 2); G.ctx.fill();
+    drawGlowSprite(G.player.chargeReadyPlayed ? 'gold' : 'cyan', cx - facing * 4, y + 28, 92, G.player.chargeReadyPlayed ? 0.24 : 0.16);
 
     // Dual Spring-Physics Cloak + Torn Crimson-Ash Scarf (violet-lit rim when Shade Cloak burst is ready!)
     const shadeReady = !!(G.worldState && G.worldState.abilities.shadeDash && G.player.shadeDashCd <= 0);
@@ -2399,12 +2383,7 @@ function drawWraith(e) {
   const isStagger = e.state === 'stagger';
   G.ctx.save();
 
-  const auraCol = e.state === 'windup' ? 'rgba(245, 158, 11, 0.34)' : 'rgba(56, 189, 248, 0.22)';
-  const glow = G.ctx.createRadialGradient(cx, cy, 4, cx, cy, 52);
-  glow.addColorStop(0, auraCol);
-  glow.addColorStop(1, 'transparent');
-  G.ctx.fillStyle = glow;
-  G.ctx.beginPath(); G.ctx.arc(cx, cy, 52, 0, Math.PI * 2); G.ctx.fill();
+  drawGlowSprite(e.state === 'windup' ? 'gold' : 'cyan', cx, cy, 50, e.state === 'windup' ? 0.34 : 0.22);
 
   drawCloakMesh(e.cloak, '#121826', 'rgba(125, 211, 252, 0.42)', 13, 680);
 
@@ -3504,36 +3483,40 @@ function drawImpactBursts() {
 }
 
 function drawShockwaves() {
-  for (const s of G.shockwaves) {
-    G.ctx.save();
-    G.ctx.globalAlpha = Math.max(0, s.life / s.maxLife);
-    G.ctx.strokeStyle = s.color;
-    G.ctx.lineWidth = s.width;
-    boilCircle(G.ctx, s.x, s.y, s.r, 5500, 1.8, 18);
-    G.ctx.stroke();
-    G.ctx.restore();
+  if (G.shockwaves.length === 0) return;
+  const ctx = G.ctx;
+  for (let i = 0; i < G.shockwaves.length; i++) {
+    const s = G.shockwaves[i];
+    ctx.globalAlpha = Math.max(0, s.life / s.maxLife);
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = s.width;
+    boilCircle(ctx, s.x, s.y, s.r, 5500, 1.8, 16);
+    ctx.stroke();
   }
+  ctx.globalAlpha = 1;
 }
 
 function drawParticles() {
-  for (const p of G.particles) {
-    G.ctx.save();
-    G.ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
-    G.ctx.fillStyle = p.color;
+  if (G.particles.length === 0) return;
+  const ctx = G.ctx;
+  for (let i = 0; i < G.particles.length; i++) {
+    const p = G.particles[i];
+    ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
     if (p.spark) {
-      G.ctx.strokeStyle = p.color;
-      G.ctx.lineWidth = p.size * 0.75;
-      G.ctx.beginPath();
-      G.ctx.moveTo(p.x, p.y);
-      G.ctx.lineTo(p.x - p.vx * 0.032, p.y - p.vy * 0.032);
-      G.ctx.stroke();
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = p.size * 0.75;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x - p.vx * 0.032, p.y - p.vy * 0.032);
+      ctx.stroke();
     } else {
-      G.ctx.beginPath();
-      G.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      G.ctx.fill();
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
     }
-    G.ctx.restore();
   }
+  ctx.globalAlpha = 1;
 }
 
 function drawWorldPrompts() {
@@ -3590,17 +3573,23 @@ function drawPromptBadge(x, y, label) {
 }
 
 function drawFloatingTexts() {
-  for (const ft of G.floatTexts) {
-    G.ctx.save();
-    G.ctx.globalAlpha = Math.max(0, Math.min(1, (ft.life / ft.maxLife) * 1.4));
-    G.ctx.font = `bold ${ft.size}px "Noto Serif SC", serif`;
-    G.ctx.textAlign = 'center';
-    G.ctx.fillStyle = '#06080d';
-    G.ctx.fillText(ft.text, ft.x + 1.5, ft.y + 1.5);
-    G.ctx.fillStyle = ft.color;
-    G.ctx.fillText(ft.text, ft.x, ft.y);
-    G.ctx.restore();
+  if (G.floatTexts.length === 0) return;
+  const ctx = G.ctx;
+  ctx.textAlign = 'center';
+  let lastSize = -1;
+  for (let i = 0; i < G.floatTexts.length; i++) {
+    const ft = G.floatTexts[i];
+    ctx.globalAlpha = Math.max(0, Math.min(1, (ft.life / ft.maxLife) * 1.4));
+    if (ft.size !== lastSize) {
+      lastSize = ft.size;
+      ctx.font = `bold ${ft.size}px "Noto Serif SC", serif`;
+    }
+    ctx.fillStyle = '#06080d';
+    ctx.fillText(ft.text, ft.x + 1.5, ft.y + 1.5);
+    ctx.fillStyle = ft.color;
+    ctx.fillText(ft.text, ft.x, ft.y);
   }
+  ctx.globalAlpha = 1;
 }
 
 function drawForegroundSilhouettes() {

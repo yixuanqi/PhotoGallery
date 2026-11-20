@@ -6,8 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="screen-orientation" content="landscape" />
 <meta name="x5-orientation" content="landscape" />
-<title>灰钟残誓 v17.3 — 钩索与动态光影零卡顿优化 · 终章完整闭环</title>
-<link rel="stylesheet" href="./styles.css?v=17.3" />
+<title>灰钟残誓 v17.4 — 圣物徽章 UI 精修与零卡顿渲染优化 · 终章完整闭环</title>
+<link rel="stylesheet" href="./styles.css?v=17.4" />
 </head>
 <body>
 <div id="game-root">
@@ -27,12 +27,12 @@
           </div>
         </div>
         <div class="hp-bar-frame">
-          <div id="hp-gray" class="hp-gray-fill" style="width: 100%"></div>
-          <div id="hp-real" class="hp-real-fill" style="width: 100%"></div>
+          <div id="hp-gray" class="hp-gray-fill" style="transform: scaleX(1)"></div>
+          <div id="hp-real" class="hp-real-fill" style="transform: scaleX(1)"></div>
         </div>
         <div class="soul-bar-wrap" title="魂火：平A与弹反回复，按 U 释放幽鸣灵刃(耗30)">
           <div class="soul-bar-frame">
-            <div id="soul-fill" class="soul-bar-fill" style="width: 100%"></div>
+            <div id="soul-fill" class="soul-bar-fill" style="transform: scaleX(1)"></div>
           </div>
           <span id="soul-text" class="soul-text">魂火 100</span>
         </div>
@@ -85,10 +85,10 @@
         <span id="boss-phase-tag" class="boss-phase-tag">第一幕 · 寂静守誓</span>
       </div>
       <div class="boss-hp-frame">
-        <div id="boss-hp-fill" class="boss-hp-fill" style="width: 100%"></div>
+        <div id="boss-hp-fill" class="boss-hp-fill" style="transform: scaleX(1)"></div>
       </div>
       <div class="boss-posture-frame">
-        <div id="boss-posture-fill" class="boss-posture-fill" style="width: 0%"></div>
+        <div id="boss-posture-fill" class="boss-posture-fill" style="transform: scaleX(0)"></div>
       </div>
     </div>
   </div>
@@ -132,7 +132,7 @@
 
   <!-- Altar / Relic Swap Modal -->
   <div id="altar-modal" class="overlay-screen hidden">
-    <div class="modal-card">
+    <div class="modal-card altar-modal-card">
       <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="altar">✕ 返回游戏</button></div>
       <div id="altar-modal-title" class="modal-title">熄灯祭坛</div>
       <div class="modal-sub">灯油与魂火已回满 · 提灯可同时铭刻「主印 + 副印」两枚圣物</div>
@@ -242,6 +242,12 @@
         <div class="settings-row">
           <span>战斗与环境音效 (SFX)</span>
           <div class="vol-slider-wrap"><input id="vol-sfx" class="vol-slider" type="range" min="0" max="100" step="5" value="90" /><span id="vol-sfx-val" class="vol-val">90%</span></div>
+        </div>
+        <div class="settings-row">
+          <span>提灯动态阴影与体积光</span>
+          <div class="seg-group">
+            <button id="btn-lighting-toggle" class="seg-btn active">动态光影: 标准</button>
+          </div>
         </div>
         <div class="settings-row">
           <span>手柄双马达震动</span>
@@ -459,6 +465,6 @@
   }, 8000);
 })();
 </script>
-<script type="module" src="./src/main.js?v=17.3"></script>
+<script type="module" src="./src/main.js?v=17.4"></script>
 </body>
 </html>
