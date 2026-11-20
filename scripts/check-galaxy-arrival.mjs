@@ -58,6 +58,10 @@ assert.match(html, /PLANET_BASE_COORDS = PROJECTS\.map\(function \(project\) \{ 
 assert.match(html, /PLANET_BASE_RADII = PROJECTS\.map\(function \(project\) \{ return project\.radius; \}\)/, "planet radii must be derived from catalog presentation data");
 assert.match(html, /POSTS = BASE_POSTS\.concat\(PROJECTS\.filter\(function \(project\) \{ return !!project\.journal; \}\)/, "project journals must be derived from catalog records");
 assert.match(html, /function boot\(\)[\s\S]*loadProjectCatalog\(\)/, "galaxy must wait for catalog loading before initialization");
+assert.match(html, /var tmpCamUp = null;/, "Three.js vectors must not be constructed before the availability guard");
+assert.match(html, /var tmpAnchor = null;/, "label anchor vector must be lazily initialized");
+assert.match(html, /tmpCamUp = new THREE\.Vector3\(\);[\s\S]*tmpAnchor = new THREE\.Vector3\(\);/, "Three.js vectors must be initialized after the WebGL dependency check");
+
 const projects = catalog.projects.filter(project => project.id !== "galaxy").sort((a,b) => a.sortOrder - b.sortOrder);
 const projectIds = projects.map(project => project.id);
 assert.ok(projectIds.length > 0, "at least one project must be registered");
