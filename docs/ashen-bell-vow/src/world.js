@@ -5,6 +5,7 @@ import {
 } from './state.js';
 import { getRoomAt } from './levelLoader.js';
 import { audio } from './audio.js';
+import { triggerHaptic } from './input.js';
 import {
   spawnParticles, spawnShockwave, spawnImpactBurst, spawnFloatText, spawnWeatherRipple
 } from './vfx.js';
@@ -106,7 +107,9 @@ export function updateWorldEffects(dt) {
       G.screenFlash = { alpha: 0.28, color: COLORS.cyan };
       spawnParticles(px, hitRiver.y, 26, { color: COLORS.ink, speed: 240, grav: 260, life: 0.55 });
       spawnParticles(px, hitRiver.y, 16, { color: COLORS.cyanBright, speed: 210, spark: true, life: 0.45 });
-      const dmg = 18;
+      const rMult = (G.settings && typeof G.settings.damageTakenMult === 'number') ? G.settings.damageTakenMult : 1.0;
+      const dmg = Math.max(1, Math.round(18 * rMult));
+      triggerHaptic('hurt', 0.85);
       G.player.hp = Math.max(0, G.player.hp - dmg);
       G.player.grayHp = 0;
       G.player.parryActive = false;
@@ -150,9 +153,11 @@ export function updateWorldEffects(dt) {
     pr.x += pr.vx * dt;
     pr.y += pr.vy * dt;
 
-    if (pr.kind === 'soulWave') {
+    if (pr.kind === 'soulWave' || pr.kind === 'crimsonWave') {
+      const isCrimson = pr.kind === 'crimsonWave';
+      const pCol = isCrimson ? COLORS.crimsonBright : COLORS.cyanBright;
       if (Math.random() < 0.7) {
-        spawnParticles(pr.x - pr.facing * 10, pr.y + (Math.random() - 0.5) * 26, 1, { color: COLORS.cyanBright, speed: 60, grav: 0, life: 0.24 });
+        spawnParticles(pr.x - pr.facing * 10, pr.y + (Math.random() - 0.5) * 26, 1, { color: pCol, speed: 60, grav: 0, life: 0.24 });
       }
       const pBox = { x: pr.x - pr.r, y: pr.y - pr.r * 1.15, w: pr.r * 2, h: pr.r * 2.3 };
       const targets = getLivingFoes();
@@ -161,19 +166,21 @@ export function updateWorldEffects(dt) {
         if (aabbOverlap(pBox, t)) {
           pr.hitIds.add(t.id);
           audio.playHit(true);
+          triggerHaptic(isCrimson ? 'heavyHit' : 'lightHit');
           G.hitstopTimer = Math.max(G.hitstopTimer, 0.032);
-          addShake(5);
+          addShake(isCrimson ? 7 : 5);
           if ((t.kind === 'golem' || (t.kind === 'boss2' && t.shieldUp)) && t.shieldBrokenTimer <= 0) {
             t.shieldBrokenTimer = 2.4;
             if (t.kind === 'boss2') t.shieldUp = false;
             audio.playShieldBreak();
-            spawnFloatText(t.x + t.w / 2, t.y - 26, '灵刃破盾！', COLORS.cyanBright, 19, 0.95);
+            triggerHaptic('shieldBreak');
+            spawnFloatText(t.x + t.w / 2, t.y - 26, isCrimson ? '血刃破盾！' : '灵刃破盾！', pCol, 19, 0.95);
           }
           damageEnemyHP(t, pr.dmg, true);
           addPostureToEnemy(t, pr.posture);
-          rallyPlayerGrayHp(10);
-          spawnParticles(t.x + t.w / 2, t.y + t.h * 0.45, 16, { color: COLORS.cyanBright, speed: 240, spark: true, life: 0.34 });
-          spawnShockwave(t.x + t.w / 2, t.y + t.h * 0.45, 58, COLORS.cyanBright, 2.8, 0.22);
+          rallyPlayerGrayHp(isCrimson ? 18 : 10);
+          spawnParticles(t.x + t.w / 2, t.y + t.h * 0.45, 16, { color: pCol, speed: 240, spark: true, life: 0.34 });
+          spawnShockwave(t.x + t.w / 2, t.y + t.h * 0.45, isCrimson ? 70 : 58, pCol, 2.8, 0.22);
         }
       }
 
@@ -247,6 +254,11 @@ export function updateWorldEffects(dt) {
             G.player.parryStreak = G.player.parryStreakTimer > 0 ? Math.min(9, G.player.parryStreak + 1) : 1;
             G.player.parryStreakTimer = 2.6;
             audio.playParry(true, G.player.parryStreak);
+            triggerHaptic('parry', 0.95 + Math.min(0.4, (G.player.parryStreak - 1) * 0.12));
+            if (rsOrb.synMirrorEmber && G.player.parryStreak >= 3 && !G.player.freeSealProc) {
+              G.player.freeSealProc = true;
+              spawnFloatText(G.player.x + G.player.w / 2, G.player.y - 46, '羁绊 · 镜烬蓄印！下击附符', COLORS.crimsonBright, 17, 1.1);
+            }
             G.hitstopTimer = 0.058;
             addShake(9);
             punchZoom(1.04);
@@ -320,6 +332,7 @@ export function updateWorldEffects(dt) {
     }
     if (tm.timer <= 0) {
       audio.playDetonate();
+      triggerHaptic('heavyHit', 1.1);
       G.hitstopTimer = 0.055;
       addShake(12);
       G.screenFlash = { alpha: 0.2, color: COLORS.goldBright };

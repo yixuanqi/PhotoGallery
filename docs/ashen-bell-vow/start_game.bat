@@ -2,10 +2,10 @@
 setlocal
 chcp 65001 >nul
 cd /d "%~dp0"
-title Ashen Bell Vow v12 - Local Server
+title Ashen Bell Vow v14 - Local Server
 
 echo ========================================================
-echo   Ashen Bell Vow v12 - Local Server Launcher
+echo   Ashen Bell Vow v14 - Local Server Launcher
 echo ========================================================
 echo.
 

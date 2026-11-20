@@ -1,6 +1,6 @@
 // Asynchronous Room-Based JSON Data Stream loader & runtime hydrator
 import {
-  ROOMS, SOLIDS, ALTARS, ALTAR_POS, LORE_TABLETS,
+  ROOMS, SOLIDS, ALTARS, NPCS, ALTAR_POS, LORE_TABLETS,
   SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF,
   SECRET_WALLS_DEF, PICKUPS_DEF, RESONANCE_PUZZLES_DEF, CRUMBLE_PLATFORMS_DEF,
   PENDULUMS, ABYSSAL_RIVERS, ABYSSAL_RIVER, WALL_INSCRIPTIONS, GRAPPLE_ANCHORS,
@@ -38,6 +38,7 @@ export function hydrateWorldBundle(bundle) {
   resetArray(ROOMS);
   resetArray(SOLIDS);
   resetArray(ALTARS);
+  resetArray(NPCS);
   resetArray(LORE_TABLETS);
   resetArray(SECRET_WALLS_DEF);
   resetArray(PICKUPS_DEF);
@@ -123,6 +124,15 @@ export function hydrateWorldBundle(bundle) {
         ...a,
         x: ox + a.x,
         y: oy + a.y,
+        roomId: room.id
+      });
+    }
+
+    for (const npc of (room.npcs || [])) {
+      NPCS.push({
+        ...npc,
+        x: ox + npc.x,
+        y: oy + npc.y,
         roomId: room.id
       });
     }

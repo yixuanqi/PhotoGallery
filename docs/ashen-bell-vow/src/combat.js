@@ -1,12 +1,14 @@
 // Combat resolution: 3-tier parry, posture break, executions, active hitboxes & pickups
 import {
-  COLORS, GRAPPLE_ANCHORS, PENDULUMS, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF
+  COLORS, GRAPPLE_ANCHORS, PENDULUMS, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, ENEMY_ECHO_REWARDS
 } from './config.js';
 import {
-  G, hooks, getLivingFoes, getRelicStats, getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks,
+  G, hooks, getLivingFoes, getRelicStats, getBladeDamageMult, getSmithPostureMult,
+  getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks,
   scheduleOutcome, addShake, kickCamera, punchZoom
 } from './state.js';
 import { audio } from './audio.js';
+import { triggerHaptic, getActionKeyLabel } from './input.js';
 import {
   spawnParticles, spawnShockwave, spawnImpactBurst, spawnHitMark, spawnFloatText
 } from './vfx.js';
@@ -22,12 +24,36 @@ export function rallyPlayerGrayHp(amount) {
   }
 }
 
+function clearPriestWards() {
+  for (let i = 0; i < G.enemies.length; i++) {
+    const a = G.enemies[i];
+    if (a && a.alive && a.wardShield > 0) {
+      a.wardShield = 0;
+      spawnParticles(a.x + a.w / 2, a.y + a.h * 0.45, 14, { color: COLORS.goldBright, speed: 200, spark: true, life: 0.38 });
+      spawnFloatText(a.x + a.w / 2, a.y - 24, '钟佑碎裂！', COLORS.goldBright, 16, 0.85);
+    }
+  }
+}
+
 export function damageEnemyHP(enemy, amount, showNum = true) {
   if (!enemy || !enemy.alive) return;
-  enemy.hp = Math.max(0, enemy.hp - amount);
+  let finalAmt = amount;
+  if (enemy.wardShield > 0) {
+    finalAmt = Math.max(2, Math.round(amount * 0.35));
+    spawnParticles(enemy.x + enemy.w / 2, enemy.y + enemy.h * 0.45, 6, { color: COLORS.goldBright, speed: 140, spark: true, life: 0.25 });
+  }
+  if (enemy.kind === 'priest' && enemy.state === 'chant') {
+    enemy.state = 'recover';
+    enemy.stateTimer = 0.7;
+    enemy.chantTargetId = null;
+    spawnFloatText(enemy.x + enemy.w / 2, enemy.y - 34, '打断咏钟！', COLORS.cyanBright, 17, 0.85);
+  }
+  enemy.hp = Math.max(0, enemy.hp - finalAmt);
   enemy.hurtFlash = 0.13;
   if (showNum) {
-    spawnFloatText(enemy.x + enemy.w / 2 + (Math.random() - 0.5) * 20, enemy.y - 10, `${Math.round(amount)}`, COLORS.parchment, 15, 0.55);
+    const numCol = enemy.wardShield > 0 ? COLORS.goldBright : COLORS.parchment;
+    const txt = enemy.wardShield > 0 ? `${Math.round(finalAmt)} (盾)` : `${Math.round(finalAmt)}`;
+    spawnFloatText(enemy.x + enemy.w / 2 + (Math.random() - 0.5) * 20, enemy.y - 10, txt, numCol, 15, 0.55);
   }
   if (enemy.hp <= 0) {
     killEnemy(enemy);
@@ -36,23 +62,33 @@ export function damageEnemyHP(enemy, amount, showNum = true) {
 
 export function addPostureToEnemy(enemy, amount) {
   if (!enemy || !enemy.alive || enemy.state === 'stagger') return;
-  const scaled = amount * getRelicStats().postureDmgMult;
+  const chantBonus = (enemy.kind === 'priest' && enemy.state === 'chant') ? 1.5 : 1.0;
+  const scaled = amount * getRelicStats().postureDmgMult * getSmithPostureMult() * chantBonus;
   enemy.posture = Math.min(enemy.maxPosture, enemy.posture + scaled);
   enemy.postureDecayDelay = 3.2;
   if (enemy.posture >= enemy.maxPosture) {
     enemy.state = 'stagger';
     enemy.stateTimer = enemy.isBoss ? 3.8 : 3.2;
     enemy.vx = 0;
+    if (enemy.kind === 'priest') clearPriestWards();
     audio.playBellToll();
+    triggerHaptic('shieldBreak', 1.05);
     G.hitstopTimer = 0.065;
     addShake(11);
     spawnShockwave(enemy.x + enemy.w / 2, enemy.y + enemy.h * 0.45, 115, COLORS.goldBright, 4.5, 0.35);
-    spawnFloatText(enemy.x + enemy.w / 2, enemy.y - 26, '架势崩毁！按 [J] 处决', COLORS.goldBright, 19, 1.4);
+    spawnFloatText(enemy.x + enemy.w / 2, enemy.y - 26, `架势崩毁！按 [${getActionKeyLabel('attack')}] 处决`, COLORS.goldBright, 19, 1.4);
   }
 }
 
 export function killEnemy(enemy) {
   enemy.alive = false;
+  if (enemy.kind === 'priest') clearPriestWards();
+  if (G.worldState && !G.echoSession) {
+    const reward = ENEMY_ECHO_REWARDS[enemy.kind] || 30;
+    G.worldState.echoes = (G.worldState.echoes || 0) + reward;
+    G.saveDirtyTimer = Math.min(G.saveDirtyTimer > 0 ? G.saveDirtyTimer : 2.5, 2.5);
+    spawnFloatText(enemy.x + enemy.w / 2, enemy.y - 24, `+${reward} 残响`, COLORS.goldBright, 16, 1.05);
+  }
   spawnParticles(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, 36, { color: COLORS.ink, speed: 260, grav: 160, life: 0.7 });
   spawnParticles(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, 18, { color: COLORS.goldBright, speed: 240, spark: true, life: 0.6 });
   spawnShockwave(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, 120, COLORS.parchment, 3, 0.4);
@@ -60,6 +96,7 @@ export function killEnemy(enemy) {
     G.chapelTide = null;
     G.groundWaves = [];
     audio.playBellToll();
+    triggerHaptic('execution', 1.2);
     addShake(16);
     if (G.echoSession) {
       if (G.echoSession.mode === 'rush' && G.echoSession.stage === 0) {
@@ -105,11 +142,15 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
 
   const dir = attacker.x + attacker.w / 2 < G.player.x + G.player.w / 2 ? 1 : -1;
 
+  // Assist Mode incoming damage multiplier (1.0 / 0.7 / 0.5)
+  const dmgMult = (G.settings && typeof G.settings.damageTakenMult === 'number') ? G.settings.damageTakenMult : 1.0;
+  const scaledDamage = Math.max(1, Math.round(damage * dmgMult));
+
   // 2. Three-Tier Parry Check (only if attack is parryable)
   const rs = getRelicStats();
   if (G.player.parryActive && !isUnparryable) {
     if (G.player.parryElapsedMs <= rs.parryWindowMs) {
-      // TIER 1: PERFECT PARRY (0 - 140ms) — Sekiro / Nine Sols Clash Juice!
+      // TIER 1: PERFECT PARRY (0 - 140ms * assist) — Sekiro / Nine Sols Clash Juice!
       G.stats.parries++;
       if (G.echoSession) G.echoSession.parries++;
       G.player.parryStreak = G.player.parryStreakTimer > 0 ? Math.min(9, G.player.parryStreak + 1) : 1;
@@ -120,6 +161,7 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
       G.player.facing = -dir;
 
       audio.playParry(true, G.player.parryStreak);
+      triggerHaptic('parry', 0.9 + Math.min(0.45, (G.player.parryStreak - 1) * 0.12));
       G.hitstopTimer = 0.062;
       addShake(9 + Math.min(4, G.player.parryStreak));
       kickCamera(dir * 9, -3);
@@ -148,11 +190,15 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
         if (rs.parryReflectDmg > 0) {
           damageEnemyHP(attacker, rs.parryReflectDmg, true);
         }
-        // Interrupt non-boss, Boss 1 thrust, or Boss 2 bell shield charge
+        // Duelist keeps swinging through its 3-hit parry rhythm; other regular foes recoil into recover
         if (!attacker.isBoss && attacker.state !== 'stagger') {
-          attacker.state = 'recover';
-          attacker.stateTimer = 0.65;
-          attacker.vx = -dir * 160;
+          if (attacker.kind === 'duelist' && attacker.attackKind === 'combo3' && attacker.comboIdx < 2) {
+            attacker.vx = -dir * 70;
+          } else {
+            attacker.state = 'recover';
+            attacker.stateTimer = 0.65;
+            attacker.vx = -dir * 160;
+          }
         } else if (attacker.isBoss && (attacker.moveKind === 'chargeThrust' || attacker.moveKind === 'bellShieldCharge') && attacker.state !== 'stagger') {
           attacker.state = 'recover';
           attacker.stateTimer = 0.95;
@@ -183,6 +229,13 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
       spawnParticles(sx, sy, 10, { color: '#ffffff', speed: 290, spark: true, life: 0.24 });
       spawnParticles(sx, sy, 10, { color: COLORS.ink, speed: 220, grav: 320, size: 3.2, life: 0.38 });
 
+      // Synergy 「镜烬印记」(碎镜之眼 + 孤灯余烬): 3-streak parry arms free talisman plant on next strike!
+      if (rs.synMirrorEmber && G.player.parryStreak >= 3 && !G.player.freeSealProc) {
+        G.player.freeSealProc = true;
+        spawnShockwave(G.player.x + G.player.w / 2, G.player.y + 24, 72, COLORS.crimsonBright, 3.2, 0.28);
+        spawnFloatText(G.player.x + G.player.w / 2, G.player.y - 48, '羁绊 · 镜烬蓄印！下击附符', COLORS.crimsonBright, 17, 1.15);
+      }
+
       const label = G.player.parryStreak >= 4
         ? `铁鸣连弹 ×${G.player.parryStreak}！`
         : G.player.parryStreak >= 2
@@ -196,6 +249,7 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
       G.player.parryStreak = 0;
       G.player.parryStreakTimer = 0;
       audio.playParry(false);
+      triggerHaptic('block');
       G.hitstopTimer = 0.036;
       addShake(5.5);
       kickCamera(dir * 6, 0);
@@ -203,7 +257,7 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
       G.player.vx = dir * 210;
       G.player.squashX = 0.86;
       G.player.squashY = 1.14;
-      const chip = Math.min(G.player.hp - 1, Math.round(damage * 0.62));
+      const chip = Math.min(G.player.hp - 1, Math.round(scaledDamage * 0.62));
       if (chip > 0) {
         G.player.hp -= chip;
         G.player.grayHp = Math.min(G.player.maxHp - G.player.hp, G.player.grayHp + chip);
@@ -228,6 +282,7 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
 
   // Full Hit
   audio.playHit(true);
+  triggerHaptic('hurt');
   G.hitstopTimer = 0.05;
   addShake(11);
   G.screenFlash = { alpha: 0.25, color: COLORS.crimson };
@@ -243,14 +298,14 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
     spawnParticles(G.player.x + G.player.w / 2, G.player.y + 20, 12, { color: '#cbd5e1', speed: 210, spark: true, life: 0.42 });
   }
   G.player.grayHp = 0; // Taking direct damage shatters remaining internal gray HP!
-  G.player.hp = Math.max(0, G.player.hp - damage);
-  G.stats.damageTaken += damage;
-  if (G.echoSession) G.echoSession.damageTaken += damage;
+  G.player.hp = Math.max(0, G.player.hp - scaledDamage);
+  G.stats.damageTaken += scaledDamage;
+  if (G.echoSession) G.echoSession.damageTaken += scaledDamage;
   G.player.vx = dir * knockback;
   G.player.vy = -240;
 
   spawnParticles(G.player.x + G.player.w / 2, G.player.y + 26, 20, { color: COLORS.crimsonBright, speed: 260, life: 0.45 });
-  spawnFloatText(G.player.x + G.player.w / 2, G.player.y - 14, `-${damage}`, COLORS.crimsonBright, 20, 0.8);
+  spawnFloatText(G.player.x + G.player.w / 2, G.player.y - 14, `-${scaledDamage}`, COLORS.crimsonBright, 20, 0.8);
 
   if (G.player.hp <= 0) {
     G.player.hp = 0;
@@ -294,7 +349,7 @@ export function findBestGrappleTarget() {
       ref: f,
       x: f.x + f.w / 2,
       y: f.y + f.h * 0.35,
-      bias: f.kind === 'wraith' ? 0.88 : 1.05
+      bias: f.kind === 'priest' ? 0.78 : f.kind === 'wraith' ? 0.88 : 1.05
     });
   }
 
@@ -319,6 +374,7 @@ export function performExecution(target) {
   G.stats.executions++;
   if (G.echoSession) G.echoSession.executions++;
   audio.playExecution();
+  triggerHaptic('execution');
   G.hitstopTimer = 0.085;
   G.invertTimer = 0.09;
   addShake(16);
@@ -392,6 +448,7 @@ export function evaluatePlayerActiveAttack() {
       hitAny = true;
       const stepIdx = atk.type === 'slash3' ? 3 : atk.type === 'slash2' ? 2 : 1;
       audio.playHit(atk.heavy, stepIdx);
+      triggerHaptic(atk.type === 'iai' || atk.type === 'counter' ? 'iai' : atk.heavy ? 'heavyHit' : 'lightHit');
       G.hitstopTimer = Math.max(G.hitstopTimer, atk.type === 'iai' || atk.type === 'counter' ? 0.056 : atk.heavy ? 0.048 : 0.030);
       addShake(atk.heavy ? 7.5 : 3.8);
       kickCamera(
@@ -410,9 +467,13 @@ export function evaluatePlayerActiveAttack() {
       const bypassShield = atk.type === 'pogo' || !hitFromFront;
 
       const rs = getRelicStats();
-      let finalDmg = atk.dmg;
+      let finalDmg = Math.round(atk.dmg * getBladeDamageMult());
       if ((atk.type === 'iai' || atk.type === 'counter') && rs.heavySkillMult > 1) {
         finalDmg = Math.round(finalDmg * rs.heavySkillMult);
+      }
+      if (t.kind === 'leech' && (atk.type === 'up' || t.state === 'cling' || t.state === 'telegraph' || t.state === 'drop')) {
+        finalDmg = Math.round(finalDmg * 1.45);
+        spawnFloatText(t.x + t.w / 2, t.y - 30, '截击伏袭！', COLORS.cyanBright, 16, 0.75);
       }
 
       if (isGolemShieldUp && !bypassShield) {
@@ -420,14 +481,16 @@ export function evaluatePlayerActiveAttack() {
           t.shieldBrokenTimer = 2.6;
           if (t.kind === 'boss2') t.shieldUp = false;
           audio.playShieldBreak();
+          triggerHaptic('shieldBreak');
           addShake(9);
           spawnImpactBurst(t.x + t.w / 2 + t.facing * 18, t.y + 38, 'parry', 0.95);
           spawnFloatText(t.x + t.w / 2, t.y - 26, '重盾破防！', COLORS.goldBright, 20, 1.0);
           damageEnemyHP(t, finalDmg, true);
-          addPostureToEnemy(t, atk.posture + 24);
+          addPostureToEnemy(t, (atk.posture + 24) * (atk.type === 'counter' && rs.synCoreCounter ? 1.5 : 1));
         } else {
           // Light front attack clangs off the bronze greatshield!
           audio.playParry(false);
+          triggerHaptic('block');
           spawnImpactBurst(t.x + t.w / 2 + t.facing * 20, t.y + 38, 'block', 0.85);
           spawnFloatText(t.x + t.w / 2, t.y - 24, '巨盾格挡 · 用居合/灵刃/弹反破防', '#cbd5e1', 15, 0.9);
           damageEnemyHP(t, Math.max(3, Math.round(finalDmg * 0.2)), true);
@@ -436,8 +499,47 @@ export function evaluatePlayerActiveAttack() {
           continue;
         }
       } else {
+        const postureHit = atk.posture * (atk.type === 'counter' && rs.synCoreCounter ? 1.5 : 1);
         damageEnemyHP(t, finalDmg, true);
-        addPostureToEnemy(t, atk.posture);
+        addPostureToEnemy(t, postureHit);
+      }
+      // Synergy 「镜烬印记」: free talisman plant on melee strike after 3-streak parry!
+      if (G.player.freeSealProc && t.alive) {
+        G.player.freeSealProc = false;
+        G.talismans.push({
+          target: t,
+          x: t.x + t.w / 2,
+          y: t.y + t.h * 0.4,
+          seals: 1,
+          timer: 0.85
+        });
+        audio.playIaiReady();
+        spawnFloatText(t.x + t.w / 2, t.y - 34, '镜烬贴符！', COLORS.crimsonBright, 18, 0.85);
+      }
+      // Synergy 「碎心绝响」(古钟心核 + 碎镜之眼): Counter Slash immediately detonates stuck talismans!
+      if (atk.type === 'counter' && rs.synCoreCounter && G.talismans.length > 0) {
+        const tx = t.x + t.w / 2;
+        const ty = t.y + t.h * 0.45;
+        for (let ti = G.talismans.length - 1; ti >= 0; ti--) {
+          const tm = G.talismans[ti];
+          if (tm.target === t || Math.hypot(tm.x - tx, tm.y - ty) < 130) {
+            G.talismans.splice(ti, 1);
+            audio.playDetonate();
+            triggerHaptic('execution', 0.9);
+            addShake(13);
+            G.screenFlash = { alpha: 0.24, color: COLORS.goldBright };
+            const rad = 135 + tm.seals * 28;
+            spawnShockwave(tx, ty, rad, COLORS.goldBright, 5.2, 0.36);
+            spawnParticles(tx, ty, 32, { color: COLORS.goldBright, speed: 340, spark: true, life: 0.5 });
+            spawnFloatText(tx, ty - 42, '羁绊 · 碎心绝响！', COLORS.goldBright, 22, 1.05);
+            for (const f of getLivingFoes()) {
+              if (Math.hypot((f.x + f.w / 2) - tx, (f.y + f.h / 2) - ty) < rad) {
+                damageEnemyHP(f, Math.round(46 * tm.seals), true);
+                addPostureToEnemy(f, Math.round(52 * tm.seals));
+              }
+            }
+          }
+        }
       }
       rallyPlayerGrayHp(atk.rally);
       G.player.soul = Math.min(G.player.maxSoul, G.player.soul + Math.round((atk.heavy ? 24 : 14) * rs.soulGainMult));
@@ -676,8 +778,30 @@ export function triggerPlayerAttack(type) {
     addShake(9.5);
     kickCamera(G.player.facing * 9, 0);
     punchZoom(1.038);
+    triggerHaptic('iai');
     spawnParticles(px, py, 16, { color: COLORS.goldBright, speed: 240, spark: true, angle: G.player.facing > 0 ? Math.PI : 0, spread: 0.65, life: 0.34 });
-    spawnFloatText(px, G.player.y - 24, '居合 · 一闪', COLORS.goldBright, 21, 0.78);
+    const rsIai = getRelicStats();
+    if (rsIai.synBloodIai && G.player.grayHp >= 1) {
+      G.projectiles.push({
+        owner: 'player',
+        kind: 'crimsonWave',
+        x: px + G.player.facing * 24,
+        y: py,
+        vx: G.player.facing * 790,
+        vy: 0,
+        r: 26,
+        dmg: Math.round(34 * rsIai.heavySkillMult),
+        posture: 26,
+        life: 0.72,
+        maxLife: 0.72,
+        facing: G.player.facing,
+        hitIds: new Set()
+      });
+      spawnShockwave(px + G.player.facing * 18, py, 64, COLORS.crimsonBright, 3.6, 0.24);
+      spawnFloatText(px, G.player.y - 26, '羁绊 · 血铁居合！', COLORS.crimsonBright, 22, 0.95);
+    } else {
+      spawnFloatText(px, G.player.y - 24, '居合 · 一闪', COLORS.goldBright, 21, 0.78);
+    }
   } else if (type === 'pogo') {
     audio.playSlash(1.22, false);
     G.player.squashX = 0.88;
@@ -881,6 +1005,7 @@ export function castBellQuake() {
   if (!G.player.grounded) G.player.vy = Math.min(G.player.vy, -145);
 
   audio.playBellQuake();
+  triggerHaptic('heavyHit', 1.1);
   G.hitstopTimer = Math.max(G.hitstopTimer, 0.042);
   addShake(11);
   punchZoom(1.036);
@@ -964,6 +1089,60 @@ export function castBellQuake() {
   }
 }
 
+// Synergy 「幽鸣共振」(幽丝断钟 + 回响钟舌): Free mini Bell-Quake on grapple arrival!
+export function triggerMiniBellQuake(cx, cy) {
+  const rs = getRelicStats();
+  const radius = Math.round(132 * rs.spellRadiusMult);
+  const dmg = Math.round(26 * rs.spellDmgMult);
+  const posDmg = Math.round(24 + rs.spellPostureBonus * 0.5);
+
+  audio.playBellQuake();
+  triggerHaptic('heavyHit', 0.95);
+  addShake(9);
+  punchZoom(1.03);
+  G.bellQuakes.push({ x: cx, y: cy, radius: radius * 0.85, life: 0.34, maxLife: 0.34 });
+  spawnShockwave(cx, cy, radius, COLORS.cyanBright, 3.8, 0.28);
+  spawnShockwave(cx, cy, radius * 0.6, COLORS.goldBright, 2.6, 0.22);
+  spawnParticles(cx, cy, 20, { color: COLORS.cyanBright, speed: 240, spark: true, grav: -40, life: 0.35 });
+  spawnFloatText(cx, cy - 42, '羁绊 · 幽鸣共振！', COLORS.cyanBright, 19, 0.95);
+
+  for (const t of getLivingFoes()) {
+    const tx = t.x + t.w / 2;
+    const ty = t.y + t.h * 0.45;
+    if (Math.hypot(tx - cx, ty - cy) <= radius + Math.max(t.w, t.h) * 0.35) {
+      if ((t.kind === 'golem' || (t.kind === 'boss2' && t.shieldUp)) && t.shieldBrokenTimer <= 0) {
+        t.shieldBrokenTimer = 2.4;
+        if (t.kind === 'boss2') t.shieldUp = false;
+        audio.playShieldBreak();
+      }
+      damageEnemyHP(t, dmg, true);
+      addPostureToEnemy(t, posDmg);
+    }
+  }
+  for (const pr of G.projectiles) {
+    if (pr.owner === 'enemy' && pr.life > 0 && Math.hypot(pr.x - cx, pr.y - cy) <= radius + pr.r) {
+      pr.life = 0;
+      spawnParticles(pr.x, pr.y, 10, { color: COLORS.cyanBright, speed: 180, spark: true });
+    }
+  }
+  for (const l of G.lanterns) {
+    const lx = l.x + Math.sin(l.angle) * l.len;
+    const ly = l.anchorY + Math.cos(l.angle) * l.len;
+    if (Math.hypot(lx - cx, ly - cy) <= radius + 30) {
+      l.angVel += (lx >= cx ? 1 : -1) * 6.5;
+      l.ringFlash = 0.48;
+      tryQuellChapelTideByLantern(l, lx, ly);
+    }
+  }
+  if (G.resonancePuzzles) {
+    for (const pz of G.resonancePuzzles) {
+      for (const b of pz.bells) {
+        if (Math.hypot(b.x - cx, b.y - cy) <= radius + 36) ringResonanceBell(pz, b, b.x >= cx ? 1 : -1);
+      }
+    }
+  }
+}
+
 export function collectPickup(p) {
   if (!G.worldState || p.collected || !isPickupUnlocked(p)) return;
   p.collected = true;
@@ -997,6 +1176,10 @@ export function collectPickup(p) {
     punchZoom(1.045);
     spawnShockwave(p.x, p.y - 26, 150, COLORS.cyanBright, 5, 0.48);
     spawnFloatText(p.x, p.y - 58, `${p.name} · 二段跳已解锁！`, COLORS.cyanBright, 22, 2.2);
+  } else if (p.kind === 'echoCache') {
+    const amt = Number(p.echoAmount) || 180;
+    G.worldState.echoes = (G.worldState.echoes || 0) + amt;
+    spawnFloatText(p.x, p.y - 54, `${p.name} · +${amt} 残响！`, COLORS.goldBright, 21, 1.9);
   } else if (p.kind === 'relic') {
     G.worldState.unlockedRelics.add(p.relicId);
     spawnFloatText(p.x, p.y - 54, `${p.name} · ${p.desc}`, COLORS.goldBright, 20, 1.95);

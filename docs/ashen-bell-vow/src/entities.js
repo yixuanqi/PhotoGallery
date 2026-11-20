@@ -60,6 +60,7 @@ export function createPlayer(x = 340, y = FLOOR_Y - 56) {
     parryCooldown: 0,
     parryStreak: 0,
     parryStreakTimer: 0,
+    freeSealProc: false,
 
     // Dash, Seal Lunge, Spell, Grapple, Heal, Execution
     dashTimer: 0,
@@ -183,6 +184,94 @@ export function makeGolem(id, x, y, minX, maxX) {
   };
 }
 
+export function makePriest(id, x, y) {
+  return {
+    id,
+    name: '敲钟祭司',
+    kind: 'priest',
+    isBoss: false,
+    x, y,
+    w: 36,
+    h: 66,
+    vx: 0,
+    vy: 0,
+    facing: -1,
+    hp: 86,
+    maxHp: 86,
+    posture: 0,
+    maxPosture: 52,
+    postureDecayDelay: 0,
+    alive: true,
+    state: 'idle', // idle, chant, pulse, recover, stagger
+    stateTimer: 1.0,
+    chantTargetId: null,
+    wardShield: 0,
+    didHit: false,
+    hurtFlash: 0,
+    cloak: createCloak(x, y + 20, 6, 9)
+  };
+}
+
+export function makeDuelist(id, x, y, minX, maxX) {
+  return {
+    id,
+    name: '连刃武者',
+    kind: 'duelist',
+    isBoss: false,
+    x, y,
+    w: 34,
+    h: 60,
+    vx: 0,
+    vy: 0,
+    facing: -1,
+    minX, maxX,
+    hp: 138,
+    maxHp: 138,
+    posture: 0,
+    maxPosture: 82,
+    postureDecayDelay: 0,
+    alive: true,
+    state: 'patrol', // patrol, chase, windup, attack, recover, stagger
+    stateTimer: 0,
+    attackKind: 'combo3', // combo3 (fast-fast-delayed parry rhythm), redDash (crimson)
+    comboIdx: 0,
+    wardShield: 0,
+    didHit: false,
+    hurtFlash: 0,
+    walkCycle: 0,
+    cloak: createCloak(x, y + 18, 6, 8)
+  };
+}
+
+export function makeLeech(id, x, y) {
+  return {
+    id,
+    name: '倒挂墨蛭',
+    kind: 'leech',
+    isBoss: false,
+    x, y,
+    homeX: x,
+    homeY: y,
+    w: 34,
+    h: 38,
+    vx: 0,
+    vy: 0,
+    facing: -1,
+    hp: 68,
+    maxHp: 68,
+    posture: 0,
+    maxPosture: 42,
+    postureDecayDelay: 0,
+    alive: true,
+    state: 'cling', // cling, telegraph, drop, crawl, climb, stagger
+    stateTimer: 0.4,
+    wardShield: 0,
+    didHit: false,
+    hurtFlash: 0,
+    pulsePhase: Math.random() * Math.PI * 2
+  };
+}
+
 export function createSentinels() {
   const list = [];
   for (const e of ENEMIES_DEF) {
@@ -190,6 +279,12 @@ export function createSentinels() {
       list.push(makeWraith(e.id, e.x, e.y));
     } else if (e.kind === 'golem') {
       list.push(makeGolem(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 160, e.maxX !== undefined ? e.maxX : e.x + 160));
+    } else if (e.kind === 'priest') {
+      list.push(makePriest(e.id, e.x, e.y));
+    } else if (e.kind === 'duelist') {
+      list.push(makeDuelist(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 170, e.maxX !== undefined ? e.maxX : e.x + 170));
+    } else if (e.kind === 'leech') {
+      list.push(makeLeech(e.id, e.x, e.y));
     } else {
       list.push(makeSentinel(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 160, e.maxX !== undefined ? e.maxX : e.x + 160));
     }

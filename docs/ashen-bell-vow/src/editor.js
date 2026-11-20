@@ -145,12 +145,13 @@ function getRoomObjects(rm) {
   (rm.gates || []).forEach((o, i) => addRect('gate', rm.gates, i, o, o.w, o.h, true));
   (rm.rivers || []).forEach((o, i) => addRect('river', rm.rivers, i, o, o.w, 22, true));
   (rm.enemies || []).forEach((o, i) => {
-    const ew = o.kind === 'golem' ? 46 : 36;
-    const eh = o.kind === 'golem' ? 78 : o.kind === 'wraith' ? 48 : 62;
+    const ew = o.kind === 'golem' ? 46 : o.kind === 'duelist' || o.kind === 'leech' ? 34 : 36;
+    const eh = o.kind === 'golem' ? 78 : o.kind === 'priest' ? 66 : o.kind === 'duelist' ? 60 : o.kind === 'wraith' ? 48 : o.kind === 'leech' ? 38 : 62;
     addRect('enemy', rm.enemies, i, o, ew, eh, false);
   });
   (rm.bosses || []).forEach((o, i) => addRect('boss', rm.bosses, i, o, 58, 102, false));
   (rm.altars || []).forEach((o, i) => addPoint('altar', rm.altars, i, o, 'x', 'y', 26));
+  (rm.npcs || []).forEach((o, i) => addPoint('npc', rm.npcs, i, o, 'x', 'y', 26));
   (rm.pickups || []).forEach((o, i) => addPoint('pickup', rm.pickups, i, o, 'x', 'y', 22));
   (rm.loreTablets || []).forEach((o, i) => addPoint('lore', rm.loreTablets, i, o, 'x', 'y', 24));
   (rm.lanterns || []).forEach((o, i) => {
@@ -375,7 +376,7 @@ function drawRoomContents(rm, isGhost = false) {
     }
   }
 
-  // Altars, Lore, Pickups
+  // Altars, NPCs, Lore, Pickups
   for (const a of (rm.altars || [])) {
     ctx.fillStyle = COLORS.cyan;
     ctx.beginPath(); ctx.arc(ox + a.x, oy + a.y - 32, 14, 0, Math.PI * 2); ctx.fill();
@@ -383,6 +384,14 @@ function drawRoomContents(rm, isGhost = false) {
     ctx.font = 'bold 11px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('坛', ox + a.x, oy + a.y - 28);
+  }
+  for (const npc of (rm.npcs || [])) {
+    ctx.fillStyle = COLORS.gold;
+    ctx.beginPath(); ctx.arc(ox + npc.x, oy + npc.y - 30, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#090c12';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('匠', ox + npc.x, oy + npc.y - 26);
   }
   for (const lt of (rm.loreTablets || [])) {
     ctx.fillStyle = '#253147';
@@ -396,9 +405,18 @@ function drawRoomContents(rm, isGhost = false) {
   }
 
   // Enemies + Patrol Bars
+  const eColMap = {
+    golem: 'rgba(251, 146, 60, 0.75)',
+    wraith: 'rgba(244, 63, 94, 0.75)',
+    priest: 'rgba(192, 132, 252, 0.78)',
+    duelist: 'rgba(239, 68, 68, 0.82)',
+    leech: 'rgba(56, 189, 248, 0.78)',
+    sentinel: 'rgba(220, 38, 38, 0.72)'
+  };
+  const eGlyph = { golem: '铁', wraith: '灵', priest: '祭', duelist: '刃', leech: '蛭', sentinel: '矛' };
   for (const e of (rm.enemies || [])) {
-    const ew = e.kind === 'golem' ? 46 : 36;
-    const eh = e.kind === 'golem' ? 78 : e.kind === 'wraith' ? 48 : 62;
+    const ew = e.kind === 'golem' ? 46 : e.kind === 'duelist' || e.kind === 'leech' ? 34 : 36;
+    const eh = e.kind === 'golem' ? 78 : e.kind === 'priest' ? 66 : e.kind === 'duelist' ? 60 : e.kind === 'wraith' ? 48 : e.kind === 'leech' ? 38 : 62;
     if (e.minX !== undefined && e.maxX !== undefined) {
       ctx.strokeStyle = 'rgba(248, 113, 113, 0.35)';
       ctx.setLineDash([4, 4]);
@@ -408,7 +426,7 @@ function drawRoomContents(rm, isGhost = false) {
       ctx.stroke();
       ctx.setLineDash([]);
     }
-    ctx.fillStyle = e.kind === 'golem' ? 'rgba(251, 146, 60, 0.72)' : e.kind === 'wraith' ? 'rgba(244, 63, 94, 0.72)' : 'rgba(220, 38, 38, 0.72)';
+    ctx.fillStyle = eColMap[e.kind] || 'rgba(220, 38, 38, 0.72)';
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 1.4 / state.cam.zoom;
     ctx.fillRect(ox + e.x, oy + e.y, ew, eh);
@@ -416,7 +434,7 @@ function drawRoomContents(rm, isGhost = false) {
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 11px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(e.kind === 'golem' ? '铁' : e.kind === 'wraith' ? '灵' : '矛', ox + e.x + ew / 2, oy + e.y + eh / 2 + 4);
+    ctx.fillText(eGlyph[e.kind] || '矛', ox + e.x + ew / 2, oy + e.y + eh / 2 + 4);
   }
 
   // Bosses
@@ -484,6 +502,7 @@ function draw() {
     state.bundle.rooms.forEach((rm, idx) => {
       drawRoomContents(rm, idx !== state.activeRoomIdx);
     });
+    drawWorldConnections();
   } else {
     // Draw neighbor rooms ghosted so room exits align cleanly
     state.bundle.rooms.forEach((rm, idx) => {
@@ -534,6 +553,63 @@ function draw() {
     }
   }
 
+  ctx.restore();
+}
+
+function drawWorldConnections() {
+  if (!state.bundle) return;
+  const byId = new Map(state.bundle.rooms.map(r => [r.id, r]));
+  const drawnPairs = new Set();
+  ctx.save();
+  for (const rm of state.bundle.rooms) {
+    const c1x = rm.bounds.x + rm.bounds.w * 0.5;
+    const c1y = rm.bounds.y + rm.bounds.h * 0.5;
+    for (const tid of (rm.connections || [])) {
+      const dst = byId.get(tid);
+      if (!dst) continue;
+      const pairKey = [rm.id, tid].sort().join('<>');
+      const isBi = Array.isArray(dst.connections) && dst.connections.includes(rm.id);
+      if (isBi && drawnPairs.has(pairKey)) continue;
+      drawnPairs.add(pairKey);
+
+      const c2x = dst.bounds.x + dst.bounds.w * 0.5;
+      const c2y = dst.bounds.y + dst.bounds.h * 0.5;
+      const mx = (c1x + c2x) * 0.5;
+      const my = (c1y + c2y) * 0.5 - 55;
+      const isSel = rm === getActiveRoom() || dst === getActiveRoom();
+
+      ctx.strokeStyle = isSel ? COLORS.cyanBright : 'rgba(56, 189, 248, 0.52)';
+      ctx.lineWidth = (isSel ? 3.2 : 2.0) / state.cam.zoom;
+      ctx.setLineDash([8 / state.cam.zoom, 6 / state.cam.zoom]);
+      ctx.beginPath();
+      ctx.moveTo(c1x, c1y);
+      ctx.quadraticCurveTo(mx, my, c2x, c2y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Draw arrowhead(s) along the curve midpoint
+      const drawArrow = (px, py, ang) => {
+        const sz = 11 / state.cam.zoom;
+        ctx.fillStyle = isSel ? COLORS.goldBright : COLORS.cyanBright;
+        ctx.beginPath();
+        ctx.moveTo(px + Math.cos(ang) * sz, py + Math.sin(ang) * sz);
+        ctx.lineTo(px + Math.cos(ang + 2.4) * sz * 0.78, py + Math.sin(ang + 2.4) * sz * 0.78);
+        ctx.lineTo(px + Math.cos(ang - 2.4) * sz * 0.78, py + Math.sin(ang - 2.4) * sz * 0.78);
+        ctx.closePath();
+        ctx.fill();
+      };
+      const qx = 0.25 * c1x + 0.5 * mx + 0.25 * c2x;
+      const qy = 0.25 * c1y + 0.5 * my + 0.25 * c2y;
+      const angFwd = Math.atan2(c2y - c1y, c2x - c1x);
+      if (isBi) {
+        const off = 14 / state.cam.zoom;
+        drawArrow(qx + Math.cos(angFwd) * off, qy + Math.sin(angFwd) * off, angFwd);
+        drawArrow(qx - Math.cos(angFwd) * off, qy - Math.sin(angFwd) * off, angFwd + Math.PI);
+      } else {
+        drawArrow(qx, qy, angFwd);
+      }
+    }
+  }
   ctx.restore();
 }
 
@@ -601,11 +677,40 @@ function renderRoomProps() {
   addField(roomPropsEl, '房间ID', rm.id, 'text', v => { rm.id = v.trim() || rm.id; });
   addField(roomPropsEl, '大区名', rm.zoneName, 'text', v => { rm.zoneName = v; });
   addField(roomPropsEl, '房间名', rm.name, 'text', v => { rm.name = v; });
-  addField(roomPropsEl, '生态主题', rm.theme || 'corridor', ['sanctuary', 'corridor', 'chapel', 'bell_well', 'foundry'], v => { rm.theme = v; });
+  addField(roomPropsEl, '生态主题', rm.theme || 'corridor', ['sanctuary', 'corridor', 'chapel', 'bell_well', 'foundry', 'crypt'], v => { rm.theme = v; });
   addField(roomPropsEl, '世界 X', rm.bounds.x, 'number', v => { rm.bounds.x = v; });
   addField(roomPropsEl, '世界 Y', rm.bounds.y, 'number', v => { rm.bounds.y = v; });
   addField(roomPropsEl, '宽度 W', rm.bounds.w, 'number', v => { rm.bounds.w = Math.max(320, v); });
   addField(roomPropsEl, '高度 H', rm.bounds.h, 'number', v => { rm.bounds.h = Math.max(320, v); });
+
+  const connBox = document.getElementById('room-conn-pills');
+  if (connBox && state.bundle) {
+    connBox.innerHTML = '';
+    if (!Array.isArray(rm.connections)) rm.connections = [];
+    for (const other of state.bundle.rooms) {
+      if (other.id === rm.id) continue;
+      const linked = rm.connections.includes(other.id);
+      const pill = document.createElement('button');
+      pill.className = `conn-pill${linked ? ' linked' : ''}`;
+      pill.textContent = `${linked ? '⇄ ' : '+ '}${other.name}`;
+      pill.title = `切换与 ${other.id} 的双向跨房连接`;
+      pill.addEventListener('click', () => {
+        pushUndo();
+        if (!Array.isArray(other.connections)) other.connections = [];
+        if (linked) {
+          rm.connections = rm.connections.filter(id => id !== other.id);
+          other.connections = other.connections.filter(id => id !== rm.id);
+        } else {
+          if (!rm.connections.includes(other.id)) rm.connections.push(other.id);
+          if (!other.connections.includes(rm.id)) other.connections.push(rm.id);
+        }
+        syncManifestFromRooms();
+        renderRoomProps();
+        draw();
+      });
+      connBox.appendChild(pill);
+    }
+  }
 }
 
 function renderInspector() {
@@ -624,8 +729,9 @@ function renderInspector() {
 
   if (o.id !== undefined) addField(grid, 'ID', o.id, 'text', v => { o.id = v; });
   if (o.type !== undefined) addField(grid, '形态', o.type, ['ground', 'pillar', 'platform'], v => { o.type = v; });
-  if (o.kind !== undefined && sel.kind === 'enemy') addField(grid, '兵种', o.kind, ['sentinel', 'wraith', 'golem'], v => { o.kind = v; });
-  if (o.kind !== undefined && sel.kind === 'pickup') addField(grid, '秘宝类', o.kind, ['flaskCore', 'relic', 'ability'], v => { o.kind = v; });
+  if (o.kind !== undefined && sel.kind === 'enemy') addField(grid, '兵种', o.kind, ['sentinel', 'wraith', 'golem', 'priest', 'duelist', 'leech'], v => { o.kind = v; });
+  if (o.kind !== undefined && sel.kind === 'pickup') addField(grid, '秘宝类', o.kind, ['flaskCore', 'relic', 'ability', 'echoCache'], v => { o.kind = v; });
+  if (o.echoAmount !== undefined) addField(grid, '残响量', o.echoAmount, 'number', v => { o.echoAmount = Math.max(10, v); });
 
   if (o.x !== undefined) addField(grid, '局部 X', o.x, 'number', v => { o.x = v; });
   if (o.y !== undefined) addField(grid, '局部 Y', o.y, 'number', v => { o.y = v; });
@@ -679,12 +785,19 @@ function createPointObject(tool, lx, ly) {
   if (!rm) return;
   pushUndo();
   const uid = `${tool}_${Date.now().toString(36).slice(-4)}`;
-  if (tool === 'sentinel' || tool === 'wraith' || tool === 'golem') {
-    const obj = tool === 'wraith'
-      ? { id: uid, kind: 'wraith', x: lx - 18, y: ly - 24 }
-      : { id: uid, kind: tool, x: lx - 20, y: ly - (tool === 'golem' ? 78 : 62), minX: lx - 160, maxX: lx + 160 };
+  if (tool === 'sentinel' || tool === 'wraith' || tool === 'golem' || tool === 'priest' || tool === 'duelist' || tool === 'leech') {
+    let obj;
+    if (tool === 'wraith') obj = { id: uid, kind: 'wraith', x: lx - 18, y: ly - 24 };
+    else if (tool === 'priest') obj = { id: uid, kind: 'priest', x: lx - 18, y: ly - 66 };
+    else if (tool === 'leech') obj = { id: uid, kind: 'leech', x: lx - 17, y: ly };
+    else if (tool === 'duelist') obj = { id: uid, kind: 'duelist', x: lx - 17, y: ly - 60, minX: lx - 170, maxX: lx + 170 };
+    else obj = { id: uid, kind: tool, x: lx - 20, y: ly - (tool === 'golem' ? 78 : 62), minX: lx - 160, maxX: lx + 160 };
     rm.enemies.push(obj);
     state.selection = { kind: 'enemy', idx: rm.enemies.length - 1 };
+  } else if (tool === 'npc') {
+    if (!Array.isArray(rm.npcs)) rm.npcs = [];
+    rm.npcs.push({ id: uid, kind: 'smith', name: '老铸钟匠 · 砺', x: lx, y: ly });
+    state.selection = { kind: 'npc', idx: rm.npcs.length - 1 };
   } else if (tool === 'lantern') {
     rm.lanterns.push({ id: uid, x: lx, anchorY: Math.max(0, ly - 150), len: 150, angle: 0.05 });
     state.selection = { kind: 'lantern', idx: rm.lanterns.length - 1 };
@@ -694,6 +807,32 @@ function createPointObject(tool, lx, ly) {
   } else if (tool === 'pendulum') {
     rm.pendulums.push({ id: uid, x: lx, anchorY: Math.max(0, ly - 180), len: 180, amp: 0.65, speed: 1.7, phase: 0, r: 28 });
     state.selection = { kind: 'pendulum', idx: rm.pendulums.length - 1 };
+  } else if (tool === 'resonancePuzzle') {
+    const pzId = `puzzle_${Date.now().toString(36).slice(-4)}`;
+    if (!Array.isArray(rm.resonancePuzzles)) rm.resonancePuzzles = [];
+    rm.resonancePuzzles.push({
+      id: pzId,
+      name: `${rm.name} · 三钟共鸣`,
+      timeLimit: 8.0,
+      cageX: lx,
+      cageY: ly,
+      bells: [
+        { id: `${pzId}_b1`, x: lx - 120, y: Math.max(60, ly - 120), topY: 0, noteFreq: 392.0 },
+        { id: `${pzId}_b2`, x: lx, y: Math.max(50, ly - 220), topY: 0, noteFreq: 493.88 },
+        { id: `${pzId}_b3`, x: lx + 120, y: Math.max(60, ly - 120), topY: 0, noteFreq: 587.33 }
+      ]
+    });
+    rm.pickups.push({
+      id: `pk_${pzId}`,
+      kind: 'flaskCore',
+      requiresPuzzle: pzId,
+      x: lx,
+      y: ly,
+      name: '共鸣灯油残芯',
+      desc: '灯油上限永久 +1！'
+    });
+    state.selection = { kind: 'puzzleCage', idx: rm.resonancePuzzles.length - 1 };
+    showToast(`已放置三钟共鸣机关 ${pzId}（含封印钟笼与秘宝）`);
   } else if (tool === 'altar') {
     rm.altars.push({ id: uid, x: lx, y: ly, name: `${rm.name} · 祭坛`, shortName: `${rm.name}祭坛`, defaultLit: false });
     state.selection = { kind: 'altar', idx: rm.altars.length - 1 };
@@ -1060,6 +1199,7 @@ document.getElementById('btn-add-room').addEventListener('click', () => {
     ],
     crumblePlatforms: [],
     altars: [],
+    npcs: [],
     loreTablets: [],
     gates: [],
     secretWalls: [],
@@ -1082,6 +1222,33 @@ document.getElementById('btn-add-room').addEventListener('click', () => {
   fitView();
   showToast(`已新建房间 ${rid}`);
 });
+
+const delRoomBtn = document.getElementById('btn-del-room');
+if (delRoomBtn) {
+  delRoomBtn.addEventListener('click', () => {
+    if (!state.bundle || state.bundle.rooms.length <= 1) {
+      showToast('至少需要保留 1 个房间，无法继续删除');
+      return;
+    }
+    const rm = getActiveRoom();
+    if (!rm) return;
+    if (!window.confirm(`确定要删除房间「${rm.name} (${rm.id})」吗？（删除后仍可按 Ctrl+Z 撤销）`)) return;
+    pushUndo();
+    const removedId = rm.id;
+    state.bundle.rooms.splice(state.activeRoomIdx, 1);
+    for (const r of state.bundle.rooms) {
+      if (Array.isArray(r.connections)) {
+        r.connections = r.connections.filter(id => id !== removedId);
+      }
+    }
+    state.activeRoomIdx = Math.max(0, Math.min(state.activeRoomIdx, state.bundle.rooms.length - 1));
+    state.selection = null;
+    syncManifestFromRooms();
+    renderAllUI();
+    fitView();
+    showToast(`已删除房间 ${removedId}（可按 Ctrl+Z 撤销）`);
+  });
+}
 
 document.getElementById('btn-playtest').addEventListener('click', () => {
   if (!state.bundle) return;

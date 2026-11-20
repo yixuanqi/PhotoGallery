@@ -148,6 +148,7 @@ export function setWorldMetrics(w, h, floorY, wellBottomY) {
 export const ROOMS = [];
 export const SOLIDS = [];
 export const ALTARS = [];
+export const NPCS = [];
 export const ALTAR_POS = { id: 'altar_start', x: 330, y: 580 };
 export const LORE_TABLETS = [];
 export const SHORTCUT_GATE_DEF = { id: 'gate_skyway', x: 1380, y: 0, w: 0, h: 0, leverX: 1495, leverY: 245 };
@@ -170,9 +171,75 @@ export const BANNERS = [];
 export const CANDLE_CLUSTERS = [];
 export const BONE_CAIRNS = [];
 
+export const RELIC_SYNERGIES = [
+  {
+    id: 'grapple_quake',
+    relics: ['bellthread', 'clapper'],
+    name: '幽鸣共振',
+    flag: 'synGrappleQuake',
+    desc: '幽丝钩索命中敌人落点时，自动免费爆发一次小型「镇魂钟鸣」，破盾削势并震响周边悬灯与共鸣钟！'
+  },
+  {
+    id: 'mirror_ember',
+    relics: ['mirror', 'ember'],
+    name: '镜烬印记',
+    flag: 'synMirrorEmber',
+    desc: '达成 3 连完美弹反后，下一次近战斩击自动免费为目标贴上 1 枚引爆墨印符箓（不消耗现有墨印）。'
+  },
+  {
+    id: 'blood_iai',
+    relics: ['thorn', 'ironheart'],
+    name: '血铁居合',
+    flag: 'synBloodIai',
+    desc: '持有内伤灰血时，居合一闪蓄力再提速 28%，斩出时额外发射穿透「猩红剑气」并吸回大量实血！'
+  },
+  {
+    id: 'core_counter',
+    relics: ['bellcore', 'mirror'],
+    name: '碎心绝响',
+    flag: 'synCoreCounter',
+    desc: '弹反派生「断钟返」架势摧毁提升至 1.5 倍，且命中瞬间立即引爆目标身上的墨印符箓造成 1.35 倍爆伤！'
+  }
+];
+
+export const DEFAULT_KEYBINDS = {
+  left: 'KeyA',
+  right: 'KeyD',
+  up: 'KeyW',
+  down: 'KeyS',
+  jump: 'Space',
+  attack: 'KeyJ',
+  parry: 'KeyK',
+  dash: 'ShiftLeft',
+  spell: 'KeyU',
+  grapple: 'KeyI',
+  seal: 'KeyL',
+  heal: 'KeyH',
+  interact: 'KeyE',
+  map: 'KeyM'
+};
+
+export const ACTION_META = [
+  { id: 'left', label: '向左移动', alts: ['ArrowLeft'] },
+  { id: 'right', label: '向右移动', alts: ['ArrowRight'] },
+  { id: 'up', label: '上推 / 上挑', alts: ['ArrowUp'] },
+  { id: 'down', label: '下蹲 / 下劈', alts: ['ArrowDown'] },
+  { id: 'jump', label: '跳跃 / 墨翼步', alts: [] },
+  { id: 'attack', label: '断刃斩 / 长按居合', alts: [] },
+  { id: 'parry', label: '精准弹反', alts: [] },
+  { id: 'dash', label: '墨影闪避', alts: ['ShiftRight'] },
+  { id: 'spell', label: '幽鸣灵刃 / 钟鸣', alts: ['KeyR'] },
+  { id: 'grapple', label: '幽丝钩索', alts: ['KeyF'] },
+  { id: 'seal', label: '墨印引爆斩', alts: ['KeyC'] },
+  { id: 'heal', label: '饮用灯油回血', alts: ['KeyQ'] },
+  { id: 'interact', label: '祭坛 / 残碑交互', alts: [] },
+  { id: 'map', label: '展开晦渊舆图', alts: ['Tab'] }
+];
+
 export const SAVE_KEY = 'ashen_bell_vow_save_v10';
 export const LEGACY_SAVE_KEY_V9 = 'ashen_bell_vow_save_v9';
 export const LEGACY_SAVE_KEY_V8 = 'ashen_bell_vow_save_v8';
+export const SETTINGS_KEY = 'ashen_bell_vow_settings_v13';
 export const PREVIEW_STORAGE_KEY = 'ashen_bell_vow_editor_preview_v11';
 
 export const ROOM_THEMES = {
@@ -220,7 +287,51 @@ export const ROOM_THEMES = {
     mist: [48, 22, 10],
     accent: [245, 158, 11],
     weather: 'embers'
+  },
+  crypt: {
+    label: '幽窖墨烛',
+    skyTop: [12, 9, 22],
+    skyMid: [22, 16, 38],
+    skyBot: [7, 5, 13],
+    mist: [28, 18, 48],
+    accent: [167, 139, 250],
+    weather: 'ash'
   }
+};
+
+export const SMITH_UPGRADES = [
+  {
+    id: 'blade',
+    name: '淬炼断刃',
+    desc: '每级永久提升断刃近战伤害 +14%，并增强刀锋冷淬流光。',
+    costs: [60, 110, 170, 240, 320],
+    bonusLabel: lv => `近战伤害 +${lv * 14}%`
+  },
+  {
+    id: 'posture',
+    name: '重铸钟势',
+    desc: '每级永久提升全招式与弹反的架势摧毁 +12%，更快打崩强敌架势。',
+    costs: [80, 150, 240],
+    bonusLabel: lv => `削势倍率 +${lv * 12}%`
+  },
+  {
+    id: 'forge',
+    name: '魂炉扩焰',
+    desc: '每级永久提升最大生命 +15 与最大魂火 +15，续航与法术更从容。',
+    costs: [90, 160, 250],
+    bonusLabel: lv => `生命/魂火 +${lv * 15}`
+  }
+];
+
+export const ENEMY_ECHO_REWARDS = {
+  leech: 22,
+  wraith: 28,
+  sentinel: 32,
+  priest: 42,
+  duelist: 52,
+  golem: 58,
+  boss: 180,
+  boss2: 260
 };
 
 export const ECHO_GRADE_ORDER = { 'B': 1, 'A': 2, 'S': 3, 'S+': 4 };

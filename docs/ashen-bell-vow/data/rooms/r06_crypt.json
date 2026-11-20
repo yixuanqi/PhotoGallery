@@ -1,0 +1,306 @@
+{
+  "schemaVersion": 1,
+  "id": "r06_crypt",
+  "zoneName": "沉钟回廊",
+  "name": "残钟地窖",
+  "theme": "crypt",
+  "bounds": {
+    "x": 1980,
+    "y": 740,
+    "w": 1800,
+    "h": 780
+  },
+  "subZones": [
+    {
+      "name": "残钟地窖 · 东侧暗道",
+      "x": 1220,
+      "y": 0,
+      "w": 580,
+      "h": 780
+    },
+    {
+      "name": "残钟地窖 · 墨蛭渊渠",
+      "x": 760,
+      "y": 0,
+      "w": 460,
+      "h": 780
+    },
+    {
+      "name": "残钟地窖 · 铸匠秘库",
+      "x": 0,
+      "y": 0,
+      "w": 760,
+      "h": 780
+    }
+  ],
+  "connections": [
+    "r04_bell_well",
+    "r02_corridor"
+  ],
+  "solids": [
+    {
+      "x": 0,
+      "y": 640,
+      "w": 1800,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 1480,
+      "y": 280,
+      "w": 320,
+      "h": 110,
+      "type": "ground"
+    },
+    {
+      "x": 1300,
+      "y": 405,
+      "w": 155,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1210,
+      "y": 530,
+      "w": 155,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 910,
+      "y": 525,
+      "w": 115,
+      "h": 20,
+      "type": "platform"
+    },
+    {
+      "x": 1075,
+      "y": 500,
+      "w": 110,
+      "h": 20,
+      "type": "platform"
+    },
+    {
+      "x": 130,
+      "y": 410,
+      "w": 240,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 385,
+      "y": 490,
+      "w": 130,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 385,
+      "y": 335,
+      "w": 130,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 385,
+      "y": 175,
+      "w": 130,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 30,
+      "y": 520,
+      "w": 130,
+      "h": 22,
+      "type": "platform"
+    }
+  ],
+  "crumblePlatforms": [
+    {
+      "id": "crumble_crypt_1",
+      "x": 985,
+      "y": 395,
+      "w": 110,
+      "h": 20
+    }
+  ],
+  "altars": [],
+  "npcs": [],
+  "loreTablets": [
+    {
+      "id": "lore_crypt",
+      "x": 95,
+      "y": 520,
+      "title": "铸匠秘录",
+      "sub": "残钟地窖 · 秘库石碑",
+      "html": "“当年我将未曾完工的青铜残响尽数封入地窖，又在礼拜堂前凿出单向暗梯，以备守誓者失智之日。<br>如今地窖已被<strong>敲钟祭司</strong>与<strong>断誓连刃武者</strong>盘踞。<br><br>顺着西侧暗井攀回地面，即可直抵<strong>断索祭坛</strong>；带上秘库残响回到起点铁砧，老朽为你再淬三寸寒锋！”"
+    }
+  ],
+  "gates": [],
+  "secretWalls": [
+    {
+      "id": "wall_crypt_east",
+      "x": 1766,
+      "y": 10,
+      "w": 34,
+      "h": 270,
+      "maxHp": 3
+    }
+  ],
+  "pickups": [
+    {
+      "id": "pickup_echo_crypt",
+      "kind": "echoCache",
+      "echoAmount": 220,
+      "x": 205,
+      "y": 410,
+      "name": "秘库古钟残响匣",
+      "desc": "获得大量残响，可回老铸钟匠处淬炼断刃！"
+    }
+  ],
+  "resonancePuzzles": [],
+  "pendulums": [],
+  "rivers": [
+    {
+      "id": "river_crypt",
+      "x": 850,
+      "y": 628,
+      "w": 360
+    }
+  ],
+  "grappleAnchors": [
+    {
+      "id": "anc_crypt_e",
+      "x": 1380,
+      "y": 165,
+      "topY": 0
+    },
+    {
+      "id": "anc_crypt_mid",
+      "x": 1030,
+      "y": 240,
+      "topY": 0
+    },
+    {
+      "id": "anc_crypt_balcony",
+      "x": 280,
+      "y": 240,
+      "topY": 0
+    },
+    {
+      "id": "anc_crypt_shaft",
+      "x": 450,
+      "y": 90,
+      "topY": 0
+    }
+  ],
+  "lanterns": [
+    {
+      "id": "lan_crypt_1",
+      "x": 1030,
+      "anchorY": 280,
+      "topY": 0,
+      "len": 130,
+      "angle": 0.05
+    },
+    {
+      "id": "lan_crypt_2",
+      "x": 620,
+      "anchorY": 165,
+      "topY": 0,
+      "len": 160,
+      "angle": -0.05
+    }
+  ],
+  "enemies": [
+    {
+      "id": "leech_crypt_1",
+      "kind": "leech",
+      "x": 945,
+      "y": 8
+    },
+    {
+      "id": "leech_crypt_2",
+      "kind": "leech",
+      "x": 1125,
+      "y": 8
+    },
+    {
+      "id": "priest_crypt",
+      "kind": "priest",
+      "x": 265,
+      "y": 344
+    },
+    {
+      "id": "duelist_crypt",
+      "kind": "duelist",
+      "x": 580,
+      "y": 580,
+      "minX": 220,
+      "maxX": 800
+    }
+  ],
+  "bosses": [],
+  "inscriptions": [
+    {
+      "x": 1620,
+      "y": 215,
+      "text": "「残钟地窖 · 谨防穹顶倒挂墨蛭」"
+    },
+    {
+      "x": 580,
+      "y": 530,
+      "text": "「先以幽丝钩断高台祭司 · 再与武者打铁决胜」"
+    },
+    {
+      "x": 450,
+      "y": 115,
+      "text": "「暗梯直通礼拜堂前 · 断索祭坛 ↑」"
+    }
+  ],
+  "props": {
+    "puddles": [],
+    "banners": [
+      {
+        "x": 210,
+        "y": 40,
+        "len": 160,
+        "color": "#27183b"
+      },
+      {
+        "x": 720,
+        "y": 40,
+        "len": 175,
+        "color": "#27183b"
+      },
+      {
+        "x": 1560,
+        "y": 40,
+        "len": 145,
+        "color": "#27183b"
+      }
+    ],
+    "candles": [
+      {
+        "x": 145,
+        "y": 410,
+        "count": 4
+      },
+      {
+        "x": 340,
+        "y": 640,
+        "count": 3
+      },
+      {
+        "x": 1545,
+        "y": 280,
+        "count": 4
+      }
+    ],
+    "boneCairns": [
+      660,
+      1495
+    ]
+  }
+}

@@ -1,23 +1,25 @@
 // HUD synchronization, parchment map rendering, modals, altar/relics & Vow Echoes flow
 import {
-  COLORS, RELICS, ROOMS, SOLIDS, ALTARS, LORE_TABLETS, PICKUPS_DEF,
+  COLORS, RELICS, RELIC_SYNERGIES, SMITH_UPGRADES, ACTION_META, ROOMS, SOLIDS, ALTARS, NPCS, LORE_TABLETS, PICKUPS_DEF,
   SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF,
   ABYSSAL_RIVERS, WORLD_W, WORLD_H, FLOOR_Y, WELL_BOTTOM_Y,
   MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H, ECHO_GRADE_ORDER
 } from './config.js';
 import { getRoomAt, getZoneLabelAt, getPreviewSpawnRoomId, getRoomSpawnPoint } from './levelLoader.js';
 import {
-  G, createFreshWorldState, getActiveAltar, getRelicStats, getEquippedRelicLabel,
+  G, createFreshWorldState, getActiveAltar, getActiveSynergies, getRelicStats, getEquippedRelicLabel,
   getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks, getPlayerMaxSeals,
   markMapExplored, getExplorationPercent, createLanterns,
   createResonancePuzzles, createCrumblePlatforms, getAwakeBoss, clearOutcomeTimer
 } from './state.js';
 import { audio } from './audio.js';
-import { isHeld, syncHelpModalText } from './input.js';
+import {
+  isActionHeld, syncHelpModalText, getActionKeyLabel, startKeyCapture, cancelKeyCapture, triggerHaptic
+} from './input.js';
 import { isPickupUnlocked } from './combat.js';
 import { spawnParticles, spawnShockwave, spawnFloatText } from './vfx.js';
 import { createPlayer, createSentinels, createBoss, createBoss2 } from './entities.js';
-import { readSaveData, saveProgress, applySaveData } from './save.js';
+import { readSaveData, saveProgress, applySaveData, saveUserSettings } from './save.js';
 
 export const HUD_DOM = {
   hpReal: document.getElementById('hp-real'),
@@ -29,6 +31,7 @@ export const HUD_DOM = {
   soulText: document.getElementById('soul-text'),
   flaskWrap: document.getElementById('flask-pips'),
   sealWrap: document.getElementById('seal-pips'),
+  echoesText: document.getElementById('echoes-text'),
   zoneEl: document.getElementById('zone-banner'),
   explorePct: document.getElementById('explore-pct'),
   minimapCanvas: document.getElementById('minimapCanvas'),
@@ -104,7 +107,10 @@ export function syncHUD(force = false) {
     hudCache.hpTextStr = hpTextStr;
     HUD_DOM.hpText.textContent = hpTextStr;
   }
-  const relicLabel = getEquippedRelicLabel();
+  const activeSyns = getActiveSynergies();
+  const relicLabel = activeSyns.length > 0
+    ? `${getEquippedRelicLabel()} ✦${activeSyns[0].name}`
+    : getEquippedRelicLabel();
   if (force || hudCache.relicName !== relicLabel) {
     hudCache.relicName = relicLabel;
     HUD_DOM.relicTag.textContent = relicLabel;
@@ -140,6 +146,12 @@ export function syncHUD(force = false) {
     for (let i = 0; i < G.player.maxFlasks; i++) {
       flaskWrap.children[i].classList.toggle('empty', i >= G.player.flasks);
     }
+  }
+
+  const echoesVal = G.worldState ? (G.worldState.echoes || 0) : 0;
+  if (HUD_DOM.echoesText && (force || hudCache.echoesVal !== echoesVal)) {
+    hudCache.echoesVal = echoesVal;
+    HUD_DOM.echoesText.textContent = String(echoesVal);
   }
 
   const sealWrap = HUD_DOM.sealWrap;
@@ -223,7 +235,7 @@ export function syncHUD(force = false) {
   // Reactive Mobile Fan Glow & Contextual Interact Button
   if (document.body.classList.contains('is-mobile')) {
     const rsMob = getRelicStats();
-    const holdingUp = isHeld(['KeyW', 'ArrowUp']);
+    const holdingUp = isActionHeld('up');
     const spellCostNow = holdingUp ? rsMob.quakeCost : rsMob.spellCost;
     const spellReady = G.player.soul >= spellCostNow;
     const spellSubTxt = holdingUp ? '钟鸣' : '灵刃';
@@ -251,6 +263,14 @@ export function syncHUD(force = false) {
             const lit = !G.worldState || G.worldState.litAltars.has(altar.id);
             interactLabel = lit ? '歇息 · 祭坛' : '点燃祭坛';
             break;
+          }
+        }
+        if (!interactLabel) {
+          for (const npc of NPCS) {
+            if (Math.hypot(px - npc.x, py - npc.y) < 88) {
+              interactLabel = `锻造 · ${npc.name || '老铸钟匠'}`;
+              break;
+            }
           }
         }
         if (!interactLabel && G.worldState && !G.worldState.shortcutOpen && Math.hypot(px - SHORTCUT_GATE_DEF.leverX, py - SHORTCUT_GATE_DEF.leverY) < 76) {
@@ -297,10 +317,12 @@ export function openModal(name) {
   G.gameState = 'modal';
   G.activeModal = name;
   if (name === 'help') syncHelpModalText();
+  if (name === 'settings') renderSettingsModal();
   modal.classList.remove('hidden');
 }
 
 export function closeModal(name = G.activeModal) {
+  cancelKeyCapture();
   if (!name) return;
   const modal = document.getElementById(`${name}-modal`);
   if (modal) modal.classList.add('hidden');
@@ -500,6 +522,84 @@ export function renderParchmentMap(targetCanvas, detailed = false) {
   }
 }
 
+export function openSmithModal(npc) {
+  const titleEl = document.getElementById('smith-modal-title');
+  if (titleEl && npc && npc.name) titleEl.textContent = npc.name;
+  renderSmithModal();
+  audio.playResonanceBell(440, false);
+  openModal('smith');
+}
+
+export function renderSmithModal() {
+  if (!G.worldState) return;
+  if (!G.worldState.smithUpgrades) G.worldState.smithUpgrades = { blade: 0, posture: 0, forge: 0 };
+  const echoes = G.worldState.echoes || 0;
+  const dlg = document.getElementById('smith-dialogue');
+  if (dlg) {
+    const u = G.worldState.smithUpgrades;
+    if (G.worldState.boss2Defeated) {
+      dlg.innerHTML = '“连沉渊炉底的寂鸣都归于静默了……你手中这柄断刃，已比昔日任何一口青铜圣钟都更清越。若想精进技艺，不妨在祭坛重召双钟回响。”';
+    } else if (G.worldState.abilities.doubleJump) {
+      dlg.innerHTML = '“我听见你衣袂间多了一缕墨翼风声。沉渊钟井西侧的<strong>井中悬坛背后</strong>，曾有一道我亲手封死的<strong>残钟地窖</strong>——那里藏着大批古钟残响，亦能直通礼拜堂前。”';
+    } else if (G.worldState.bossDefeated) {
+      dlg.innerHTML = '“晦的钟声停了……礼拜堂东侧已通往沉渊钟井。井中既有执盾铁卫，也有高台咏钟的<strong>敲钟祭司</strong>与<strong>连刃武者</strong>，把收集的残响交给我，我替你淬锋。”';
+    } else if (u.blade + u.posture + u.forge > 0) {
+      dlg.innerHTML = '“好锋口！听这铁砧回音，你的断刃已吃透残响。斩杀枯骨与怨灵皆会凝出残响，随时带回给我淬炼。”';
+    } else {
+      dlg.innerHTML = '“别靠火炉太近，人偶……我双眼虽盲，却听得出你腰间断刃尚存余温。去斩落回廊中的墨蚀亡魂，将逸散的<strong>「残响」</strong>带回此处，我为你重淬刀锋。”';
+    }
+  }
+
+  const bar = document.getElementById('smith-echo-bar');
+  if (bar) bar.textContent = `✦ 当前持有残响：${echoes}`;
+
+  const list = document.getElementById('smith-upgrade-list');
+  if (!list) return;
+  list.innerHTML = '';
+  for (const upg of SMITH_UPGRADES) {
+    const lv = G.worldState.smithUpgrades[upg.id] || 0;
+    const maxLv = upg.costs.length;
+    const isMax = lv >= maxLv;
+    const cost = isMax ? 0 : upg.costs[lv];
+    const canBuy = !isMax && echoes >= cost;
+
+    const card = document.createElement('div');
+    card.className = 'smith-card';
+    const info = document.createElement('div');
+    info.className = 'smith-card-info';
+    info.innerHTML = `
+      <div class="smith-card-title">
+        <span>${upg.name}</span>
+        <span class="smith-lv-pill">Lv.${lv} / ${maxLv} · ${upg.bonusLabel(lv)}</span>
+      </div>
+      <div class="smith-card-desc">${upg.desc}</div>
+    `;
+    const btn = document.createElement('button');
+    btn.className = 'smith-buy-btn';
+    btn.disabled = !canBuy;
+    btn.textContent = isMax ? '已臻化境' : `淬炼 · ${cost} 残响`;
+    if (canBuy) {
+      btn.addEventListener('click', () => {
+        G.worldState.echoes -= cost;
+        G.worldState.smithUpgrades[upg.id] = lv + 1;
+        if (G.player) {
+          G.player.maxHp = getPlayerMaxHp();
+          G.player.hp = G.player.maxHp;
+          G.player.maxSoul = getPlayerMaxSoul();
+          G.player.soul = G.player.maxSoul;
+        }
+        audio.playParry(true, Math.min(4, lv + 2));
+        triggerHaptic('shieldBreak', 0.9);
+        saveProgress(true);
+        renderSmithModal();
+        syncHUD(true);
+      });
+    }
+    card.append(info, btn);
+    list.appendChild(card);
+  }
+}
+
 export function openLoreModal(tablet) {
   document.getElementById('lore-modal-title').textContent = tablet.title;
   document.getElementById('lore-modal-sub').textContent = tablet.sub;
@@ -515,6 +615,86 @@ export function openMapModal() {
   }
   openModal('map');
   renderParchmentMap(document.getElementById('fullMapCanvas'), true);
+}
+
+export function renderSettingsModal() {
+  const parryGroup = document.getElementById('assist-parry-group');
+  if (parryGroup) {
+    parryGroup.innerHTML = '';
+    [
+      { val: 1.0, label: '1.0x 标准' },
+      { val: 1.35, label: '1.35x 宽裕' },
+      { val: 1.7, label: '1.7x 护道' }
+    ].forEach(opt => {
+      const btn = document.createElement('button');
+      btn.className = `seg-btn${G.settings.parryWindowMult === opt.val ? ' active' : ''}`;
+      btn.textContent = opt.label;
+      btn.addEventListener('click', () => {
+        G.settings.parryWindowMult = opt.val;
+        saveUserSettings();
+        renderSettingsModal();
+      });
+      parryGroup.appendChild(btn);
+    });
+  }
+
+  const dmgGroup = document.getElementById('assist-dmg-group');
+  if (dmgGroup) {
+    dmgGroup.innerHTML = '';
+    [
+      { val: 1.0, label: '100% 标准' },
+      { val: 0.7, label: '70% 减伤' },
+      { val: 0.5, label: '50% 剧情' }
+    ].forEach(opt => {
+      const btn = document.createElement('button');
+      btn.className = `seg-btn${G.settings.damageTakenMult === opt.val ? ' active' : ''}`;
+      btn.textContent = opt.label;
+      btn.addEventListener('click', () => {
+        G.settings.damageTakenMult = opt.val;
+        saveUserSettings();
+        renderSettingsModal();
+      });
+      dmgGroup.appendChild(btn);
+    });
+  }
+
+  const musBtn = document.getElementById('btn-music-toggle');
+  if (musBtn) {
+    const on = G.settings.musicEnabled !== false;
+    musBtn.textContent = on ? '配乐: 开' : '配乐: 关';
+    musBtn.classList.toggle('active', on);
+  }
+
+  const hapBtn = document.getElementById('btn-haptics-toggle');
+  if (hapBtn) {
+    hapBtn.textContent = G.settings.haptics ? '震动: 开' : '震动: 关';
+    hapBtn.classList.toggle('active', !!G.settings.haptics);
+  }
+
+  const kbGrid = document.getElementById('keybind-grid');
+  if (kbGrid) {
+    kbGrid.innerHTML = '';
+    for (const act of ACTION_META) {
+      const row = document.createElement('div');
+      row.className = 'keybind-item';
+      const lbl = document.createElement('span');
+      lbl.textContent = act.label;
+      const btn = document.createElement('button');
+      btn.className = 'keybind-btn';
+      btn.textContent = getActionKeyLabel(act.id);
+      btn.addEventListener('click', () => {
+        kbGrid.querySelectorAll('.keybind-btn').forEach(b => b.classList.remove('listening'));
+        btn.classList.add('listening');
+        btn.textContent = '请按键...';
+        startKeyCapture(act.id, (changed) => {
+          if (changed) saveUserSettings();
+          renderSettingsModal();
+        });
+      });
+      row.append(lbl, btn);
+      kbGrid.appendChild(row);
+    }
+  }
 }
 
 export function renderRelicChoices() {
@@ -535,6 +715,35 @@ export function renderRelicChoices() {
       });
       slotBar.appendChild(btn);
     });
+  }
+
+  // Render Dual-Relic Hidden Synergy Banner
+  const synBox = document.getElementById('relic-synergy-box');
+  if (synBox) {
+    synBox.innerHTML = '';
+    const activeSyns = getActiveSynergies();
+    if (activeSyns.length > 0) {
+      for (const syn of activeSyns) {
+        const card = document.createElement('div');
+        card.className = 'synergy-card';
+        card.innerHTML = `<div class="synergy-title"><span>✦ 双印隐藏羁绊激活 · ${syn.name}</span></div><div class="synergy-desc">${syn.desc}</div>`;
+        synBox.appendChild(card);
+      }
+    } else {
+      const unlocked = G.worldState ? G.worldState.unlockedRelics : new Set(['thorn', 'mirror', 'ember']);
+      const readyHints = RELIC_SYNERGIES
+        .filter(s => s.relics.every(id => unlocked.has(id)))
+        .map(s => {
+          const names = s.relics.map(id => (RELICS.find(r => r.id === id) || {}).name || id);
+          return `「${names[0]} + ${names[1]}」`;
+        });
+      const card = document.createElement('div');
+      card.className = 'synergy-card empty';
+      card.textContent = readyHints.length > 0
+        ? `提示：同时铭刻特定双圣物可触发机制质变羁绊！当前已解锁组合：${readyHints.join('、')}`
+        : '提示：同时铭刻特定双圣物可触发机制质变羁绊（共 4 组隐藏共鸣等待发掘）。';
+      synBox.appendChild(card);
+    }
   }
 
   const list = document.getElementById('relic-list');

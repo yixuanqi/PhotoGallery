@@ -1,18 +1,59 @@
 // Versioned localStorage persistence (v9 with seamless v8 migration)
 import {
-  COLORS, RELICS, ALTARS, MAP_COLS, MAP_ROWS, SAVE_KEY, LEGACY_SAVE_KEY_V9, LEGACY_SAVE_KEY_V8
+  COLORS, RELICS, DEFAULT_KEYBINDS, ALTARS, MAP_COLS, MAP_ROWS,
+  SAVE_KEY, LEGACY_SAVE_KEY_V9, LEGACY_SAVE_KEY_V8, SETTINGS_KEY
 } from './config.js';
 import { G, hooks, createFreshWorldState, getExplorationPercent } from './state.js';
 import { audio } from './audio.js';
 import { syncControlModeUI } from './input.js';
 import { spawnFloatText } from './vfx.js';
 
+export function saveUserSettings() {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+      parryWindowMult: G.settings.parryWindowMult,
+      damageTakenMult: G.settings.damageTakenMult,
+      haptics: !!G.settings.haptics,
+      musicEnabled: G.settings.musicEnabled !== false,
+      keybinds: { ...G.settings.keybinds }
+    }));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export function loadUserSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    if (!s || typeof s !== 'object') return;
+    if ([1.0, 1.35, 1.7].includes(Number(s.parryWindowMult))) G.settings.parryWindowMult = Number(s.parryWindowMult);
+    if ([1.0, 0.7, 0.5].includes(Number(s.damageTakenMult))) G.settings.damageTakenMult = Number(s.damageTakenMult);
+    if (typeof s.haptics === 'boolean') G.settings.haptics = s.haptics;
+    if (typeof s.musicEnabled === 'boolean') {
+      G.settings.musicEnabled = s.musicEnabled;
+      audio.setMusicEnabled(s.musicEnabled);
+    }
+    if (s.keybinds && typeof s.keybinds === 'object') {
+      G.settings.keybinds = { ...DEFAULT_KEYBINDS };
+      for (const k of Object.keys(DEFAULT_KEYBINDS)) {
+        if (typeof s.keybinds[k] === 'string' && s.keybinds[k].length > 0) {
+          G.settings.keybinds[k] = s.keybinds[k];
+        }
+      }
+    }
+  } catch {
+    // Ignore malformed settings
+  }
+}
+
 export function readSaveData() {
   try {
     const raw = localStorage.getItem(SAVE_KEY) || localStorage.getItem(LEGACY_SAVE_KEY_V9) || localStorage.getItem(LEGACY_SAVE_KEY_V8);
     if (!raw) return null;
     const data = JSON.parse(raw);
-    if (!data || (data.v !== 8 && data.v !== 9 && data.v !== 10)) return null;
+    if (!data || (data.v !== 8 && data.v !== 9 && data.v !== 10 && data.v !== 11 && data.v !== 12)) return null;
     return data;
   } catch {
     return null;
@@ -26,11 +67,18 @@ export function saveProgress(showToast = false) {
       .map(row => row.map(cell => (cell ? '1' : '0')).join(''))
       .join('|');
     const eqIds = (G.equippedRelics || [G.currentRelic, null]).map(r => (r ? r.id : null));
+    saveUserSettings();
     const payload = {
-      v: 10,
+      v: 12,
       savedAt: Date.now(),
       controlMode: G.controlMode,
       muted: audio.muted,
+      settings: {
+        parryWindowMult: G.settings.parryWindowMult,
+        damageTakenMult: G.settings.damageTakenMult,
+        haptics: !!G.settings.haptics,
+        keybinds: { ...G.settings.keybinds }
+      },
       relicId: eqIds[0] || G.currentRelic.id,
       equippedRelicIds: eqIds,
       litAltars: [...G.worldState.litAltars],
@@ -45,6 +93,8 @@ export function saveProgress(showToast = false) {
       bonusFlasks: G.worldState.bonusFlasks,
       bonusMaxHp: G.worldState.bonusMaxHp || 0,
       bonusMaxSoul: G.worldState.bonusMaxSoul || 0,
+      echoes: G.worldState.echoes || 0,
+      smithUpgrades: { ...(G.worldState.smithUpgrades || { blade: 0, posture: 0, forge: 0 }) },
       abilities: { doubleJump: !!G.worldState.abilities.doubleJump },
       unlockedRelics: [...G.worldState.unlockedRelics],
       exploredStr,
@@ -80,6 +130,12 @@ export function applySaveData(data) {
   G.worldState.bonusFlasks = Number(data.bonusFlasks) || 0;
   G.worldState.bonusMaxHp = Number(data.bonusMaxHp) || 0;
   G.worldState.bonusMaxSoul = Number(data.bonusMaxSoul) || 0;
+  G.worldState.echoes = Math.max(0, Number(data.echoes) || 0);
+  G.worldState.smithUpgrades = {
+    blade: Math.max(0, Math.min(5, Number(data.smithUpgrades && data.smithUpgrades.blade) || 0)),
+    posture: Math.max(0, Math.min(3, Number(data.smithUpgrades && data.smithUpgrades.posture) || 0)),
+    forge: Math.max(0, Math.min(3, Number(data.smithUpgrades && data.smithUpgrades.forge) || 0))
+  };
   G.worldState.abilities = { doubleJump: !!(data.abilities && data.abilities.doubleJump) };
   G.worldState.unlockedRelics = new Set(Array.isArray(data.unlockedRelics) && data.unlockedRelics.length ? data.unlockedRelics : ['thorn', 'mirror', 'ember']);
 

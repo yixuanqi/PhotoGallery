@@ -8,9 +8,320 @@ import { applyIncomingAttackToPlayer } from './combat.js';
 
 export function updateEnemy(e, dt) {
   if (!e.alive) return;
+  if (e.wardShield > 0) e.wardShield = Math.max(0, e.wardShield - dt);
   if (e.kind === 'wraith') updateWraith(e, dt);
   else if (e.kind === 'golem') updateGolem(e, dt);
+  else if (e.kind === 'priest') updatePriest(e, dt);
+  else if (e.kind === 'duelist') updateDuelist(e, dt);
+  else if (e.kind === 'leech') updateLeech(e, dt);
   else updateSentinel(e, dt);
+}
+
+export function updatePriest(e, dt) {
+  if (e.hurtFlash > 0) e.hurtFlash -= dt;
+  if (e.postureDecayDelay > 0) e.postureDecayDelay -= dt;
+  else if (e.state !== 'stagger' && e.posture > 0) e.posture = Math.max(0, e.posture - 7 * dt);
+
+  const px = G.player.x + G.player.w / 2;
+  const py = G.player.y + G.player.h / 2;
+  const cx = e.x + e.w / 2;
+  const cy = e.y + e.h / 2;
+  const dx = px - cx;
+  const dist = Math.hypot(dx, py - cy);
+  e.facing = dx >= 0 ? 1 : -1;
+  e.stateTimer -= dt;
+
+  if (e.state === 'stagger') {
+    e.vx *= 0.85;
+    e.chantTargetId = null;
+    if (e.stateTimer <= 0) {
+      e.state = 'idle';
+      e.posture = e.maxPosture * 0.28;
+      e.stateTimer = 0.9;
+    }
+  } else if (e.state === 'idle') {
+    e.vx *= 0.8;
+    if (e.stateTimer <= 0 && dist < 640) {
+      // Find nearest living non-priest ally to bless with Golden Bell Barrier
+      let bestAlly = null;
+      let bestD = 560;
+      for (let i = 0; i < G.enemies.length; i++) {
+        const a = G.enemies[i];
+        if (!a || !a.alive || a === e || a.kind === 'priest') continue;
+        const ad = Math.hypot((a.x + a.w / 2) - cx, (a.y + a.h / 2) - cy);
+        if (ad < bestD) { bestD = ad; bestAlly = a; }
+      }
+      if (dist < 115) {
+        // Close-range defensive bell knockback pulse
+        e.state = 'pulse';
+        e.stateTimer = 0.56;
+        e.didHit = false;
+        e.chantTargetId = null;
+      } else if (bestAlly) {
+        e.state = 'chant';
+        e.stateTimer = 0.95;
+        e.chantTargetId = bestAlly.id;
+        audio.playResonanceBell(587.33, false);
+      } else if (dist < 480) {
+        // No ally left: self-channel golden ward orb
+        e.state = 'chant';
+        e.stateTimer = 0.88;
+        e.chantTargetId = null;
+      }
+    }
+  } else if (e.state === 'chant') {
+    e.vx *= 0.8;
+    if (Math.random() < 0.45) {
+      spawnParticles(cx, e.y + 8, 1, { color: COLORS.goldBright, speed: 65, grav: -90, life: 0.34 });
+    }
+    if (e.stateTimer <= 0) {
+      const ally = e.chantTargetId ? G.enemies.find(a => a && a.alive && a.id === e.chantTargetId) : null;
+      if (ally) {
+        ally.wardShield = 6.5;
+        audio.playPogoLantern();
+        spawnShockwave(cx, e.y + 12, 72, COLORS.goldBright, 2.8, 0.28);
+        spawnShockwave(ally.x + ally.w / 2, ally.y + ally.h * 0.45, 76, COLORS.goldBright, 3.2, 0.32);
+        spawnFloatText(ally.x + ally.w / 2, ally.y - 24, '钟佑护盾!', COLORS.goldBright, 16, 0.85);
+      } else {
+        // Launch a golden parryable resonance orb if solo
+        const len = Math.max(1, dist);
+        audio.playWraithShot();
+        G.projectiles.push({
+          owner: 'enemy',
+          source: e,
+          kind: 'wraithOrb',
+          x: cx + e.facing * 16,
+          y: e.y + 20,
+          vx: (dx / len) * 335,
+          vy: ((py - (e.y + 20)) / len) * 335,
+          r: 12,
+          dmg: 18,
+          posture: 28,
+          life: 2.5,
+          maxLife: 2.5,
+          reflected: false,
+          hitIds: new Set()
+        });
+      }
+      e.chantTargetId = null;
+      e.state = 'recover';
+      e.stateTimer = 2.2;
+    }
+  } else if (e.state === 'pulse') {
+    e.vx *= 0.8;
+    if (e.stateTimer <= 0.14 && !e.didHit) {
+      e.didHit = true;
+      audio.playPogoLantern();
+      spawnShockwave(cx, cy, 118, COLORS.goldBright, 3.6, 0.28);
+      if (dist < 116) applyIncomingAttackToPlayer(e, 16, false, 280);
+    }
+    if (e.stateTimer <= 0) {
+      e.state = 'recover';
+      e.stateTimer = 1.2;
+    }
+  } else if (e.state === 'recover') {
+    e.vx *= 0.82;
+    if (e.stateTimer <= 0) {
+      e.state = 'idle';
+      e.stateTimer = 0.6;
+    }
+  }
+
+  e.vy += GRAVITY * dt;
+  moveAndCollide(e, dt, false);
+  updateCloak(e.cloak, cx - e.facing * 6, e.y + 20, e.facing, -e.vx * 0.35, dt);
+}
+
+export function updateDuelist(e, dt) {
+  if (e.hurtFlash > 0) e.hurtFlash -= dt;
+  if (e.postureDecayDelay > 0) e.postureDecayDelay -= dt;
+  else if (e.state !== 'stagger' && e.posture > 0) e.posture = Math.max(0, e.posture - 7 * dt);
+
+  const dx = (G.player.x + G.player.w / 2) - (e.x + e.w / 2);
+  const dy = (G.player.y + G.player.h / 2) - (e.y + e.h / 2);
+  const absDx = Math.abs(dx);
+  e.stateTimer -= dt;
+
+  if (e.state === 'stagger') {
+    e.vx *= 0.85;
+    if (e.stateTimer <= 0) {
+      e.state = 'chase';
+      e.posture = e.maxPosture * 0.28;
+    }
+  } else if (e.state === 'patrol') {
+    e.vx = e.facing * 88;
+    if (e.x < e.minX) e.facing = 1;
+    if (e.x > e.maxX) e.facing = -1;
+    if (absDx < 360 && Math.abs(dy) < 120) e.state = 'chase';
+  } else if (e.state === 'chase') {
+    e.facing = dx >= 0 ? 1 : -1;
+    if (absDx > 92) e.vx = e.facing * 178;
+    else e.vx *= 0.8;
+    if (absDx < 142 && Math.abs(dy) < 86 && e.stateTimer <= 0) {
+      e.state = 'windup';
+      e.comboIdx = 0;
+      e.attackKind = Math.random() < 0.25 ? 'redDash' : 'combo3';
+      e.stateTimer = e.attackKind === 'redDash' ? 0.62 : 0.34;
+      e.didHit = false;
+      e.vx = e.attackKind === 'redDash' ? -e.facing * 180 : 0;
+      if (e.attackKind === 'redDash') audio.playDangerAlert();
+    } else if (absDx > 520) {
+      e.state = 'patrol';
+    }
+  } else if (e.state === 'windup') {
+    if (e.stateTimer > 0.16) e.facing = dx >= 0 ? 1 : -1;
+    e.vx *= 0.82;
+    if (e.attackKind === 'combo3' && e.comboIdx === 2 && Math.random() < 0.45) {
+      spawnParticles(e.x + e.w / 2 + e.facing * 12, e.y + 24, 1, { color: COLORS.goldBright, speed: 60, grav: -40, life: 0.2 });
+    }
+    if (e.stateTimer <= 0) {
+      e.state = 'attack';
+      e.didHit = false;
+      const isRed = e.attackKind === 'redDash';
+      const isFinisher = !isRed && e.comboIdx === 2;
+      e.stateTimer = isRed ? 0.22 : (isFinisher ? 0.20 : 0.14);
+      e.vx = e.facing * (isRed ? 520 : isFinisher ? 340 : 250);
+      audio.playSlash(isRed ? 0.78 : (0.95 + e.comboIdx * 0.14), isFinisher || isRed);
+      G.slashes.push({
+        x: e.x + e.w / 2 + e.facing * 26,
+        y: e.y + 30,
+        facing: e.facing,
+        type: isRed ? 'enemyRedThrust' : (e.comboIdx === 1 ? 'bossUpSweep' : (isFinisher ? 'bossSlam' : 'enemyThrust')),
+        life: 0.2,
+        maxLife: 0.2
+      });
+    }
+  } else if (e.state === 'attack') {
+    e.vx *= 0.9;
+    if (!e.didHit) {
+      const isRed = e.attackKind === 'redDash';
+      const reach = isRed ? 96 : (e.comboIdx === 2 ? 92 : 76);
+      const hitBox = {
+        x: e.x + e.w / 2 + (e.facing > 0 ? -4 : -reach + 4),
+        y: e.y + 8,
+        w: reach,
+        h: 50
+      };
+      if (aabbOverlap(hitBox, G.player)) {
+        e.didHit = true;
+        const dmg = isRed ? 26 : (e.comboIdx === 2 ? 24 : 15);
+        applyIncomingAttackToPlayer(e, dmg, isRed, isRed ? 260 : 190);
+      }
+    }
+    if (e.stateTimer <= 0) {
+      if (e.attackKind === 'combo3' && e.comboIdx < 2) {
+        e.comboIdx++;
+        e.state = 'windup';
+        // Fast-Fast-Delayed rhythm (0.26s -> 0.62s slow-fast finisher!)
+        e.stateTimer = e.comboIdx === 1 ? 0.25 : 0.62;
+        e.didHit = false;
+      } else {
+        e.state = 'recover';
+        e.stateTimer = 0.85;
+      }
+    }
+  } else if (e.state === 'recover') {
+    e.vx *= 0.84;
+    if (e.stateTimer <= 0) {
+      e.state = 'chase';
+      e.stateTimer = 0.3;
+    }
+  }
+
+  e.vy += GRAVITY * dt;
+  moveAndCollide(e, dt, false);
+  if (Math.abs(e.vx) > 15 && e.grounded) e.walkCycle = (e.walkCycle || 0) + dt * Math.abs(e.vx) * 0.05;
+  updateCloak(e.cloak, e.x + e.w / 2 - e.facing * 5, e.y + 18, e.facing, -e.vx * 0.5, dt);
+}
+
+export function updateLeech(e, dt) {
+  if (e.hurtFlash > 0) e.hurtFlash -= dt;
+  if (e.postureDecayDelay > 0) e.postureDecayDelay -= dt;
+  else if (e.state !== 'stagger' && e.posture > 0) e.posture = Math.max(0, e.posture - 7 * dt);
+  e.pulsePhase += dt * 4.2;
+  e.stateTimer -= dt;
+
+  const px = G.player.x + G.player.w / 2;
+  const py = G.player.y + G.player.h / 2;
+  const cx = e.x + e.w / 2;
+  const cy = e.y + e.h / 2;
+  const dx = px - cx;
+  const dy = py - cy;
+
+  if (e.state === 'stagger') {
+    e.vx *= 0.82;
+    e.vy += GRAVITY * dt;
+    moveAndCollide(e, dt, false);
+    if (e.stateTimer <= 0) {
+      e.state = 'crawl';
+      e.posture = e.maxPosture * 0.25;
+      e.stateTimer = 2.0;
+    }
+  } else if (e.state === 'cling') {
+    e.x = e.homeX;
+    e.y = e.homeY;
+    e.vx = 0;
+    e.vy = 0;
+    e.facing = dx >= 0 ? 1 : -1;
+    if (Math.random() < 0.04) {
+      spawnParticles(cx, e.y + e.h, 1, { color: COLORS.ink, speed: 20, grav: 240, life: 0.5 });
+    }
+    if (Math.abs(dx) < 175 && dy > -10 && dy < 340 && e.stateTimer <= 0) {
+      e.state = 'telegraph';
+      e.stateTimer = 0.42;
+      e.didHit = false;
+      audio.playSlash(1.4);
+    }
+  } else if (e.state === 'telegraph') {
+    e.x = e.homeX + (Math.random() - 0.5) * 4;
+    e.y = e.homeY;
+    if (e.stateTimer <= 0) {
+      e.state = 'drop';
+      e.vx = Math.max(-130, Math.min(130, dx * 1.1));
+      e.vy = 260;
+      e.didHit = false;
+    }
+  } else if (e.state === 'drop') {
+    e.vy = Math.min(920, e.vy + GRAVITY * 1.1 * dt);
+    moveAndCollide(e, dt, false);
+    if (!e.didHit && aabbOverlap({ x: e.x - 4, y: e.y, w: e.w + 8, h: e.h + 6 }, G.player)) {
+      e.didHit = true;
+      applyIncomingAttackToPlayer(e, 20, false, 200);
+    }
+    if (e.grounded) {
+      audio.playLand();
+      spawnParticles(cx, e.y + e.h, 10, { color: COLORS.ink, speed: 150, grav: 260, life: 0.35 });
+      e.state = 'crawl';
+      e.stateTimer = 2.6;
+      e.didHit = false;
+    }
+  } else if (e.state === 'crawl') {
+    e.facing = dx >= 0 ? 1 : -1;
+    e.vx = e.facing * 112;
+    e.vy += GRAVITY * dt;
+    moveAndCollide(e, dt, false);
+    if (!e.didHit && aabbOverlap(e, G.player)) {
+      e.didHit = true;
+      applyIncomingAttackToPlayer(e, 16, false, 180);
+      e.vx = -e.facing * 140;
+    }
+    if (e.stateTimer <= 0) {
+      e.state = 'climb';
+      e.stateTimer = 1.6;
+    }
+  } else if (e.state === 'climb') {
+    const cdx = e.homeX - e.x;
+    const cdy = e.homeY - e.y;
+    const cd = Math.hypot(cdx, cdy);
+    if (cd < 14 || e.stateTimer <= 0) {
+      e.x = e.homeX; e.y = e.homeY; e.vx = 0; e.vy = 0;
+      e.state = 'cling';
+      e.stateTimer = 1.1;
+    } else {
+      e.x += (cdx / cd) * 320 * dt;
+      e.y += (cdy / cd) * 320 * dt;
+    }
+  }
 }
 
 export function updateWraith(e, dt) {

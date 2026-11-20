@@ -42,7 +42,8 @@
   ],
   "connections": [
     "r03_chapel",
-    "r05_foundry"
+    "r05_foundry",
+    "r06_crypt"
   ],
   "solids": [
     {
@@ -426,6 +427,20 @@
       "y": 1318,
       "minX": 1180,
       "maxX": 1330
+    },
+    {
+      "id": "priest_well",
+      "kind": "priest",
+      "x": 1465,
+      "y": 514
+    },
+    {
+      "id": "duelist_well",
+      "kind": "duelist",
+      "x": 1160,
+      "y": 960,
+      "minX": 960,
+      "maxX": 1440
     }
   ],
   "bosses": [],
@@ -460,6 +475,11 @@
       "y": 1210,
       "text": "「习得墨翼步 · 东侧铸钟殿封门自启」",
       "hideWhenDoubleJump": true
+    },
+    {
+      "x": 75,
+      "y": 925,
+      "text": "「西壁墨隙 · 疑通残钟地窖」"
     }
   ],
   "props": {

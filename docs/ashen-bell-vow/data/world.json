@@ -35,7 +35,8 @@
       },
       "connections": [
         "r01_sanctuary",
-        "r03_chapel"
+        "r03_chapel",
+        "r06_crypt"
       ]
     },
     {
@@ -69,7 +70,8 @@
       },
       "connections": [
         "r03_chapel",
-        "r05_foundry"
+        "r05_foundry",
+        "r06_crypt"
       ]
     },
     {
@@ -86,6 +88,23 @@
       },
       "connections": [
         "r04_bell_well"
+      ]
+    },
+    {
+      "id": "r06_crypt",
+      "file": "./data/rooms/r06_crypt.json",
+      "zoneName": "沉钟回廊",
+      "name": "残钟地窖",
+      "theme": "crypt",
+      "bounds": {
+        "x": 1980,
+        "y": 740,
+        "w": 1800,
+        "h": 780
+      },
+      "connections": [
+        "r04_bell_well",
+        "r02_corridor"
       ]
     }
   ]

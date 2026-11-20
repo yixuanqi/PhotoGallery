@@ -1,12 +1,12 @@
 // Art-directed dark hand-drawn Canvas 2D rendering pipeline
 import {
-  COLORS, SOLIDS, ALTARS, ALTAR_POS, LORE_TABLETS,
+  COLORS, SOLIDS, ALTARS, NPCS, ALTAR_POS, LORE_TABLETS,
   SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF,
   PENDULUMS, ABYSSAL_RIVERS, WALL_INSCRIPTIONS, GRAPPLE_ANCHORS,
   PUDDLES, BANNERS, CANDLE_CLUSTERS, BONE_CAIRNS, WORLD_W, FLOOR_Y, WELL_BOTTOM_Y
 } from './config.js';
 import { G, getAwakeBoss, getRelicStats } from './state.js';
-import { getControlLabels } from './input.js';
+import { getControlLabels, getActionKeyLabel } from './input.js';
 import {
   drawGlowSprite, boilLine, boilCircle, boilRectOutline, drawTaperedCrescent, drawCloakMesh, solve2BoneIK
 } from './vfx.js';
@@ -268,6 +268,7 @@ export function render() {
   drawWallInscriptions();
   drawCrumblePlatforms();
   drawAltars();
+  drawNpcs();
   drawShortcutGate();
   drawChapelExitGate();
   drawFoundryEntryGate();
@@ -995,6 +996,81 @@ function drawAltars() {
       G.ctx.quadraticCurveTo(x + drift, y - 54, x - drift * 0.6, y - 70);
       G.ctx.stroke();
     }
+    G.ctx.restore();
+  }
+}
+
+function drawNpcs() {
+  for (const npc of NPCS) {
+    const { x, y } = npc;
+    if (x < G.cam.x - 160 || x > G.cam.x + G.canvasW + 160) continue;
+    G.ctx.save();
+
+    // Warm molten forge glow around Blind Bellsmith
+    const pulse = 0.88 + Math.sin(G.globalTime * 6.5) * 0.12;
+    const fg = G.ctx.createRadialGradient(x + 22, y - 22, 4, x + 12, y - 26, 118 * pulse);
+    fg.addColorStop(0, 'rgba(245, 158, 11, 0.34)');
+    fg.addColorStop(0.55, 'rgba(220, 38, 38, 0.10)');
+    fg.addColorStop(1, 'transparent');
+    G.ctx.fillStyle = fg;
+    G.ctx.beginPath(); G.ctx.arc(x + 12, y - 26, 118 * pulse, 0, Math.PI * 2); G.ctx.fill();
+
+    // Stone Forge Brazier & Heavy Bronze Anvil (x + 28)
+    const ax = x + 28;
+    G.ctx.fillStyle = '#191d28';
+    G.ctx.strokeStyle = 'rgba(216, 207, 184, 0.65)';
+    G.ctx.lineWidth = 1.6;
+    G.ctx.beginPath();
+    G.ctx.moveTo(ax - 18, y); G.ctx.lineTo(ax - 12, y - 18);
+    G.ctx.lineTo(ax - 22, y - 24); G.ctx.lineTo(ax + 24, y - 24);
+    G.ctx.lineTo(ax + 15, y - 16); G.ctx.lineTo(ax + 18, y);
+    G.ctx.closePath();
+    G.ctx.fill(); G.ctx.stroke();
+    // Glowing ember ingot on anvil
+    drawGlowSprite('gold', ax, y - 27, 22 * pulse, 0.72);
+    G.ctx.fillStyle = COLORS.goldBright;
+    G.ctx.fillRect(ax - 7, y - 28, 14, 4);
+
+    // Blind Old Bellsmith Silhouette (Hunched Hooded Artisan)
+    const tapCycle = Math.sin(G.globalTime * 3.4);
+    const hammerLift = tapCycle > 0.3 ? (tapCycle - 0.3) * 1.1 : 0;
+    G.ctx.translate(x - 6, y);
+    // Heavy Leather Apron & Coat
+    G.ctx.fillStyle = '#151924';
+    G.ctx.strokeStyle = COLORS.parchment;
+    G.ctx.lineWidth = 1.8;
+    G.ctx.beginPath();
+    G.ctx.moveTo(-16, 0); G.ctx.lineTo(-14, -44); G.ctx.quadraticCurveTo(0, -54, 14, -42);
+    G.ctx.lineTo(17, 0); G.ctx.closePath();
+    G.ctx.fill(); G.ctx.stroke();
+    // Broad Hooded Head & Blindfold Bandage
+    G.ctx.fillStyle = '#1e2433';
+    G.ctx.beginPath(); G.ctx.arc(2, -52, 11, 0, Math.PI * 2); G.ctx.fill(); G.ctx.stroke();
+    G.ctx.strokeStyle = '#d8cfb8';
+    G.ctx.lineWidth = 3;
+    G.ctx.beginPath(); G.ctx.moveTo(-5, -53); G.ctx.lineTo(12, -51); G.ctx.stroke();
+    // Long Ash Beard
+    G.ctx.fillStyle = '#b7afa0';
+    G.ctx.beginPath(); G.ctx.moveTo(2, -45); G.ctx.lineTo(11, -44); G.ctx.lineTo(6, -31); G.ctx.closePath(); G.ctx.fill();
+
+    // Forging Hammer Arm
+    G.ctx.save();
+    G.ctx.translate(10, -34);
+    G.ctx.rotate(-0.45 - hammerLift);
+    G.ctx.strokeStyle = COLORS.parchment;
+    G.ctx.lineWidth = 2.6;
+    G.ctx.beginPath(); G.ctx.moveTo(0, 0); G.ctx.lineTo(24, 6); G.ctx.stroke();
+    G.ctx.fillStyle = '#3b2c1a';
+    G.ctx.strokeStyle = COLORS.gold;
+    G.ctx.lineWidth = 1.5;
+    G.ctx.fillRect(20, 0, 9, 13); G.ctx.strokeRect(20, 0, 9, 13);
+    G.ctx.restore();
+
+    // Subtle Nameplate above NPC
+    G.ctx.font = '11.5px "Noto Serif SC", serif';
+    G.ctx.textAlign = 'center';
+    G.ctx.fillStyle = 'rgba(253, 224, 71, 0.72)';
+    G.ctx.fillText(npc.name || '老铸钟匠 · 砺', 10, -72);
     G.ctx.restore();
   }
 }
@@ -1787,12 +1863,15 @@ function drawPuppet(x, y, facing, isGhost = false, ghostColor = null) {
     G.ctx.strokeStyle = COLORS.gold;
     G.ctx.lineWidth = 2.4;
     G.ctx.beginPath(); G.ctx.moveTo(4, -5); G.ctx.lineTo(4, 5); G.ctx.stroke();
-    // Curved Ashen Blade (Golden Riposte Glint during K->J counter window!)
+    // Curved Ashen Blade (Golden Riposte Glint or Crimson Mirror-Ember Free-Seal Glow!)
     const bladeGold = G.player.chargeReadyPlayed || G.player.riposteWindow > 0;
-    if (bladeGold) {
+    const bladeSealProc = !!G.player.freeSealProc;
+    if (bladeSealProc) {
+      drawGlowSprite('crimson', 24, 0, 22, 0.82);
+    } else if (bladeGold) {
       drawGlowSprite('gold', 24, 0, 20, 0.72);
     }
-    G.ctx.fillStyle = bladeGold ? COLORS.goldBright : '#d8d2c3';
+    G.ctx.fillStyle = bladeSealProc ? COLORS.crimsonBright : (bladeGold ? COLORS.goldBright : '#d8d2c3');
     G.ctx.strokeStyle = '#090c12';
     G.ctx.lineWidth = 1.2;
     G.ctx.beginPath();
@@ -1910,12 +1989,231 @@ function drawEnemyOverheadBars(e) {
   G.ctx.fillRect(bx, by + 6, bw * (e.posture / e.maxPosture), 3.5);
 }
 
-/* ---------- ENEMIES: SENTINEL & LANTERN WRAITH ---------- */
+/* ---------- ENEMIES: SENTINEL, WRAITH, GOLEM, PRIEST, DUELIST, LEECH ---------- */
 function drawEnemy(e) {
   if (!e.alive) return;
   if (e.kind === 'wraith') drawWraith(e);
   else if (e.kind === 'golem') drawGolem(e);
+  else if (e.kind === 'priest') drawPriest(e);
+  else if (e.kind === 'duelist') drawDuelist(e);
+  else if (e.kind === 'leech') drawLeech(e);
   else drawSentinel(e);
+  if (e.wardShield > 0) drawWardShieldOverlay(e);
+}
+
+function drawWardShieldOverlay(e) {
+  const cx = e.x + e.w * 0.5;
+  const cy = e.y + e.h * 0.5;
+  const rx = e.w * 0.85;
+  const ry = e.h * 0.66;
+  const pulse = 0.85 + Math.sin(G.globalTime * 9) * 0.15;
+  G.ctx.save();
+  drawGlowSprite('gold', cx, cy, Math.max(rx, ry) * 1.15, 0.36 * pulse);
+  G.ctx.strokeStyle = COLORS.goldBright;
+  G.ctx.fillStyle = 'rgba(245, 158, 11, 0.12)';
+  G.ctx.lineWidth = 2.0;
+  G.ctx.beginPath();
+  G.ctx.ellipse(cx, cy, rx * pulse, ry * pulse, 0, 0, Math.PI * 2);
+  G.ctx.fill();
+  G.ctx.stroke();
+  G.ctx.restore();
+}
+
+function drawPriest(e) {
+  const cx = e.x + e.w / 2;
+  const fy = e.y + e.h;
+  const isStagger = e.state === 'stagger';
+  const isChant = e.state === 'chant';
+  G.ctx.save();
+
+  // Golden Bell-Chant Tether Beam to Blessed Ally
+  if (isChant && e.chantTargetId) {
+    const ally = G.enemies.find(a => a && a.alive && a.id === e.chantTargetId);
+    if (ally) {
+      G.ctx.strokeStyle = 'rgba(253, 224, 71, 0.65)';
+      G.ctx.lineWidth = 2.2;
+      boilLine(G.ctx, cx, e.y + 8, ally.x + ally.w * 0.5, ally.y + ally.h * 0.45, 9200, 3.2, 6);
+    }
+  }
+
+  drawCloakMesh(e.cloak, '#1d1626', 'rgba(253, 224, 71, 0.48)', 15, 610);
+  const joltX = e.hurtFlash > 0 ? (Math.random() - 0.5) * 6 : 0;
+  G.ctx.translate(cx + joltX, fy);
+  if (isStagger) G.ctx.translate(0, 9);
+
+  // Floating Golden Bell Halo behind Mitre
+  drawGlowSprite('gold', 0, -56, isChant ? 38 : 22, isChant ? 0.78 : 0.42);
+  G.ctx.strokeStyle = isChant ? COLORS.goldBright : 'rgba(245, 158, 11, 0.58)';
+  G.ctx.lineWidth = isChant ? 2.2 : 1.4;
+  boilCircle(G.ctx, 0, -56, isChant ? 19 : 14, 9240, 1.0, 14);
+  G.ctx.stroke();
+
+  // Tall Ceremonial Robe
+  G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#1f182c';
+  G.ctx.strokeStyle = isChant ? COLORS.goldBright : 'rgba(216, 207, 184, 0.78)';
+  G.ctx.lineWidth = 1.9;
+  G.ctx.beginPath();
+  G.ctx.moveTo(-15, 0); G.ctx.lineTo(-10, -48); G.ctx.lineTo(10, -48); G.ctx.lineTo(15, 0);
+  G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
+  // Gold Stole Trim
+  G.ctx.strokeStyle = COLORS.gold;
+  G.ctx.lineWidth = 2.0;
+  G.ctx.beginPath(); G.ctx.moveTo(0, -46); G.ctx.lineTo(0, -4); G.ctx.stroke();
+
+  // Tall Split Bell-Mitre Hat
+  G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#2a2238';
+  G.ctx.beginPath();
+  G.ctx.moveTo(-9, -48); G.ctx.lineTo(-7, -72); G.ctx.lineTo(0, -64); G.ctx.lineTo(7, -72); G.ctx.lineTo(9, -48);
+  G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
+  G.ctx.fillStyle = COLORS.goldBright;
+  G.ctx.fillRect(e.facing > 0 ? 1 : -6, -54, 5, 2.5);
+
+  // Bronze Chime Staff
+  const shake = isChant ? Math.sin(G.globalTime * 28) * 0.18 : 0;
+  G.ctx.save();
+  G.ctx.translate(e.facing * 14, -36);
+  G.ctx.rotate(shake);
+  G.ctx.strokeStyle = COLORS.parchment;
+  G.ctx.lineWidth = 2.4;
+  G.ctx.beginPath(); G.ctx.moveTo(0, 32); G.ctx.lineTo(0, -28); G.ctx.stroke();
+  G.ctx.fillStyle = COLORS.gold;
+  G.ctx.strokeStyle = COLORS.goldBright;
+  G.ctx.beginPath(); G.ctx.moveTo(-4, -28); G.ctx.lineTo(4, -28); G.ctx.lineTo(8, -16); G.ctx.lineTo(-8, -16); G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
+  G.ctx.restore();
+
+  if (e.state === 'pulse' && e.stateTimer < 0.28) {
+    drawParryStarGlint(0, -42, 20, COLORS.goldBright);
+  }
+  G.ctx.restore();
+  drawEnemyOverheadBars(e);
+  if (isStagger) drawExecutionSigil(cx, e.y + 32);
+}
+
+function drawDuelist(e) {
+  const cx = e.x + e.w / 2;
+  const fy = e.y + e.h;
+  const isStagger = e.state === 'stagger';
+  const isRed = e.attackKind === 'redDash' && (e.state === 'windup' || e.state === 'attack');
+  G.ctx.save();
+
+  drawCloakMesh(e.cloak, '#3b111c', 'rgba(248, 113, 113, 0.55)', 12, 740);
+  const joltX = e.hurtFlash > 0 ? (Math.random() - 0.5) * 6 : 0;
+  G.ctx.translate(cx + joltX, fy);
+  if (isStagger) G.ctx.translate(0, 10);
+
+  // 2-Bone IK Agile Stride Legs
+  const dWalk = e.walkCycle || 0;
+  const dMoving = Math.abs(e.vx) > 15;
+  [-1, 1].forEach(side => {
+    const ph = dWalk + (side > 0 ? 0 : Math.PI);
+    const fx = isStagger ? side * 12 : (dMoving ? Math.sin(ph) * 13 : side * 7);
+    const fyL = isStagger ? 0 : (dMoving ? -Math.max(0, Math.cos(ph)) * 7 : 0);
+    const ik = solve2BoneIK(side * 3.5, -20, fx, fyL, 11, 11, e.facing);
+    G.ctx.strokeStyle = side < 0 ? 'rgba(150, 142, 130, 0.82)' : COLORS.parchment;
+    G.ctx.lineWidth = 3.1;
+    G.ctx.lineCap = 'round';
+    G.ctx.beginPath(); G.ctx.moveTo(side * 3.5, -20); G.ctx.lineTo(ik.kx, ik.ky); G.ctx.lineTo(ik.ex, ik.ey); G.ctx.stroke();
+  });
+
+  // Lean Ronin Haori Torso
+  G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#141824';
+  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : 'rgba(216, 207, 184, 0.82)';
+  G.ctx.lineWidth = 1.9;
+  G.ctx.beginPath();
+  G.ctx.moveTo(-11, -15); G.ctx.lineTo(-9, -43); G.ctx.lineTo(9, -43); G.ctx.lineTo(11, -15);
+  G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
+  // Bamboo-Iron Conical Kasa Hat
+  G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#1e2434';
+  G.ctx.beginPath();
+  G.ctx.moveTo(-21, -48); G.ctx.lineTo(0, -64); G.ctx.lineTo(21, -48); G.ctx.closePath();
+  G.ctx.fill(); G.ctx.stroke();
+  // Fierce Glowing Slit Eyes under Hat
+  G.ctx.fillStyle = isRed ? COLORS.crimsonBright : COLORS.goldBright;
+  G.ctx.fillRect(e.facing > 0 ? 1 : -8, -48, 7, 2.5);
+
+  // Twin Curved Dark Blades
+  const drawDuelBlade = (ox, oy, ang) => {
+    G.ctx.save();
+    G.ctx.translate(ox, oy);
+    G.ctx.rotate(ang);
+    G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : (e.comboIdx === 2 && e.state === 'windup' ? COLORS.goldBright : '#e2dccb');
+    G.ctx.lineWidth = 2.6;
+    G.ctx.beginPath(); G.ctx.moveTo(0, 0); G.ctx.quadraticCurveTo(22, -4, 42, 0); G.ctx.stroke();
+    G.ctx.restore();
+  };
+  let a1 = e.facing > 0 ? -0.45 : Math.PI + 0.45;
+  let a2 = e.facing > 0 ? 0.55 : Math.PI - 0.55;
+  if (e.state === 'windup') {
+    a1 = e.facing > 0 ? -2.2 : Math.PI + 2.2;
+    a2 = e.facing > 0 ? 2.1 : Math.PI - 2.1;
+  } else if (e.state === 'attack') {
+    a1 = e.facing > 0 ? 0.25 : Math.PI - 0.25;
+    a2 = e.facing > 0 ? -0.35 : Math.PI + 0.35;
+  }
+  drawDuelBlade(-e.facing * 6, -32, a2);
+  drawDuelBlade(e.facing * 8, -32, a1);
+
+  if (e.state === 'windup') {
+    if (isRed) {
+      drawGlowSprite('crimson', 0, -76, 20, 0.78);
+      G.ctx.fillStyle = COLORS.crimsonBright;
+      G.ctx.font = 'bold 22px "Noto Serif SC", serif';
+      G.ctx.textAlign = 'center';
+      G.ctx.fillText('危', 0, -70);
+    } else if (e.stateTimer < 0.23) {
+      drawParryStarGlint(e.facing * 18, -34, e.comboIdx === 2 ? 22 : 16, COLORS.goldBright);
+    }
+  }
+  G.ctx.restore();
+  drawEnemyOverheadBars(e);
+  if (isStagger) drawExecutionSigil(cx, e.y + 28);
+}
+
+function drawLeech(e) {
+  const cx = e.x + e.w / 2;
+  const cy = e.y + e.h / 2;
+  const isStagger = e.state === 'stagger';
+  const isCeiling = e.state === 'cling' || e.state === 'telegraph';
+  const pulse = 1 + Math.sin(e.pulsePhase) * 0.08;
+  G.ctx.save();
+  G.ctx.translate(cx, cy);
+  if (isCeiling) G.ctx.scale(pulse, 1 / pulse);
+  else G.ctx.scale(1 / pulse, pulse);
+
+  // Hanging ink tendrils
+  G.ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+  G.ctx.lineWidth = 1.6;
+  for (let k = -1; k <= 1; k++) {
+    const sw = Math.sin(G.globalTime * 7 + k * 1.4) * 4;
+    G.ctx.beginPath();
+    G.ctx.moveTo(k * 7, isCeiling ? 10 : -10);
+    G.ctx.quadraticCurveTo(k * 9 + sw, isCeiling ? 19 : -19, k * 6 - sw, isCeiling ? 26 : -24);
+    G.ctx.stroke();
+  }
+
+  // Glossy Abyssal Ink Sac Body
+  G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#0f1626';
+  G.ctx.strokeStyle = e.state === 'telegraph' || e.state === 'drop' ? COLORS.crimsonBright : COLORS.cyan;
+  G.ctx.lineWidth = 1.9;
+  G.ctx.beginPath();
+  G.ctx.ellipse(0, 0, 16, 15, 0, 0, Math.PI * 2);
+  G.ctx.fill(); G.ctx.stroke();
+
+  // Cluster of Eerie Ambush Eyes
+  drawGlowSprite(e.state === 'telegraph' ? 'gold' : 'crimson', 0, isCeiling ? 4 : -2, 14, 0.65);
+  G.ctx.fillStyle = e.state === 'telegraph' ? COLORS.goldBright : COLORS.crimsonBright;
+  G.ctx.beginPath();
+  G.ctx.arc(-5, isCeiling ? 4 : -2, 2.4, 0, Math.PI * 2);
+  G.ctx.arc(5, isCeiling ? 4 : -2, 2.4, 0, Math.PI * 2);
+  G.ctx.arc(0, isCeiling ? 8 : -6, 1.8, 0, Math.PI * 2);
+  G.ctx.fill();
+
+  if (e.state === 'telegraph') {
+    drawParryStarGlint(0, 16, 17, COLORS.goldBright);
+  }
+  G.ctx.restore();
+  drawEnemyOverheadBars(e);
+  if (isStagger) drawExecutionSigil(cx, cy);
 }
 
 function drawGolem(e) {
@@ -2524,15 +2822,16 @@ function drawProjectiles() {
   for (const pr of G.projectiles) {
     G.ctx.save();
     G.ctx.translate(pr.x, pr.y);
-    if (pr.kind === 'soulWave') {
+    if (pr.kind === 'soulWave' || pr.kind === 'crimsonWave') {
+      const isCr = pr.kind === 'crimsonWave';
       const alpha = Math.min(1, pr.life * 3.5);
       G.ctx.globalAlpha = alpha;
       G.ctx.scale(pr.facing, 1);
-      drawGlowSprite('cyan', 10, 0, 42, 0.78 * alpha);
-      drawTaperedCrescent(26, 13, -1.25, 1.25, 'rgba(56, 189, 248, 0.92)', '#e0f2fe');
-      G.ctx.fillStyle = 'rgba(125, 211, 252, 0.35)';
+      drawGlowSprite(isCr ? 'crimson' : 'cyan', 10, 0, isCr ? 50 : 42, 0.82 * alpha);
+      drawTaperedCrescent(isCr ? 30 : 26, isCr ? 15 : 13, -1.28, 1.28, isCr ? 'rgba(220, 38, 38, 0.94)' : 'rgba(56, 189, 248, 0.92)', isCr ? '#fef08a' : '#e0f2fe');
+      G.ctx.fillStyle = isCr ? 'rgba(248, 113, 113, 0.38)' : 'rgba(125, 211, 252, 0.35)';
       G.ctx.beginPath();
-      G.ctx.moveTo(8, -22); G.ctx.quadraticCurveTo(-34, 0, 8, 22); G.ctx.quadraticCurveTo(-8, 0, 8, -22);
+      G.ctx.moveTo(8, -24); G.ctx.quadraticCurveTo(-38, 0, 8, 24); G.ctx.quadraticCurveTo(-8, 0, 8, -24);
       G.ctx.closePath(); G.ctx.fill();
     } else if (pr.kind === 'wraithOrb') {
       const col = pr.reflected ? COLORS.goldBright : COLORS.crimsonBright;
@@ -3008,24 +3307,30 @@ function drawWorldPrompts() {
   G.ctx.font = '13px "Noto Serif SC", serif';
   G.ctx.textAlign = 'center';
 
+  const ek = getActionKeyLabel('interact');
   for (const altar of ALTARS) {
     if (Math.hypot(px - altar.x, py - altar.y) < 86) {
       const isLit = !G.worldState || G.worldState.litAltars.has(altar.id);
-      drawPromptBadge(altar.x, altar.y - 96, isLit ? '[E] 歇息 · 圣物与跃迁' : `[E] 点燃${altar.shortName}`);
+      drawPromptBadge(altar.x, altar.y - 96, isLit ? `[${ek}] 歇息 · 圣物与跃迁` : `[${ek}] 点燃${altar.shortName}`);
+    }
+  }
+  for (const npc of NPCS) {
+    if (Math.hypot(px - npc.x, py - npc.y) < 88) {
+      drawPromptBadge(npc.x + 8, npc.y - 92, `[${ek}] 淬炼断刃 · ${npc.name || '老铸钟匠'}`);
     }
   }
   if (G.worldState && !G.worldState.shortcutOpen && Math.hypot(px - SHORTCUT_GATE_DEF.leverX, py - SHORTCUT_GATE_DEF.leverY) < 76) {
-    drawPromptBadge(SHORTCUT_GATE_DEF.leverX, SHORTCUT_GATE_DEF.leverY - 68, '[E / 斩] 拉动青铜锁链');
+    drawPromptBadge(SHORTCUT_GATE_DEF.leverX, SHORTCUT_GATE_DEF.leverY - 68, `[${ek} / 斩] 拉动青铜锁链`);
   }
   for (const lt of LORE_TABLETS) {
     if (Math.hypot(px - lt.x, py - lt.y) < 78) {
-      drawPromptBadge(lt.x, lt.y - 80, `[E] 研读 · ${lt.title}`);
+      drawPromptBadge(lt.x, lt.y - 80, `[${ek}] 研读 · ${lt.title}`);
     }
   }
   if (G.worldState) {
     for (const p of G.worldState.pickups) {
       if (!p.collected && isPickupUnlocked(p) && Math.hypot(px - p.x, py - p.y) < 72) {
-        drawPromptBadge(p.x, p.y - 66, `[E] 拾取 · ${p.name}`);
+        drawPromptBadge(p.x, p.y - 66, `[${ek}] 拾取 · ${p.name}`);
       }
     }
   }

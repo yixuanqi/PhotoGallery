@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>灰钟残誓 v12 — 房间化关卡编辑器</title>
-<link rel="stylesheet" href="./editor.css?v=12" />
+<title>灰钟残誓 v14 — 房间化关卡编辑器</title>
+<link rel="stylesheet" href="./editor.css?v=14" />
 </head>
 <body>
 <div class="ed-shell">
@@ -43,7 +43,10 @@
     <div>
       <div class="ed-sec-title">
         <span>房间列表 (ROOMS)</span>
-        <button id="btn-add-room" class="ed-btn" style="padding:2px 7px;font-size:11px;">+ 新建房</button>
+        <div style="display:flex;gap:4px;">
+          <button id="btn-add-room" class="ed-btn" style="padding:2px 6px;font-size:11px;">+ 新建</button>
+          <button id="btn-del-room" class="ed-btn danger" style="padding:2px 6px;font-size:11px;" title="删除当前选中的房间">删除</button>
+        </div>
       </div>
       <div id="room-list" class="room-list"></div>
     </div>
@@ -67,9 +70,14 @@
         <button class="tool-btn" data-tool="sentinel"><span class="tool-dot" style="background:#ef4444"></span>持矛哨兵</button>
         <button class="tool-btn" data-tool="wraith"><span class="tool-dot" style="background:#f43f5e"></span>悬灯怨灵</button>
         <button class="tool-btn" data-tool="golem"><span class="tool-dot" style="background:#fb923c"></span>守钟铁卫</button>
+        <button class="tool-btn" data-tool="priest"><span class="tool-dot" style="background:#c084fc"></span>敲钟祭司</button>
+        <button class="tool-btn" data-tool="duelist"><span class="tool-dot" style="background:#f87171"></span>连刃武者</button>
+        <button class="tool-btn" data-tool="leech"><span class="tool-dot" style="background:#38bdf8"></span>倒挂墨蛭</button>
+        <button class="tool-btn" data-tool="npc"><span class="tool-dot" style="background:#f59e0b"></span>铸钟匠NPC</button>
         <button class="tool-btn" data-tool="lantern"><span class="tool-dot" style="background:#fde047"></span>青铜悬灯</button>
         <button class="tool-btn" data-tool="anchor"><span class="tool-dot" style="background:#7dd3fc"></span>钩索铜环</button>
         <button class="tool-btn" data-tool="pendulum"><span class="tool-dot" style="background:#dc2626"></span>青铜钟摆</button>
+        <button class="tool-btn" data-tool="resonancePuzzle"><span class="tool-dot" style="background:#fbbf24"></span>三钟共鸣</button>
         <button class="tool-btn" data-tool="altar"><span class="tool-dot" style="background:#38bdf8"></span>熄灯祭坛</button>
         <button class="tool-btn" data-tool="pickup"><span class="tool-dot" style="background:#facc15"></span>秘宝/残芯</button>
         <button class="tool-btn" data-tool="lore"><span class="tool-dot" style="background:#c8ba9b"></span>风化残碑</button>
@@ -92,6 +100,10 @@
     <div>
       <div class="ed-sec-title"><span>房间属性 (ROOM)</span></div>
       <div id="room-props" class="prop-grid"></div>
+      <div style="margin-top:8px;">
+        <div style="font-size:11px;color:var(--dim);margin-bottom:4px;">跨房连接（点击切换连线）</div>
+        <div id="room-conn-pills" class="conn-pills"></div>
+      </div>
     </div>
     <div>
       <div class="ed-sec-title"><span>选中物件属性 (INSPECTOR)</span></div>
@@ -105,6 +117,6 @@
     <span id="status-info">就绪</span>
   </footer>
 </div>
-<script type="module" src="./src/editor.js?v=12"></script>
+<script type="module" src="./src/editor.js?v=14"></script>
 </body>
 </html>

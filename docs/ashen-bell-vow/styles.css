@@ -1374,3 +1374,264 @@
   .editor-preview-pill.hidden {
     display: none;
   }
+
+  /* Dual-Relic Hidden Synergy Banner */
+  .relic-synergy-box {
+    margin: 0 0 12px;
+    text-align: left;
+  }
+
+  .synergy-card {
+    padding: 10px 13px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(64, 38, 12, 0.82), rgba(22, 16, 26, 0.92));
+    border: 1.4px solid var(--gold-bright);
+    box-shadow: 0 0 18px rgba(245, 158, 11, 0.25);
+  }
+
+  .synergy-card.empty {
+    background: rgba(10, 14, 22, 0.58);
+    border: 1px dashed rgba(216, 207, 184, 0.24);
+    box-shadow: none;
+    color: var(--parchment-dim);
+    font-size: 11.5px;
+    line-height: 1.55;
+  }
+
+  .synergy-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--gold-bright);
+    letter-spacing: 1.5px;
+    margin-bottom: 3px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .synergy-desc {
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--parchment);
+  }
+
+  /* Settings, Assist Mode & Custom Keybinds Modal */
+  .settings-section {
+    text-align: left;
+    background: rgba(7, 10, 16, 0.58);
+    border: 1px solid rgba(216, 207, 184, 0.18);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+  }
+
+  .settings-sec-title {
+    font-size: 11.5px;
+    letter-spacing: 1.5px;
+    color: var(--gold-bright);
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .settings-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    border-top: 1px solid rgba(216, 207, 184, 0.08);
+    font-size: 12.5px;
+  }
+
+  .settings-row:first-of-type {
+    border-top: none;
+    padding-top: 2px;
+  }
+
+  .seg-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .seg-btn {
+    background: rgba(16, 22, 34, 0.88);
+    color: var(--parchment);
+    border: 1px solid rgba(216, 207, 184, 0.28);
+    border-radius: 5px;
+    padding: 4px 10px;
+    font-size: 11.5px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.14s;
+  }
+
+  .seg-btn:hover {
+    border-color: var(--gold);
+    color: var(--gold-bright);
+  }
+
+  .seg-btn.active {
+    background: rgba(245, 158, 11, 0.22);
+    border-color: var(--gold-bright);
+    color: var(--gold-bright);
+  }
+
+  .keybind-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px 14px;
+  }
+
+  .keybind-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--parchment);
+  }
+
+  .keybind-btn {
+    min-width: 72px;
+    text-align: center;
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    font-size: 11.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(22, 30, 46, 0.9);
+    border: 1px solid rgba(216, 207, 184, 0.36);
+    color: var(--cyan-bright);
+    cursor: pointer;
+    transition: all 0.14s;
+  }
+
+  .keybind-btn:hover {
+    border-color: var(--gold-bright);
+    color: var(--gold-bright);
+  }
+
+  .keybind-btn.listening {
+    background: rgba(120, 53, 15, 0.55);
+    border-color: var(--gold-bright);
+    color: var(--gold-bright);
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.45);
+  }
+
+  body.is-mobile .desktop-only-sec {
+    display: none;
+  }
+
+  .echoes-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--gold-bright);
+    background: rgba(245, 158, 11, 0.14);
+    border: 1px solid rgba(245, 158, 11, 0.42);
+    border-radius: 5px;
+    padding: 1px 7px;
+  }
+
+  .echoes-dot {
+    font-size: 10px;
+    color: var(--gold);
+  }
+
+  /* Blind Bellsmith Forge Modal */
+  .smith-echo-bar {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 14px;
+    margin-bottom: 12px;
+    border-radius: 999px;
+    background: rgba(56, 32, 12, 0.65);
+    border: 1px solid var(--gold-bright);
+    color: var(--gold-bright);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+
+  .smith-upgrade-list {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    margin-bottom: 18px;
+    text-align: left;
+  }
+
+  .smith-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    border-radius: 8px;
+    background: rgba(12, 16, 26, 0.86);
+    border: 1px solid rgba(216, 207, 184, 0.24);
+  }
+
+  .smith-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .smith-card-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--gold-bright);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .smith-lv-pill {
+    font-size: 10.5px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(56, 189, 248, 0.18);
+    border: 1px solid rgba(56, 189, 248, 0.45);
+    color: var(--cyan-bright);
+  }
+
+  .smith-card-desc {
+    font-size: 11.5px;
+    color: var(--parchment-dim);
+    line-height: 1.45;
+  }
+
+  .smith-buy-btn {
+    min-width: 106px;
+    padding: 7px 12px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, rgba(84, 46, 14, 0.85), rgba(32, 20, 12, 0.92));
+    border: 1px solid var(--gold-bright);
+    color: var(--gold-bright);
+    font-size: 12px;
+    font-family: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+
+  .smith-buy-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.4);
+  }
+
+  .smith-buy-btn:disabled {
+    opacity: 0.46;
+    cursor: default;
+    border-color: rgba(148, 163, 184, 0.35);
+    color: var(--parchment-dim);
+    background: rgba(15, 20, 30, 0.7);
+  }

@@ -1,10 +1,10 @@
 // Player movement, buffering, combo/iai/parry/grapple/spell state machine
 import {
-  COLORS, GRAVITY, FLOOR_Y, ALTARS, LORE_TABLETS, SHORTCUT_GATE_DEF, ABYSSAL_RIVERS, PUDDLES
+  COLORS, GRAVITY, FLOOR_Y, ALTARS, NPCS, LORE_TABLETS, SHORTCUT_GATE_DEF, ABYSSAL_RIVERS, PUDDLES
 } from './config.js';
 import { G, hooks, getLivingFoes, getRelicStats, markMapExplored, addShake, punchZoom } from './state.js';
 import { audio } from './audio.js';
-import { isHeld, consumePress, consumeRelease } from './input.js';
+import { isActionHeld, consumeActionPress, consumeActionRelease } from './input.js';
 import {
   updateCloak, spawnParticles, spawnShockwave, spawnFloatText, spawnWeatherRipple
 } from './vfx.js';
@@ -12,19 +12,19 @@ import { moveAndCollide } from './physics.js';
 import {
   findBestGrappleTarget, performExecution, updatePlayerActiveAttack,
   evaluatePlayerSealLunge, triggerPlayerAttack, openSkywayShortcut,
-  collectPickup, isPickupUnlocked, ringResonanceBell, castBellQuake,
+  collectPickup, isPickupUnlocked, ringResonanceBell, castBellQuake, triggerMiniBellQuake,
   damageEnemyHP, addPostureToEnemy
 } from './combat.js';
 
 export function capturePlayerInputBuffers() {
   if (!G.player || G.player.hp <= 0) return;
-  if (consumePress(['Space', 'ArrowUp'])) G.player.jumpBufTimer = 0.12;
-  if (consumePress(['KeyJ'])) G.player.attackBufTimer = 0.13;
-  if (consumePress(['KeyK'])) G.player.parryBufTimer = 0.12;
-  if (consumePress(['ShiftLeft', 'ShiftRight'])) G.player.dashBufTimer = 0.12;
-  if (consumePress(['KeyU', 'KeyR'])) G.player.castBufTimer = 0.12;
-  if (consumePress(['KeyI', 'KeyF'])) G.player.grappleBufTimer = 0.12;
-  if (consumePress(['KeyL', 'KeyC'])) G.player.sealBufTimer = 0.12;
+  if (consumeActionPress('jump')) G.player.jumpBufTimer = 0.12;
+  if (consumeActionPress('attack')) G.player.attackBufTimer = 0.13;
+  if (consumeActionPress('parry')) G.player.parryBufTimer = 0.12;
+  if (consumeActionPress('dash')) G.player.dashBufTimer = 0.12;
+  if (consumeActionPress('spell')) G.player.castBufTimer = 0.12;
+  if (consumeActionPress('grapple')) G.player.grappleBufTimer = 0.12;
+  if (consumeActionPress('seal')) G.player.sealBufTimer = 0.12;
 }
 
 export function updatePlayer(dt) {
@@ -113,14 +113,21 @@ export function updatePlayer(dt) {
     }
   }
 
-  // Interact [E] with Altars, Shortcut Lever, Lore Tablet or Pickups
-  if (consumePress(['KeyE'])) {
+  // Interact with Altars, Shortcut Lever, Lore Tablet or Pickups
+  if (consumeActionPress('interact')) {
     const px = G.player.x + G.player.w / 2;
     const py = G.player.y + G.player.h;
 
     for (const altar of ALTARS) {
       if (Math.hypot(px - altar.x, py - altar.y) < 86) {
         hooks.interactWithAltar(altar);
+        return;
+      }
+    }
+
+    for (const npc of NPCS) {
+      if (Math.hypot(px - npc.x, py - npc.y) < 88) {
+        hooks.openSmithModal(npc);
         return;
       }
     }
@@ -160,7 +167,7 @@ export function updatePlayer(dt) {
       spawnParticles(G.player.x + G.player.w / 2, G.player.y + 24, 20, { color: COLORS.cyanBright, speed: 150, grav: -200, life: 0.55 });
       spawnFloatText(G.player.x + G.player.w / 2, G.player.y - 16, `+${healAmt}`, COLORS.cyanBright, 18);
     }
-  } else if (consumePress(['KeyH', 'KeyQ']) && G.player.flasks > 0 && G.player.grounded && G.player.dashTimer <= 0 && G.player.detonateLungeTimer <= 0 && G.player.iaiLungeTimer <= 0 && G.player.grappleState === 'none') {
+  } else if (consumeActionPress('heal') && G.player.flasks > 0 && G.player.grounded && G.player.dashTimer <= 0 && G.player.detonateLungeTimer <= 0 && G.player.iaiLungeTimer <= 0 && G.player.grappleState === 'none') {
     G.player.healTimer = 0.52;
     G.player.healDone = false;
     G.player.isCharging = false;
@@ -168,8 +175,8 @@ export function updatePlayer(dt) {
     audio.playHeal();
   }
 
-  const moveL = isHeld(['KeyA', 'ArrowLeft']);
-  const moveR = isHeld(['KeyD', 'ArrowRight']);
+  const moveL = isActionHeld('left');
+  const moveR = isActionHeld('right');
   const moveDir = (moveR ? 1 : 0) - (moveL ? 1 : 0);
 
   // Grapple Hook [I / F / Right-Click] (buffered)
@@ -200,7 +207,7 @@ export function updatePlayer(dt) {
   // Dual Soul Spells: [W + R/U] Bell-Quake (anti-air & 360° AoE) | [R/U] Soul Bell-Wave (piercing)
   const rsCast = getRelicStats();
   const canCast = G.player.castBufTimer > 0 && G.player.castCd <= 0 && G.player.dashTimer <= 0 && G.player.detonateLungeTimer <= 0 && G.player.iaiLungeTimer <= 0 && G.player.grappleState === 'none' && G.player.healTimer <= 0;
-  if (canCast && isHeld(['KeyW', 'ArrowUp']) && G.player.soul >= rsCast.quakeCost) {
+  if (canCast && isActionHeld('up') && G.player.soul >= rsCast.quakeCost) {
     G.player.castBufTimer = 0;
     if (moveDir !== 0) G.player.facing = moveDir;
     castBellQuake();
@@ -309,9 +316,9 @@ export function updatePlayer(dt) {
       if (G.player.riposteWindow > 0) {
         G.player.riposteWindow = 0;
         triggerPlayerAttack('counter');
-      } else if (!G.player.grounded && isHeld(['KeyS', 'ArrowDown'])) {
+      } else if (!G.player.grounded && isActionHeld('down')) {
         triggerPlayerAttack('pogo');
-      } else if (isHeld(['KeyW'])) {
+      } else if (isActionHeld('up')) {
         triggerPlayerAttack('up');
       } else {
         G.player.comboStep = (G.player.comboStep % 3) + 1;
@@ -325,15 +332,18 @@ export function updatePlayer(dt) {
     }
   }
 
-  // Seamless Iai Charge: holding [J] out of dash/grapple/parry/attack recovery enters sheathed stance directly
-  if (!G.player.isCharging && isHeld(['KeyJ']) && canAttack && G.player.attackTimer <= 0 && !G.player.parryActive) {
+  // Seamless Iai Charge: holding Attack out of dash/grapple/parry/attack recovery enters sheathed stance directly
+  if (!G.player.isCharging && isActionHeld('attack') && canAttack && G.player.attackTimer <= 0 && !G.player.parryActive) {
     G.player.isCharging = true;
     G.player.chargeTime = 0.08;
     G.player.chargeReadyPlayed = false;
   }
 
-  const iaiNeed = getRelicStats().iaiChargeTime;
-  if (G.player.isCharging && isHeld(['KeyJ']) && canAttack) {
+  const rsIaiCharge = getRelicStats();
+  const iaiNeed = (rsIaiCharge.synBloodIai && G.player.grayHp >= 1)
+    ? Math.max(0.20, rsIaiCharge.iaiChargeTime * 0.72)
+    : rsIaiCharge.iaiChargeTime;
+  if (G.player.isCharging && isActionHeld('attack') && canAttack) {
     G.player.chargeTime += dt;
     if (G.player.chargeTime >= iaiNeed && !G.player.chargeReadyPlayed) {
       G.player.chargeReadyPlayed = true;
@@ -413,7 +423,11 @@ export function updatePlayer(dt) {
             foe.state = 'recover';
             foe.stateTimer = 0.85;
           }
-          spawnFloatText(foe.x + foe.w / 2, foe.y - 18, '幽丝破势!', COLORS.cyanBright, 17, 0.65);
+          if (getRelicStats().synGrappleQuake) {
+            triggerMiniBellQuake(foe.x + foe.w / 2, foe.y + foe.h * 0.45);
+          } else {
+            spawnFloatText(foe.x + foe.w / 2, foe.y - 18, '幽丝破势!', COLORS.cyanBright, 17, 0.65);
+          }
         } else if (gt && gt.type === 'lantern') {
           audio.playPogoLantern();
           gt.ref.angVel += G.player.facing * 5.0;
@@ -470,7 +484,7 @@ export function updatePlayer(dt) {
       G.player.airJumpsLeft = 1;
     }
     if (G.player.jumpBufTimer > 0 && G.player.healTimer <= 0) {
-      if (G.player.grounded && G.player.onPlatform && isHeld(['KeyS', 'ArrowDown'])) {
+      if (G.player.grounded && G.player.onPlatform && isActionHeld('down')) {
         G.player.dropThroughTimer = 0.22;
         G.player.y += 4;
         G.player.grounded = false;
@@ -512,7 +526,7 @@ export function updatePlayer(dt) {
     }
 
     // Variable Jump Height cut on release
-    if (consumeRelease(['Space', 'ArrowUp']) && G.player.vy < -210) {
+    if (consumeActionRelease('jump') && G.player.vy < -210) {
       G.player.vy *= 0.52;
     }
   }

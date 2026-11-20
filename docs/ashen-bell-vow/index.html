@@ -6,8 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="screen-orientation" content="landscape" />
 <meta name="x5-orientation" content="landscape" />
-<title>灰钟残誓 v12 — 实时光影 · 2-Bone IK · 暗黑水墨银河恶魔城</title>
-<link rel="stylesheet" href="./styles.css?v=12" />
+<title>灰钟残誓 v14 — 动态配乐 · 新敌生态 · 铸钟淬炼 · 隐藏地窖</title>
+<link rel="stylesheet" href="./styles.css?v=14" />
 </head>
 <body>
 <div id="game-root">
@@ -43,6 +43,9 @@
             <span>墨印</span>
             <div id="seal-pips" style="display:flex;gap:4px;"></div>
           </div>
+          <div class="echoes-wrap" title="击杀敌兵掉落的残响，可在起点老铸钟匠处淬炼断刃">
+            <span class="echoes-dot">✦</span><span id="echoes-text">0</span>
+          </div>
         </div>
       </div>
 
@@ -54,9 +57,9 @@
           <button id="btn-fullscreen" class="hud-btn mobile-only-btn" title="切换横屏全屏">全屏</button>
           <button id="btn-map" class="hud-btn">地图 [M]</button>
           <button id="btn-help" class="hud-btn">心法</button>
+          <button id="btn-settings" class="hud-btn">设置</button>
           <button id="btn-mute" class="hud-btn">音效: 开</button>
           <button id="btn-respawn" class="hud-btn">回祭坛</button>
-          <button id="btn-open-editor" class="hud-btn desktop-only-btn" title="打开可视化房间关卡编辑器">关卡编辑</button>
         </div>
         <div id="editor-preview-pill" class="editor-preview-pill hidden">
           <span>编辑器实时试玩中</span>
@@ -129,6 +132,7 @@
       <div id="altar-modal-title" class="modal-title">熄灯祭坛</div>
       <div class="modal-sub">灯油与魂火已回满 · 提灯可同时铭刻「主印 + 副印」两枚圣物</div>
       <div id="relic-slots-bar" class="relic-slots-bar"></div>
+      <div id="relic-synergy-box" class="relic-synergy-box"></div>
       <div id="relic-list" class="relic-list"></div>
       <div id="altar-warp-row" class="warp-row"></div>
       <div id="altar-echo-section" class="echo-section"></div>
@@ -178,6 +182,58 @@
         <strong>5. 墨印引爆 [L] 与处决 [J]</strong>：攒墨印后按 <strong>[L]</strong> 突刺贴符引爆；敌方架势崩溃跪地时，近身按 <strong>[J]</strong> 触发黑白反色处决！
       </div>
       <button id="btn-close-help" class="primary-btn">继续战斗</button>
+    </div>
+  </div>
+
+  <!-- Blind Old Bellsmith Forge Modal -->
+  <div id="smith-modal" class="overlay-screen hidden">
+    <div class="modal-card" style="width: min(620px, 94%);">
+      <div id="smith-modal-title" class="modal-title">盲眼老铸钟匠 · 砺</div>
+      <div class="modal-sub">熄灯铁砧 · 以击杀强敌所得「残响」淬炼断刃与魂炉</div>
+      <div id="smith-dialogue" class="lore-text" style="border-left-color:var(--gold);margin-bottom:12px;"></div>
+      <div id="smith-echo-bar" class="smith-echo-bar"></div>
+      <div id="smith-upgrade-list" class="smith-upgrade-list"></div>
+      <button id="btn-close-smith" class="primary-btn">收刃告辞</button>
+    </div>
+  </div>
+
+  <!-- Settings, Assist Mode & Custom Keybinds Modal -->
+  <div id="settings-modal" class="overlay-screen hidden">
+    <div class="modal-card" style="width: min(640px, 94%);">
+      <div class="modal-title">设置与护道辅助</div>
+      <div class="modal-sub">辅助难度微调 · 手柄双马达震动 · 键盘自定义改键</div>
+      <div class="settings-section">
+        <div class="settings-sec-title">护道辅助 &amp; 外设反馈</div>
+        <div class="settings-row">
+          <span>弹反判定窗口</span>
+          <div id="assist-parry-group" class="seg-group"></div>
+        </div>
+        <div class="settings-row">
+          <span>承受伤害倍率</span>
+          <div id="assist-dmg-group" class="seg-group"></div>
+        </div>
+        <div class="settings-row">
+          <span>动态交互配乐 (D 弗里吉亚)</span>
+          <div class="seg-group">
+            <button id="btn-music-toggle" class="seg-btn active">配乐: 开</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span>手柄双马达震动</span>
+          <div class="seg-group">
+            <button id="btn-haptics-toggle" class="seg-btn active">震动: 开</button>
+            <button id="btn-test-haptic" class="seg-btn">测试震动</button>
+          </div>
+        </div>
+      </div>
+      <div class="settings-section desktop-only-sec">
+        <div class="settings-sec-title">
+          <span>自定义键盘按键（点击键帽后按新键录入，Esc 取消）</span>
+          <button id="btn-reset-keys" class="seg-btn">恢复默认</button>
+        </div>
+        <div id="keybind-grid" class="keybind-grid"></div>
+      </div>
+      <button id="btn-close-settings" class="primary-btn">保存并返回</button>
     </div>
   </div>
 
@@ -308,6 +364,6 @@
   }, 1200);
 })();
 </script>
-<script type="module" src="./src/main.js?v=12"></script>
+<script type="module" src="./src/main.js?v=14"></script>
 </body>
 </html>

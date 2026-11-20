@@ -165,3 +165,29 @@
     background: #0a0e16; border-top: 1px solid var(--border);
     font-family: ui-monospace, Menlo, monospace;
   }
+
+  .conn-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .conn-pill {
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(12, 16, 26, 0.85);
+    border: 1px solid rgba(216, 207, 184, 0.22);
+    color: var(--dim);
+    font-size: 11px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.14s;
+  }
+  .conn-pill:hover {
+    border-color: var(--cyan);
+    color: var(--cyan-b);
+  }
+  .conn-pill.linked {
+    background: rgba(56, 189, 248, 0.2);
+    border-color: var(--cyan-b);
+    color: var(--cyan-b);
+  }

@@ -6,16 +6,17 @@ import { audio } from './audio.js';
 import { buildParchmentPattern, buildGlowSprites, initAmbientMotes } from './vfx.js';
 import {
   clearFrameInputs, syncControlModeUI, pollGamepad, initInputListeners,
-  updateMobileOrientationLayout, requestMobileLandscapeFullscreen
+  updateMobileOrientationLayout, requestMobileLandscapeFullscreen,
+  getActionKeyCode, isCapturingKey, resetDefaultKeybinds, triggerHaptic
 } from './input.js';
 import { capturePlayerInputBuffers, updatePlayer } from './player.js';
 import { updateEnemy, updateBoss, updateBoss2 } from './ai.js';
 import { updateWorldEffects, updateCamera, updateAmbientOnly } from './world.js';
 import { render } from './renderer.js';
-import { readSaveData, saveProgress } from './save.js';
+import { readSaveData, saveProgress, loadUserSettings, saveUserSettings } from './save.js';
 import {
-  HUD_DOM, refreshTitleSaveUI, syncHUD, openModal, closeModal, renderParchmentMap,
-  openLoreModal, openMapModal, interactWithAltar, respawnAtActiveAltar,
+  HUD_DOM, refreshTitleSaveUI, syncHUD, openModal, closeModal, renderParchmentMap, renderSettingsModal,
+  openSmithModal, openLoreModal, openMapModal, interactWithAltar, respawnAtActiveAltar,
   startEchoChallenge, advanceEchoRushStage2, showDeath, showVictory,
   startGame, continueSavedGame, continueIntoBellWell
 } from './ui.js';
@@ -30,6 +31,7 @@ Object.assign(hooks, {
   showVictory,
   advanceEchoRushStage2,
   interactWithAltar,
+  openSmithModal,
   openLoreModal,
   openMapModal,
   closeModal,
@@ -97,7 +99,18 @@ function gameLoop(timestamp) {
   if (G.gameState === 'playing') {
     capturePlayerInputBuffers();
     const curBoss = getAwakeBoss();
-    audio.updateAmbience(dt, !!curBoss, !!(curBoss && curBoss.phase === 2));
+    let inCombat = false;
+    if (!curBoss && G.player && G.player.hp > 0) {
+      const px = G.player.x + G.player.w * 0.5;
+      const py = G.player.y + G.player.h * 0.5;
+      for (let i = 0; i < G.enemies.length; i++) {
+        const e = G.enemies[i];
+        if (e && e.alive && e.state !== 'patrol' && e.state !== 'cling' && Math.hypot(e.x - px, e.y - py) < 520) {
+          inCombat = true; break;
+        }
+      }
+    }
+    audio.updateAmbience(dt, !!curBoss, !!(curBoss && curBoss.phase === 2), inCombat, G.player ? G.player.parryStreak : 0);
     if (G.hitstopTimer > 0) {
       G.hitstopTimer = Math.max(0, G.hitstopTimer - dt);
     } else if (G.player) {
@@ -166,6 +179,38 @@ if (fsBtn) {
 document.getElementById('btn-map').addEventListener('click', openMapModal);
 document.getElementById('minimap-strip').addEventListener('click', openMapModal);
 document.getElementById('btn-help').addEventListener('click', () => openModal('help'));
+document.getElementById('btn-settings').addEventListener('click', () => openModal('settings'));
+document.getElementById('btn-close-settings').addEventListener('click', () => {
+  saveUserSettings();
+  closeModal('settings');
+});
+document.getElementById('btn-close-smith').addEventListener('click', () => closeModal('smith'));
+document.getElementById('btn-music-toggle').addEventListener('click', () => {
+  const next = G.settings.musicEnabled === false;
+  G.settings.musicEnabled = next;
+  audio.setMusicEnabled(next);
+  saveUserSettings();
+  renderSettingsModal();
+});
+document.getElementById('btn-haptics-toggle').addEventListener('click', () => {
+  G.settings.haptics = !G.settings.haptics;
+  saveUserSettings();
+  renderSettingsModal();
+  if (G.settings.haptics) triggerHaptic('test', 0.7);
+});
+document.getElementById('btn-test-haptic').addEventListener('click', () => {
+  const ok = triggerHaptic('test', 1.0);
+  const b = document.getElementById('btn-test-haptic');
+  if (b) {
+    b.textContent = ok ? '已发送震动!' : '未检测到手柄';
+    setTimeout(() => { b.textContent = '测试震动'; }, 1200);
+  }
+});
+document.getElementById('btn-reset-keys').addEventListener('click', () => {
+  resetDefaultKeybinds();
+  saveUserSettings();
+  renderSettingsModal();
+});
 document.getElementById('btn-mute').addEventListener('click', () => {
   audio.setMuted(!audio.muted);
   document.getElementById('btn-mute').textContent = audio.muted ? '音效: 关' : '音效: 开';
@@ -189,7 +234,9 @@ document.getElementById('btn-enter-well').addEventListener('click', continueInto
 document.getElementById('btn-play-again').addEventListener('click', startGame);
 
 window.addEventListener('keydown', e => {
-  if ((e.code === 'Tab' || e.code === 'KeyM') && (G.gameState === 'playing' || G.activeModal === 'map')) {
+  if (isCapturingKey()) return;
+  const mapCode = getActionKeyCode('map');
+  if ((e.code === 'Tab' || e.code === mapCode) && (G.gameState === 'playing' || G.activeModal === 'map')) {
     e.preventDefault();
     if (!e.repeat) openMapModal();
   } else if (e.code === 'Escape' && G.gameState === 'modal' && G.activeModal) {
@@ -204,14 +251,7 @@ document.addEventListener('visibilitychange', () => {
   audio.setBackgroundDuck(document.hidden);
 });
 
-// Wire Editor shortcut buttons
-const openEditorBtn = document.getElementById('btn-open-editor');
-if (openEditorBtn) {
-  openEditorBtn.addEventListener('click', () => {
-    const q = G.currentRoomId ? `?room=${encodeURIComponent(G.currentRoomId)}` : '';
-    window.location.href = `./editor.html${q}`;
-  });
-}
+// Internal dev-only preview return button (only visible when launched from editor.html?preview=1)
 const backEditorBtn = document.getElementById('btn-back-editor');
 if (backEditorBtn) {
   backEditorBtn.addEventListener('click', () => {
@@ -222,6 +262,7 @@ if (backEditorBtn) {
 
 // Async Bootstrap: load room-based JSON data stream before initializing scene
 async function bootstrapGame() {
+  loadUserSettings();
   buildGlowSprites();
   await loadWorldData();
   const bootSave = readSaveData();

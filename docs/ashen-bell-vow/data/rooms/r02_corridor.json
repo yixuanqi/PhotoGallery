@@ -28,14 +28,36 @@
   ],
   "connections": [
     "r01_sanctuary",
-    "r03_chapel"
+    "r03_chapel",
+    "r06_crypt"
   ],
   "solids": [
     {
       "x": 0,
       "y": 580,
-      "w": 1705,
+      "w": 1040,
       "h": 980,
+      "type": "ground"
+    },
+    {
+      "x": 1040,
+      "y": 580,
+      "w": 400,
+      "h": 160,
+      "type": "ground"
+    },
+    {
+      "x": 1440,
+      "y": 580,
+      "w": 100,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1540,
+      "y": 580,
+      "w": 165,
+      "h": 160,
       "type": "ground"
     },
     {
@@ -259,7 +281,7 @@
       "x": 1220,
       "y": 518,
       "minX": 1040,
-      "maxX": 1440
+      "maxX": 1400
     },
     {
       "id": "wraith_1",
@@ -272,6 +294,12 @@
       "kind": "wraith",
       "x": 1340,
       "y": 270
+    },
+    {
+      "id": "leech_corridor",
+      "kind": "leech",
+      "x": 625,
+      "y": 269
     }
   ],
   "bosses": [],

@@ -1,6 +1,6 @@
 // Central mutable game state container (G) and cross-module hook registry (hooks)
 import {
-  RELICS, ROOMS, ALTARS, FLOOR_Y, MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H,
+  RELICS, RELIC_SYNERGIES, DEFAULT_KEYBINDS, ROOMS, ALTARS, FLOOR_Y, MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H,
   SECRET_WALLS_DEF, PICKUPS_DEF, RESONANCE_PUZZLES_DEF, CRUMBLE_PLATFORMS_DEF, LANTERNS_DEF
 } from './config.js';
 
@@ -31,8 +31,15 @@ export const G = {
   lastMinimapRenderTime: -1,
   saveDirtyTimer: 0,
 
-  // Control mode
+  // Control mode & user accessibility / keybind settings
   controlMode: 'kbmouse',
+  settings: {
+    parryWindowMult: 1.0,
+    damageTakenMult: 1.0,
+    haptics: true,
+    musicEnabled: true,
+    keybinds: { ...DEFAULT_KEYBINDS }
+  },
 
   // VFX & dynamic pools
   particles: [],
@@ -95,6 +102,7 @@ export const hooks = {
   showVictory: () => {},
   advanceEchoRushStage2: () => {},
   interactWithAltar: () => {},
+  openSmithModal: () => {},
   openLoreModal: () => {},
   openMapModal: () => {},
   closeModal: () => {},
@@ -124,6 +132,8 @@ export function createFreshWorldState() {
     bonusFlasks: 0,
     bonusMaxHp: 0,
     bonusMaxSoul: 0,
+    echoes: 0,
+    smithUpgrades: { blade: 0, posture: 0, forge: 0 },
     abilities: { doubleJump: false },
     unlockedRelics: new Set(['thorn', 'mirror', 'ember']),
     explored: Array.from({ length: MAP_ROWS }, () => new Array(MAP_COLS).fill(false))
@@ -135,13 +145,23 @@ export function getActiveAltar() {
   return ALTARS.find(a => a.id === id) || ALTARS[0];
 }
 
+export function getActiveSynergies() {
+  const active = (G.equippedRelics || [G.currentRelic]).filter(Boolean);
+  const ids = new Set(active.map(r => r.id));
+  return RELIC_SYNERGIES.filter(syn => syn.relics.every(id => ids.has(id)));
+}
+
 export function getRelicStats() {
   const active = (G.equippedRelics || [G.currentRelic]).filter(Boolean);
   if (active.length === 0) active.push(RELICS[0]);
   const has = id => active.some(r => r.id === id);
+  const synergies = getActiveSynergies();
+  const synFlags = {};
+  for (let i = 0; i < synergies.length; i++) synFlags[synergies[i].flag] = true;
+  const pMult = (G.settings && G.settings.parryWindowMult) ? G.settings.parryWindowMult : 1.0;
 
-  let parryWindowMs = has('mirror') ? 100 : Math.max(...active.map(r => r.parryWindowMs || 140));
-  let blockWindowMs = has('mirror') ? 225 : Math.max(...active.map(r => r.blockWindowMs || 260));
+  let parryWindowMs = Math.round((has('mirror') ? 100 : Math.max(...active.map(r => r.parryWindowMs || 140))) * pMult);
+  let blockWindowMs = Math.round((has('mirror') ? 225 : Math.max(...active.map(r => r.blockWindowMs || 260))) * (1 + (pMult - 1) * 0.65));
   let parryPostureMult = active.reduce((acc, r) => acc * (r.parryPostureMult || 1.0), 1.0);
   let parryReflectDmg = active.reduce((acc, r) => acc + (r.parryReflectDmg || 0), 0);
   let parryHeal = active.reduce((acc, r) => acc + (r.parryHeal || 0), 0);
@@ -169,7 +189,12 @@ export function getRelicStats() {
     grayDuration, rallyMult, maxFlasks, maxSeals, execHealPct, execFullSoul,
     grappleCd, spellCost, quakeCost, spellPostureBonus, heavySkillMult,
     soulGainMult, spellDmgMult, spellRadiusMult, postureDmgMult,
-    iaiChargeTime, bellTimerBonus
+    iaiChargeTime, bellTimerBonus,
+    synergies,
+    synGrappleQuake: !!synFlags.synGrappleQuake,
+    synMirrorEmber: !!synFlags.synMirrorEmber,
+    synBloodIai: !!synFlags.synBloodIai,
+    synCoreCounter: !!synFlags.synCoreCounter
   };
 }
 
@@ -179,12 +204,24 @@ export function getEquippedRelicLabel() {
   return active.map(r => r.name).join(' · ');
 }
 
+export function getBladeDamageMult() {
+  const lv = (G.worldState && G.worldState.smithUpgrades) ? (G.worldState.smithUpgrades.blade || 0) : 0;
+  return 1 + lv * 0.14;
+}
+
+export function getSmithPostureMult() {
+  const lv = (G.worldState && G.worldState.smithUpgrades) ? (G.worldState.smithUpgrades.posture || 0) : 0;
+  return 1 + lv * 0.12;
+}
+
 export function getPlayerMaxHp() {
-  return 100 + (G.worldState ? (G.worldState.bonusMaxHp || 0) : 0);
+  const forgeLv = (G.worldState && G.worldState.smithUpgrades) ? (G.worldState.smithUpgrades.forge || 0) : 0;
+  return 100 + (G.worldState ? (G.worldState.bonusMaxHp || 0) : 0) + forgeLv * 15;
 }
 
 export function getPlayerMaxSoul() {
-  return 100 + (G.worldState ? (G.worldState.bonusMaxSoul || 0) : 0);
+  const forgeLv = (G.worldState && G.worldState.smithUpgrades) ? (G.worldState.smithUpgrades.forge || 0) : 0;
+  return 100 + (G.worldState ? (G.worldState.bonusMaxSoul || 0) : 0) + forgeLv * 15;
 }
 
 export function getPlayerMaxFlasks() {
