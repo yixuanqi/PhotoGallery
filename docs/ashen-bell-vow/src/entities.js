@@ -320,8 +320,8 @@ export function createBoss() {
     vx: 0,
     vy: 0,
     facing: -1,
-    hp: 560,
-    maxHp: 560,
+    hp: 580,
+    maxHp: 580,
     posture: 0,
     maxPosture: 150,
     postureDecayDelay: 0,
@@ -331,7 +331,12 @@ export function createBoss() {
     state: 'idle', // idle, stalk, windup, strike, recover, stagger, phaseShift
     stateTimer: 0.7,
     moveKind: 'combo2', // combo2, chargeThrust, delaySlam, redLeap, flurry4
+    lastMoveKind: '',
     comboIdx: 0,
+    comboTotal: 2,
+    isDelayedHit: false,
+    glintPlayed: false,
+    finisherParried: false,
     windupDuration: 0.5,
     inkTideCd: 4.0,
     didHit: false,
@@ -365,10 +370,10 @@ export function createBoss2() {
     vx: 0,
     vy: 0,
     facing: -1,
-    hp: 620,
-    maxHp: 620,
+    hp: 740,
+    maxHp: 740,
     posture: 0,
-    maxPosture: 165,
+    maxPosture: 195,
     postureDecayDelay: 0,
     phase: 1,
     awake: false,
@@ -376,7 +381,12 @@ export function createBoss2() {
     state: 'idle', // idle, stalk, windup, strike, recover, stagger, phaseShift
     stateTimer: 0.65,
     moveKind: 'bellBarrage', // bellShieldCharge, chainDropSlam, bellBarrage, redSweepHook, resonanceNova
+    lastMoveKind: '',
     comboIdx: 0,
+    comboTotal: 1,
+    isDelayedHit: false,
+    glintPlayed: false,
+    finisherParried: false,
     windupDuration: 0.55,
     novaCd: 4.5,
     shieldUp: false,
@@ -387,5 +397,58 @@ export function createBoss2() {
     hurtFlash: 0,
     orbitAngle: 0,
     cloak: createCloak(bx + 28, by + 27, 8, 12)
+  };
+}
+
+export function createBoss3() {
+  const cfg = BOSSES_DEF.boss_yuan;
+  const bx = cfg ? cfg.x : 9220;
+  const by = cfg ? cfg.y : (FLOOR_Y - 116);
+  return {
+    id: 'boss_yuan',
+    name: '初钟圣骸 · 渊',
+    phase1Title: '第一幕 · 初钟苏醒',
+    phase2Title: '第二幕 · 碎钟双影',
+    phase3Title: '终幕 · 寂灭初鸣',
+    kind: 'boss3',
+    isBoss: true,
+    arenaMinX: cfg ? cfg.arenaMinX : 8378,
+    arenaMaxX: cfg ? cfg.arenaMaxX : 9632,
+    arenaFloorY: cfg ? cfg.arenaFloorY : FLOOR_Y,
+    arenaTopY: cfg ? cfg.arenaTopY : 0,
+    x: bx,
+    y: by,
+    w: 62,
+    h: 116,
+    vx: 0,
+    vy: 0,
+    facing: -1,
+    hp: 1050,
+    maxHp: 1050,
+    posture: 0,
+    maxPosture: 240,
+    postureDecayDelay: 0,
+    phase: 1,
+    awake: false,
+    alive: true,
+    state: 'idle', // idle, stalk, windup, strike, recover, stagger, phaseShift
+    stateTimer: 0.7,
+    moveKind: 'tripleChime',
+    lastMoveKind: '',
+    comboIdx: 0,
+    comboTotal: 3,
+    isDelayedHit: false,
+    glintPlayed: false,
+    finisherParried: false,
+    apexHangTimer: 0,
+    windupDuration: 0.48,
+    tideCd: 5.0,
+    didHit: false,
+    leapAirborne: false,
+    blinkAlpha: 1,
+    hurtFlash: 0,
+    haloAngle: 0,
+    walkCycle: 0,
+    cloak: createCloak(bx + 30, by + 30, 9, 13)
   };
 }

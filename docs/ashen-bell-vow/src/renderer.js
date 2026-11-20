@@ -1,21 +1,20 @@
 // Art-directed dark hand-drawn Canvas 2D rendering pipeline
 import {
   COLORS, SOLIDS, ALTARS, NPCS, ALTAR_POS, LORE_TABLETS,
-  SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF,
+  SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, FIRST_BELL_CORE_POS,
   PENDULUMS, VOID_BARRIERS, ABYSSAL_RIVERS, WALL_INSCRIPTIONS, GRAPPLE_ANCHORS,
   PUDDLES, BANNERS, CANDLE_CLUSTERS, BONE_CAIRNS, WORLD_W, FLOOR_Y, WELL_BOTTOM_Y
 } from './config.js';
 import { G, getAwakeBoss, getRelicStats } from './state.js';
 import { getControlLabels, getActionKeyLabel } from './input.js';
 import {
-  drawGlowSprite, boilLine, boilCircle, boilRectOutline, drawTaperedCrescent, drawCloakMesh, solve2BoneIK
+  drawGlowSprite, boilLine, boilLinePath, boilCircle, boilRectOutline, drawTaperedCrescent, drawCloakMesh, solve2BoneIK
 } from './vfx.js';
 
 import { drawLanternCastShadows, drawVolumetricLanternLights } from './renderLighting.js';
 import { getGroundSurfaceY } from './physics.js';
 import { isPickupUnlocked } from './combat.js';
 
-// Preserve the theme color formatter after the lighting-module extraction.
 function rgbStr(arr, alpha = 1) {
   const r = Math.round(arr[0]);
   const g = Math.round(arr[1]);
@@ -23,11 +22,48 @@ function rgbStr(arr, alpha = 1) {
   return alpha >= 0.999 ? `rgb(${r},${g},${b})` : `rgba(${r},${g},${b},${alpha.toFixed(3)})`;
 }
 
+function isInView(x, y, w, h, pad = 100) {
+  return x + w >= G.cam.x - pad && x <= G.cam.x + G.canvasW + pad &&
+         y + h >= G.cam.y - pad && y <= G.cam.y + G.canvasH + pad;
+}
+
+// Pre-baked screen-space Vignette + Paper Grain cache (avoids full-screen radial gradient + tiled pattern overdraw every frame)
+let _vigNormalCanvas = null;
+let _vigPhase2Canvas = null;
+let _vigCacheW = 0;
+let _vigCacheH = 0;
+function getCachedVignette(isPhase2) {
+  const w = Math.max(320, Math.round(G.canvasW * 0.5));
+  const h = Math.max(180, Math.round(G.canvasH * 0.5));
+  if (!_vigNormalCanvas || _vigCacheW !== w || _vigCacheH !== h) {
+    _vigCacheW = w;
+    _vigCacheH = h;
+    const buildVig = (outerCol) => {
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const vctx = c.getContext('2d');
+      const vg = vctx.createRadialGradient(w * 0.5, h * 0.48, w * 0.25, w * 0.5, h * 0.5, w * 0.72);
+      vg.addColorStop(0, 'transparent');
+      vg.addColorStop(1, outerCol);
+      vctx.fillStyle = vg;
+      vctx.fillRect(0, 0, w, h);
+      if (G.paperPattern && !G.isMobile) {
+        vctx.fillStyle = G.paperPattern;
+        vctx.fillRect(0, 0, w, h);
+      }
+      return c;
+    };
+    _vigNormalCanvas = buildVig('rgba(4, 6, 10, 0.72)');
+    _vigPhase2Canvas = buildVig('rgba(20, 4, 8, 0.78)');
+  }
+  return isPhase2 ? _vigPhase2Canvas : _vigNormalCanvas;
+}
+
 export function render() {
   G.ctx.save();
 
   const activeBoss = getAwakeBoss();
-  const isPhase2 = !!(activeBoss && activeBoss.phase === 2);
+  const isPhase2 = !!(activeBoss && activeBoss.phase >= 2);
 
   // 1. Background Sky & 3-Layer Gothic Parallax Ruins
   drawParallaxBackground(isPhase2);
@@ -59,6 +95,8 @@ export function render() {
   drawShortcutGate();
   drawChapelExitGate();
   drawFoundryEntryGate();
+  drawFoundryExitGate();
+  drawFirstBellCore();
   drawSecretWalls();
   drawVoidBarriers();
   drawLostEchoes();
@@ -82,9 +120,11 @@ export function render() {
     G.ctx.restore();
   }
 
-  // 8. Contact Grounding Shadows + Enemies & Bosses
-  for (const e of G.enemies) {
-    if (e.alive) drawContactShadow(e.x + e.w / 2, e.y + e.h, e.kind === 'wraith' ? 18 : 22);
+  // 8. Contact Grounding Shadows + Enemies & Bosses (2D Frustum Culled)
+  for (let i = 0; i < G.enemies.length; i++) {
+    const e = G.enemies[i];
+    if (!e || !e.alive || !isInView(e.x, e.y, e.w, e.h, 130)) continue;
+    drawContactShadow(e.x + e.w / 2, e.y + e.h, e.kind === 'wraith' ? 18 : 22);
     drawEnemy(e);
   }
   if (G.boss && G.boss.alive) {
@@ -94,6 +134,10 @@ export function render() {
   if (G.boss2 && G.boss2.alive) {
     drawContactShadow(G.boss2.x + G.boss2.w / 2, G.boss2.y + G.boss2.h, 34);
     drawBoss2(G.boss2);
+  }
+  if (G.boss3 && G.boss3.alive) {
+    drawContactShadow(G.boss3.x + G.boss3.w / 2, G.boss3.y + G.boss3.h, 40);
+    drawBoss3(G.boss3);
   }
 
   // 9. Grapple Thread & Upgraded Protagonist (including crumbling death animation)
@@ -130,17 +174,9 @@ export function render() {
   drawWeatherLayer(isPhase2);
   drawForegroundMotes(isPhase2);
 
-  // 13. Vignette, Flash & Parchment Grain Overlay
-  const vig = G.ctx.createRadialGradient(G.canvasW * 0.5, G.canvasH * 0.48, G.canvasW * 0.25, G.canvasW * 0.5, G.canvasH * 0.5, G.canvasW * 0.72);
-  vig.addColorStop(0, 'transparent');
-  vig.addColorStop(1, isPhase2 ? 'rgba(20, 4, 8, 0.78)' : 'rgba(4, 6, 10, 0.72)');
-  G.ctx.fillStyle = vig;
-  G.ctx.fillRect(0, 0, G.canvasW, G.canvasH);
-
-  if (G.paperPattern && !document.body.classList.contains('is-mobile')) {
-    G.ctx.fillStyle = G.paperPattern;
-    G.ctx.fillRect(0, 0, G.canvasW, G.canvasH);
-  }
+  // 13. Pre-Baked Vignette + Paper Grain Overlay (1 fast blit, 0 per-frame gradient/pattern rebuild)
+  const vigImg = getCachedVignette(isPhase2);
+  if (vigImg) G.ctx.drawImage(vigImg, 0, 0, G.canvasW, G.canvasH);
 
   if (G.screenFlash.alpha > 0) {
     G.ctx.fillStyle = G.screenFlash.color;
@@ -156,6 +192,8 @@ export function render() {
     G.ctx.fillRect(0, 0, G.canvasW, G.canvasH);
     G.ctx.globalCompositeOperation = 'source-over';
   }
+
+  drawBossBanner();
 
   G.ctx.restore();
 }
@@ -410,9 +448,57 @@ function drawWorldBackdrop() {
     G.ctx.fillRect(fx - 120, WELL_BOTTOM_Y - 14, 240, 14);
   }
 
+  // Grand Primeval First Bell Monument inside Room 8 (初钟圣心)
+  if (G.cam.x + G.canvasW > 8340 && G.cam.y < 720) {
+    const hx = 9000;
+    const hy = 250;
+    const b3Phase = (G.boss3 && G.boss3.awake && G.boss3.alive) ? G.boss3.phase : 0;
+    const defeated = !!(G.worldState && G.worldState.boss3Defeated);
+    const haloCol = b3Phase === 3 || defeated ? 'rgba(254, 240, 138, 0.36)' : b3Phase === 2 ? 'rgba(192, 132, 252, 0.28)' : 'rgba(245, 158, 11, 0.22)';
+    const hg = G.ctx.createRadialGradient(hx, hy, 24, hx, hy, 290);
+    hg.addColorStop(0, haloCol);
+    hg.addColorStop(0.55, b3Phase === 3 ? 'rgba(220, 38, 38, 0.16)' : 'rgba(15, 23, 42, 0.08)');
+    hg.addColorStop(1, 'transparent');
+    G.ctx.fillStyle = hg;
+    G.ctx.beginPath(); G.ctx.arc(hx, hy, 290, 0, Math.PI * 2); G.ctx.fill();
+
+    // Concentric Astral Bell Rings behind Primeval Bell
+    G.ctx.strokeStyle = b3Phase >= 3 || defeated ? 'rgba(253, 224, 71, 0.42)' : 'rgba(216, 207, 184, 0.22)';
+    G.ctx.lineWidth = 2.2;
+    boilCircle(G.ctx, hx, hy, 185, 8900, 1.8, 32); G.ctx.stroke();
+    boilCircle(G.ctx, hx, hy, 138, 8910, 1.3, 24); G.ctx.stroke();
+
+    // Colossal Hanging Primeval Bronze Bell
+    const bellSway = Math.sin(G.globalTime * (b3Phase === 3 ? 3.2 : 1.1)) * (b3Phase >= 2 ? 0.045 : 0.015);
+    G.ctx.save();
+    G.ctx.translate(hx, 10);
+    G.ctx.rotate(bellSway);
+    G.ctx.fillStyle = '#151118';
+    G.ctx.strokeStyle = b3Phase >= 3 || defeated ? COLORS.goldBright : 'rgba(245, 158, 11, 0.45)';
+    G.ctx.lineWidth = 2.6;
+    G.ctx.beginPath();
+    G.ctx.moveTo(-58, 0); G.ctx.lineTo(58, 0);
+    G.ctx.quadraticCurveTo(132, 190, 174, 345);
+    G.ctx.lineTo(-174, 345);
+    G.ctx.quadraticCurveTo(-132, 190, -58, 0);
+    G.ctx.closePath();
+    G.ctx.fill(); G.ctx.stroke();
+    // Luminous Fracture Fissures widening across Phases 1 -> 3
+    G.ctx.strokeStyle = b3Phase === 3 || defeated ? '#fef9c3' : b3Phase === 2 ? COLORS.violetBright : COLORS.gold;
+    G.ctx.lineWidth = b3Phase === 3 || defeated ? 3.8 : 2.2;
+    G.ctx.beginPath();
+    G.ctx.moveTo(0, 62); G.ctx.lineTo(-22, 152); G.ctx.lineTo(18, 228); G.ctx.lineTo(-12, 340);
+    if (b3Phase >= 2 || defeated) {
+      G.ctx.moveTo(-22, 152); G.ctx.lineTo(-76, 212);
+      G.ctx.moveTo(18, 228); G.ctx.lineTo(84, 286);
+    }
+    G.ctx.stroke();
+    G.ctx.restore();
+  }
+
   // C. Swaying Tattered Cathedral Banners
   BANNERS.forEach((bn, idx) => {
-    if (bn.x < G.cam.x - 80 || bn.x > G.cam.x + G.canvasW + 80) return;
+    if (!isInView(bn.x - 24, bn.y, 48, bn.len + 12, 80)) return;
     const sway = Math.sin(G.globalTime * 1.9 + idx * 1.3) * 9;
     G.ctx.fillStyle = bn.color;
     G.ctx.strokeStyle = 'rgba(216, 207, 184, 0.28)';
@@ -481,7 +567,7 @@ function drawWorldBackdrop() {
 
   // F. Flickering Wax Candle Clusters
   CANDLE_CLUSTERS.forEach((cl, idx) => {
-    if (cl.x < G.cam.x - 80 || cl.x > G.cam.x + G.canvasW + 80) return;
+    if (!isInView(cl.x - 48, cl.y - 64, 96, 70, 80)) return;
     const g = G.ctx.createRadialGradient(cl.x, cl.y - 16, 2, cl.x, cl.y - 16, 48);
     g.addColorStop(0, 'rgba(245, 158, 11, 0.24)');
     g.addColorStop(1, 'transparent');
@@ -505,10 +591,9 @@ function drawWorldBackdrop() {
 
 function drawWorldArchitecture() {
   G.ctx.save();
-  // G. Collidable Stone Architecture
+  // G. Collidable Stone Architecture (2D Frustum Culled + Batched Stroke Paths)
   SOLIDS.forEach((s, idx) => {
-    if (s.x + s.w < G.cam.x - 80 || s.x > G.cam.x + G.canvasW + 80) return;
-    G.ctx.save();
+    if (!isInView(s.x, s.y, s.w, s.h, 90)) return;
     if (s.type === 'ground') {
       const g = G.ctx.createLinearGradient(0, s.y, 0, s.y + Math.min(220, s.h));
       g.addColorStop(0, s.y > 900 ? '#162130' : '#1c2434');
@@ -518,40 +603,62 @@ function drawWorldArchitecture() {
       G.ctx.fillStyle = g;
       G.ctx.fillRect(s.x, s.y, s.w, s.h);
 
-      // Exposed vertical shaft walls on carved ground edges (skip seamless room-to-room joints)
-      G.ctx.strokeStyle = 'rgba(216, 207, 184, 0.34)';
-      G.ctx.lineWidth = 1.8;
-      if (s.x > 0 && !s.seamLeft) boilLine(G.ctx, s.x, s.y, s.x, s.y + s.h, 600 + idx * 17, 1.2, 6);
-      if (s.x + s.w < WORLD_W && !s.seamRight) boilLine(G.ctx, s.x + s.w, s.y, s.x + s.w, s.y + s.h, 650 + idx * 17, 1.2, 6);
+      // Exposed vertical shaft walls on carved ground edges
+      if ((s.x > 0 && !s.seamLeft) || (s.x + s.w < WORLD_W && !s.seamRight)) {
+        G.ctx.strokeStyle = 'rgba(216, 207, 184, 0.34)';
+        G.ctx.lineWidth = 1.8;
+        G.ctx.beginPath();
+        if (s.x > 0 && !s.seamLeft) boilLinePath(G.ctx, s.x, s.y, s.x, s.y + s.h, 600 + idx * 17, 1.2, 5);
+        if (s.x + s.w < WORLD_W && !s.seamRight) boilLinePath(G.ctx, s.x + s.w, s.y, s.x + s.w, s.y + s.h, 650 + idx * 17, 1.2, 5);
+        G.ctx.stroke();
+      }
 
       const startX = Math.max(s.x, Math.floor(G.cam.x / 64) * 64 - 64);
       const endX = Math.min(s.x + s.w, G.cam.x + G.canvasW + 128);
+      // Pass 1: Alternating stone slabs
       for (let bx = startX; bx < endX; bx += 64) {
         const segW = Math.min(64, s.x + s.w - bx);
         if (segW < 4) break;
         G.ctx.fillStyle = (Math.floor(bx / 64)) % 2 === 0 ? 'rgba(216, 207, 184, 0.045)' : 'rgba(10, 14, 22, 0.14)';
         G.ctx.fillRect(bx + 2, s.y + 2, Math.max(2, segW - 4), 18);
-
-        G.ctx.strokeStyle = s.y > 900 ? 'rgba(125, 211, 252, 0.38)' : 'rgba(216, 207, 184, 0.52)';
-        G.ctx.lineWidth = 2.2;
-        boilLine(G.ctx, bx, s.y + 1, bx + segW, s.y + 1, 500 + bx + s.y, 1.25, 3);
-
-        G.ctx.strokeStyle = 'rgba(216, 207, 184, 0.14)';
-        G.ctx.lineWidth = 1.1;
-        boilLine(G.ctx, bx, s.y + 21, bx + segW, s.y + 21, 700 + bx, 0.9, 2);
-        boilLine(G.ctx, bx, s.y + 2, bx, s.y + 21, 900 + bx, 0.8, 2);
-
-        if (s.y === FLOOR_Y && (Math.floor(bx / 64)) % 3 === 1 && segW >= 32) {
-          const sway = Math.sin(G.globalTime * 2.5 + bx) * 2.5;
-          G.ctx.strokeStyle = 'rgba(130, 150, 138, 0.42)';
-          G.ctx.lineWidth = 1.3;
-          G.ctx.beginPath();
-          G.ctx.moveTo(bx + 12, s.y);
-          G.ctx.quadraticCurveTo(bx + 9 + sway, s.y - 8, bx + 6 + sway, s.y - 13);
-          G.ctx.moveTo(bx + 14, s.y);
-          G.ctx.quadraticCurveTo(bx + 17 + sway, s.y - 6, bx + 20 + sway, s.y - 10);
-          G.ctx.stroke();
+      }
+      // Pass 2: Batched top-edge hand-drawn boil line (1 stroke total!)
+      G.ctx.strokeStyle = s.y > 900 ? 'rgba(125, 211, 252, 0.38)' : 'rgba(216, 207, 184, 0.52)';
+      G.ctx.lineWidth = 2.2;
+      G.ctx.beginPath();
+      for (let bx = startX; bx < endX; bx += 64) {
+        const segW = Math.min(64, s.x + s.w - bx);
+        if (segW < 4) break;
+        boilLinePath(G.ctx, bx, s.y + 1, bx + segW, s.y + 1, 500 + bx + s.y, 1.25, 2);
+      }
+      G.ctx.stroke();
+      // Pass 3: Batched stone seams & joints (1 stroke total!)
+      G.ctx.strokeStyle = 'rgba(216, 207, 184, 0.14)';
+      G.ctx.lineWidth = 1.1;
+      G.ctx.beginPath();
+      for (let bx = startX; bx < endX; bx += 64) {
+        const segW = Math.min(64, s.x + s.w - bx);
+        if (segW < 4) break;
+        G.ctx.moveTo(bx, s.y + 21); G.ctx.lineTo(bx + segW, s.y + 21);
+        G.ctx.moveTo(bx, s.y + 2); G.ctx.lineTo(bx, s.y + 21);
+      }
+      G.ctx.stroke();
+      // Pass 4: Batched swaying grass blades (1 stroke total!)
+      if (s.y === FLOOR_Y) {
+        G.ctx.strokeStyle = 'rgba(130, 150, 138, 0.42)';
+        G.ctx.lineWidth = 1.3;
+        G.ctx.beginPath();
+        for (let bx = startX; bx < endX; bx += 64) {
+          const segW = Math.min(64, s.x + s.w - bx);
+          if (segW >= 32 && (Math.floor(bx / 64)) % 3 === 1) {
+            const sway = Math.sin(G.globalTime * 2.5 + bx) * 2.5;
+            G.ctx.moveTo(bx + 12, s.y);
+            G.ctx.quadraticCurveTo(bx + 9 + sway, s.y - 8, bx + 6 + sway, s.y - 13);
+            G.ctx.moveTo(bx + 14, s.y);
+            G.ctx.quadraticCurveTo(bx + 17 + sway, s.y - 6, bx + 20 + sway, s.y - 10);
+          }
         }
+        G.ctx.stroke();
       }
 
       // Moonlit Puddles (upper corridor floor only)
@@ -581,18 +688,18 @@ function drawWorldArchitecture() {
 
       G.ctx.strokeStyle = 'rgba(9, 12, 18, 0.65)';
       G.ctx.lineWidth = 1.6;
+      G.ctx.beginPath();
       for (let fx = s.x + 10; fx < s.x + s.w - 6; fx += 12) {
-        G.ctx.beginPath();
         G.ctx.moveTo(fx, s.y + 16);
         G.ctx.lineTo(fx, s.y + s.h - 16);
-        G.ctx.stroke();
       }
+      G.ctx.stroke();
       G.ctx.strokeStyle = 'rgba(216, 207, 184, 0.44)';
       G.ctx.lineWidth = 1.9;
       boilRectOutline(G.ctx, s.x, s.y, s.w, s.h, 1200 + idx * 97, 1.3);
       boilRectOutline(G.ctx, s.x - 5, s.y, s.w + 10, 14, 1240 + idx * 31, 1.0);
     } else {
-      // Floating Stone Ledge with Jagged Strata, Hatch Shading & Swaying Vines
+      // Floating Stone Ledge with Jagged Strata, Batched Hatch Shading & Batched Vines
       G.ctx.fillStyle = '#1d2638';
       G.ctx.beginPath();
       G.ctx.moveTo(s.x, s.y);
@@ -613,36 +720,37 @@ function drawWorldArchitecture() {
 
       G.ctx.strokeStyle = 'rgba(9, 12, 18, 0.58)';
       G.ctx.lineWidth = 1.2;
+      G.ctx.beginPath();
       for (let hx = s.x + 10; hx < s.x + s.w - 6; hx += 13) {
-        G.ctx.beginPath();
         G.ctx.moveTo(hx, s.y + 6);
         G.ctx.lineTo(hx - 6, s.y + s.h - 1);
-        G.ctx.stroke();
       }
+      G.ctx.stroke();
 
       G.ctx.strokeStyle = 'rgba(120, 145, 138, 0.46)';
       G.ctx.lineWidth = 1.3;
+      G.ctx.beginPath();
       for (let vx = s.x + 18; vx < s.x + s.w - 14; vx += 46) {
         const vLen = 18 + ((vx + idx * 17) % 24);
         const vSway = Math.sin(G.globalTime * 2.2 + vx * 0.05) * 5;
-        G.ctx.beginPath();
         G.ctx.moveTo(vx, s.y + s.h + 2);
         G.ctx.quadraticCurveTo(vx + vSway * 0.5, s.y + s.h + vLen * 0.5, vx + vSway, s.y + s.h + vLen);
-        G.ctx.stroke();
       }
+      G.ctx.stroke();
 
       G.ctx.strokeStyle = 'rgba(216, 207, 184, 0.58)';
       G.ctx.lineWidth = 2;
-      boilLine(G.ctx, s.x, s.y, s.x + s.w, s.y, 1200 + idx * 97, 1.3, Math.max(3, Math.round(s.w / 42)));
-      boilLine(G.ctx, s.x, s.y, s.x + 4, s.y + s.h, 1220 + idx * 97, 1.1, 2);
-      boilLine(G.ctx, s.x + s.w, s.y, s.x + s.w - 4, s.y + s.h, 1240 + idx * 97, 1.1, 2);
+      G.ctx.beginPath();
+      boilLinePath(G.ctx, s.x, s.y, s.x + s.w, s.y, 1200 + idx * 97, 1.3, Math.max(3, Math.round(s.w / 42)));
+      boilLinePath(G.ctx, s.x, s.y, s.x + 4, s.y + s.h, 1220 + idx * 97, 1.1, 2);
+      boilLinePath(G.ctx, s.x + s.w, s.y, s.x + s.w - 4, s.y + s.h, 1240 + idx * 97, 1.1, 2);
+      G.ctx.stroke();
     }
-    G.ctx.restore();
   });
 
   // Abyssal Ink Rivers Shimmer (data-driven across all rooms)
   for (const rv of ABYSSAL_RIVERS) {
-    if (rv.w <= 0 || rv.x + rv.w < G.cam.x - 40 || rv.x > G.cam.x + G.canvasW + 40) continue;
+    if (rv.w <= 0 || !isInView(rv.x, rv.y - 20, rv.w, 60, 40)) continue;
     const rg = G.ctx.createLinearGradient(0, rv.y - 10, 0, rv.y + 26);
     rg.addColorStop(0, 'rgba(56, 189, 248, 0.34)');
     rg.addColorStop(0.5, 'rgba(12, 74, 110, 0.55)');
@@ -680,15 +788,23 @@ function drawWorldArchitecture() {
 function drawWeatherRipples() {
   if (!G.weatherRipples || G.weatherRipples.length === 0) return;
   G.ctx.save();
-  for (let i = 0; i < G.weatherRipples.length; i++) {
-    const rp = G.weatherRipples[i];
-    const a = Math.max(0, rp.life / rp.maxLife);
-    G.ctx.globalAlpha = a * 0.85;
-    G.ctx.strokeStyle = rp.color;
-    G.ctx.lineWidth = 1.2;
+  G.ctx.lineWidth = 1.2;
+  // Batch ripples into 2 alpha passes (fresh & fading) -> max 2 stroke calls total!
+  for (let pass = 0; pass < 2; pass++) {
+    G.ctx.strokeStyle = pass === 0 ? 'rgba(186, 230, 253, 0.44)' : 'rgba(186, 230, 253, 0.20)';
     G.ctx.beginPath();
-    G.ctx.ellipse(rp.x, rp.y, rp.r, Math.max(1.2, rp.r * 0.22), 0, 0, Math.PI * 2);
-    G.ctx.stroke();
+    let any = false;
+    for (let i = 0; i < G.weatherRipples.length; i++) {
+      const rp = G.weatherRipples[i];
+      const a = rp.life / rp.maxLife;
+      if ((pass === 0 && a < 0.45) || (pass === 1 && a >= 0.45)) continue;
+      if (!isInView(rp.x - rp.r, rp.y - 10, rp.r * 2, 20, 40)) continue;
+      const ry = Math.max(1.2, rp.r * 0.22);
+      G.ctx.moveTo(rp.x + rp.r, rp.y);
+      G.ctx.ellipse(rp.x, rp.y, rp.r, ry, 0, 0, Math.PI * 2);
+      any = true;
+    }
+    if (any) G.ctx.stroke();
   }
   G.ctx.restore();
 }
@@ -701,8 +817,9 @@ function drawWallInscriptions() {
     if (ins.hideWhenShortcutOpen && G.worldState && G.worldState.shortcutOpen) continue;
     if (ins.hideWhenDoubleJump && G.worldState && G.worldState.abilities.doubleJump) continue;
     if (ins.hideWhenShadeDash && G.worldState && G.worldState.abilities.shadeDash) continue;
+    if (ins.hideWhenBoss2Defeated && G.worldState && G.worldState.boss2Defeated) continue;
     if (ins.hideWhenPuzzleSolved && G.worldState && G.worldState.solvedPuzzles && G.worldState.solvedPuzzles.has(ins.hideWhenPuzzleSolved)) continue;
-    if (ins.x < G.cam.x - 180 || ins.x > G.cam.x + G.canvasW + 180) continue;
+    if (!isInView(ins.x - 120, ins.y - 24, 240, 48, 120)) continue;
     const dist = G.player ? Math.abs((G.player.x + G.player.w / 2) - ins.x) : 999;
     const proximity = Math.max(0, 1 - dist / 340);
     const alpha = 0.24 + proximity * 0.56;
@@ -727,7 +844,7 @@ function drawWallInscriptions() {
 function drawAltars() {
   for (const altar of ALTARS) {
     const { x, y } = altar;
-    if (x < G.cam.x - 140 || x > G.cam.x + G.canvasW + 140) continue;
+    if (!isInView(x - 60, y - 100, 120, 110, 100)) continue;
     const isLit = !G.worldState || G.worldState.litAltars.has(altar.id);
     const isActive = G.worldState && G.worldState.activeAltarId === altar.id;
 
@@ -961,9 +1078,63 @@ function drawFoundryEntryGate() {
   G.ctx.restore();
 }
 
+function drawFoundryExitGate() {
+  if (!G.worldState || FOUNDRY_EXIT_GATE_DEF.w <= 0) return;
+  const g = FOUNDRY_EXIT_GATE_DEF;
+  if (g.x < G.cam.x - 160 || g.x > G.cam.x + G.canvasW + 160) return;
+  const lift = (G.worldState.foundryExitAnim || 0) * (g.h - 14);
+  const barH = g.h - lift;
+  if (barH <= 14) return;
+  G.ctx.save();
+  G.ctx.fillStyle = '#171210';
+  G.ctx.fillRect(g.x + 2, g.y, g.w - 4, barH);
+  G.ctx.strokeStyle = G.worldState.boss2Defeated ? COLORS.goldBright : COLORS.crimsonBright;
+  G.ctx.lineWidth = 2.2;
+  for (let bx = g.x + 8; bx <= g.x + g.w - 8; bx += 11) {
+    boilLine(G.ctx, bx, g.y, bx, g.y + barH, 7360 + bx, 0.9, 3);
+  }
+  G.ctx.fillStyle = '#2d1c12';
+  G.ctx.strokeStyle = G.worldState.boss2Defeated ? COLORS.goldBright : COLORS.crimsonBright;
+  G.ctx.fillRect(g.x - 3, g.y + barH - 10, g.w + 6, 10);
+  G.ctx.strokeRect(g.x - 3, g.y + barH - 10, g.w + 6, 10);
+  G.ctx.restore();
+}
+
+function drawFirstBellCore() {
+  if (!G.worldState || !G.worldState.boss3Defeated || G.echoSession) return;
+  const { x, y } = FIRST_BELL_CORE_POS;
+  if (x < G.cam.x - 160 || x > G.cam.x + G.canvasW + 160) return;
+  const bob = Math.sin(G.globalTime * 2.8) * 7;
+  const cy = y - 64 + bob;
+  const hasDawn = !!(G.worldState.keyItems && G.worldState.keyItems.dawnSigil);
+  G.ctx.save();
+  drawGlowSprite('gold', x, cy, 86, 0.78);
+  if (hasDawn) drawGlowSprite('cyan', x, cy, 52, 0.56);
+  // Radiant Astral Pillar descending onto First Bell Core
+  const pil = G.ctx.createLinearGradient(x, 0, x, y);
+  pil.addColorStop(0, 'transparent');
+  pil.addColorStop(0.55, hasDawn ? 'rgba(254, 240, 138, 0.20)' : 'rgba(245, 158, 11, 0.14)');
+  pil.addColorStop(1, 'transparent');
+  G.ctx.fillStyle = pil;
+  G.ctx.fillRect(x - 38, 0, 76, y);
+  // Rotating golden halo
+  G.ctx.strokeStyle = COLORS.goldBright;
+  G.ctx.lineWidth = 2;
+  boilCircle(G.ctx, x, cy, 30 + Math.sin(G.globalTime * 4) * 3, 9870, 1.4, 16);
+  G.ctx.stroke();
+  // Core Bell Heart Crystal
+  G.ctx.fillStyle = '#fef9c3';
+  G.ctx.strokeStyle = COLORS.gold;
+  G.ctx.lineWidth = 2;
+  G.ctx.beginPath();
+  G.ctx.moveTo(x, cy - 22); G.ctx.lineTo(x + 15, cy); G.ctx.lineTo(x, cy + 22); G.ctx.lineTo(x - 15, cy);
+  G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
+  G.ctx.restore();
+}
+
 function drawPendulums() {
   PENDULUMS.forEach((pd, idx) => {
-    if (pd.x < G.cam.x - 240 || pd.x > G.cam.x + G.canvasW + 240) return;
+    if (!isInView(pd.x - pd.len, pd.anchorY, pd.len * 2, pd.len + 40, 80)) return;
     const ang = Math.sin(G.globalTime * pd.speed + pd.phase) * pd.amp;
     const bx = pd.x + Math.sin(ang) * pd.len;
     const by = pd.anchorY + Math.cos(ang) * pd.len;
@@ -1002,7 +1173,7 @@ function drawSecretWalls() {
   if (!G.worldState) return;
   for (const w of G.worldState.secretWalls) {
     if (w.broken) continue;
-    if (w.x + w.w < G.cam.x - 80 || w.x > G.cam.x + G.canvasW + 80) continue;
+    if (!isInView(w.x, w.y, w.w, w.h, 80)) continue;
     const sx = w.shake > 0 ? (Math.random() - 0.5) * 6 : 0;
     G.ctx.save();
     G.ctx.translate(sx, 0);
@@ -1034,7 +1205,7 @@ function drawVoidBarriers() {
   const unlocked = !!(G.worldState && G.worldState.abilities.shadeDash);
   for (let i = 0; i < VOID_BARRIERS.length; i++) {
     const vb = VOID_BARRIERS[i];
-    if (vb.x + vb.w < G.cam.x - 80 || vb.x > G.cam.x + G.canvasW + 80) continue;
+    if (!isInView(vb.x, vb.y, vb.w, vb.h, 80)) continue;
     const cx = vb.x + vb.w * 0.5;
     const cy = vb.y + vb.h * 0.5;
     G.ctx.save();
@@ -1120,13 +1291,14 @@ function drawPickups() {
   if (!G.worldState) return;
   for (const p of G.worldState.pickups) {
     if (p.collected) continue;
-    if (p.x < G.cam.x - 100 || p.x > G.cam.x + G.canvasW + 100) continue;
+    if (!isInView(p.x - 36, p.y - 60, 72, 70, 80)) continue;
     const bob = Math.sin(G.globalTime * 3.6 + p.x) * 5;
     const py = p.y - 28 + bob;
     const isFlask = p.kind === 'flaskCore';
     const isAbility = p.kind === 'ability';
+    const isKey = p.kind === 'keyItem';
     const isShade = (isAbility && p.abilityId === 'shadeDash') || p.kind === 'statCore';
-    const col = isShade ? COLORS.violetBright : (isFlask || isAbility ? COLORS.cyanBright : COLORS.goldBright);
+    const col = isKey ? '#fef9c3' : (isShade ? COLORS.violetBright : (isFlask || isAbility ? COLORS.cyanBright : COLORS.goldBright));
 
     G.ctx.save();
     const g = G.ctx.createRadialGradient(p.x, py, 3, p.x, py, isAbility ? 62 : 46);
@@ -1191,7 +1363,7 @@ function drawPickups() {
 function drawCrumblePlatforms() {
   if (!G.crumblePlatforms) return;
   G.crumblePlatforms.forEach((cp, idx) => {
-    if (cp.x + cp.w < G.cam.x - 80 || cp.x > G.cam.x + G.canvasW + 80) return;
+    if (!isInView(cp.x, cp.y, cp.w, cp.h, 80)) return;
     G.ctx.save();
     if (cp.state === 'broken') {
       const regenP = 1 - Math.max(0, cp.timer / 3.2);
@@ -1352,7 +1524,8 @@ function drawLoreTablets() {
 
 function drawLanterns() {
   G.lanterns.forEach((l, idx) => {
-    if (l.x < G.cam.x - 120 || l.x > G.cam.x + G.canvasW + 120) return;
+    const topY0 = l.topY !== undefined ? l.topY : 0;
+    if (!isInView(l.x - 60, topY0, 120, (l.anchorY + l.len) - topY0 + 60, 100)) return;
     const lx = l.x + Math.sin(l.angle) * l.len;
     const ly = l.anchorY + Math.cos(l.angle) * l.len;
     G.ctx.save();
@@ -1362,12 +1535,7 @@ function drawLanterns() {
     if (l.anchorY > topY) boilLine(G.ctx, l.x, topY, l.x, l.anchorY, 1900 + idx * 11, 0.8, 3);
     boilLine(G.ctx, l.x, l.anchorY, lx, ly - 10, 1950 + idx * 13, 1.0, 3);
 
-    const glowR = l.ringFlash > 0 ? 86 : 46;
-    const g = G.ctx.createRadialGradient(lx, ly, 2, lx, ly, glowR);
-    g.addColorStop(0, l.ringFlash > 0 ? 'rgba(253, 224, 71, 0.78)' : 'rgba(253, 224, 71, 0.42)');
-    g.addColorStop(1, 'transparent');
-    G.ctx.fillStyle = g;
-    G.ctx.beginPath(); G.ctx.arc(lx, ly, glowR, 0, Math.PI * 2); G.ctx.fill();
+    drawGlowSprite('gold', lx, ly, l.ringFlash > 0 ? 82 : 46, l.ringFlash > 0 ? 0.72 : 0.38);
 
     G.ctx.translate(lx, ly);
     G.ctx.rotate(-l.angle);
@@ -1388,21 +1556,17 @@ function drawLanterns() {
 
 function drawGrappleAnchors() {
   GRAPPLE_ANCHORS.forEach((a, idx) => {
-    if (a.x < G.cam.x - 100 || a.x > G.cam.x + G.canvasW + 100) return;
+    const topY0 = a.topY !== undefined ? a.topY : 0;
+    if (!isInView(a.x - 40, topY0, 80, a.y - topY0 + 40, 80)) return;
     G.ctx.save();
     G.ctx.strokeStyle = 'rgba(216, 207, 184, 0.30)';
     G.ctx.lineWidth = 1.5;
     const topY = a.topY !== undefined ? a.topY : 0;
     boilLine(G.ctx, a.x, topY, a.x, a.y - 12, 2300 + idx * 17, 1.1, 4);
 
-    const isTideBeacon = G.chapelTide && (a.id.startsWith('anc_boss') || a.id.startsWith('anc_ji'));
+    const isTideBeacon = G.chapelTide && (a.id.startsWith('anc_boss') || a.id.startsWith('anc_ji') || a.id.startsWith('anc_heart'));
     const pulse = 0.65 + Math.sin(G.globalTime * (isTideBeacon ? 12 : 3.8) + idx) * 0.35;
-    const glowR = isTideBeacon ? 54 : 34;
-    const g = G.ctx.createRadialGradient(a.x, a.y, 2, a.x, a.y, glowR);
-    g.addColorStop(0, isTideBeacon ? `rgba(253, 224, 71, ${0.58 * pulse})` : `rgba(125, 211, 252, ${0.32 * pulse})`);
-    g.addColorStop(1, 'transparent');
-    G.ctx.fillStyle = g;
-    G.ctx.beginPath(); G.ctx.arc(a.x, a.y, glowR, 0, Math.PI * 2); G.ctx.fill();
+    drawGlowSprite(isTideBeacon ? 'gold' : 'cyan', a.x, a.y, isTideBeacon ? 52 : 32, (isTideBeacon ? 0.56 : 0.30) * pulse);
 
     G.ctx.strokeStyle = COLORS.cyanBright;
     G.ctx.lineWidth = 2.2;
@@ -1510,6 +1674,24 @@ function drawContactShadow(cx, footY, baseRadius) {
 function drawPuppet(x, y, facing, isGhost = false, ghostColor = null) {
   const cx = x + G.player.w / 2;
   const footY = y + G.player.h;
+
+  // Ultra-fast lightweight ghost silhouette for dash/grapple/iai afterimages (skips IK legs & detail strokes)
+  if (isGhost) {
+    G.ctx.save();
+    G.ctx.translate(cx, footY);
+    G.ctx.fillStyle = ghostColor || COLORS.cyanBright;
+    G.ctx.beginPath();
+    G.ctx.moveTo(-facing * 13, -10);
+    G.ctx.lineTo(-facing * 9, -46);
+    G.ctx.quadraticCurveTo(facing * 2, -57, facing * 9, -44);
+    G.ctx.lineTo(facing * 11, -14);
+    G.ctx.lineTo(facing * 5, 0);
+    G.ctx.lineTo(-facing * 6, -4);
+    G.ctx.closePath();
+    G.ctx.fill();
+    G.ctx.restore();
+    return;
+  }
 
   G.ctx.save();
   if (!isGhost) {
@@ -1820,6 +2002,20 @@ function drawPuppet(x, y, facing, isGhost = false, ghostColor = null) {
   }
 
   G.ctx.restore(); // End upper body lean pivot
+  G.ctx.restore();
+}
+
+function drawSlowBladeRing(x, y, stateTimer, windupDuration, color = COLORS.goldBright) {
+  if (!windupDuration || windupDuration <= 0.35 || stateTimer <= 0) return;
+  const pct = Math.max(0, Math.min(1, stateTimer / windupDuration));
+  const r = 10 + pct * 34;
+  G.ctx.save();
+  G.ctx.strokeStyle = color;
+  G.ctx.globalAlpha = 0.32 + (1 - pct) * 0.62;
+  G.ctx.lineWidth = pct < 0.35 ? 2.8 : 1.6;
+  G.ctx.beginPath();
+  G.ctx.arc(x, y, r, 0, Math.PI * 2);
+  G.ctx.stroke();
   G.ctx.restore();
 }
 
@@ -2553,8 +2749,9 @@ function drawBoss(b) {
       G.ctx.fillText(b.moveKind === 'inkTide' ? '危 · 墨潮' : '危', 2, -126);
       G.ctx.fillStyle = COLORS.crimsonBright;
       G.ctx.fillText(b.moveKind === 'inkTide' ? '危 · 墨潮' : '危', 0, -128);
-    } else if (b.stateTimer < 0.24) {
-      drawParryStarGlint(b.facing * 26, -92, 24, COLORS.goldBright);
+    } else {
+      if (b.isDelayedHit) drawSlowBladeRing(b.facing * 26, -92, b.stateTimer, b.windupDuration, COLORS.goldBright);
+      if (b.stateTimer < 0.24) drawParryStarGlint(b.facing * 26, -92, b.isDelayedHit ? 28 : 24, COLORS.goldBright);
     }
   }
 
@@ -2697,6 +2894,164 @@ function drawBoss2(b) {
 
   G.ctx.restore();
   if (isStagger) drawExecutionSigil(cx, b.y + 44);
+}
+
+/* ---------- FINAL BOSS: 初钟圣骸 · 渊 ---------- */
+function drawBoss3(b) {
+  if (!b.alive) return;
+  const cx = b.x + b.w / 2;
+  const fy = b.y + b.h;
+  const isStagger = b.state === 'stagger';
+  const isP2 = b.phase === 2;
+  const isP3 = b.phase >= 3;
+  const isRed = (b.moveKind === 'crimsonArc' || b.moveKind === 'skyShatter' || b.moveKind === 'eclipseTide') && (b.state === 'windup' || b.state === 'strike');
+
+  G.ctx.save();
+  G.ctx.globalAlpha = Math.max(0.15, b.blinkAlpha !== undefined ? b.blinkAlpha : 1);
+  drawGlowSprite(isP3 ? 'gold' : isP2 ? 'violet' : 'crimson', cx, b.y + 52, isP3 ? 96 : 72, isP3 ? 0.56 : 0.36);
+  drawCloakMesh(b.cloak, isP3 ? '#3b150e' : isP2 ? '#23102e' : '#16131f', isP3 ? 'rgba(254, 240, 138, 0.72)' : isP2 ? 'rgba(216, 180, 254, 0.58)' : 'rgba(245, 158, 11, 0.48)', 30, 960);
+
+  const joltX = b.hurtFlash > 0 ? (Math.random() - 0.5) * 7 : 0;
+  G.ctx.translate(cx + joltX, fy);
+  const crouch = isStagger ? 16 : (b.state === 'windup' && (b.moveKind === 'skyShatter' || b.moveKind === 'eclipseThrust')) ? 9 : 0;
+
+  // 2-Bone IK Sovereign Greaves
+  const hipY = -34 + crouch;
+  const wCyc = b.walkCycle || 0;
+  const moving = Math.abs(b.vx) > 20 && b.grounded;
+  [false, true].forEach(isFront => {
+    const hx = (isFront ? 1 : -1) * b.facing * 10;
+    let tx, ty;
+    if (isStagger) { tx = isFront ? b.facing * 20 : -b.facing * 24; ty = 0; }
+    else if (!b.grounded) { tx = isFront ? b.facing * 18 : -b.facing * 14; ty = isFront ? -12 : -5; }
+    else if (moving) { const ph = wCyc + (isFront ? 0 : Math.PI); tx = Math.sin(ph) * 22; ty = -Math.max(0, Math.cos(ph)) * 11; }
+    else { tx = (isFront ? 1 : -1) * b.facing * 15; ty = 0; }
+    const ik = solve2BoneIK(hx, hipY, tx, ty, 19, 19, b.facing);
+    G.ctx.strokeStyle = isFront ? (isP3 ? COLORS.goldBright : COLORS.parchment) : 'rgba(148, 138, 124, 0.72)';
+    G.ctx.lineWidth = 7.8;
+    G.ctx.lineCap = 'round'; G.ctx.lineJoin = 'round';
+    G.ctx.beginPath(); G.ctx.moveTo(hx, hipY); G.ctx.lineTo(ik.kx, ik.ky); G.ctx.lineTo(ik.ex, ik.ey); G.ctx.stroke();
+    G.ctx.strokeStyle = '#12101a'; G.ctx.lineWidth = 4.2; G.ctx.stroke();
+  });
+
+  G.ctx.save();
+  G.ctx.translate(0, crouch);
+  // Fractured Astral Halo behind Sovereign
+  G.ctx.save();
+  G.ctx.translate(0, -86);
+  G.ctx.rotate(b.haloAngle || 0);
+  G.ctx.strokeStyle = isP3 ? '#fef9c3' : isP2 ? COLORS.violetBright : COLORS.goldBright;
+  G.ctx.lineWidth = isP3 ? 2.6 : 1.9;
+  for (let i = 0; i < 4; i++) {
+    const a = (i * Math.PI) / 2;
+    G.ctx.beginPath(); G.ctx.arc(0, 0, 42, a + 0.16, a + Math.PI * 0.5 - 0.16); G.ctx.stroke();
+  }
+  G.ctx.restore();
+
+  // Sovereign Bronze-Bone Torso & Ribbed Bell-Armor
+  G.ctx.fillStyle = b.hurtFlash > 0 ? '#ffffff' : '#171320';
+  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : (isP3 ? COLORS.goldBright : 'rgba(216, 207, 184, 0.85)');
+  G.ctx.lineWidth = 2.3;
+  G.ctx.beginPath();
+  G.ctx.moveTo(-24, -26); G.ctx.lineTo(-26, -82); G.ctx.lineTo(26, -82); G.ctx.lineTo(24, -26);
+  G.ctx.lineTo(12, -32); G.ctx.lineTo(0, -20); G.ctx.lineTo(-12, -32);
+  G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
+  // Glowing First-Bell Heart Core in Chest
+  drawGlowSprite(isP3 ? 'gold' : isP2 ? 'violet' : 'crimson', 0, -56, 24, 0.85);
+  G.ctx.fillStyle = isP3 ? '#fef9c3' : isP2 ? COLORS.violetBright : COLORS.goldBright;
+  G.ctx.beginPath(); G.ctx.moveTo(0, -68); G.ctx.lineTo(10, -56); G.ctx.lineTo(0, -44); G.ctx.lineTo(-10, -56); G.ctx.closePath(); G.ctx.fill();
+
+  // Eclipse Bell-Crown Helm
+  G.ctx.fillStyle = b.hurtFlash > 0 ? '#ffffff' : '#201a2a';
+  G.ctx.beginPath();
+  G.ctx.moveTo(-16, -84); G.ctx.lineTo(-14, -108); G.ctx.lineTo(-26, -128); G.ctx.lineTo(-8, -112);
+  G.ctx.lineTo(0, -132); G.ctx.lineTo(8, -112); G.ctx.lineTo(26, -128); G.ctx.lineTo(14, -108); G.ctx.lineTo(16, -84);
+  G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
+  G.ctx.fillStyle = isP3 ? '#ffffff' : (isP2 ? COLORS.violetBright : COLORS.goldBright);
+  G.ctx.fillRect(b.facing > 0 ? 1 : -12, -98, 11, 3.5);
+
+  // Primeval Bell-Halberd Greatsword
+  G.ctx.save();
+  let handX = b.facing * 14, handY = -60;
+  let swAng = b.facing > 0 ? 0.45 : Math.PI - 0.45;
+  if (b.state === 'windup') {
+    if (b.moveKind === 'eclipseTide') { handX = b.facing * 6; handY = -56; swAng = Math.PI * 0.5; }
+    else if (b.moveKind === 'eclipseThrust') { handX = -b.facing * 18; handY = -48; swAng = b.facing > 0 ? 0 : Math.PI; }
+    else if (b.comboIdx % 2 === 1) { handX = -b.facing * 8; handY = -38; swAng = b.facing > 0 ? 2.3 : Math.PI - 2.3; }
+    else { swAng = b.facing > 0 ? -2.25 : Math.PI + 2.25; }
+  } else if (b.state === 'strike') {
+    if (b.moveKind === 'eclipseTide') { swAng = Math.PI * 0.5; }
+    else if (b.moveKind === 'eclipseThrust') { handX = b.facing * 26; swAng = b.facing > 0 ? 0 : Math.PI; }
+    else if (b.comboIdx % 2 === 1) { swAng = b.facing > 0 ? -0.5 : Math.PI + 0.5; }
+    else { swAng = b.facing > 0 ? 0.25 : Math.PI - 0.25; }
+  } else if (isStagger) { swAng = Math.PI * 0.5; }
+  G.ctx.translate(handX, handY); G.ctx.rotate(swAng);
+  G.ctx.fillStyle = isRed ? '#7f1d1d' : (isP3 ? '#452b11' : '#262133');
+  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : (isP3 ? '#fef08a' : COLORS.goldBright);
+  G.ctx.lineWidth = 2.2;
+  G.ctx.beginPath();
+  G.ctx.moveTo(-14, -5); G.ctx.lineTo(96, -9); G.ctx.lineTo(122, 0); G.ctx.lineTo(96, 9); G.ctx.lineTo(-14, 5);
+  G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
+  G.ctx.strokeStyle = isP3 ? '#ffffff' : (isP2 ? COLORS.violetBright : COLORS.goldBright);
+  G.ctx.lineWidth = 1.8;
+  G.ctx.beginPath(); G.ctx.moveTo(14, 0); G.ctx.lineTo(92, 0); G.ctx.stroke();
+  G.ctx.restore();
+
+  // Telegraph Signal
+  if (b.state === 'windup') {
+    if (isRed) {
+      drawGlowSprite('crimson', 0, -148, b.moveKind === 'eclipseTide' ? 52 : 34, 0.88);
+      G.ctx.font = 'bold 30px "Noto Serif SC", serif';
+      G.ctx.textAlign = 'center';
+      G.ctx.fillStyle = '#06080d';
+      G.ctx.fillText(b.moveKind === 'eclipseTide' ? '危 · 终末钟潮' : '危', 2, -138);
+      G.ctx.fillStyle = COLORS.crimsonBright;
+      G.ctx.fillText(b.moveKind === 'eclipseTide' ? '危 · 终末钟潮' : '危', 0, -140);
+    } else {
+      if (b.isDelayedHit) drawSlowBladeRing(b.facing * 28, -96, b.stateTimer, b.windupDuration, b.phase >= 2 ? COLORS.goldBright : COLORS.parchment);
+      if (b.stateTimer < 0.25) drawParryStarGlint(b.facing * 28, -96, b.isDelayedHit ? 30 : 26, COLORS.goldBright);
+    }
+  }
+
+  G.ctx.restore();
+  G.ctx.restore();
+  if (isStagger) drawExecutionSigil(cx, b.y + 50);
+}
+
+function drawBossBanner() {
+  if (!G.bossBanner || G.bossBanner.life <= 0) return;
+  const b = G.bossBanner;
+  const p = 1 - b.life / b.maxLife;
+  const alpha = p < 0.14 ? (p / 0.14) : (b.life < 0.45 ? (b.life / 0.45) : 1);
+  const cx = G.canvasW * 0.5;
+  const cy = Math.min(132, G.canvasH * 0.20);
+  G.ctx.save();
+  G.ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+  const grad = G.ctx.createLinearGradient(cx - 280, cy, cx + 280, cy);
+  grad.addColorStop(0, 'transparent');
+  grad.addColorStop(0.22, 'rgba(7, 10, 16, 0.84)');
+  grad.addColorStop(0.78, 'rgba(7, 10, 16, 0.84)');
+  grad.addColorStop(1, 'transparent');
+  G.ctx.fillStyle = grad;
+  G.ctx.fillRect(cx - 280, cy - 34, 560, b.quote ? 74 : 52);
+  G.ctx.strokeStyle = b.color || COLORS.goldBright;
+  G.ctx.lineWidth = 1.2;
+  G.ctx.beginPath();
+  G.ctx.moveTo(cx - 190, cy - 32); G.ctx.lineTo(cx + 190, cy - 32);
+  G.ctx.moveTo(cx - 190, cy + (b.quote ? 38 : 18)); G.ctx.lineTo(cx + 190, cy + (b.quote ? 38 : 18));
+  G.ctx.stroke();
+  G.ctx.textAlign = 'center';
+  G.ctx.font = 'bold 24px "Noto Serif SC", serif';
+  G.ctx.fillStyle = '#05070c';
+  G.ctx.fillText(b.title, cx + 1.5, cy + 2.5);
+  G.ctx.fillStyle = b.color || COLORS.goldBright;
+  G.ctx.fillText(b.title, cx, cy + 1);
+  if (b.quote) {
+    G.ctx.font = '13.5px "Noto Serif SC", serif';
+    G.ctx.fillStyle = COLORS.parchment;
+    G.ctx.fillText(b.quote, cx, cy + 25);
+  }
+  G.ctx.restore();
 }
 
 /* ---------- VFX RENDERERS ---------- */
@@ -3190,6 +3545,10 @@ function drawWorldPrompts() {
   G.ctx.textAlign = 'center';
 
   const ek = getActionKeyLabel('interact');
+  if (G.worldState && G.worldState.boss3Defeated && !G.echoSession &&
+      Math.hypot(px - FIRST_BELL_CORE_POS.x, py - FIRST_BELL_CORE_POS.y) < 105) {
+    drawPromptBadge(FIRST_BELL_CORE_POS.x, FIRST_BELL_CORE_POS.y - 118, `[${ek}] 触碰 · 初钟之心（终誓抉择）`);
+  }
   for (const altar of ALTARS) {
     if (Math.hypot(px - altar.x, py - altar.y) < 86) {
       const isLit = !G.worldState || G.worldState.litAltars.has(altar.id);
@@ -3267,61 +3626,84 @@ function drawWeatherLayer(isPhase2) {
   if (!G.weatherParticles || G.weatherParticles.length === 0) return;
   const wType = G.themeBlend ? G.themeBlend.weather : 'ash';
   const accent = G.themeBlend ? G.themeBlend.accent : [216, 207, 184];
-  const step = document.body.classList.contains('is-mobile') ? 2 : 1;
+  const step = G.isMobile ? 2 : 1;
+  const list = G.weatherParticles;
   G.ctx.save();
   if (wType === 'rain') {
-    G.ctx.lineCap = 'round';
-    for (let i = 0; i < G.weatherParticles.length; i += step) {
-      const wp = G.weatherParticles[i];
-      G.ctx.strokeStyle = `rgba(186, 214, 236, ${(wp.alpha * 0.42).toFixed(2)})`;
-      G.ctx.lineWidth = 1.15;
-      G.ctx.beginPath();
+    // Batched into 2 flat-cap stroke passes (near bright + far soft) -> 68 strokes reduced to 2!
+    G.ctx.lineCap = 'butt';
+    G.ctx.lineWidth = 1.15;
+    G.ctx.strokeStyle = 'rgba(186, 214, 236, 0.30)';
+    G.ctx.beginPath();
+    for (let i = 0; i < list.length; i += step * 2) {
+      const wp = list[i];
       G.ctx.moveTo(wp.x, wp.y);
       G.ctx.lineTo(wp.x + wp.len * 0.28, wp.y - wp.len);
-      G.ctx.stroke();
     }
+    G.ctx.stroke();
+    G.ctx.strokeStyle = 'rgba(186, 214, 236, 0.16)';
+    G.ctx.beginPath();
+    for (let i = step; i < list.length; i += step * 2) {
+      const wp = list[i];
+      G.ctx.moveTo(wp.x, wp.y);
+      G.ctx.lineTo(wp.x + wp.len * 0.28, wp.y - wp.len);
+    }
+    G.ctx.stroke();
   } else if (wType === 'embers') {
-    for (let i = 0; i < G.weatherParticles.length; i++) {
-      const wp = G.weatherParticles[i];
-      const flicker = 0.55 + Math.sin(G.globalTime * 11 + wp.phase) * 0.45;
-      G.ctx.fillStyle = i % 3 === 0
-        ? `rgba(253, 224, 71, ${(wp.alpha * flicker).toFixed(2)})`
-        : `rgba(245, 158, 11, ${(wp.alpha * flicker * 0.9).toFixed(2)})`;
-      G.ctx.beginPath();
-      G.ctx.arc(wp.x, wp.y, wp.size * 0.95, 0, Math.PI * 2);
-      G.ctx.fill();
+    // Batched into 2 fill passes (bright gold sparks + warm amber embers)
+    G.ctx.fillStyle = 'rgba(253, 224, 71, 0.56)';
+    G.ctx.beginPath();
+    for (let i = 0; i < list.length; i += 3) {
+      const wp = list[i];
+      const r = wp.size * 0.95;
+      G.ctx.moveTo(wp.x + r, wp.y);
+      G.ctx.arc(wp.x, wp.y, r, 0, Math.PI * 2);
     }
+    G.ctx.fill();
+    G.ctx.fillStyle = 'rgba(245, 158, 11, 0.44)';
+    G.ctx.beginPath();
+    for (let i = 0; i < list.length; i += step) {
+      if (i % 3 === 0) continue;
+      const wp = list[i];
+      const r = wp.size * 0.95;
+      G.ctx.moveTo(wp.x + r, wp.y);
+      G.ctx.arc(wp.x, wp.y, r, 0, Math.PI * 2);
+    }
+    G.ctx.fill();
   } else if (wType === 'mist') {
-    for (let i = 0; i < G.weatherParticles.length; i++) {
-      const wp = G.weatherParticles[i];
-      if (i % 3 === 0) {
-        // Vertical cave water droplets
-        G.ctx.strokeStyle = `rgba(125, 211, 252, ${(wp.alpha * 0.5).toFixed(2)})`;
-        G.ctx.lineWidth = 1.2;
-        G.ctx.beginPath();
-        G.ctx.moveTo(wp.x, wp.y);
-        G.ctx.lineTo(wp.x, wp.y - wp.len * 0.65);
-        G.ctx.stroke();
-      } else {
-        // Translucent rising abyssal mist wisps
-        G.ctx.fillStyle = `rgba(56, 189, 248, ${(wp.alpha * 0.08).toFixed(3)})`;
-        G.ctx.beginPath();
-        G.ctx.ellipse(wp.x, wp.y, wp.len * 1.4, wp.len * 0.48, 0, 0, Math.PI * 2);
-        G.ctx.fill();
-      }
+    // Pass 1: Vertical cave water droplets (1 batched stroke)
+    G.ctx.strokeStyle = 'rgba(125, 211, 252, 0.28)';
+    G.ctx.lineWidth = 1.2;
+    G.ctx.beginPath();
+    for (let i = 0; i < list.length; i += 3) {
+      const wp = list[i];
+      G.ctx.moveTo(wp.x, wp.y);
+      G.ctx.lineTo(wp.x, wp.y - wp.len * 0.65);
     }
+    G.ctx.stroke();
+    // Pass 2: Rising humid mist wisps (1 batched fill)
+    G.ctx.fillStyle = 'rgba(56, 189, 248, 0.045)';
+    G.ctx.beginPath();
+    for (let i = 0; i < list.length; i += step) {
+      if (i % 3 === 0) continue;
+      const wp = list[i];
+      const rx = wp.len * 1.4;
+      G.ctx.moveTo(wp.x + rx, wp.y);
+      G.ctx.ellipse(wp.x, wp.y, rx, wp.len * 0.48, 0, 0, Math.PI * 2);
+    }
+    G.ctx.fill();
   } else {
-    // Chapel bone-ash snow or Sanctuary cold soul ash
-    for (let i = 0; i < G.weatherParticles.length; i++) {
-      const wp = G.weatherParticles[i];
-      const col = isPhase2
-        ? `rgba(248, 113, 113, ${(wp.alpha * 0.65).toFixed(2)})`
-        : (wType === 'snow' ? `rgba(232, 224, 210, ${(wp.alpha * 0.55).toFixed(2)})` : rgbStr(accent, wp.alpha * 0.35));
-      G.ctx.fillStyle = col;
-      G.ctx.beginPath();
+    // Chapel bone-ash snow or Sanctuary cold soul ash (1 batched fill)
+    G.ctx.fillStyle = isPhase2
+      ? 'rgba(248, 113, 113, 0.36)'
+      : (wType === 'snow' ? 'rgba(232, 224, 210, 0.30)' : rgbStr(accent, 0.20));
+    G.ctx.beginPath();
+    for (let i = 0; i < list.length; i += step) {
+      const wp = list[i];
+      G.ctx.moveTo(wp.x + wp.size, wp.y);
       G.ctx.arc(wp.x, wp.y, wp.size, 0, Math.PI * 2);
-      G.ctx.fill();
     }
+    G.ctx.fill();
   }
   G.ctx.restore();
 }
@@ -3329,11 +3711,14 @@ function drawWeatherLayer(isPhase2) {
 function drawForegroundMotes(isPhase2) {
   G.ctx.save();
   const acc = G.themeBlend ? G.themeBlend.accent : [216, 207, 184];
-  const step = document.body.classList.contains('is-mobile') ? 2 : 1;
+  const step = G.isMobile ? 2 : 1;
   G.ctx.fillStyle = isPhase2 ? 'rgba(248, 113, 113, 0.45)' : rgbStr(acc, 0.28);
+  G.ctx.beginPath();
   for (let i = 0; i < G.ambientMotes.length; i += step) {
     const m = G.ambientMotes[i];
-    G.ctx.beginPath(); G.ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2); G.ctx.fill();
+    G.ctx.moveTo(m.x + m.r, m.y);
+    G.ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
   }
+  G.ctx.fill();
   G.ctx.restore();
 }

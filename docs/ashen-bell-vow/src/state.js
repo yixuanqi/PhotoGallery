@@ -91,6 +91,9 @@ export const G = {
   enemies: [],
   boss: null,
   boss2: null,
+  boss3: null,
+  bossBanner: null,
+  endingState: null,
   echoSession: null,
   outcomeTimer: null,
 
@@ -108,6 +111,8 @@ export const hooks = {
   showDeath: () => {},
   showVictory: () => {},
   advanceEchoRushStage2: () => {},
+  advanceEchoRushStage3: () => {},
+  openEndingChoice: () => {},
   interactWithAltar: () => {},
   openSmithModal: () => {},
   openLoreModal: () => {},
@@ -130,9 +135,13 @@ export function createFreshWorldState() {
     activeAltarId: 'altar_start',
     bossDefeated: false,
     boss2Defeated: false,
+    boss3Defeated: false,
     chapelExitAnim: 0,
     foundryGateAnim: 0,
-    echoRecords: { hui: null, ji: null, rush: null },
+    foundryExitAnim: 0,
+    echoRecords: { hui: null, ji: null, yuan: null, rush: null },
+    keyItems: { dawnSigil: false },
+    endingsUnlocked: [],
     shortcutOpen: false,
     shortcutAnim: 0, // 0 = closed, 1 = fully raised
     secretWalls: SECRET_WALLS_DEF.map(w => ({ ...w, type: 'pillar', hp: w.maxHp, broken: false, shake: 0 })),
@@ -347,9 +356,14 @@ export function createLanterns() {
   }));
 }
 
+export function triggerBossBanner(title, quote = '', color = '#fde047', duration = 2.6) {
+  G.bossBanner = { title, quote, color, life: duration, maxLife: duration };
+}
+
 export function getAwakeBoss() {
   if (G.boss && G.boss.awake && G.boss.alive) return G.boss;
   if (G.boss2 && G.boss2.awake && G.boss2.alive) return G.boss2;
+  if (G.boss3 && G.boss3.awake && G.boss3.alive) return G.boss3;
   return null;
 }
 
@@ -360,6 +374,7 @@ export function getLivingFoes() {
   }
   if (G.boss && G.boss.alive) list.push(G.boss);
   if (G.boss2 && G.boss2.alive) list.push(G.boss2);
+  if (G.boss3 && G.boss3.alive) list.push(G.boss3);
   return list;
 }
 

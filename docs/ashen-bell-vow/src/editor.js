@@ -457,7 +457,7 @@ function drawRoomContents(rm, isGhost = false) {
     ctx.fillStyle = COLORS.goldBright;
     ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(b.id === 'boss_ji' ? '寂' : '晦', ox + b.x + 29, oy + b.y + 54);
+    ctx.fillText(b.id === 'boss_yuan' ? '渊' : b.id === 'boss_ji' ? '寂' : '晦', ox + b.x + 29, oy + b.y + 54);
   }
 
   // Inscriptions
@@ -687,7 +687,7 @@ function renderRoomProps() {
   addField(roomPropsEl, '房间ID', rm.id, 'text', v => { rm.id = v.trim() || rm.id; });
   addField(roomPropsEl, '大区名', rm.zoneName, 'text', v => { rm.zoneName = v; });
   addField(roomPropsEl, '房间名', rm.name, 'text', v => { rm.name = v; });
-  addField(roomPropsEl, '生态主题', rm.theme || 'corridor', ['sanctuary', 'corridor', 'chapel', 'bell_well', 'foundry', 'crypt'], v => { rm.theme = v; });
+  addField(roomPropsEl, '生态主题', rm.theme || 'corridor', ['sanctuary', 'corridor', 'chapel', 'bell_well', 'foundry', 'crypt', 'ascent', 'heart'], v => { rm.theme = v; });
   addField(roomPropsEl, '世界 X', rm.bounds.x, 'number', v => { rm.bounds.x = v; });
   addField(roomPropsEl, '世界 Y', rm.bounds.y, 'number', v => { rm.bounds.y = v; });
   addField(roomPropsEl, '宽度 W', rm.bounds.w, 'number', v => { rm.bounds.w = Math.max(320, v); });
@@ -740,7 +740,7 @@ function renderInspector() {
   if (o.id !== undefined) addField(grid, 'ID', o.id, 'text', v => { o.id = v; });
   if (o.type !== undefined) addField(grid, '形态', o.type, ['ground', 'pillar', 'platform'], v => { o.type = v; });
   if (o.kind !== undefined && sel.kind === 'enemy') addField(grid, '兵种', o.kind, ['sentinel', 'wraith', 'golem', 'priest', 'duelist', 'leech'], v => { o.kind = v; });
-  if (o.kind !== undefined && sel.kind === 'pickup') addField(grid, '秘宝类', o.kind, ['flaskCore', 'relic', 'ability', 'echoCache'], v => { o.kind = v; });
+  if (o.kind !== undefined && sel.kind === 'pickup') addField(grid, '秘宝类', o.kind, ['flaskCore', 'relic', 'ability', 'echoCache', 'statCore', 'keyItem'], v => { o.kind = v; });
   if (o.echoAmount !== undefined) addField(grid, '残响量', o.echoAmount, 'number', v => { o.echoAmount = Math.max(10, v); });
 
   if (o.x !== undefined) addField(grid, '局部 X', o.x, 'number', v => { o.x = v; });

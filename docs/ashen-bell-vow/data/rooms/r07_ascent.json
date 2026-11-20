@@ -1,0 +1,424 @@
+{
+  "schemaVersion": 1,
+  "id": "r07_ascent",
+  "zoneName": "初钟圣顶",
+  "name": "初钟圣阶",
+  "theme": "ascent",
+  "bounds": {
+    "x": 6740,
+    "y": 0,
+    "w": 1620,
+    "h": 1520
+  },
+  "subZones": [
+    {
+      "name": "初钟圣顶 · 誓阶底坛",
+      "x": 0,
+      "y": 1040,
+      "w": 1620,
+      "h": 480
+    },
+    {
+      "name": "初钟圣顶 · 破晓密室",
+      "x": 0,
+      "y": 780,
+      "w": 360,
+      "h": 260
+    },
+    {
+      "name": "初钟圣顶 · 墨翼天梯",
+      "x": 360,
+      "y": 600,
+      "w": 1260,
+      "h": 440
+    },
+    {
+      "name": "初钟圣顶 · 终誓圣门",
+      "x": 0,
+      "y": 0,
+      "w": 1620,
+      "h": 600
+    }
+  ],
+  "connections": [
+    "r05_foundry",
+    "r08_heart"
+  ],
+  "solids": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 40,
+      "h": 1240,
+      "type": "pillar"
+    },
+    {
+      "x": 1580,
+      "y": 580,
+      "w": 40,
+      "h": 940,
+      "type": "pillar"
+    },
+    {
+      "x": 0,
+      "y": 1380,
+      "w": 1620,
+      "h": 180,
+      "type": "ground"
+    },
+    {
+      "x": 355,
+      "y": 1300,
+      "w": 115,
+      "h": 20,
+      "type": "platform"
+    },
+    {
+      "x": 1365,
+      "y": 1215,
+      "w": 195,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 40,
+      "y": 1020,
+      "w": 920,
+      "h": 100,
+      "type": "ground"
+    },
+    {
+      "x": 40,
+      "y": 860,
+      "w": 242,
+      "h": 20,
+      "type": "pillar"
+    },
+    {
+      "x": 1020,
+      "y": 1255,
+      "w": 155,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1290,
+      "y": 1135,
+      "w": 155,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1005,
+      "y": 1015,
+      "w": 170,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1015,
+      "y": 785,
+      "w": 155,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1005,
+      "y": 665,
+      "w": 150,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 420,
+      "y": 740,
+      "w": 220,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 740,
+      "y": 850,
+      "w": 140,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1160,
+      "y": 580,
+      "w": 460,
+      "h": 130,
+      "type": "ground"
+    }
+  ],
+  "crumblePlatforms": [
+    {
+      "id": "crumble_asc_1",
+      "x": 545,
+      "y": 1285,
+      "w": 110,
+      "h": 20
+    },
+    {
+      "id": "crumble_asc_2",
+      "x": 745,
+      "y": 1295,
+      "w": 110,
+      "h": 20
+    },
+    {
+      "id": "crumble_asc_3",
+      "x": 1275,
+      "y": 895,
+      "w": 118,
+      "h": 20
+    }
+  ],
+  "altars": [
+    {
+      "id": "altar_ascent",
+      "x": 150,
+      "y": 1380,
+      "name": "初钟圣顶 · 誓阶底坛",
+      "shortName": "圣阶 · 誓阶底坛",
+      "defaultLit": false
+    },
+    {
+      "id": "altar_summit",
+      "x": 1435,
+      "y": 580,
+      "name": "初钟圣顶 · 终誓祭坛",
+      "shortName": "圣顶 · 终誓祭坛",
+      "defaultLit": false
+    }
+  ],
+  "npcs": [],
+  "loreTablets": [
+    {
+      "id": "lore_ascent",
+      "x": 1275,
+      "y": 580,
+      "title": "初钟真史碑",
+      "sub": "初钟圣顶 · 终誓圣门",
+      "html": "“第一代守誓者并非背叛圣城——当他发现初钟每响一声，便以地下无数沉眠者的魂火为薪柴时，他亲手斩断了钟索。<br>然而初钟圣骸仍在东侧圣心中自行震鸣，召唤一代又一代提灯人偶前来续薪。<br><br>踏入东侧殿堂斩落<strong>「初钟圣骸 · 渊」</strong>后，你将面对最终抉择：<br><strong>续鸣残誓</strong>，以己身承接永夜之钟；抑或携藏于下方暗蚀结界中的<strong>「破晓初印」</strong>，一刃斩灭初钟，令晦渊重见晨曦。”"
+    }
+  ],
+  "gates": [],
+  "secretWalls": [],
+  "voidBarriers": [
+    {
+      "id": "vb_ascent_dawn",
+      "x": 260,
+      "y": 880,
+      "w": 22,
+      "h": 140
+    }
+  ],
+  "pickups": [
+    {
+      "id": "pickup_dawn_sigil",
+      "kind": "keyItem",
+      "keyId": "dawnSigil",
+      "bonusHp": 15,
+      "bonusSoul": 20,
+      "x": 135,
+      "y": 1020,
+      "name": "终章真宝 · 破晓初印",
+      "desc": "持有此印斩落初钟圣骸，可开启真结局「破晓熄钟」！(生命+15 / 魂火+20)"
+    },
+    {
+      "id": "pickup_echo_ascent",
+      "kind": "echoCache",
+      "echoAmount": 260,
+      "x": 530,
+      "y": 740,
+      "name": "圣阶古钟遗匣",
+      "desc": "获得 +260 残响，可回铁砧完成最终淬炼！"
+    }
+  ],
+  "resonancePuzzles": [],
+  "pendulums": [
+    {
+      "id": "pend_asc_1",
+      "x": 640,
+      "anchorY": 1120,
+      "len": 168,
+      "amp": 0.56,
+      "speed": 1.72,
+      "phase": 0.3,
+      "r": 28
+    }
+  ],
+  "rivers": [
+    {
+      "id": "river_ascent",
+      "x": 275,
+      "y": 1368,
+      "w": 670
+    }
+  ],
+  "grappleAnchors": [
+    {
+      "id": "anc_asc_r1",
+      "x": 470,
+      "y": 1175,
+      "topY": 1120
+    },
+    {
+      "id": "anc_asc_r2",
+      "x": 815,
+      "y": 1175,
+      "topY": 1120
+    },
+    {
+      "id": "anc_asc_s1",
+      "x": 1190,
+      "y": 1055,
+      "topY": 710
+    },
+    {
+      "id": "anc_asc_s2",
+      "x": 1185,
+      "y": 825,
+      "topY": 710
+    },
+    {
+      "id": "anc_asc_s3",
+      "x": 1095,
+      "y": 530,
+      "topY": 0
+    },
+    {
+      "id": "anc_asc_west",
+      "x": 640,
+      "y": 645,
+      "topY": 0
+    }
+  ],
+  "lanterns": [
+    {
+      "id": "lan_asc_1",
+      "x": 640,
+      "anchorY": 1120,
+      "topY": 1120,
+      "len": 110,
+      "angle": 0.05
+    },
+    {
+      "id": "lan_asc_2",
+      "x": 1380,
+      "anchorY": 710,
+      "topY": 710,
+      "len": 115,
+      "angle": -0.05
+    }
+  ],
+  "enemies": [
+    {
+      "id": "golem_asc",
+      "kind": "golem",
+      "x": 1170,
+      "y": 1302,
+      "minX": 1000,
+      "maxX": 1460
+    },
+    {
+      "id": "priest_asc",
+      "kind": "priest",
+      "x": 1445,
+      "y": 1149
+    },
+    {
+      "id": "duelist_asc",
+      "kind": "duelist",
+      "x": 580,
+      "y": 960,
+      "minX": 320,
+      "maxX": 900
+    },
+    {
+      "id": "wraith_asc",
+      "kind": "wraith",
+      "x": 1180,
+      "y": 875
+    },
+    {
+      "id": "leech_asc",
+      "kind": "leech",
+      "x": 495,
+      "y": 1122
+    }
+  ],
+  "bosses": [],
+  "inscriptions": [
+    {
+      "x": 180,
+      "y": 1280,
+      "text": "「初钟圣阶 · 沿东侧天梯登临圣心」"
+    },
+    {
+      "x": 385,
+      "y": 935,
+      "text": "「破晓密室 · 幽影穿身可取真结局之印」"
+    },
+    {
+      "x": 1465,
+      "y": 485,
+      "text": "「前方 · 初钟圣心 · 最终决战 →」"
+    }
+  ],
+  "props": {
+    "puddles": [],
+    "banners": [
+      {
+        "x": 1060,
+        "y": 1060,
+        "len": 150,
+        "color": "#3d1a26"
+      },
+      {
+        "x": 1340,
+        "y": 120,
+        "len": 175,
+        "color": "#4a1c28"
+      },
+      {
+        "x": 1525,
+        "y": 120,
+        "len": 175,
+        "color": "#4a1c28"
+      }
+    ],
+    "candles": [
+      {
+        "x": 100,
+        "y": 1380,
+        "count": 4
+      },
+      {
+        "x": 205,
+        "y": 1380,
+        "count": 3
+      },
+      {
+        "x": 92,
+        "y": 1020,
+        "count": 4
+      },
+      {
+        "x": 1385,
+        "y": 580,
+        "count": 4
+      },
+      {
+        "x": 1490,
+        "y": 580,
+        "count": 4
+      }
+    ],
+    "boneCairns": [
+      1040,
+      1220
+    ]
+  }
+}

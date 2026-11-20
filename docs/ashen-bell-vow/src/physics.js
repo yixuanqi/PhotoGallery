@@ -1,6 +1,6 @@
 // AABB collision, zero-allocation dynamic blockers & grounding queries
 import {
-  SOLIDS, VOID_BARRIERS, WORLD_H, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF
+  SOLIDS, VOID_BARRIERS, WORLD_H, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF
 } from './config.js';
 import { G, getAwakeBoss } from './state.js';
 
@@ -11,6 +11,7 @@ export function aabbOverlap(a, b) {
 const _shortcutGateBox = { x: 0, y: 0, w: 0, h: 0, type: 'pillar' };
 const _chapelExitBox = { x: 0, y: 0, w: 0, h: 0, type: 'pillar' };
 const _foundryEntryBox = { x: 0, y: 0, w: 0, h: 0, type: 'pillar' };
+const _foundryExitBox = { x: 0, y: 0, w: 0, h: 0, type: 'pillar' };
 const _dynBlockers = [];
 
 function syncGateBox(box, def) {
@@ -24,6 +25,7 @@ export function refreshDynamicBlockers() {
     if (!G.worldState.shortcutOpen && syncGateBox(_shortcutGateBox, SHORTCUT_GATE_DEF)) _dynBlockers.push(_shortcutGateBox);
     if (!G.worldState.bossDefeated && syncGateBox(_chapelExitBox, CHAPEL_EXIT_GATE_DEF)) _dynBlockers.push(_chapelExitBox);
     if (!G.worldState.abilities.doubleJump && !G.echoSession && syncGateBox(_foundryEntryBox, FOUNDRY_ENTRY_GATE_DEF)) _dynBlockers.push(_foundryEntryBox);
+    if (!G.worldState.boss2Defeated && !G.echoSession && syncGateBox(_foundryExitBox, FOUNDRY_EXIT_GATE_DEF)) _dynBlockers.push(_foundryExitBox);
     const walls = G.worldState.secretWalls;
     for (let i = 0; i < walls.length; i++) {
       if (!walls[i].broken) _dynBlockers.push(walls[i]);

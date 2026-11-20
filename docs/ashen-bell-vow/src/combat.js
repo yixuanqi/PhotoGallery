@@ -1,11 +1,11 @@
 // Combat resolution: 3-tier parry, posture break, executions, active hitboxes & pickups
 import {
-  COLORS, GRAPPLE_ANCHORS, PENDULUMS, VOID_BARRIERS, ABYSSAL_RIVERS, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, ENEMY_ECHO_REWARDS
+  COLORS, GRAPPLE_ANCHORS, PENDULUMS, VOID_BARRIERS, ABYSSAL_RIVERS, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, FIRST_BELL_CORE_POS, ENEMY_ECHO_REWARDS
 } from './config.js';
 import {
   G, hooks, getLivingFoes, getAwakeBoss, isWorldPosExplored, getRelicStats, getBladeDamageMult, getSmithPostureMult,
   getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks,
-  scheduleOutcome, addShake, kickCamera, punchZoom
+  scheduleOutcome, addShake, kickCamera, punchZoom, triggerBossBanner
 } from './state.js';
 import { getRoomAt } from './levelLoader.js';
 import { audio } from './audio.js';
@@ -101,6 +101,9 @@ function clearPriestWards() {
 export function damageEnemyHP(enemy, amount, showNum = true) {
   if (!enemy || !enemy.alive) return;
   let finalAmt = amount;
+  if (enemy.isBoss && enemy.state === 'phaseShift') {
+    finalAmt = Math.max(2, Math.round(amount * 0.35));
+  }
   if (enemy.wardShield > 0) {
     finalAmt = Math.max(2, Math.round(amount * 0.35));
     spawnParticles(enemy.x + enemy.w / 2, enemy.y + enemy.h * 0.45, 6, { color: COLORS.goldBright, speed: 140, spark: true, life: 0.25 });
@@ -124,7 +127,7 @@ export function damageEnemyHP(enemy, amount, showNum = true) {
 }
 
 export function addPostureToEnemy(enemy, amount) {
-  if (!enemy || !enemy.alive || enemy.state === 'stagger') return;
+  if (!enemy || !enemy.alive || enemy.state === 'stagger' || enemy.state === 'phaseShift') return;
   const chantBonus = (enemy.kind === 'priest' && enemy.state === 'chant') ? 1.5 : 1.0;
   const scaled = amount * getRelicStats().postureDmgMult * getSmithPostureMult() * chantBonus;
   enemy.posture = Math.min(enemy.maxPosture, enemy.posture + scaled);
@@ -166,6 +169,10 @@ export function killEnemy(enemy) {
         G.echoSession.stage = 1;
         spawnFloatText(enemy.x + enemy.w / 2, enemy.y - 44, '第一试已破 · 续赴沉渊铸钟殿！', COLORS.cyanBright, 22, 1.5);
         scheduleOutcome(hooks.advanceEchoRushStage2, 1250, true);
+      } else if (G.echoSession.mode === 'rush' && G.echoSession.stage === 1) {
+        G.echoSession.stage = 2;
+        spawnFloatText(enemy.x + enemy.w / 2, enemy.y - 44, '第二试已破 · 登临初钟圣心！', COLORS.goldBright, 22, 1.5);
+        scheduleOutcome(hooks.advanceEchoRushStage3, 1250, true);
       } else {
         scheduleOutcome(() => hooks.showVictory(enemy.id), 1100, true);
       }
@@ -185,8 +192,17 @@ export function killEnemy(enemy) {
         G.minimapDirty = true;
         hooks.saveProgress(false);
       }
-      spawnFloatText(enemy.x + enemy.w / 2, enemy.y - 44, '沉渊寂鸣 · 祭坛已开启「残誓回响」双钟终试！', COLORS.goldBright, 21, 2.2);
+      spawnFloatText(FOUNDRY_EXIT_GATE_DEF.x, FOUNDRY_EXIT_GATE_DEF.y - 34, '铸钟殿东门已开 · 直通初钟圣阶 →', COLORS.goldBright, 21, 2.2);
       scheduleOutcome(() => hooks.showVictory('boss_ji'), 1200, true);
+    } else if (enemy.id === 'boss_yuan') {
+      if (G.worldState) {
+        G.worldState.boss3Defeated = true;
+        G.minimapDirty = true;
+        hooks.saveProgress(true);
+      }
+      spawnShockwave(FIRST_BELL_CORE_POS.x, FIRST_BELL_CORE_POS.y - 54, 240, COLORS.goldBright, 5.2, 0.65);
+      triggerBossBanner('初钟圣骸 · 渊 已寂', '「初钟之心显化于殿堂中央 · 做出你的终誓抉择」', COLORS.goldBright, 3.2);
+      scheduleOutcome(() => hooks.openEndingChoice(), 2100, true);
     }
   }
 }
@@ -223,22 +239,29 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
       // Auto-face incoming attacker so follow-up [K -> J] Cross Counter always lands cleanly
       G.player.facing = -dir;
 
+      const isBossMultiHit = !!(attacker && attacker.isBoss && attacker.comboTotal > 1);
+      const isComboFinisher = isBossMultiHit && attacker.comboIdx >= attacker.comboTotal - 1;
+      const isRapidMidHit = isBossMultiHit && !isComboFinisher;
+
       audio.playParry(true, G.player.parryStreak);
-      triggerHaptic('parry', 0.9 + Math.min(0.45, (G.player.parryStreak - 1) * 0.12));
-      G.hitstopTimer = 0.062;
-      addShake(9 + Math.min(4, G.player.parryStreak));
-      kickCamera(dir * 9, -3);
-      punchZoom(1.042 + Math.min(0.018, (G.player.parryStreak - 1) * 0.005));
-      G.screenFlash = { alpha: 0.24, color: COLORS.goldBright };
+      if (isComboFinisher) audio.playFinisherDeflect();
+      triggerHaptic(isComboFinisher ? 'shieldBreak' : 'parry', isComboFinisher ? 1.15 : (0.9 + Math.min(0.45, (G.player.parryStreak - 1) * 0.12)));
+      // Snappy hitstop during rapid chain parries, thunderous impact on the final deflect
+      G.hitstopTimer = isComboFinisher ? 0.078 : (isRapidMidHit ? 0.048 : 0.062);
+      addShake(isComboFinisher ? 13 : (9 + Math.min(4, G.player.parryStreak)));
+      kickCamera(dir * (isComboFinisher ? 11 : 7), isComboFinisher ? -4 : -2.5);
+      punchZoom(isComboFinisher ? 1.056 : (1.040 + Math.min(0.016, (G.player.parryStreak - 1) * 0.004)));
+      G.screenFlash = { alpha: isComboFinisher ? 0.30 : 0.22, color: COLORS.goldBright };
       G.player.parryActive = false;
-      G.player.parryCooldown = 0.03;
-      G.player.riposteWindow = 0.56; // Opens K -> J Cross Counter Slash!
-      G.player.vx = dir * 135;
+      G.player.parryCooldown = isRapidMidHit ? 0.02 : 0.03;
+      G.player.riposteWindow = isComboFinisher ? 0.68 : 0.56; // Opens K -> J Cross Counter Slash!
+      // Tighter brace slide during multi-hit Boss combos keeps both fighters in sweet-spot range
+      G.player.vx = dir * (isBossMultiHit ? 92 : 135);
       G.player.squashX = 0.82;
       G.player.squashY = 1.22;
 
       if (G.player.seals < G.player.maxSeals) G.player.seals++;
-      G.player.soul = Math.min(G.player.maxSoul, G.player.soul + Math.round(28 * rs.soulGainMult));
+      G.player.soul = Math.min(G.player.maxSoul, G.player.soul + Math.round((isComboFinisher ? 36 : 28) * rs.soulGainMult));
       if (rs.parryHeal) {
         G.player.hp = Math.min(G.player.maxHp, G.player.hp + rs.parryHeal);
       }
@@ -247,8 +270,10 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
         if (attacker.kind === 'boss2') attacker.shieldUp = false;
       }
 
-      const posDmg = (attacker.isBoss ? 26 : 36) * rs.parryPostureMult;
+      const finisherBonus = isComboFinisher ? (attacker.comboTotal >= 5 ? 26 : 20) : 0;
+      const posDmg = ((attacker.isBoss ? 26 : 36) + finisherBonus) * rs.parryPostureMult;
       if (attacker.hp !== undefined) {
+        if (isComboFinisher) attacker.finisherParried = true;
         addPostureToEnemy(attacker, posDmg);
         if (rs.parryReflectDmg > 0) {
           damageEnemyHP(attacker, rs.parryReflectDmg, true);
@@ -262,9 +287,9 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
             attacker.stateTimer = 0.65;
             attacker.vx = -dir * 160;
           }
-        } else if (attacker.isBoss && (attacker.moveKind === 'chargeThrust' || attacker.moveKind === 'bellShieldCharge') && attacker.state !== 'stagger') {
+        } else if (attacker.isBoss && (attacker.moveKind === 'chargeThrust' || attacker.moveKind === 'bellShieldCharge' || attacker.moveKind === 'eclipseThrust' || attacker.moveKind === 'shadowCloneStrike') && attacker.state !== 'stagger') {
           attacker.state = 'recover';
-          attacker.stateTimer = 0.95;
+          attacker.stateTimer = 1.05;
           attacker.vx = -dir * 140;
           if (attacker.kind === 'boss2') {
             audio.playShieldBreak();
@@ -299,11 +324,13 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
         spawnFloatText(G.player.x + G.player.w / 2, G.player.y - 48, '羁绊 · 镜烬蓄印！下击附符', COLORS.crimsonBright, 17, 1.15);
       }
 
-      const label = G.player.parryStreak >= 4
-        ? `铁鸣连弹 ×${G.player.parryStreak}！`
-        : G.player.parryStreak >= 2
-          ? `连弹 ×${G.player.parryStreak}！`
-          : '精准弹反！';
+      const label = isComboFinisher
+        ? `绝响破势 ×${G.player.parryStreak}！`
+        : G.player.parryStreak >= 4
+          ? `铁鸣连弹 ×${G.player.parryStreak}！`
+          : G.player.parryStreak >= 2
+            ? `连弹 ×${G.player.parryStreak}！`
+            : '精准弹反！';
       spawnFloatText(G.player.x + G.player.w / 2, G.player.y - 26, label, COLORS.goldBright, G.player.parryStreak >= 2 ? 22 : 20, 0.85);
       return;
     } else if (G.player.parryElapsedMs <= rs.blockWindowMs) {
@@ -465,7 +492,7 @@ export function performExecution(target) {
   G.player.facing = target.x + target.w / 2 >= G.player.x + G.player.w / 2 ? 1 : -1;
   G.player.x = target.x + target.w / 2 - G.player.facing * 42 - G.player.w / 2;
 
-  const dmg = target.isBoss ? 128 : 999;
+  const dmg = target.isBoss ? Math.max(128, Math.round(target.maxHp * 0.18)) : 999;
   damageEnemyHP(target, dmg, true);
   target.posture = 0;
   if (target.alive) {
@@ -973,7 +1000,7 @@ export function tryQuellChapelTideByLantern(lantern, lx, ly) {
   const validLanterns = G.chapelTide.lanternIds || ['lan_4', 'lan_5'];
   if (!validLanterns.includes(lantern.id)) return;
   const owner = G.chapelTide.owner || G.boss;
-  const isFoundry = owner && owner.id === 'boss_ji';
+  const isFoundry = owner && (owner.id === 'boss_ji' || owner.id === 'boss_yuan');
   G.chapelTide = null;
   audio.playBellToll();
   G.hitstopTimer = Math.max(G.hitstopTimer, 0.06);
@@ -983,11 +1010,12 @@ export function tryQuellChapelTideByLantern(lantern, lx, ly) {
   spawnParticles(lx, ly, 28, { color: COLORS.goldBright, speed: 300, spark: true, life: 0.48 });
   spawnFloatText(lx, ly - 26, isFoundry ? '清钟破鸣!' : '清钟破潮!', COLORS.goldBright, 22, 1.25);
   if (owner && owner.alive) {
-    damageEnemyHP(owner, isFoundry ? 38 : 32, true);
-    addPostureToEnemy(owner, isFoundry ? 42 : 34);
-    if ((owner.moveKind === 'inkTide' || owner.moveKind === 'resonanceNova') && owner.state !== 'stagger') {
+    const isYuan = owner.id === 'boss_yuan';
+    damageEnemyHP(owner, isYuan ? 42 : isFoundry ? 38 : 32, true);
+    addPostureToEnemy(owner, isYuan ? 46 : isFoundry ? 42 : 34);
+    if ((owner.moveKind === 'inkTide' || owner.moveKind === 'resonanceNova' || owner.moveKind === 'eclipseTide') && owner.state !== 'stagger') {
       owner.state = 'recover';
-      owner.stateTimer = 1.1;
+      owner.stateTimer = isYuan ? 1.2 : 1.1;
     }
   }
 }
@@ -1296,6 +1324,14 @@ export function collectPickup(p) {
     const amt = Number(p.echoAmount) || 180;
     G.worldState.echoes = (G.worldState.echoes || 0) + amt;
     spawnFloatText(p.x, p.y - 54, `${p.name} · +${amt} 残响！`, COLORS.goldBright, 21, 1.9);
+  } else if (p.kind === 'keyItem') {
+    if (!G.worldState.keyItems) G.worldState.keyItems = { dawnSigil: false };
+    G.worldState.keyItems[p.keyId] = true;
+    audio.playEndingChord(true, 0);
+    punchZoom(1.05);
+    spawnShockwave(p.x, p.y - 26, 175, COLORS.goldBright, 5.5, 0.55);
+    triggerBossBanner('获得 · 破晓初印', '「以此真印斩灭初钟，可令晦渊重见晨曦」', COLORS.goldBright, 3.0);
+    spawnFloatText(p.x, p.y - 58, `${p.name} · ${p.desc}`, COLORS.goldBright, 20, 2.3);
   } else if (p.kind === 'relic') {
     G.worldState.unlockedRelics.add(p.relicId);
     spawnFloatText(p.x, p.y - 54, `${p.name} · ${p.desc}`, COLORS.goldBright, 20, 1.95);

@@ -274,16 +274,19 @@ export class SoundEngine {
     osc.start(t); osc.stop(t + dur + 0.05);
   }
 
-  updateAmbience(dt, bossAwake, bossPhase2, inCombat = false, parryStreak = 0) {
+  updateAmbience(dt, bossAwake, bossPhase = 0, inCombat = false, parryStreak = 0) {
     if (!this.ctx || this.muted || !this.ambientStarted) return;
+    const pNum = typeof bossPhase === 'number' ? bossPhase : (bossPhase ? 2 : (bossAwake ? 1 : 0));
+    const bossPhase2 = pNum >= 2;
+    const bossPhase3 = pNum >= 3;
     if (this.windFilter) {
-      const targetFreq = bossPhase2 ? 150 : bossAwake ? 185 : 225;
+      const targetFreq = bossPhase3 ? 135 : bossPhase2 ? 150 : bossAwake ? 185 : 225;
       this.windFilter.frequency.setTargetAtTime(targetFreq, this.ctx.currentTime, 0.4);
     }
     if (bossPhase2) {
       this.heartbeatTimer -= dt;
       if (this.heartbeatTimer <= 0) {
-        this.heartbeatTimer = 0.88;
+        this.heartbeatTimer = bossPhase3 ? 0.72 : 0.88;
         this.playHeartbeat();
       }
     } else {
@@ -294,11 +297,11 @@ export class SoundEngine {
       }
     }
 
-    // Layered D-Phrygian Procedural Score
+    // Layered D-Phrygian Procedural Score (with Phase 3 Climax Tempo & Counter-Chime)
     if (!this.musicEnabled || !this.musicGain) return;
-    const layer = bossPhase2 ? 'boss2' : bossAwake ? 'boss1' : inCombat ? 'combat' : 'explore';
+    const layer = bossPhase3 ? 'boss3' : bossPhase2 ? 'boss2' : bossAwake ? 'boss1' : inCombat ? 'combat' : 'explore';
     this.musicLayer = layer;
-    const bpm = layer === 'boss2' ? 132 : layer === 'boss1' ? 114 : layer === 'combat' ? 98 : 72;
+    const bpm = layer === 'boss3' ? 142 : layer === 'boss2' ? 132 : layer === 'boss1' ? 114 : layer === 'combat' ? 98 : 72;
     const stepDur = 60 / bpm / 4; // 16th-note pulse
     this.musicAccum += dt;
     if (this.musicAccum < stepDur) return;
@@ -325,7 +328,8 @@ export class SoundEngine {
       if (pos === 0) this._playMusicChime(sc[bar === 0 ? 7 : 8], 0.10, 1.5);
     } else {
       // Boss 1 & Boss 2 driving Phrygian duel
-      const isP2 = layer === 'boss2';
+      const isP2 = layer === 'boss2' || layer === 'boss3';
+      const isP3 = layer === 'boss3';
       if (pos === 0 || pos === 3 || pos === 6 || pos === 10 || (isP2 && pos === 14)) {
         this._playMusicDrum(pos === 0 || pos === 10, false);
       }
@@ -343,6 +347,9 @@ export class SoundEngine {
       if (pos === 0 || (isP2 && pos === 8)) {
         const chimeIdx = (bar === 0 ? 7 : 8) + (isP2 && pos === 8 ? 4 : 0);
         this._playMusicChime(sc[Math.min(sc.length - 1, chimeIdx)], isP2 ? 0.14 : 0.11, 1.35);
+      }
+      if (isP3 && (pos === 4 || pos === 12)) {
+        this._playMusicChime(sc[bar === 0 ? 11 : 13], 0.11, 0.85);
       }
       // Parry streak high harmonic shimmer
       if (parryStreak >= 3 && pos % 4 === 2) {
@@ -489,6 +496,39 @@ export class SoundEngine {
       n.connect(bp); bp.connect(ng); ng.connect(this.sfxOut);
       n.start(t); n.stop(t + 0.09);
     }
+  }
+
+  playGlintCue(delayed = false) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const freqs = delayed ? [1174.66, 1760.0, 2637.0] : [1567.98, 2349.32];
+    freqs.forEach((f, i) => {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = i === 0 ? 'triangle' : 'sine';
+      osc.frequency.setValueAtTime(f, t + i * 0.015);
+      osc.frequency.exponentialRampToValueAtTime(f * (delayed ? 1.06 : 0.94), t + (delayed ? 0.16 : 0.10));
+      g.gain.setValueAtTime((delayed ? 0.095 : 0.075) / (i + 1), t + i * 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0006, t + (delayed ? 0.18 : 0.11));
+      osc.connect(g); g.connect(this.sfxOut);
+      osc.start(t + i * 0.015); osc.stop(t + (delayed ? 0.20 : 0.13));
+    });
+  }
+
+  playFinisherDeflect() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    [587.33, 880.0, 1318.5, 2093.0, 3135.96].forEach((f, i) => {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = i % 2 === 0 ? 'triangle' : 'sine';
+      osc.frequency.setValueAtTime(f, t);
+      osc.frequency.exponentialRampToValueAtTime(f * 0.985, t + 0.65);
+      g.gain.setValueAtTime(0.18 / (i * 0.55 + 1), t);
+      g.gain.exponentialRampToValueAtTime(0.0007, t + 0.68);
+      osc.connect(g); g.connect(this.sfxOut);
+      osc.start(t); osc.stop(t + 0.7);
+    });
   }
 
   playDangerAlert() {
@@ -912,6 +952,51 @@ export class SoundEngine {
       g.gain.exponentialRampToValueAtTime(0.0008, t + i * 0.055 + 0.55);
       osc.connect(g); g.connect(this.sfxOut);
       osc.start(t + i * 0.055); osc.stop(t + i * 0.055 + 0.58);
+    });
+  }
+
+  playShadowBlink() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    [987.77, 1479.98, 440].forEach((f, i) => {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = i === 0 ? 'triangle' : 'sine';
+      osc.frequency.setValueAtTime(f, t + i * 0.03);
+      osc.frequency.exponentialRampToValueAtTime(f * 0.76, t + i * 0.03 + 0.24);
+      g.gain.setValueAtTime(0.11 / (i + 1), t + i * 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0008, t + i * 0.03 + 0.26);
+      osc.connect(g); g.connect(this.sfxOut);
+      osc.start(t + i * 0.03); osc.stop(t + i * 0.03 + 0.28);
+    });
+  }
+
+  playEndingChord(isTrueEnding = false, step = 0) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const dawnChords = [
+      [146.83, 220.00, 293.66, 369.99],
+      [196.00, 246.94, 369.99, 440.00],
+      [220.00, 277.18, 329.63, 554.37],
+      [146.83, 293.66, 369.99, 587.33, 739.99]
+    ];
+    const vowChords = [
+      [146.83, 174.61, 220.00, 293.66],
+      [130.81, 155.56, 233.08, 311.13],
+      [116.54, 174.61, 220.00, 349.23],
+      [146.83, 220.00, 293.66, 440.00]
+    ];
+    const chord = (isTrueEnding ? dawnChords : vowChords)[step % 4];
+    chord.forEach((f, i) => {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = i === 0 ? 'triangle' : 'sine';
+      osc.frequency.setValueAtTime(f, t + i * 0.09);
+      g.gain.setValueAtTime(0.0005, t + i * 0.09);
+      g.gain.linearRampToValueAtTime((isTrueEnding ? 0.14 : 0.12) / (i * 0.35 + 1), t + i * 0.09 + 0.18);
+      g.gain.exponentialRampToValueAtTime(0.0006, t + i * 0.09 + 3.2);
+      osc.connect(g); g.connect(this.sfxOut);
+      osc.start(t + i * 0.09); osc.stop(t + i * 0.09 + 3.3);
     });
   }
 

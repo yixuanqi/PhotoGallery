@@ -6,8 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="screen-orientation" content="landscape" />
 <meta name="x5-orientation" content="landscape" />
-<title>灰钟残誓 v16.0 — 里程碑A：魂系残响灯影跑尸 · 绝技幽影穿身 · 老图回溯暗室</title>
-<link rel="stylesheet" href="./styles.css?v=16.0" />
+<title>灰钟残誓 v17.3 — 钩索与动态光影零卡顿优化 · 终章完整闭环</title>
+<link rel="stylesheet" href="./styles.css?v=17.3" />
 </head>
 <body>
 <div id="game-root">
@@ -22,6 +22,7 @@
           <div style="display:flex;gap:5px;align-items:center;">
             <span id="ability-tag" class="ability-badge" title="已习得墨翼步：空中可再按 Space 二段跳">墨翼步</span>
             <span id="ability-shade-tag" class="ability-badge shade" title="已习得幽影穿身：按 Shift 穿透暗蚀结界与敌人并触发残爆">幽影穿身</span>
+            <span id="key-dawn-tag" class="ability-badge dawn" title="持有真结局关键信物「破晓初印」：斩落初钟圣骸后可开启真结局「破晓熄钟」">破晓初印</span>
             <span id="relic-tag" class="relic-badge">噬痛荆棘</span>
           </div>
         </div>
@@ -302,6 +303,52 @@
     </div>
   </div>
 
+  <!-- Finale Choice Modal (Heart of the First Bell) -->
+  <div id="ending-choice-modal" class="overlay-screen hidden">
+    <div class="modal-card" style="width: min(660px, 94%);">
+      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="ending-choice">✕ 暂缓抉择</button></div>
+      <div class="modal-title" style="color: var(--gold-bright); letter-spacing: 6px;">初 钟 之 心 · 终 誓 抉 择</div>
+      <div class="modal-sub">初钟圣骸 · 渊 已被斩落 · 晦渊的永夜或晨曦悬于你的一念之间</div>
+      <div class="ending-choice-grid">
+        <button id="btn-ending-vow" type="button" class="ending-card">
+          <div class="ending-card-tag">普通结局 A</div>
+          <div class="ending-card-title">续 鸣 残 誓</div>
+          <div class="ending-card-desc">拾起断钟杵，以己身提灯魂火续接永夜初钟。墨蚀暂退，而你将取代渊，成为下一代沉默的守誓者。</div>
+        </button>
+        <button id="btn-ending-dawn" type="button" class="ending-card dawn">
+          <div class="ending-card-tag" id="ending-dawn-tag">真结局 B · 需破晓初印</div>
+          <div class="ending-card-title">破 晓 熄 钟</div>
+          <div class="ending-card-desc" id="ending-dawn-desc">以「破晓初印」共鸣断刃，一剑斩碎千年初钟本体，令漫天墨蚀化作晨雾消散，终结永夜轮回。</div>
+        </button>
+      </div>
+      <div class="modal-btn-row">
+        <button id="btn-ending-defer" type="button" class="primary-btn" style="border-color:rgba(216,207,184,0.48);color:var(--parchment);">暂缓抉择 · 继续探索</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4-Act Hand-Drawn Ink Ending Cinematic & Epilogue Modal -->
+  <div id="ending-cinematic-modal" class="overlay-screen hidden">
+    <div class="modal-card ending-cinema-card">
+      <div id="ending-cinema-header" class="modal-title" style="letter-spacing: 7px;">续 鸣 残 誓</div>
+      <div id="ending-cinema-sub" class="modal-sub">终章演出 · 第一幕</div>
+      <div class="ending-canvas-wrap">
+        <canvas id="endingCanvas" width="600" height="268"></canvas>
+      </div>
+      <div id="ending-act-text" class="lore-text ending-caption"></div>
+      <div id="ending-epilogue-stats" class="lore-text" style="display:none;border-left-color:var(--gold-bright);text-align:center;white-space:pre-line;"></div>
+      <div id="ending-act-controls" class="modal-btn-row">
+        <button id="btn-ending-next" type="button" class="primary-btn">下一幕 →</button>
+        <button id="btn-ending-skip" type="button" class="hud-btn" style="padding:10px 16px;">跳过演出</button>
+      </div>
+      <div id="ending-epilogue-controls" class="modal-btn-row" style="display:none;">
+        <button id="btn-ending-to-altar" type="button" class="primary-btn" style="border-color:var(--cyan-bright);color:var(--cyan-bright);">返回祭坛 · 挑战三钟终试</button>
+        <button id="btn-ending-keep-roam" type="button" class="primary-btn">重返圣心 · 继续探索</button>
+        <button id="btn-ending-new-run" type="button" class="hud-btn" style="padding:10px 16px;">重开新周目</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Mobile Landscape Touch Controls: Left 360° Joystick + Right 4-Button Fan -->
   <div id="touch-controls">
     <!-- Bottom-Left Virtual Joystick -->
@@ -412,6 +459,6 @@
   }, 8000);
 })();
 </script>
-<script type="module" src="./src/main.js?v=16.0"></script>
+<script type="module" src="./src/main.js?v=17.3"></script>
 </body>
 </html>

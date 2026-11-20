@@ -1,7 +1,7 @@
 // HUD synchronization, parchment map rendering, modals, altar/relics & Vow Echoes flow
 import {
   COLORS, RELICS, RELIC_SYNERGIES, SMITH_UPGRADES, ACTION_META, ROOMS, SOLIDS, ALTARS, NPCS, LORE_TABLETS, PICKUPS_DEF,
-  SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, VOID_BARRIERS,
+  SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, FIRST_BELL_CORE_POS, VOID_BARRIERS,
   ABYSSAL_RIVERS, WORLD_W, WORLD_H, FLOOR_Y, WELL_BOTTOM_Y,
   MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H, ECHO_GRADE_ORDER
 } from './config.js';
@@ -10,7 +10,7 @@ import {
   G, createFreshWorldState, getActiveAltar, getActiveSynergies, getRelicStats, getEquippedRelicLabel,
   getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks, getPlayerMaxSeals,
   markMapExplored, getExplorationPercent, createLanterns,
-  createResonancePuzzles, createCrumblePlatforms, getAwakeBoss, clearOutcomeTimer
+  createResonancePuzzles, createCrumblePlatforms, getAwakeBoss, clearOutcomeTimer, triggerBossBanner
 } from './state.js';
 import { audio } from './audio.js';
 import {
@@ -18,7 +18,7 @@ import {
 } from './input.js';
 import { isPickupUnlocked } from './combat.js';
 import { spawnParticles, spawnShockwave, spawnFloatText } from './vfx.js';
-import { createPlayer, createSentinels, createBoss, createBoss2 } from './entities.js';
+import { createPlayer, createSentinels, createBoss, createBoss2, createBoss3 } from './entities.js';
 import { readSaveData, listSaveSlots, deleteSaveSlot, saveProgress, applySaveData, saveUserSettings } from './save.js';
 import { t, getLocale } from './i18n.js';
 
@@ -29,6 +29,7 @@ export const HUD_DOM = {
   relicTag: document.getElementById('relic-tag'),
   abilityTag: document.getElementById('ability-tag'),
   abilityShadeTag: document.getElementById('ability-shade-tag'),
+  keyDawnTag: document.getElementById('key-dawn-tag'),
   soulFill: document.getElementById('soul-fill'),
   soulText: document.getElementById('soul-text'),
   flaskWrap: document.getElementById('flask-pips'),
@@ -78,8 +79,9 @@ export function refreshTitleSaveUI() {
       if (item.data) {
         const altar = ALTARS.find(a => a.id === item.data.activeAltarId) || ALTARS[0];
         const pct = typeof item.data.explorePct === 'number' ? item.data.explorePct : 0;
-        const bossCnt = (item.data.bossDefeated ? 1 : 0) + (item.data.boss2Defeated ? 1 : 0);
-        meta.textContent = t('slot.summary', altar ? altar.shortName : 'Sanctuary', pct, bossCnt);
+        const bossCnt = (item.data.bossDefeated ? 1 : 0) + (item.data.boss2Defeated ? 1 : 0) + (item.data.boss3Defeated ? 1 : 0);
+        const endCnt = Array.isArray(item.data.endingsUnlocked) ? item.data.endingsUnlocked.length : 0;
+        meta.textContent = t('slot.summary', altar ? altar.shortName : 'Sanctuary', pct, bossCnt) + (endCnt > 0 ? ` · 结局 ${endCnt}/2` : '');
       } else {
         meta.textContent = t('slot.emptyDesc');
       }
@@ -116,8 +118,10 @@ export function refreshTitleSaveUI() {
     const altar = ALTARS.find(a => a.id === data.activeAltarId) || ALTARS[0];
     const pct = typeof data.explorePct === 'number' ? data.explorePct : 0;
     const relicCount = Array.isArray(data.unlockedRelics) ? data.unlockedRelics.length : 3;
-    const bossTag = data.boss2Defeated ? ' · 2/2 Bosses' : data.bossDefeated ? ' · 1/2 Bosses' : '';
-    const wingTag = (data.abilities && data.abilities.doubleJump ? ' · 墨翼步' : '') + (data.abilities && data.abilities.shadeDash ? ' · 幽影穿身' : '');
+    const bCnt = (data.bossDefeated ? 1 : 0) + (data.boss2Defeated ? 1 : 0) + (data.boss3Defeated ? 1 : 0);
+    const eCnt = Array.isArray(data.endingsUnlocked) ? data.endingsUnlocked.length : 0;
+    const bossTag = bCnt > 0 ? ` · 首领 ${bCnt}/3` : '';
+    const wingTag = (data.abilities && data.abilities.doubleJump ? ' · 墨翼步' : '') + (data.abilities && data.abilities.shadeDash ? ' · 幽影穿身' : '') + (eCnt > 0 ? ` · 结局 ${eCnt}/2` : '');
     HUD_DOM.titleSaveInfo.textContent = t('slot.selectedInfo', G.activeSaveSlot + 1, altar.shortName, pct, relicCount, RELICS.length, bossTag, wingTag);
     HUD_DOM.titleSaveInfo.style.display = 'block';
     HUD_DOM.btnContinue.style.display = 'inline-block';
@@ -154,6 +158,7 @@ export function syncHUD(force = false) {
   const hpTextStr = `${Math.ceil(G.player.hp)} / ${G.player.maxHp}` + (G.player.grayHp >= 1 ? ` (+${Math.ceil(G.player.grayHp)} 内伤)` : '');
   const hasDoubleJump = !!(G.worldState && G.worldState.abilities.doubleJump);
   const hasShadeDash = !!(G.worldState && G.worldState.abilities.shadeDash);
+  const hasDawnSigil = !!(G.worldState && G.worldState.keyItems && G.worldState.keyItems.dawnSigil);
 
   if (force || hudCache.realPctStr !== realPctStr) {
     hudCache.realPctStr = realPctStr;
@@ -182,6 +187,10 @@ export function syncHUD(force = false) {
   if (HUD_DOM.abilityShadeTag && (force || hudCache.hasShadeDash !== hasShadeDash)) {
     hudCache.hasShadeDash = hasShadeDash;
     HUD_DOM.abilityShadeTag.classList.toggle('unlocked', hasShadeDash);
+  }
+  if (HUD_DOM.keyDawnTag && (force || hudCache.hasDawnSigil !== hasDawnSigil)) {
+    hudCache.hasDawnSigil = hasDawnSigil;
+    HUD_DOM.keyDawnTag.classList.toggle('unlocked', hasDawnSigil);
   }
 
   const soulPctStr = Math.max(0, Math.min(100, (G.player.soul / G.player.maxSoul) * 100)).toFixed(1) + '%';
@@ -242,8 +251,8 @@ export function syncHUD(force = false) {
   if (curRoom) G.currentRoomId = curRoom.id;
   if (G.echoSession) {
     const echoName = G.echoSession.mode === 'rush'
-      ? (G.echoSession.stage === 0 ? '双钟连战 (1/2 · 晦)' : '双钟连战 (2/2 · 寂)')
-      : G.echoSession.mode === 'ji' ? '残誓回响 · 沉渊铸钟师' : '残誓回响 · 断钟骑士';
+      ? (G.echoSession.stage === 0 ? '三钟终试 (1/3 · 晦)' : G.echoSession.stage === 1 ? '三钟终试 (2/3 · 寂)' : '三钟终试 (3/3 · 渊)')
+      : G.echoSession.mode === 'yuan' ? '残誓回响 · 初钟圣骸' : G.echoSession.mode === 'ji' ? '残誓回响 · 沉渊铸钟师' : '残誓回响 · 断钟骑士';
     zoneText = echoName;
   } else {
     zoneText = getZoneLabelAt(G.player.x + G.player.w / 2, G.player.y + G.player.h / 2);
@@ -260,7 +269,8 @@ export function syncHUD(force = false) {
     HUD_DOM.explorePct.textContent = exploreText;
   }
 
-  if (force || G.minimapDirty || (G.globalTime - G.lastMinimapRenderTime >= 0.083)) {
+  const miniElapsed = G.globalTime - G.lastMinimapRenderTime;
+  if (force || (miniElapsed >= 0.11 && (G.minimapDirty || miniElapsed >= 0.14))) {
     renderParchmentMap(HUD_DOM.minimapCanvas, false);
     G.minimapDirty = false;
     G.lastMinimapRenderTime = G.globalTime;
@@ -279,7 +289,7 @@ export function syncHUD(force = false) {
     const bossNameStr = G.echoSession ? `${activeBoss.name} · 回响` : activeBoss.name;
     const bossHpStr = `${Math.max(0, activeBoss.hp / activeBoss.maxHp * 100).toFixed(1)}%`;
     const bossPosStr = `${Math.max(0, activeBoss.posture / activeBoss.maxPosture * 100).toFixed(1)}%`;
-    const bossPhaseStr = activeBoss.phase === 2 ? activeBoss.phase2Title : activeBoss.phase1Title;
+    const bossPhaseStr = activeBoss.phase === 3 ? (activeBoss.phase3Title || activeBoss.phase2Title) : activeBoss.phase === 2 ? activeBoss.phase2Title : activeBoss.phase1Title;
     if (force || hudCache.bossNameStr !== bossNameStr) {
       hudCache.bossNameStr = bossNameStr;
       HUD_DOM.bossNameLabel.textContent = bossNameStr;
@@ -324,7 +334,11 @@ export function syncHUD(force = false) {
       if (G.gameState === 'playing' && G.player.hp > 0) {
         const px = G.player.x + G.player.w / 2;
         const py = G.player.y + G.player.h;
-        for (const altar of ALTARS) {
+        if (G.worldState && G.worldState.boss3Defeated && !G.echoSession &&
+            Math.hypot(px - FIRST_BELL_CORE_POS.x, py - FIRST_BELL_CORE_POS.y) < 105) {
+          interactLabel = '触碰 · 初钟之心';
+        }
+        if (!interactLabel) for (const altar of ALTARS) {
           if (Math.hypot(px - altar.x, py - altar.y) < 86) {
             const lit = !G.worldState || G.worldState.litAltars.has(altar.id);
             interactLabel = lit ? '歇息 · 祭坛' : '点燃祭坛';
@@ -436,14 +450,19 @@ export function renderParchmentMap(targetCanvas, detailed = false) {
     mctx.setLineDash([]);
   }
 
-  // 2D Explored Grid Backdrop
-  const cw = MAP_CELL_W * sx + 0.6;
+  // 2D Explored Grid Backdrop (horizontal span-merged)
+  const cellPxW = MAP_CELL_W * sx;
   const ch = MAP_CELL_H * sy + 0.6;
+  mctx.fillStyle = detailed ? 'rgba(216, 207, 184, 0.08)' : 'rgba(216, 207, 184, 0.11)';
   for (let r = 0; r < MAP_ROWS; r++) {
-    for (let c = 0; c < MAP_COLS; c++) {
-      if (!G.worldState.explored[r][c]) continue;
-      mctx.fillStyle = detailed ? 'rgba(216, 207, 184, 0.08)' : 'rgba(216, 207, 184, 0.11)';
-      mctx.fillRect(padX + c * MAP_CELL_W * sx, padTop + r * MAP_CELL_H * sy, cw, ch);
+    const row = G.worldState.explored[r];
+    const ry = padTop + r * MAP_CELL_H * sy;
+    let c = 0;
+    while (c < MAP_COLS) {
+      if (!row[c]) { c++; continue; }
+      const start = c;
+      while (c < MAP_COLS && row[c]) c++;
+      mctx.fillRect(padX + start * cellPxW, ry, (c - start) * cellPxW + 0.6, ch);
     }
   }
 
@@ -550,6 +569,14 @@ export function renderParchmentMap(targetCanvas, detailed = false) {
   mctx.arc(bx, by, detailed ? 5 : 2.8, 0, Math.PI * 2);
   mctx.fill();
 
+  // Foundry Exit Gate
+  if (FOUNDRY_EXIT_GATE_DEF.w > 0) {
+    const gx4 = padX + FOUNDRY_EXIT_GATE_DEF.x * sx;
+    const gy4 = padTop + FOUNDRY_EXIT_GATE_DEF.y * sy;
+    mctx.fillStyle = G.worldState.boss2Defeated ? 'rgba(245, 158, 11, 0.35)' : COLORS.crimsonBright;
+    mctx.fillRect(gx4, gy4, Math.max(2.5, FOUNDRY_EXIT_GATE_DEF.w * sx), Math.max(4, FOUNDRY_EXIT_GATE_DEF.h * sy * (G.worldState.boss2Defeated ? 0.25 : 1)));
+  }
+
   // Boss 2 Abyssal Foundry Marker
   const bx2 = padX + 6140 * sx;
   const by2 = padTop + (WELL_BOTTOM_Y - 110) * sy;
@@ -558,12 +585,25 @@ export function renderParchmentMap(targetCanvas, detailed = false) {
   mctx.arc(bx2, by2, detailed ? 5 : 2.8, 0, Math.PI * 2);
   mctx.fill();
 
-  // 2D Fog of War mask over unexplored grid cells
+  // Boss 3 Heart of the First Bell Marker
+  const bx3 = padX + 9000 * sx;
+  const by3 = padTop + (FLOOR_Y - 58) * sy;
+  mctx.fillStyle = G.worldState.boss3Defeated ? COLORS.goldBright : COLORS.crimsonBright;
+  mctx.beginPath();
+  mctx.arc(bx3, by3, detailed ? 5.5 : 3.0, 0, Math.PI * 2);
+  mctx.fill();
+
+  // 2D Fog of War mask over unexplored grid cells (horizontal span-merged)
+  mctx.fillStyle = detailed ? 'rgba(9, 8, 7, 0.9)' : 'rgba(6, 8, 13, 0.92)';
   for (let r = 0; r < MAP_ROWS; r++) {
-    for (let c = 0; c < MAP_COLS; c++) {
-      if (G.worldState.explored[r][c]) continue;
-      mctx.fillStyle = detailed ? 'rgba(9, 8, 7, 0.9)' : 'rgba(6, 8, 13, 0.92)';
-      mctx.fillRect(padX + c * MAP_CELL_W * sx, padTop + r * MAP_CELL_H * sy, cw, ch);
+    const row = G.worldState.explored[r];
+    const ry = padTop + r * MAP_CELL_H * sy;
+    let c = 0;
+    while (c < MAP_COLS) {
+      if (row[c]) { c++; continue; }
+      const start = c;
+      while (c < MAP_COLS && !row[c]) c++;
+      mctx.fillRect(padX + start * cellPxW, ry, (c - start) * cellPxW + 0.6, ch);
     }
   }
 
@@ -629,8 +669,13 @@ export function renderSmithModal() {
   const dlg = document.getElementById('smith-dialogue');
   if (dlg) {
     const u = G.worldState.smithUpgrades;
-    if (G.worldState.boss2Defeated) {
-      dlg.innerHTML = '“连沉渊炉底的寂鸣都归于静默了……你手中这柄断刃，已比昔日任何一口青铜圣钟都更清越。若想精进技艺，不妨在祭坛重召双钟回响。”';
+    if (G.worldState.boss3Defeated) {
+      const endCnt = (G.worldState.endingsUnlocked || []).length;
+      dlg.innerHTML = endCnt >= 2
+        ? '“我听见清晨的风吹过回廊了……人偶，你已看尽永夜与破晓。老朽这方铁砧，终能随你一同安歇。”'
+        : '“初钟圣骸终于停鸣……你随时可以重返东侧初钟圣心，或在祭坛重召「三钟终试」锤炼剑心。”';
+    } else if (G.worldState.boss2Defeated) {
+      dlg.innerHTML = '“连沉渊炉底的寂鸣都归于静默了……铸钟殿东门已开，顺着<strong>「初钟圣阶」</strong>一路登顶，便能直面初钟圣骸·渊。若你已在残钟地窖习得<strong>幽影穿身</strong>，切记探查圣阶中层的暗蚀结界！”';
     } else if (G.worldState.abilities.doubleJump) {
       dlg.innerHTML = '“我听见你衣袂间多了一缕墨翼风声。沉渊钟井西侧的<strong>井中悬坛背后</strong>，曾有一道我亲手封死的<strong>残钟地窖</strong>——那里藏着大批古钟残响，亦能直通礼拜堂前。”';
     } else if (G.worldState.bossDefeated) {
@@ -1001,11 +1046,18 @@ export function renderRelicChoices() {
         sub: '沉渊铸钟殿 · 立体机动战'
       },
       {
+        mode: 'yuan',
+        title: '初钟圣骸 · 渊',
+        unlocked: !!(G.worldState && G.worldState.boss3Defeated),
+        lockHint: '击败初钟圣心最终首领后解锁',
+        sub: '初钟圣心 · 三幕终战'
+      },
+      {
         mode: 'rush',
-        title: '双钟连战 · 终试',
-        unlocked: !!(G.worldState && G.worldState.bossDefeated && G.worldState.boss2Defeated),
-        lockHint: '斩落双钟首领后开启终极连战',
-        sub: '晦 → 寂 连续讨伐'
+        title: '三钟终试 · 残誓全战',
+        unlocked: !!(G.worldState && G.worldState.bossDefeated && G.worldState.boss2Defeated && G.worldState.boss3Defeated),
+        lockHint: '斩落三位首领后开启三钟连战终试',
+        sub: '晦 → 寂 → 渊 三连讨伐'
       }
     ];
 
@@ -1049,7 +1101,7 @@ export function renderRelicChoices() {
 
 export function evaluateEchoGrade(mode, elapsedSec, dmgTaken) {
   if (dmgTaken === 0) return { code: 'S+', label: 'S+ · 无伤断誓' };
-  const targetSec = mode === 'rush' ? 155 : 78;
+  const targetSec = mode === 'rush' ? 235 : mode === 'yuan' ? 105 : 78;
   if (dmgTaken <= 30 && elapsedSec <= targetSec) return { code: 'S', label: 'S · 铁鸣宗师' };
   if (dmgTaken <= 80) return { code: 'A', label: 'A · 誓约克敌' };
   return { code: 'B', label: 'B · 浴墨胜出' };
@@ -1059,6 +1111,7 @@ export function setupEchoArena(stageBoss) {
   G.enemies = [];
   G.boss = createBoss();
   G.boss2 = createBoss2();
+  G.boss3 = createBoss3();
   G.lanterns = createLanterns();
   G.resonancePuzzles = createResonancePuzzles();
   G.crumblePlatforms = createCrumblePlatforms();
@@ -1081,19 +1134,32 @@ export function setupEchoArena(stageBoss) {
   if (stageBoss === 'hui') {
     G.boss.awake = true;
     G.boss2.alive = false;
+    G.boss3.alive = false;
     G.player = createPlayer(2780, FLOOR_Y - 54);
     G.cam = { x: Math.max(2620, Math.min(3780 - G.canvasW, 3100 - G.canvasW * 0.5)), y: 0, shake: 8, kickX: 0, kickY: 0, zoom: 1 };
-    spawnFloatText(G.boss.x + G.boss.w / 2, G.boss.y - 40, '「残誓回响 · 断钟骑士·晦」', COLORS.goldBright, 24, 1.8);
-  } else {
+    triggerBossBanner('残誓回响 · 断钟骑士 · 晦', '「重赴断钟礼拜堂 · 斩破旧日残影」', COLORS.parchment, 2.3);
+  } else if (stageBoss === 'ji') {
     G.boss.alive = false;
     G.boss2.awake = true;
+    G.boss3.alive = false;
     const keepFlasks = (G.echoSession && G.echoSession.mode === 'rush' && G.player) ? Math.min(getPlayerMaxFlasks(), G.player.flasks + 1) : getPlayerMaxFlasks();
-    const keepHp = (G.echoSession && G.echoSession.mode === 'rush' && G.player) ? Math.min(G.player.maxHp, Math.max(50, G.player.hp + 45)) : 100;
+    const keepHp = (G.echoSession && G.echoSession.mode === 'rush' && G.player) ? Math.min(G.player.maxHp, Math.max(55, G.player.hp + 45)) : getPlayerMaxHp();
     G.player = createPlayer(5710, WELL_BOTTOM_Y - 54);
     G.player.flasks = keepFlasks;
     G.player.hp = keepHp;
     G.cam = { x: Math.max(5556, Math.min(WORLD_W - G.canvasW, 6080 - G.canvasW * 0.5)), y: Math.max(780, WORLD_H - G.canvasH), shake: 8, kickX: 0, kickY: 0, zoom: 1 };
-    spawnFloatText(G.boss2.x + G.boss2.w / 2, G.boss2.y - 44, '「残誓回响 · 沉渊铸钟师·寂」', COLORS.goldBright, 24, 1.8);
+    triggerBossBanner('残誓回响 · 沉渊铸钟师 · 寂', '「重临沉渊铸钟殿 · 破除万钟共振」', COLORS.goldBright, 2.3);
+  } else {
+    G.boss.alive = false;
+    G.boss2.alive = false;
+    G.boss3.awake = true;
+    const keepFlasks = (G.echoSession && G.echoSession.mode === 'rush' && G.player) ? Math.min(getPlayerMaxFlasks(), G.player.flasks + 1) : getPlayerMaxFlasks();
+    const keepHp = (G.echoSession && G.echoSession.mode === 'rush' && G.player) ? Math.min(G.player.maxHp, Math.max(65, G.player.hp + 55)) : getPlayerMaxHp();
+    G.player = createPlayer(8480, FLOOR_Y - 54);
+    G.player.flasks = keepFlasks;
+    G.player.hp = keepHp;
+    G.cam = { x: Math.max(8350, Math.min(WORLD_W - G.canvasW, 8950 - G.canvasW * 0.5)), y: 0, shake: 10, kickX: 0, kickY: 0, zoom: 1 };
+    triggerBossBanner('残誓回响 · 初钟圣骸 · 渊', '「终极回响 · 于初钟圣心再决生死」', COLORS.goldBright, 2.5);
   }
   hideAllOverlays();
   G.minimapDirty = true;
@@ -1113,12 +1179,17 @@ export function startEchoChallenge(mode) {
     damageTaken: 0,
     returnAltarId: G.worldState ? G.worldState.activeAltarId : 'altar_start'
   };
-  setupEchoArena(mode === 'ji' ? 'ji' : 'hui');
+  setupEchoArena(mode === 'yuan' ? 'yuan' : mode === 'ji' ? 'ji' : 'hui');
 }
 
 export function advanceEchoRushStage2() {
   if (!G.echoSession || G.echoSession.mode !== 'rush') return;
   setupEchoArena('ji');
+}
+
+export function advanceEchoRushStage3() {
+  if (!G.echoSession || G.echoSession.mode !== 'rush') return;
+  setupEchoArena('yuan');
 }
 
 export function interactWithAltar(altar) {
@@ -1169,8 +1240,10 @@ export function restAtAltar() {
   G.enemies = createSentinels();
   G.boss = createBoss();
   G.boss2 = createBoss2();
+  G.boss3 = createBoss3();
   if (G.worldState && G.worldState.bossDefeated) G.boss.alive = false;
   if (G.worldState && G.worldState.boss2Defeated) G.boss2.alive = false;
+  if (G.worldState && G.worldState.boss3Defeated) G.boss3.alive = false;
   G.lanterns = createLanterns();
   G.resonancePuzzles = createResonancePuzzles();
   G.crumblePlatforms = createCrumblePlatforms();
@@ -1199,8 +1272,10 @@ export function respawnAtActiveAltar() {
   G.enemies = createSentinels();
   G.boss = createBoss();
   G.boss2 = createBoss2();
+  G.boss3 = createBoss3();
   if (G.worldState && G.worldState.bossDefeated) G.boss.alive = false;
   if (G.worldState && G.worldState.boss2Defeated) G.boss2.alive = false;
+  if (G.worldState && G.worldState.boss3Defeated) G.boss3.alive = false;
   G.lanterns = createLanterns();
   G.resonancePuzzles = createResonancePuzzles();
   G.crumblePlatforms = createCrumblePlatforms();
@@ -1278,7 +1353,7 @@ export function showVictory(bossId = 'boss_hui') {
     const grade = evaluateEchoGrade(mode, elapsed, G.echoSession.damageTaken);
     let recordNote = '';
     if (G.worldState) {
-      if (!G.worldState.echoRecords) G.worldState.echoRecords = { hui: null, ji: null, rush: null };
+      if (!G.worldState.echoRecords) G.worldState.echoRecords = { hui: null, ji: null, yuan: null, rush: null };
       const prev = G.worldState.echoRecords[mode];
       const isNewBestGrade = !prev || (ECHO_GRADE_ORDER[grade.code] > (ECHO_GRADE_ORDER[prev.bestGrade] || 0));
       const isNewBestTime = !prev || elapsed < prev.bestTimeSec;
@@ -1292,7 +1367,7 @@ export function showVictory(bossId = 'boss_hui') {
       saveProgress(false);
     }
     titleEl.textContent = '回 响 已 破';
-    const modeTitle = mode === 'rush' ? '双钟连战 · 残誓终试' : mode === 'ji' ? '沉渊铸钟师 · 寂' : '断钟骑士 · 晦';
+    const modeTitle = mode === 'rush' ? '三钟终试 · 晦→寂→渊' : mode === 'yuan' ? '初钟圣骸 · 渊' : mode === 'ji' ? '沉渊铸钟师 · 寂' : '断钟骑士 · 晦';
     subEl.textContent = `${modeTitle} · 评级【${grade.label}】`;
     statsEl.textContent =
       `回响评级：${grade.label}\n讨伐用时：${minutes}:${seconds}\n精准弹反：${G.echoSession.parries} 次\n成功处决：${G.echoSession.executions} 次\n承受伤害：${G.echoSession.damageTaken}${recordNote}`;
@@ -1305,12 +1380,12 @@ export function showVictory(bossId = 'boss_hui') {
     const minutes = Math.floor(elapsed / 60);
     const seconds = Math.floor(elapsed % 60).toString().padStart(2, '0');
     titleEl.textContent = '沉 渊 寂 鸣';
-    subEl.textContent = '沉渊铸钟师 · 寂 已被斩落 · 祭坛已解锁「双钟连战」与全部残誓回响';
+    subEl.textContent = '沉渊铸钟师 · 寂 已被斩落 · 铸钟殿东侧封门已开启，直通终章「初钟圣阶」';
     statsEl.textContent =
       `全境探索：${getExplorationPercent()}%\n本轮用时：${minutes}:${seconds}\n精准弹反：${G.stats.parries} 次\n成功处决：${G.stats.executions} 次\n承受伤害：${G.stats.damageTaken}`;
     btnEchoAgain.style.display = 'none';
     btnEnterWell.style.display = 'inline-block';
-    btnEnterWell.textContent = '返回祭坛 · 挑战回响';
+    btnEnterWell.textContent = '踏入初钟圣阶 →';
     btnPlayAgain.style.display = 'inline-block';
   } else {
     const elapsed = Math.max(0, (performance.now() - G.stats.startTime) / 1000);
@@ -1351,6 +1426,9 @@ export function startGame() {
   G.enemies = createSentinels();
   G.boss = createBoss();
   G.boss2 = createBoss2();
+  G.boss3 = createBoss3();
+  G.bossBanner = null;
+  G.endingState = null;
   G.lanterns = createLanterns();
   G.resonancePuzzles = createResonancePuzzles();
   G.crumblePlatforms = createCrumblePlatforms();
@@ -1387,7 +1465,7 @@ export function startGame() {
 }
 
 export function continueIntoBellWell() {
-  if (G.echoSession || (G.worldState && G.worldState.boss2Defeated && G.player && G.player.x > 5500)) {
+  if (G.echoSession) {
     respawnAtActiveAltar();
     return;
   }
@@ -1401,5 +1479,210 @@ export function continueIntoBellWell() {
   G.gameState = 'playing';
   audio.playBellToll();
   syncHUD(true);
-  spawnFloatText(G.player.x + G.player.w / 2, G.player.y - 34, '向右踏入沉渊钟井 →', COLORS.cyanBright, 20, 1.5);
+  const intoAscent = !!(G.player && G.player.x > 5500);
+  spawnFloatText(
+    G.player.x + G.player.w / 2,
+    G.player.y - 34,
+    intoAscent ? '向右踏入初钟圣阶 →' : '向右踏入沉渊钟井 →',
+    intoAscent ? COLORS.goldBright : COLORS.cyanBright,
+    20,
+    1.6
+  );
+}
+
+/* ==================== FINALE: DUAL ENDING CHOICE & 4-ACT HAND-DRAWN INK CINEMATIC ==================== */
+const ENDING_SCRIPTS = {
+  vow: {
+    title: '终局 A · 续 鸣 残 誓',
+    acts: [
+      { sub: '第一幕 · 寂静圣心', text: '初钟圣骸化作灰烬散去，穹顶那口布满裂纹的千年初钟却仍在颤鸣。若无人承接钟索，墨蚀将在子夜吞没整座圣城。' },
+      { sub: '第二幕 · 燃魂续钟', text: '残破人偶缓步跪坐于巨钟之下，将腰间幽蓝提灯按入裂隙——微弱却执拗的魂火顺着青铜纹路攀升，点燃了沉寂的钟心。' },
+      { sub: '第三幕 · 永夜退潮', text: '一声低沉悠远的钟鸣响彻晦渊。漫天墨雾应声退避三里，枯骨长廊与沉渊钟井重归冰冷而安宁的静默。' },
+      { sub: '终幕 · 新代守誓者', text: '骨面掩入阴影，断刃拄地而立。你成为了新的无名守誓者，在永夜深处静候下一个提灯踏阶而来的旅人。' }
+    ]
+  },
+  dawn: {
+    title: '真结局 B · 破 晓 熄 钟',
+    acts: [
+      { sub: '第一幕 · 破晓共鸣', text: '藏于圣阶密室的「破晓初印」在你掌心绽出炽烈金芒，与老铸钟匠亲手淬炼的断刃融为一体——不再续薪，而是终结。' },
+      { sub: '第二幕 · 一刃断渊', text: '居合起势，金弧横空！伴随清越至极的最后一声清鸣，悬于晦渊穹顶千年的初钟本体被一刃斩作两半，枷锁尽碎。' },
+      { sub: '第三幕 · 墨雾化曦', text: '失却了吸魂的源头，肆虐圣城的黑墨化作漫天金雾随风消散。第一缕久违的晨曦穿透云层，照亮了熄灯祭坛与老铸钟匠的铁砧。' },
+      { sub: '终幕 · 踏入晨风', text: '你轻轻摘下裂纹斑驳的骨瓷面具，放在寂静的拱门石阶之上。灰钟已熄，残誓已尽——前方的世界，终于迎来了黎明。' }
+    ]
+  }
+};
+
+export function openEndingChoice() {
+  clearOutcomeTimer();
+  const hasDawn = !!(G.worldState && G.worldState.keyItems && G.worldState.keyItems.dawnSigil);
+  const btnDawn = document.getElementById('btn-ending-dawn');
+  const tagDawn = document.getElementById('ending-dawn-tag');
+  const descDawn = document.getElementById('ending-dawn-desc');
+  if (btnDawn) btnDawn.disabled = !hasDawn;
+  if (tagDawn) tagDawn.textContent = hasDawn ? '真结局 B · 已携「破晓初印」' : '真结局 B · 未解锁（缺破晓初印）';
+  if (descDawn) {
+    descDawn.textContent = hasDawn
+      ? '以「破晓初印」共鸣断刃，一剑斩碎千年初钟本体，令漫天墨蚀化作晨雾消散，终结永夜轮回。'
+      : '需携带「破晓初印」方可开启。可先点击下方「暂缓抉择」，返回初钟圣阶中层西侧，以「幽影穿身」穿过暗蚀结界取得。';
+  }
+  openModal('ending-choice');
+}
+
+export function startEndingCinematic(type = 'vow') {
+  const key = type === 'dawn' ? 'dawn' : 'vow';
+  if (G.worldState) {
+    if (!Array.isArray(G.worldState.endingsUnlocked)) G.worldState.endingsUnlocked = [];
+    if (!G.worldState.endingsUnlocked.includes(key)) G.worldState.endingsUnlocked.push(key);
+    saveProgress(false);
+  }
+  G.endingState = { type: key, act: 0, t: 0, finished: false };
+  const script = ENDING_SCRIPTS[key];
+  document.getElementById('ending-cinema-header').textContent = script.title;
+  document.getElementById('ending-cinema-header').style.color = key === 'dawn' ? '#fef08a' : '#bae6fd';
+  document.getElementById('ending-act-text').style.display = 'block';
+  document.getElementById('ending-epilogue-stats').style.display = 'none';
+  document.getElementById('ending-act-controls').style.display = 'flex';
+  document.getElementById('ending-epilogue-controls').style.display = 'none';
+  syncEndingActUI();
+  openModal('ending-cinematic');
+  audio.playEndingChord(key === 'dawn', 0);
+}
+
+function syncEndingActUI() {
+  if (!G.endingState) return;
+  const script = ENDING_SCRIPTS[G.endingState.type];
+  const actObj = script.acts[G.endingState.act];
+  document.getElementById('ending-cinema-sub').textContent = `${actObj.sub} (${G.endingState.act + 1} / ${script.acts.length})`;
+  document.getElementById('ending-act-text').textContent = actObj.text;
+  document.getElementById('btn-ending-next').textContent = G.endingState.act >= script.acts.length - 1 ? '铭刻终誓战绩 →' : '下一幕 →';
+}
+
+export function advanceEndingCinematic(skipAll = false) {
+  if (!G.endingState) return;
+  const script = ENDING_SCRIPTS[G.endingState.type];
+  if (!skipAll && G.endingState.act < script.acts.length - 1) {
+    G.endingState.act++;
+    G.endingState.t = 0;
+    syncEndingActUI();
+    audio.playEndingChord(G.endingState.type === 'dawn', G.endingState.act);
+    return;
+  }
+  G.endingState.finished = true;
+  const isDawn = G.endingState.type === 'dawn';
+  const unlockedCount = G.worldState && Array.isArray(G.worldState.endingsUnlocked) ? G.worldState.endingsUnlocked.length : 1;
+  const relicCnt = G.worldState ? G.worldState.unlockedRelics.size : 3;
+  document.getElementById('ending-cinema-sub').textContent = isDawn
+    ? `灰钟已熄 · 真结局通关 · 已解锁结局 ${unlockedCount}/2`
+    : `残誓续鸣 · 终章通关 · 已解锁结局 ${unlockedCount}/2`;
+  document.getElementById('ending-act-text').style.display = 'none';
+  const stEl = document.getElementById('ending-epilogue-stats');
+  stEl.style.display = 'block';
+  stEl.textContent =
+    `达成结局：${script.title} (${unlockedCount}/2)\n` +
+    `晦渊全境探索：${getExplorationPercent()}% · 圣物收集：${relicCnt}/${RELICS.length}\n` +
+    `累计游玩：${formatPlayTime(G.playTimeSec)} · 精准弹反：${G.stats.parries} 次 · 处决：${G.stats.executions} 次\n` +
+    `★ 祭坛已解锁「初钟圣骸 · 渊」单挑回响与「三钟终试（晦→寂→渊）」！`;
+  document.getElementById('ending-act-controls').style.display = 'none';
+  document.getElementById('ending-epilogue-controls').style.display = 'flex';
+  audio.playEndingChord(isDawn, 3);
+}
+
+export function updateAndRenderEndingCinematic(dt) {
+  if (G.activeModal !== 'ending-cinematic' || !G.endingState) return;
+  const cvs = document.getElementById('endingCanvas');
+  if (!cvs) return;
+  const c = cvs.getContext('2d');
+  const w = cvs.width;
+  const h = cvs.height;
+  G.endingState.t += dt;
+  const t = G.endingState.t;
+  const act = G.endingState.act;
+  const isDawn = G.endingState.type === 'dawn';
+  c.clearRect(0, 0, w, h);
+
+  const bg = c.createLinearGradient(0, 0, 0, h);
+  if (isDawn && act >= 2) {
+    bg.addColorStop(0, act === 3 ? '#3b2638' : '#26182c');
+    bg.addColorStop(0.55, act === 3 ? '#c26d3a' : '#854d1e');
+    bg.addColorStop(1, act === 3 ? '#fef08a' : '#291a16');
+  } else if (isDawn) {
+    bg.addColorStop(0, '#160d18'); bg.addColorStop(0.6, '#361a1d'); bg.addColorStop(1, '#0b080d');
+  } else {
+    bg.addColorStop(0, '#070c18'); bg.addColorStop(0.6, '#142238'); bg.addColorStop(1, '#05080f');
+  }
+  c.fillStyle = bg;
+  c.fillRect(0, 0, w, h);
+
+  c.fillStyle = isDawn && act >= 3 ? '#2c201b' : '#0b0f18';
+  c.fillRect(0, h - 46, w, 46);
+  c.strokeStyle = isDawn && act >= 2 ? 'rgba(254, 240, 138, 0.55)' : 'rgba(216, 207, 184, 0.35)';
+  c.lineWidth = 1.6;
+  c.beginPath(); c.moveTo(0, h - 46); c.lineTo(w, h - 46); c.stroke();
+
+  const cx = w * 0.5;
+  if (!isDawn || act <= 1) {
+    const split = (isDawn && act === 1) ? Math.min(46, Math.max(0, (t - 0.55) * 65)) : 0;
+    [-1, 1].forEach(side => {
+      c.save();
+      c.translate(cx + side * split, 16 + split * 0.45);
+      c.rotate(side * split * 0.008);
+      c.fillStyle = '#15121a';
+      c.strokeStyle = isDawn ? '#fde047' : (act >= 1 ? '#38bdf8' : '#d8cfb8');
+      c.lineWidth = 2.2;
+      c.beginPath();
+      c.moveTo(0, 0); c.lineTo(side * 34, 0);
+      c.quadraticCurveTo(side * 76, 86, side * 98, 152);
+      c.lineTo(0, 152); c.closePath(); c.fill(); c.stroke();
+      c.restore();
+    });
+    if (isDawn && act === 1) {
+      const flashA = Math.max(0, 1 - Math.abs(t - 0.55) * 3.2);
+      c.strokeStyle = `rgba(254, 249, 195, ${Math.max(0.25, flashA).toFixed(2)})`;
+      c.lineWidth = 4 + flashA * 10;
+      c.beginPath(); c.moveTo(40, 118); c.lineTo(w - 40, 88); c.stroke();
+    } else if (!isDawn && act >= 2) {
+      for (let i = 0; i < 3; i++) {
+        const rr = ((t * 75 + i * 75) % 230) + 28;
+        c.strokeStyle = `rgba(56, 189, 248, ${(1 - rr / 260).toFixed(2)})`;
+        c.lineWidth = 2.2;
+        c.beginPath(); c.arc(cx, 115, rr, 0, Math.PI * 2); c.stroke();
+      }
+    }
+  } else {
+    const sunY = act === 3 ? 132 - Math.min(26, t * 8) : 168 - Math.min(34, t * 12);
+    const sg = c.createRadialGradient(cx, sunY, 10, cx, sunY, 195);
+    sg.addColorStop(0, 'rgba(254, 249, 195, 0.95)');
+    sg.addColorStop(0.42, 'rgba(245, 158, 11, 0.48)');
+    sg.addColorStop(1, 'transparent');
+    c.fillStyle = sg;
+    c.beginPath(); c.arc(cx, sunY, 195, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#fef9c3';
+    c.beginPath(); c.arc(cx, sunY, 28, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = 'rgba(30, 20, 18, 0.85)';
+    c.lineWidth = 18;
+    c.beginPath(); c.arc(cx, h - 44, 158, Math.PI, 0); c.stroke();
+  }
+
+  const px = isDawn && act === 3 ? cx + Math.min(95, t * 24) : cx;
+  const py = h - 46;
+  c.save();
+  c.translate(px, py);
+  c.fillStyle = '#0c101a';
+  c.strokeStyle = isDawn && act >= 2 ? '#fef08a' : '#d8cfb8';
+  c.lineWidth = 1.6;
+  const sway = Math.sin(t * 2.8) * 5;
+  c.beginPath();
+  c.moveTo(-14, 0); c.lineTo(-9, -38); c.lineTo(9, -38); c.lineTo(15 + sway * 0.4, 0); c.closePath();
+  c.fill(); c.stroke();
+  c.beginPath(); c.arc(0, -45, 8.5, 0, Math.PI * 2); c.fill(); c.stroke();
+  c.fillStyle = isDawn ? '#fde047' : '#38bdf8';
+  c.beginPath(); c.arc(isDawn ? 14 : 11, -24 - (act === 1 && !isDawn ? Math.min(48, t * 28) : 0), 4.5, 0, Math.PI * 2); c.fill();
+  c.restore();
+
+  for (let i = 0; i < 24; i++) {
+    const mx = ((i * 73 + t * (isDawn ? 26 : -18)) % (w + 40) + w + 40) % (w + 40) - 20;
+    const my = ((i * 41 - t * (isDawn ? 22 : 12)) % h + h) % h;
+    c.fillStyle = isDawn ? 'rgba(254, 240, 138, 0.58)' : 'rgba(186, 230, 253, 0.36)';
+    c.beginPath(); c.arc(mx, my, 1.5 + (i % 3) * 0.6, 0, Math.PI * 2); c.fill();
+  }
 }

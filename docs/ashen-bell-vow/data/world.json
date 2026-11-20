@@ -87,7 +87,8 @@
         "h": 740
       },
       "connections": [
-        "r04_bell_well"
+        "r04_bell_well",
+        "r07_ascent"
       ]
     },
     {
@@ -105,6 +106,39 @@
       "connections": [
         "r04_bell_well",
         "r02_corridor"
+      ]
+    },
+    {
+      "id": "r07_ascent",
+      "file": "./data/rooms/r07_ascent.json",
+      "zoneName": "初钟圣顶",
+      "name": "初钟圣阶",
+      "theme": "ascent",
+      "bounds": {
+        "x": 6740,
+        "y": 0,
+        "w": 1620,
+        "h": 1520
+      },
+      "connections": [
+        "r05_foundry",
+        "r08_heart"
+      ]
+    },
+    {
+      "id": "r08_heart",
+      "file": "./data/rooms/r08_heart.json",
+      "zoneName": "初钟圣顶",
+      "name": "初钟圣心",
+      "theme": "heart",
+      "bounds": {
+        "x": 8360,
+        "y": 0,
+        "w": 1320,
+        "h": 720
+      },
+      "connections": [
+        "r07_ascent"
       ]
     }
   ]

@@ -1,26 +1,20 @@
-// Real-time 2D lantern hard shadows & volumetric light shafts (blocked by stone geometry)
-import { SOLIDS, VOID_BARRIERS, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF } from './config.js';
+// Real-time 2D lantern hard shadows & volumetric light shafts (fixed-size offscreen buffers — zero GPU texture reallocation)
+import { SOLIDS, VOID_BARRIERS, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF } from './config.js';
 import { G } from './state.js';
 import { drawGlowSprite } from './vfx.js';
 
+const BUFFER_DIM = 224;
 const _lightCanvas = document.createElement('canvas');
+_lightCanvas.width = BUFFER_DIM;
+_lightCanvas.height = BUFFER_DIM;
 const _lightCtx = _lightCanvas.getContext('2d');
-const _shadowCanvas = document.createElement('canvas');
-const _shadowCtx = _shadowCanvas.getContext('2d');
-const _casterPool = [];
-const LIGHT_SCALE = 0.5;
 
-function ensureLightBuffers() {
-  const tw = Math.max(160, Math.round(G.canvasW * LIGHT_SCALE));
-  const th = Math.max(120, Math.round(G.canvasH * LIGHT_SCALE));
-  if (_lightCanvas.width !== tw || _lightCanvas.height !== th) {
-    _lightCanvas.width = tw;
-    _lightCanvas.height = th;
-    _shadowCanvas.width = tw;
-    _shadowCanvas.height = th;
-  }
-  return { tw, th };
-}
+const _shadowCanvas = document.createElement('canvas');
+_shadowCanvas.width = BUFFER_DIM;
+_shadowCanvas.height = BUFFER_DIM;
+const _shadowCtx = _shadowCanvas.getContext('2d');
+
+const _casterPool = [];
 
 function getPlayerLanternPos() {
   if (!G.player || G.player.hp <= 0) return null;
@@ -74,6 +68,9 @@ function collectShadowCasters(lx, ly, radius) {
     if (!G.worldState.abilities.doubleJump && !G.echoSession && FOUNDRY_ENTRY_GATE_DEF.w > 0) {
       pushRect(FOUNDRY_ENTRY_GATE_DEF.x, FOUNDRY_ENTRY_GATE_DEF.y, FOUNDRY_ENTRY_GATE_DEF.w, FOUNDRY_ENTRY_GATE_DEF.h);
     }
+    if (!G.worldState.boss2Defeated && !G.echoSession && FOUNDRY_EXIT_GATE_DEF.w > 0) {
+      pushRect(FOUNDRY_EXIT_GATE_DEF.x, FOUNDRY_EXIT_GATE_DEF.y, FOUNDRY_EXIT_GATE_DEF.w, FOUNDRY_EXIT_GATE_DEF.h);
+    }
   }
   for (let i = 0; i < VOID_BARRIERS.length; i++) {
     const vb = VOID_BARRIERS[i];
@@ -116,23 +113,27 @@ function traceExtrudedShadows(tctx, lx, ly, casters, extLen) {
 }
 
 export function drawLanternCastShadows(camOriginX, camOriginY) {
-  if (document.body.classList.contains('is-mobile')) return;
+  if (G.isMobile) return;
   const lp = getPlayerLanternPos();
   if (!lp) return;
-  const radius = 410;
+  const radius = 380;
   const casters = collectShadowCasters(lp.x, lp.y, radius);
   if (casters.length === 0) return;
 
-  const { tw, th } = ensureLightBuffers();
+  const dia = radius * 2;
+  const scale = BUFFER_DIM / dia;
+  const ox = lp.x - radius;
+  const oy = lp.y - radius;
+
   _shadowCtx.setTransform(1, 0, 0, 1, 0, 0);
   _shadowCtx.globalCompositeOperation = 'source-over';
-  _shadowCtx.clearRect(0, 0, tw, th);
+  _shadowCtx.clearRect(0, 0, BUFFER_DIM, BUFFER_DIM);
 
   _shadowCtx.save();
-  _shadowCtx.scale(LIGHT_SCALE, LIGHT_SCALE);
-  _shadowCtx.translate(-camOriginX, -camOriginY);
+  _shadowCtx.scale(scale, scale);
+  _shadowCtx.translate(-ox, -oy);
   _shadowCtx.fillStyle = '#020409';
-  traceExtrudedShadows(_shadowCtx, lp.x, lp.y, casters, 540);
+  traceExtrudedShadows(_shadowCtx, lp.x, lp.y, casters, radius + 140);
 
   _shadowCtx.globalCompositeOperation = 'destination-in';
   const fadeG = _shadowCtx.createRadialGradient(lp.x, lp.y, 24, lp.x, lp.y, radius);
@@ -140,25 +141,29 @@ export function drawLanternCastShadows(camOriginX, camOriginY) {
   fadeG.addColorStop(0.68, 'rgba(0,0,0,0.82)');
   fadeG.addColorStop(1, 'rgba(0,0,0,0)');
   _shadowCtx.fillStyle = fadeG;
-  _shadowCtx.fillRect(lp.x - radius, lp.y - radius, radius * 2, radius * 2);
+  _shadowCtx.fillRect(ox, oy, dia, dia);
   _shadowCtx.restore();
 
   G.ctx.save();
   G.ctx.globalAlpha = 0.44;
-  G.ctx.drawImage(_shadowCanvas, camOriginX, camOriginY, G.canvasW, G.canvasH);
+  G.ctx.drawImage(_shadowCanvas, ox, oy, dia, dia);
   G.ctx.restore();
 }
 
-function drawSingleVolumetricLight(camOriginX, camOriginY, lx, ly, radius, innerCol, midCol, alpha) {
-  const { tw, th } = ensureLightBuffers();
+function drawSingleVolumetricLight(lx, ly, radius, innerCol, midCol, alpha) {
+  const dia = radius * 2;
+  const scale = BUFFER_DIM / dia;
+  const ox = lx - radius;
+  const oy = ly - radius;
   const casters = collectShadowCasters(lx, ly, radius);
+
   _lightCtx.setTransform(1, 0, 0, 1, 0, 0);
   _lightCtx.globalCompositeOperation = 'source-over';
-  _lightCtx.clearRect(0, 0, tw, th);
+  _lightCtx.clearRect(0, 0, BUFFER_DIM, BUFFER_DIM);
 
   _lightCtx.save();
-  _lightCtx.scale(LIGHT_SCALE, LIGHT_SCALE);
-  _lightCtx.translate(-camOriginX, -camOriginY);
+  _lightCtx.scale(scale, scale);
+  _lightCtx.translate(-ox, -oy);
 
   const lg = _lightCtx.createRadialGradient(lx, ly, 8, lx, ly, radius);
   lg.addColorStop(0, innerCol);
@@ -172,20 +177,20 @@ function drawSingleVolumetricLight(camOriginX, camOriginY, lx, ly, radius, inner
   if (casters.length > 0) {
     _lightCtx.globalCompositeOperation = 'destination-out';
     _lightCtx.fillStyle = '#000';
-    traceExtrudedShadows(_lightCtx, lx, ly, casters, radius + 160);
+    traceExtrudedShadows(_lightCtx, lx, ly, casters, radius + 120);
   }
   _lightCtx.restore();
 
   G.ctx.save();
   G.ctx.globalCompositeOperation = 'lighter';
   G.ctx.globalAlpha = alpha;
-  G.ctx.drawImage(_lightCanvas, camOriginX, camOriginY, G.canvasW, G.canvasH);
+  G.ctx.drawImage(_lightCanvas, ox, oy, dia, dia);
   G.ctx.restore();
 }
 
 export function drawVolumetricLanternLights(camOriginX, camOriginY) {
   const lp = getPlayerLanternPos();
-  if (document.body.classList.contains('is-mobile')) {
+  if (G.isMobile) {
     if (lp) {
       const isGold = G.player.chargeReadyPlayed || G.player.riposteWindow > 0;
       drawGlowSprite(isGold ? 'gold' : 'cyan', lp.x, lp.y, 175, isGold ? 0.34 : 0.26);
@@ -196,14 +201,14 @@ export function drawVolumetricLanternLights(camOriginX, camOriginY) {
     const isGold = G.player.chargeReadyPlayed || G.player.riposteWindow > 0;
     const inner = isGold ? 'rgba(254, 240, 138, 0.92)' : 'rgba(186, 230, 253, 0.82)';
     const mid = isGold ? 'rgba(245, 158, 11, 0.34)' : 'rgba(56, 189, 248, 0.28)';
-    drawSingleVolumetricLight(camOriginX, camOriginY, lp.x, lp.y, 330, inner, mid, isGold ? 0.28 : 0.22);
+    drawSingleVolumetricLight(lp.x, lp.y, 310, inner, mid, isGold ? 0.28 : 0.22);
   }
 
   if (G.lanterns && G.lanterns.length > 0) {
     const refX = lp ? lp.x : (camOriginX + G.canvasW * 0.5);
     const refY = lp ? lp.y : (camOriginY + G.canvasH * 0.5);
     let best = null;
-    let bestDist = 480;
+    let bestDist = 460;
     for (let i = 0; i < G.lanterns.length; i++) {
       const l = G.lanterns[i];
       const lx = l.x + Math.sin(l.angle) * l.len;
@@ -214,8 +219,8 @@ export function drawVolumetricLanternLights(camOriginX, camOriginY) {
     }
     if (best) {
       drawSingleVolumetricLight(
-        camOriginX, camOriginY, best.x, best.y,
-        best.flash ? 280 : 210,
+        best.x, best.y,
+        best.flash ? 250 : 195,
         'rgba(254, 240, 138, 0.85)',
         'rgba(245, 158, 11, 0.28)',
         best.flash ? 0.28 : 0.16

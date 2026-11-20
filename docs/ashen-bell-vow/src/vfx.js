@@ -74,8 +74,7 @@ export function hash2(seed, frame) {
   return (x - Math.floor(x)) * 2 - 1;
 }
 
-export function boilLine(c, x1, y1, x2, y2, seed, amp = 1.2, segs = 3) {
-  c.beginPath();
+export function boilLinePath(c, x1, y1, x2, y2, seed, amp = 1.2, segs = 3) {
   c.moveTo(x1 + hash2(seed, G.boilFrame) * amp, y1 + hash2(seed + 11, G.boilFrame) * amp);
   for (let i = 1; i <= segs; i++) {
     const t = i / segs;
@@ -83,6 +82,11 @@ export function boilLine(c, x1, y1, x2, y2, seed, amp = 1.2, segs = 3) {
     const py = y1 + (y2 - y1) * t + hash2(seed + i * 37, G.boilFrame) * amp;
     c.lineTo(px, py);
   }
+}
+
+export function boilLine(c, x1, y1, x2, y2, seed, amp = 1.2, segs = 3) {
+  c.beginPath();
+  boilLinePath(c, x1, y1, x2, y2, seed, amp, segs);
   c.stroke();
 }
 
@@ -100,10 +104,12 @@ export function boilCircle(c, cx, cy, r, seed, amp = 1.1, segs = 14) {
 }
 
 export function boilRectOutline(c, x, y, w, h, seed, amp = 1.1) {
-  boilLine(c, x, y, x + w, y, seed + 1, amp, 2);
-  boilLine(c, x + w, y, x + w, y + h, seed + 2, amp, 2);
-  boilLine(c, x + w, y + h, x, y + h, seed + 3, amp, 2);
-  boilLine(c, x, y + h, x, y, seed + 4, amp, 2);
+  c.beginPath();
+  boilLinePath(c, x, y, x + w, y, seed + 1, amp, 2);
+  boilLinePath(c, x + w, y, x + w, y + h, seed + 2, amp, 2);
+  boilLinePath(c, x + w, y + h, x, y + h, seed + 3, amp, 2);
+  boilLinePath(c, x, y + h, x, y, seed + 4, amp, 2);
+  c.stroke();
 }
 
 export function drawTaperedCrescent(rOuter, thickness, startAng, endAng, fillCol, coreCol) {
@@ -253,8 +259,8 @@ export function initWeatherParticles() {
 }
 
 export function spawnWeatherRipple(x, y, maxR = 26, color = 'rgba(186, 230, 253, 0.55)') {
-  if (G.weatherRipples.length > 28) G.weatherRipples.shift();
-  G.weatherRipples.push({ x, y, r: 2, maxR, color, life: 0.55, maxLife: 0.55 });
+  if (G.weatherRipples.length >= 14) G.weatherRipples.shift();
+  G.weatherRipples.push({ x, y, r: 2, maxR, color, life: 0.52, maxLife: 0.52 });
 }
 
 export function spawnParticles(x, y, count, opts = {}) {

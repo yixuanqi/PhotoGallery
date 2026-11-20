@@ -295,6 +295,97 @@
     border-color: rgba(216, 180, 254, 0.58);
   }
 
+  .ability-badge.dawn {
+    color: #fef9c3;
+    background: rgba(245, 158, 11, 0.28);
+    border-color: rgba(254, 240, 138, 0.82);
+    box-shadow: 0 0 8px rgba(253, 224, 71, 0.35);
+  }
+
+  .ending-choice-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin: 12px 0 18px;
+  }
+  .ending-card {
+    text-align: left;
+    padding: 15px 16px;
+    border-radius: 10px;
+    background: linear-gradient(155deg, rgba(16, 22, 36, 0.92), rgba(9, 12, 20, 0.96));
+    border: 1.5px solid rgba(56, 189, 248, 0.52);
+    color: var(--parchment);
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .ending-card:hover:not(:disabled) {
+    border-color: var(--cyan-bright);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(56, 189, 248, 0.22);
+  }
+  .ending-card.dawn {
+    border-color: rgba(253, 224, 71, 0.65);
+    background: linear-gradient(155deg, rgba(46, 28, 14, 0.92), rgba(18, 12, 14, 0.96));
+  }
+  .ending-card.dawn:hover:not(:disabled) {
+    border-color: #fef9c3;
+    box-shadow: 0 8px 26px rgba(253, 224, 71, 0.28);
+  }
+  .ending-card:disabled {
+    opacity: 0.48;
+    cursor: default;
+    border-style: dashed;
+    border-color: rgba(148, 163, 184, 0.35);
+  }
+  .ending-card-tag {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    color: var(--cyan-bright);
+    margin-bottom: 6px;
+  }
+  .ending-card.dawn .ending-card-tag {
+    color: var(--gold-bright);
+  }
+  .ending-card-title {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 5px;
+    margin-bottom: 8px;
+    color: #fff;
+  }
+  .ending-card-desc {
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--parchment-dim);
+  }
+  .ending-cinema-card {
+    width: min(680px, 95%);
+  }
+  .ending-canvas-wrap {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1.5px solid rgba(216, 207, 184, 0.38);
+    background: #06080d;
+    margin: 8px 0 12px;
+    box-shadow: inset 0 0 28px rgba(0, 0, 0, 0.85);
+  }
+  #endingCanvas {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .ending-caption {
+    text-align: center;
+    font-size: 14.5px;
+    line-height: 1.9;
+    min-height: 74px;
+    border-left-color: var(--gold-bright);
+  }
+  @media (max-width: 560px) {
+    .ending-choice-grid { grid-template-columns: 1fr; }
+  }
+
   .ability-badge.unlocked {
     display: inline-block;
   }

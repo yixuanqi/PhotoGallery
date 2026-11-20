@@ -1,8 +1,8 @@
 // Player movement, buffering, combo/iai/parry/grapple/spell state machine
 import {
-  COLORS, GRAVITY, FLOOR_Y, ALTARS, NPCS, LORE_TABLETS, SHORTCUT_GATE_DEF, VOID_BARRIERS, ABYSSAL_RIVERS, PUDDLES
+  COLORS, GRAVITY, FLOOR_Y, ALTARS, NPCS, LORE_TABLETS, SHORTCUT_GATE_DEF, VOID_BARRIERS, FIRST_BELL_CORE_POS, ABYSSAL_RIVERS, PUDDLES
 } from './config.js';
-import { G, hooks, getLivingFoes, getRelicStats, markMapExplored, addShake, punchZoom } from './state.js';
+import { G, hooks, getLivingFoes, getRelicStats, markMapExplored, addShake, punchZoom, triggerBossBanner } from './state.js';
 import { audio } from './audio.js';
 import { isActionHeld, consumeActionPress, consumeActionRelease } from './input.js';
 import {
@@ -123,6 +123,12 @@ export function updatePlayer(dt) {
     const px = G.player.x + G.player.w / 2;
     const py = G.player.y + G.player.h;
 
+    if (G.worldState && G.worldState.boss3Defeated && !G.echoSession &&
+        Math.hypot(px - FIRST_BELL_CORE_POS.x, py - FIRST_BELL_CORE_POS.y) < 105) {
+      hooks.openEndingChoice();
+      return;
+    }
+
     for (const altar of ALTARS) {
       if (Math.hypot(px - altar.x, py - altar.y) < 86) {
         hooks.interactWithAltar(altar);
@@ -191,6 +197,10 @@ export function updatePlayer(dt) {
       G.player.grappleBufTimer = 0;
       G.player.grappleState = 'extending';
       G.player.grappleTimer = 0.065;
+      G.player.grappleStuckTimer = 0;
+      G.player.grapplePrevX = G.player.x;
+      G.player.grapplePrevY = G.player.y;
+      G.player.afterimageCd = 0;
       G.player.grappleTarget = target;
       G.player.grappleTx = target.x;
       G.player.grappleTy = target.y;
@@ -415,12 +425,25 @@ export function updatePlayer(dt) {
       const dy = G.player.grappleTy - py;
       const dist = Math.hypot(dx, dy);
 
-      if (Math.random() < 0.8) {
-        G.afterimages.push({ x: G.player.x, y: G.player.y, facing: G.player.facing, life: 0.2, maxLife: 0.2, color: COLORS.cyanBright });
+      G.player.afterimageCd = (G.player.afterimageCd || 0) - dt;
+      if (G.player.afterimageCd <= 0) {
+        G.player.afterimageCd = 0.048;
+        if (G.afterimages.length >= 7) G.afterimages.shift();
+        G.afterimages.push({ x: G.player.x, y: G.player.y, facing: G.player.facing, life: 0.18, maxLife: 0.18, color: COLORS.cyanBright });
+      }
+
+      // Detect wall/ledge snag during pull so player never hangs stalled against a corner
+      const movedSq = (G.player.x - (G.player.grapplePrevX || G.player.x)) ** 2 + (G.player.y - (G.player.grapplePrevY || G.player.y)) ** 2;
+      G.player.grapplePrevX = G.player.x;
+      G.player.grapplePrevY = G.player.y;
+      if (G.player.grappleTimer < 0.37 && movedSq < 9) {
+        G.player.grappleStuckTimer = (G.player.grappleStuckTimer || 0) + dt;
+      } else {
+        G.player.grappleStuckTimer = 0;
       }
 
       const arriveDist = (gt && gt.type === 'enemy') ? 54 : 34;
-      if (dist <= arriveDist || G.player.grappleTimer <= 0 || G.player.jumpBufTimer > 0) {
+      if (dist <= arriveDist || G.player.grappleTimer <= 0 || G.player.grappleStuckTimer >= 0.075 || G.player.jumpBufTimer > 0) {
         G.player.grappleState = 'none';
         G.player.jumpBufTimer = 0;
         G.player.dashCd = 0;
@@ -471,18 +494,31 @@ export function updatePlayer(dt) {
     G.player.detonateLungeTimer -= dt;
     G.player.vx = G.player.facing * 640;
     G.player.vy = 0;
-    G.afterimages.push({ x: G.player.x, y: G.player.y, facing: G.player.facing, life: 0.16, maxLife: 0.16, color: COLORS.goldBright });
+    G.player.afterimageCd = (G.player.afterimageCd || 0) - dt;
+    if (G.player.afterimageCd <= 0) {
+      G.player.afterimageCd = 0.042;
+      if (G.afterimages.length >= 7) G.afterimages.shift();
+      G.afterimages.push({ x: G.player.x, y: G.player.y, facing: G.player.facing, life: 0.16, maxLife: 0.16, color: COLORS.goldBright });
+    }
   } else if (G.player.iaiLungeTimer > 0) {
     G.player.iaiLungeTimer -= dt;
     G.player.vy = 0;
-    G.afterimages.push({ x: G.player.x, y: G.player.y, facing: G.player.facing, life: 0.18, maxLife: 0.18, color: COLORS.goldBright });
+    G.player.afterimageCd = (G.player.afterimageCd || 0) - dt;
+    if (G.player.afterimageCd <= 0) {
+      G.player.afterimageCd = 0.04;
+      if (G.afterimages.length >= 7) G.afterimages.shift();
+      G.afterimages.push({ x: G.player.x, y: G.player.y, facing: G.player.facing, life: 0.18, maxLife: 0.18, color: COLORS.goldBright });
+    }
   } else if (G.player.dashTimer > 0) {
     G.player.dashTimer -= dt;
     const isShade = !!G.player.shadeDashActive;
     G.player.vx = G.player.dashDir * (isShade ? 740 : 680);
     G.player.vy = 0;
-    if (Math.random() < 0.8) {
-      G.afterimages.push({ x: G.player.x, y: G.player.y, facing: G.player.facing, life: 0.2, maxLife: 0.2, color: isShade ? COLORS.violetBright : COLORS.ink });
+    G.player.afterimageCd = (G.player.afterimageCd || 0) - dt;
+    if (G.player.afterimageCd <= 0) {
+      G.player.afterimageCd = 0.042;
+      if (G.afterimages.length >= 7) G.afterimages.shift();
+      G.afterimages.push({ x: G.player.x, y: G.player.y, facing: G.player.facing, life: 0.18, maxLife: 0.18, color: isShade ? COLORS.violetBright : COLORS.ink });
     }
     if (G.player.dashTimer <= 0) {
       G.player.shadeDashActive = false;
@@ -723,13 +759,20 @@ export function updatePlayer(dt) {
     G.boss.awake = true;
     audio.playBellToll();
     addShake(10);
-    spawnFloatText(G.boss.x + G.boss.w / 2, G.boss.y - 36, '「断钟骑士 · 晦」', COLORS.parchment, 24, 1.8);
+    triggerBossBanner('断钟骑士 · 晦', '「既已熄灯，何必再扰断钟之寂。」', COLORS.parchment, 2.6);
   }
   // Trigger Boss 2 Awakening upon entering Abyssal Bell Foundry
-  if (G.boss2 && G.boss2.alive && !G.boss2.awake && G.player.x > 5650 && G.player.y > 880) {
+  if (G.boss2 && G.boss2.alive && !G.boss2.awake && G.player.x > 5650 && G.player.x < 6720 && G.player.y > 880) {
     G.boss2.awake = true;
     audio.playBellToll();
     addShake(12);
-    spawnFloatText(G.boss2.x + G.boss2.w / 2, G.boss2.y - 42, '「沉渊铸钟师 · 寂」', COLORS.goldBright, 24, 1.9);
+    triggerBossBanner('沉渊铸钟师 · 寂', '「以汝残躯，重铸沉渊之声！」', COLORS.goldBright, 2.6);
+  }
+  // Trigger Final Boss Awakening upon entering Heart of the First Bell
+  if (G.boss3 && G.boss3.alive && !G.boss3.awake && G.player.x > 8450 && G.player.y < 700) {
+    G.boss3.awake = true;
+    audio.playBellToll();
+    addShake(14);
+    triggerBossBanner('初钟圣骸 · 渊', '「凡提灯踏阶者，皆为旧钟余烬。」', COLORS.goldBright, 2.9);
   }
 }

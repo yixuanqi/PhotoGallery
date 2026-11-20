@@ -20,14 +20,15 @@
     }
   ],
   "connections": [
-    "r04_bell_well"
+    "r04_bell_well",
+    "r07_ascent"
   ],
   "solids": [
     {
-      "x": 1160,
+      "x": 1140,
       "y": -780,
-      "w": 60,
-      "h": 1520,
+      "w": 40,
+      "h": 1240,
       "type": "pillar"
     },
     {
@@ -62,7 +63,16 @@
   "crumblePlatforms": [],
   "altars": [],
   "loreTablets": [],
-  "gates": [],
+  "gates": [
+    {
+      "id": "gate_foundry_exit",
+      "role": "foundryExit",
+      "x": 1140,
+      "y": 460,
+      "w": 40,
+      "h": 140
+    }
+  ],
   "secretWalls": [],
   "pickups": [],
   "resonancePuzzles": [],
@@ -114,7 +124,7 @@
       "x": 800,
       "y": 458,
       "arenaMinX": 24,
-      "arenaMaxX": 1156,
+      "arenaMaxX": 1136,
       "arenaFloorY": 600,
       "arenaTopY": 40
     }
@@ -124,6 +134,12 @@
       "x": 85,
       "y": 510,
       "text": "「沉渊铸钟殿 · 借墨翼与钩环迎战铸钟师」"
+    },
+    {
+      "x": 1030,
+      "y": 510,
+      "text": "「斩落铸钟师 · 东门直通初钟圣阶 →」",
+      "hideWhenBoss2Defeated": true
     }
   ],
   "props": {

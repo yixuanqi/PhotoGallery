@@ -173,6 +173,8 @@ export const LORE_TABLETS = [];
 export const SHORTCUT_GATE_DEF = { id: 'gate_skyway', x: 1380, y: 0, w: 0, h: 0, leverX: 1495, leverY: 245 };
 export const CHAPEL_EXIT_GATE_DEF = { id: 'gate_chapel_exit', x: 3740, y: 480, w: 0, h: 0 };
 export const FOUNDRY_ENTRY_GATE_DEF = { id: 'gate_foundry_entry', x: 5540, y: 1240, w: 0, h: 0 };
+export const FOUNDRY_EXIT_GATE_DEF = { id: 'gate_foundry_exit', x: 6700, y: 1240, w: 0, h: 0 };
+export const FIRST_BELL_CORE_POS = { x: 9000, y: 580 };
 export const SECRET_WALLS_DEF = [];
 export const VOID_BARRIERS = [];
 export const PICKUPS_DEF = [];
@@ -323,6 +325,24 @@ export const ROOM_THEMES = {
     mist: [28, 18, 48],
     accent: [167, 139, 250],
     weather: 'ash'
+  },
+  ascent: {
+    label: '初钟圣阶',
+    skyTop: [16, 11, 24],
+    skyMid: [34, 21, 36],
+    skyBot: [9, 6, 14],
+    mist: [42, 22, 34],
+    accent: [245, 158, 11],
+    weather: 'embers'
+  },
+  heart: {
+    label: '初钟圣心',
+    skyTop: [22, 10, 14],
+    skyMid: [44, 18, 22],
+    skyBot: [10, 5, 8],
+    mist: [52, 18, 18],
+    accent: [253, 224, 71],
+    weather: 'snow'
   }
 };
 
@@ -358,7 +378,8 @@ export const ENEMY_ECHO_REWARDS = {
   duelist: 52,
   golem: 58,
   boss: 180,
-  boss2: 260
+  boss2: 260,
+  boss3: 420
 };
 
 export const ECHO_GRADE_ORDER = { 'B': 1, 'A': 2, 'S': 3, 'S+': 4 };

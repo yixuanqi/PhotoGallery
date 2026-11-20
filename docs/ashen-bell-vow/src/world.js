@@ -28,6 +28,9 @@ export function updateWorldEffects(dt) {
     if ((G.worldState.abilities.doubleJump || G.echoSession) && G.worldState.foundryGateAnim < 1) {
       G.worldState.foundryGateAnim = Math.min(1, G.worldState.foundryGateAnim + dt * 1.6);
     }
+    if (G.worldState.boss2Defeated && G.worldState.foundryExitAnim < 1) {
+      G.worldState.foundryExitAnim = Math.min(1, G.worldState.foundryExitAnim + dt * 1.6);
+    }
     for (const w of G.worldState.secretWalls) {
       if (w.shake > 0) w.shake = Math.max(0, w.shake - dt);
     }
@@ -315,8 +318,8 @@ export function updateWorldEffects(dt) {
             audio.playDetonate();
             G.hitstopTimer = 0.05;
             addShake(9);
-            damageEnemyHP(t, 48, true);
-            addPostureToEnemy(t, 55);
+            damageEnemyHP(t, t.isBoss ? 32 : 48, true);
+            addPostureToEnemy(t, t.isBoss ? 28 : 55);
             spawnShockwave(pr.x, pr.y, 75, COLORS.goldBright, 4, 0.25);
             spawnParticles(pr.x, pr.y, 22, { color: COLORS.goldBright, speed: 300, spark: true });
             pr.life = 0;
@@ -485,6 +488,10 @@ export function updateWorldEffects(dt) {
     if (m.y > G.canvasH + 10) m.y = -10;
   }
 
+  if (G.bossBanner) {
+    G.bossBanner.life -= dt;
+    if (G.bossBanner.life <= 0) G.bossBanner = null;
+  }
   updateThemeAndWeather(dt);
   if (G.screenFlash.alpha > 0) G.screenFlash.alpha = Math.max(0, G.screenFlash.alpha - dt * 1.2);
 }
@@ -506,7 +513,7 @@ export function updateThemeAndWeather(dt) {
   tb.weather = target.weather;
 
   const activeBoss = getAwakeBoss();
-  const isPhase2 = !!(activeBoss && activeBoss.phase === 2);
+  const isPhase2 = !!(activeBoss && activeBoss.phase >= 2);
   const blendT = Math.min(1, dt * 2.6);
   if (isPhase2 && activeBoss.id === 'boss_hui') {
     lerpRgb(tb.skyTop, [26, 9, 15], blendT);
@@ -520,6 +527,13 @@ export function updateThemeAndWeather(dt) {
     lerpRgb(tb.skyBot, [13, 6, 4], blendT);
     lerpRgb(tb.mist, [58, 26, 10], blendT);
     lerpRgb(tb.accent, [253, 224, 71], blendT);
+  } else if (isPhase2 && activeBoss.id === 'boss_yuan') {
+    const isP3 = activeBoss.phase >= 3;
+    lerpRgb(tb.skyTop, isP3 ? [38, 12, 10] : [26, 10, 28], blendT);
+    lerpRgb(tb.skyMid, isP3 ? [68, 24, 14] : [46, 16, 44], blendT);
+    lerpRgb(tb.skyBot, isP3 ? [16, 6, 5] : [11, 5, 14], blendT);
+    lerpRgb(tb.mist, isP3 ? [72, 28, 12] : [48, 14, 46], blendT);
+    lerpRgb(tb.accent, isP3 ? [254, 240, 138] : [216, 180, 254], blendT);
   } else {
     lerpRgb(tb.skyTop, target.skyTop, blendT);
     lerpRgb(tb.skyMid, target.skyMid, blendT);
@@ -575,17 +589,15 @@ export function updateThemeAndWeather(dt) {
     }
   }
 
-  // Procedural Rain-on-Puddle & Drip-on-River Ripples
-  if (wType === 'rain' && Math.random() < dt * 11) {
-    const visPuddles = PUDDLES.filter(p => p.x + p.w > G.cam.x && p.x < G.cam.x + G.canvasW);
-    if (visPuddles.length > 0) {
-      const p = visPuddles[Math.floor(Math.random() * visPuddles.length)];
+  // Procedural Rain-on-Puddle & Drip-on-River Ripples (zero per-frame array allocation)
+  if (wType === 'rain' && Math.random() < dt * 8 && PUDDLES.length > 0 && G.cam.y < FLOOR_Y + 80) {
+    const p = PUDDLES[Math.floor(Math.random() * PUDDLES.length)];
+    if (p.x + p.w > G.cam.x && p.x < G.cam.x + G.canvasW) {
       spawnWeatherRipple(p.x + 8 + Math.random() * Math.max(8, p.w - 16), FLOOR_Y + 1, 14 + Math.random() * 14, 'rgba(186, 230, 253, 0.52)');
     }
-  } else if (wType === 'mist' && Math.random() < dt * 7) {
-    const visRivers = ABYSSAL_RIVERS.filter(rv => rv.w > 0 && rv.x + rv.w > G.cam.x && rv.x < G.cam.x + G.canvasW);
-    if (visRivers.length > 0) {
-      const rv = visRivers[Math.floor(Math.random() * visRivers.length)];
+  } else if (wType === 'mist' && Math.random() < dt * 6 && ABYSSAL_RIVERS.length > 0) {
+    const rv = ABYSSAL_RIVERS[Math.floor(Math.random() * ABYSSAL_RIVERS.length)];
+    if (rv.w > 0 && rv.x + rv.w > G.cam.x && rv.x < G.cam.x + G.canvasW && rv.y > G.cam.y - 40 && rv.y < G.cam.y + G.canvasH + 40) {
       spawnWeatherRipple(rv.x + 12 + Math.random() * Math.max(12, rv.w - 24), rv.y + 3, 18 + Math.random() * 16, 'rgba(125, 211, 252, 0.56)');
     }
   }
@@ -610,7 +622,7 @@ export function updateCamera(dt) {
   let maxCamY = Math.max(0, WORLD_H - G.canvasH);
   let focusY = G.player.y - G.canvasH * 0.54;
   if (activeBoss) {
-    if (activeBoss.id === 'boss_hui') {
+    if (activeBoss.id === 'boss_hui' || activeBoss.id === 'boss_yuan') {
       maxCamY = Math.max(0, 720 - G.canvasH);
     } else {
       minCamY = Math.max(0, activeBoss.arenaTopY - 40);

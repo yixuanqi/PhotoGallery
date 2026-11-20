@@ -1,7 +1,7 @@
 // Asynchronous Room-Based JSON Data Stream loader & runtime hydrator
 import {
   ROOMS, SOLIDS, ALTARS, NPCS, ALTAR_POS, LORE_TABLETS,
-  SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF,
+  SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF,
   SECRET_WALLS_DEF, VOID_BARRIERS, PICKUPS_DEF, RESONANCE_PUZZLES_DEF, CRUMBLE_PLATFORMS_DEF,
   PENDULUMS, ABYSSAL_RIVERS, ABYSSAL_RIVER, WALL_INSCRIPTIONS, GRAPPLE_ANCHORS,
   LANTERNS_DEF, ENEMIES_DEF, BOSSES_DEF, PUDDLES, BANNERS, CANDLE_CLUSTERS, BONE_CAIRNS,
@@ -64,6 +64,8 @@ export function hydrateWorldBundle(bundle) {
   CHAPEL_EXIT_GATE_DEF.h = 0;
   FOUNDRY_ENTRY_GATE_DEF.w = 0;
   FOUNDRY_ENTRY_GATE_DEF.h = 0;
+  FOUNDRY_EXIT_GATE_DEF.w = 0;
+  FOUNDRY_EXIT_GATE_DEF.h = 0;
   ABYSSAL_RIVER.w = 0;
 
   let maxW = 960;
@@ -162,6 +164,8 @@ export function hydrateWorldBundle(bundle) {
         Object.assign(CHAPEL_EXIT_GATE_DEF, worldGate);
       } else if (g.role === 'foundryEntry' || g.id === 'gate_foundry_entry') {
         Object.assign(FOUNDRY_ENTRY_GATE_DEF, worldGate);
+      } else if (g.role === 'foundryExit' || g.id === 'gate_foundry_exit') {
+        Object.assign(FOUNDRY_EXIT_GATE_DEF, worldGate);
       }
     }
 

@@ -75,7 +75,7 @@ export function loadUserSettings() {
 export function readSaveSlot(slot = G.activeSaveSlot) {
   migrateLegacySaveIfNeeded();
   const data = storage.getJSON(slotKey(slot));
-  if (!data || ![8, 9, 10, 11, 12, 15].includes(data.v)) return null;
+  if (!data || ![8, 9, 10, 11, 12, 15, 17].includes(data.v)) return null;
   return data;
 }
 
@@ -106,9 +106,8 @@ export function saveProgress(showToast = false) {
     .map(row => row.map(cell => (cell ? '1' : '0')).join(''))
     .join('|');
   const eqIds = (G.equippedRelics || [G.currentRelic, null]).map(r => (r ? r.id : null));
-  saveUserSettings();
   const payload = {
-    v: 15,
+    v: 17,
     slot: G.activeSaveSlot,
     savedAt: Date.now(),
     playTimeSec: Math.floor(G.playTimeSec || 0),
@@ -120,7 +119,10 @@ export function saveProgress(showToast = false) {
     activeAltarId: G.worldState.activeAltarId,
     bossDefeated: !!G.worldState.bossDefeated,
     boss2Defeated: !!G.worldState.boss2Defeated,
-    echoRecords: G.worldState.echoRecords || { hui: null, ji: null, rush: null },
+    boss3Defeated: !!G.worldState.boss3Defeated,
+    keyItems: { dawnSigil: !!(G.worldState.keyItems && G.worldState.keyItems.dawnSigil) },
+    endingsUnlocked: Array.isArray(G.worldState.endingsUnlocked) ? [...G.worldState.endingsUnlocked] : [],
+    echoRecords: G.worldState.echoRecords || { hui: null, ji: null, yuan: null, rush: null },
     shortcutOpen: !!G.worldState.shortcutOpen,
     solvedPuzzles: [...(G.worldState.solvedPuzzles || [])],
     brokenWalls: G.worldState.secretWalls.filter(w => w.broken).map(w => w.id),
@@ -138,7 +140,7 @@ export function saveProgress(showToast = false) {
   };
   storage.setJSON(slotKey(G.activeSaveSlot), payload);
   G.saveDirtyTimer = 0;
-  hooks.refreshTitleSaveUI();
+  if (G.gameState === 'title') hooks.refreshTitleSaveUI();
   if (showToast && G.player && G.gameState === 'playing') {
     spawnFloatText(G.player.x + G.player.w * 0.5, G.player.y - 68, `档案 ${G.activeSaveSlot + 1} · 灯火已铭刻`, COLORS.cyanBright, 14, 1.0);
   }
@@ -151,11 +153,16 @@ export function applySaveData(data) {
   G.worldState.activeAltarId = ALTARS.some(a => a.id === data.activeAltarId) ? data.activeAltarId : 'altar_start';
   G.worldState.bossDefeated = !!data.bossDefeated;
   G.worldState.boss2Defeated = !!data.boss2Defeated;
+  G.worldState.boss3Defeated = !!data.boss3Defeated;
   G.worldState.chapelExitAnim = G.worldState.bossDefeated ? 1 : 0;
   G.worldState.foundryGateAnim = (data.abilities && data.abilities.doubleJump) ? 1 : 0;
+  G.worldState.foundryExitAnim = G.worldState.boss2Defeated ? 1 : 0;
+  G.worldState.keyItems = { dawnSigil: !!(data.keyItems && data.keyItems.dawnSigil) };
+  G.worldState.endingsUnlocked = Array.isArray(data.endingsUnlocked) ? [...new Set(data.endingsUnlocked)] : [];
   G.worldState.echoRecords = {
     hui: data.echoRecords && data.echoRecords.hui ? data.echoRecords.hui : null,
     ji: data.echoRecords && data.echoRecords.ji ? data.echoRecords.ji : null,
+    yuan: data.echoRecords && data.echoRecords.yuan ? data.echoRecords.yuan : null,
     rush: data.echoRecords && data.echoRecords.rush ? data.echoRecords.rush : null
   };
   G.worldState.shortcutOpen = !!data.shortcutOpen;

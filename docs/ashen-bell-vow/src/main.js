@@ -11,7 +11,7 @@ import {
   getActionKeyCode, isCapturingKey, resetDefaultKeybinds, triggerHaptic
 } from './input.js';
 import { capturePlayerInputBuffers, updatePlayer } from './player.js';
-import { updateEnemy, updateBoss, updateBoss2 } from './ai.js';
+import { updateEnemy, updateBoss, updateBoss2, updateBoss3 } from './ai.js';
 import { updateWorldEffects, updateCamera, updateAmbientOnly } from './world.js';
 import { render } from './renderer.js';
 import { readSaveData, saveProgress, loadUserSettings, saveUserSettings } from './save.js';
@@ -19,8 +19,9 @@ import { t, setLocale, loadSavedLocale } from './i18n.js';
 import {
   HUD_DOM, refreshTitleSaveUI, syncHUD, openModal, closeModal, renderParchmentMap, renderSettingsModal,
   openSmithModal, openLoreModal, openMapModal, openPauseModal, returnToTitle, interactWithAltar, respawnAtActiveAltar,
-  startEchoChallenge, advanceEchoRushStage2, showDeath, showVictory,
-  startGame, continueSavedGame, continueIntoBellWell
+  startEchoChallenge, advanceEchoRushStage2, advanceEchoRushStage3, showDeath, showVictory,
+  startGame, continueSavedGame, continueIntoBellWell,
+  openEndingChoice, startEndingCinematic, advanceEndingCinematic, updateAndRenderEndingCinematic
 } from './ui.js';
 
 // Register cross-layer hooks (eliminates all circular ES Module dependencies)
@@ -32,6 +33,8 @@ Object.assign(hooks, {
   showDeath,
   showVictory,
   advanceEchoRushStage2,
+  advanceEchoRushStage3,
+  openEndingChoice,
   interactWithAltar,
   openSmithModal,
   openLoreModal,
@@ -52,8 +55,9 @@ G.ctx = G.canvas.getContext('2d');
 
 function resizeCanvas() {
   const { mobile } = updateMobileOrientationLayout();
+  G.isMobile = !!mobile;
   const root = document.getElementById('game-root');
-  const maxDpr = mobile ? 1.25 : 2;
+  const maxDpr = mobile ? 1.25 : (window.innerWidth >= 1440 ? 1.5 : 1.75);
   const dpr = Math.min(maxDpr, Math.max(1, window.devicePixelRatio || 1));
   const cssW = Math.max(320, (root && root.clientWidth) || window.innerWidth || 1280);
   const cssH = Math.max(240, (root && root.clientHeight) || window.innerHeight || 720);
@@ -117,20 +121,29 @@ function gameLoop(timestamp) {
         }
       }
     }
-    audio.updateAmbience(dt, !!curBoss, !!(curBoss && curBoss.phase === 2), inCombat, G.player ? G.player.parryStreak : 0);
+    audio.updateAmbience(dt, !!curBoss, curBoss ? (curBoss.phase || 1) : 0, inCombat, G.player ? G.player.parryStreak : 0);
     if (G.hitstopTimer > 0) {
       G.hitstopTimer = Math.max(0, G.hitstopTimer - dt);
     } else if (G.player) {
       updatePlayer(dt);
-      for (const enemy of G.enemies) updateEnemy(enemy, dt);
+      const px = G.player.x;
+      const py = G.player.y;
+      for (let i = 0; i < G.enemies.length; i++) {
+        const enemy = G.enemies[i];
+        if (!enemy || !enemy.alive) continue;
+        if (Math.abs(enemy.x - px) > 1350 || Math.abs(enemy.y - py) > 820) continue;
+        updateEnemy(enemy, dt);
+      }
       updateBoss(G.boss, dt);
       updateBoss2(G.boss2, dt);
+      updateBoss3(G.boss3, dt);
       updateWorldEffects(dt);
       updateCamera(dt);
     }
     if (G.saveDirtyTimer > 0) {
       G.saveDirtyTimer -= dt;
-      if (G.saveDirtyTimer <= 0) saveProgress(false);
+      const busyAction = G.player && (G.player.grappleState !== 'none' || G.player.dashTimer > 0 || G.player.iaiLungeTimer > 0 || G.player.attackTimer > 0);
+      if (G.saveDirtyTimer <= 0 && !busyAction) saveProgress(false);
     }
     syncHUD();
   } else if (G.gameState === 'title') {
@@ -142,6 +155,7 @@ function gameLoop(timestamp) {
     }
   }
 
+  if (G.activeModal === 'ending-cinematic') updateAndRenderEndingCinematic(dt);
   clearFrameInputs();
   const isStaticOverlay = G.gameState === 'modal' || G.gameState === 'dead' || G.gameState === 'victory';
   if (isStaticOverlay) {
@@ -275,7 +289,7 @@ document.querySelectorAll('[data-close-modal]').forEach(btn => {
     closeModal(m);
   });
 });
-['altar', 'map', 'lore', 'help', 'smith', 'settings', 'pause'].forEach(m => {
+['altar', 'map', 'lore', 'help', 'smith', 'settings', 'pause', 'ending-choice'].forEach(m => {
   const ov = document.getElementById(`${m}-modal`);
   if (!ov) return;
   ov.addEventListener('click', e => {
@@ -301,6 +315,14 @@ document.getElementById('btn-echo-again').addEventListener('click', () => {
 });
 document.getElementById('btn-enter-well').addEventListener('click', continueIntoBellWell);
 document.getElementById('btn-play-again').addEventListener('click', startGame);
+document.getElementById('btn-ending-vow').addEventListener('click', () => startEndingCinematic('vow'));
+document.getElementById('btn-ending-dawn').addEventListener('click', () => startEndingCinematic('dawn'));
+document.getElementById('btn-ending-defer').addEventListener('click', () => closeModal('ending-choice'));
+document.getElementById('btn-ending-next').addEventListener('click', () => advanceEndingCinematic(false));
+document.getElementById('btn-ending-skip').addEventListener('click', () => advanceEndingCinematic(true));
+document.getElementById('btn-ending-to-altar').addEventListener('click', respawnAtActiveAltar);
+document.getElementById('btn-ending-keep-roam').addEventListener('click', () => closeModal('ending-cinematic'));
+document.getElementById('btn-ending-new-run').addEventListener('click', startGame);
 
 window.addEventListener('keydown', e => {
   if (isCapturingKey()) return;
