@@ -434,6 +434,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-
   font-size: 12px;
   font-weight: 700;
 }
+.card-actions a.back,
+.card-actions a.back:link,
+.card-actions a.back:visited {
+  grid-column: 1 / -1;
+  min-height: 52px;
+  font-size: 12px;
+}
 .card-actions a:hover,
 .card-actions a:focus-visible {
   color: var(--gold);
@@ -1871,6 +1878,7 @@ function showCard(i) {
   links.appendChild(go);
 
   var back = document.createElement('a');
+  back.className = 'back';
   back.href = '#';
   back.textContent = '↶ 返回星海';
   back.addEventListener('click', function (e) { e.preventDefault(); reset(); });
