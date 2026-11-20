@@ -25,6 +25,7 @@ npm install --no-save --no-package-lock playwright-core@1.56.1
 CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
 CHROME_BIN="$CHROME_BIN" node scripts/smoke-gravity-mobile.mjs
 CHROME_BIN="$CHROME_BIN" node scripts/smoke-ashen-bell-vow.mjs
+CHROME_BIN="$CHROME_BIN" node scripts/smoke-galaxy-catalog.mjs
 ```
 
 浏览器 Smoke Test 需要本机可用的 Chromium/Chrome。
