@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>灰钟残誓 — 暗黑手绘魂系类银河恶魔城</title>
+<title>灰钟残誓 v8 — 暗黑手绘魂系类银河恶魔城</title>
 <style>
   :root {
     --bg-void: #070a10;
@@ -776,7 +776,11 @@
         <div class="ctrl-item"><span>灯油回血 / 交互 / 舆图</span><span><span class="keycap cyan">Q · H</span> <span class="keycap">E</span> <span class="keycap">M</span></span></div>
         <div class="ctrl-item"><span>原生手柄支持</span><span><span class="keycap gold">Xbox / PS 即插即用</span></span></div>
       </div>
-      <button id="btn-start" class="primary-btn">唤醒人偶</button>
+      <div id="title-save-info" class="modal-sub" style="margin-bottom:12px;color:var(--cyan-bright);display:none;"></div>
+      <div class="modal-btn-row">
+        <button id="btn-continue" class="primary-btn" style="display:none;border-color:var(--cyan-bright);color:var(--cyan-bright);">继续残誓</button>
+        <button id="btn-start" class="primary-btn">唤醒人偶</button>
+      </div>
     </div>
   </div>
 
@@ -825,7 +829,7 @@
     <div class="modal-card">
       <div class="modal-title">战斗心法</div>
       <div class="modal-sub">三段弹反 · 居合一闪 · 幽鸣灵刃 · 幽丝钩索 · 墨印处决</div>
-      <div class="lore-text" style="border-left-color: var(--gold); font-size: 13.5px;">
+      <div id="help-modal-body" class="lore-text" style="border-left-color: var(--gold); font-size: 13.5px;">
         <strong>1. 立体断刃剑技 [J]</strong>：轻按三连（上挑 → 横扫 → 踏步重劈）；<strong>长按 [J]</strong> 沉身收刀蓄力，金芒闪现后松开释放贯穿<strong>「居合 · 一闪」</strong>；配合 <strong>[W+J]</strong> 上挑斩、空中 <strong>[S+J]</strong> 踩头与悬灯下劈弹跳。<br>
         <strong>2. 幽鸣灵刃 [U] &amp; 幽丝钩索 [I / F / 右键]</strong>：挥刀与弹反回复魂火，按 <strong>[U]</strong> 耗 30 魂火发射穿透灵刃（命中悬灯可触发<strong>「灯鸣震荡」</strong>范围爆发）；对准带准星的悬灯、铜钩环或敌人按 <strong>[I / F / 右键]</strong> 高速钩跃，钩中悬灯可翻跃并刷新闪避！<br>
         <strong>3. 精准弹反 [K] &amp; 识破反击 [K → J]</strong>：0–140ms 完美弹反零伤打铁（可反弹怨灵火球！）并攒墨印；弹反后 0.5 秒内按 <strong>[J]</strong> 派生<strong>「断钟返 · 十字反击斩」</strong>，双倍吸血狂削架势。<br>
@@ -1877,7 +1881,7 @@
 
   const SECRET_WALLS_DEF = [
     { id: 'wall_sanctuary', x: 230, y: 155, w: 32, h: 125, maxHp: 3 },
-    { id: 'wall_well_mid', x: 5310, y: 865, w: 34, h: 155, maxHp: 3 }
+    { id: 'wall_well_mid', x: 5310, y: 740, w: 34, h: 280, maxHp: 3 }
   ];
 
   const PICKUPS_DEF = [
@@ -1936,15 +1940,16 @@
   const ABYSSAL_RIVER = { x: 4180, w: 770, y: WELL_BOTTOM_Y - 12 };
 
   const WALL_INSCRIPTIONS = [
-    { x: 520, y: 492, text: '「幽丝攀环 · I / F / 右键」' },
+    { x: 520, y: 492, dynamicKey: 'grapple' },
     { x: 810, y: 315, text: '「苍穹残钟阁 · 非墨翼不可及」', hideWhenDoubleJump: true },
-    { x: 880, y: 492, text: '「下劈悬灯 S+J · 或以灵刃 U 击鸣」' },
-    { x: 1165, y: 492, text: '「金芒借刃弹反 K→J · 猩红危兆须闪」' },
+    { x: 880, y: 492, dynamicKey: 'pogoSpell' },
+    { x: 1165, y: 492, dynamicKey: 'parry' },
     { x: 1260, y: 215, text: '「青铜锁链闸 · 须自东侧残碑台启锁」', hideWhenShortcutOpen: true },
     { x: 2060, y: 372, text: '「高台钟龛藏有灯油残芯」' },
     { x: 3960, y: 492, text: '「沉渊钟井 · 循井壁与钩环深潜」' },
     { x: 4860, y: 492, text: '「重盾铁卫 · 居合 / 灵刃 / 弹反可破盾」' },
     { x: 4980, y: 920, text: '「青铜钟摆 · 可闪避、下劈或精准弹反」' },
+    { x: 4330, y: 1245, text: '「墨蚀暗河 · 须借石台与悬灯渡越」' },
     { x: 5180, y: 1295, text: '「井底暗河尽头 · 封存墨翼神龛」' }
   ];
 
@@ -1953,9 +1958,17 @@
   const MAP_CELL_W = WORLD_W / MAP_COLS;
   const MAP_CELL_H = WORLD_H / MAP_ROWS;
 
+  const SAVE_KEY = 'ashen_bell_vow_save_v8';
   let worldState = null;
+  let exploreDirty = true;
+  let cachedExplorePct = 0;
+  let minimapDirty = true;
+  let lastMinimapRenderTime = -1;
+  let saveDirtyTimer = 0;
 
   function createFreshWorldState() {
+    exploreDirty = true;
+    minimapDirty = true;
     return {
       litAltars: new Set(['altar_start']),
       activeAltarId: 'altar_start',
@@ -1963,7 +1976,7 @@
       chapelExitAnim: 0,
       shortcutOpen: false,
       shortcutAnim: 0, // 0 = closed, 1 = fully raised
-      secretWalls: SECRET_WALLS_DEF.map(w => ({ ...w, hp: w.maxHp, broken: false, shake: 0 })),
+      secretWalls: SECRET_WALLS_DEF.map(w => ({ ...w, type: 'pillar', hp: w.maxHp, broken: false, shake: 0 })),
       pickups: PICKUPS_DEF.map(p => ({ ...p, collected: false })),
       bonusFlasks: 0,
       abilities: { doubleJump: false },
@@ -1989,13 +2002,22 @@
     if (!worldState) return;
     const col = Math.floor(px / MAP_CELL_W);
     const row = Math.floor(py / MAP_CELL_H);
+    let changed = false;
     for (let dr = -2; dr <= 2; dr++) {
       const r = row + dr;
       if (r < 0 || r >= MAP_ROWS) continue;
       for (let dc = -2; dc <= 2; dc++) {
         const c = col + dc;
-        if (c >= 0 && c < MAP_COLS) worldState.explored[r][c] = true;
+        if (c >= 0 && c < MAP_COLS && !worldState.explored[r][c]) {
+          worldState.explored[r][c] = true;
+          changed = true;
+        }
       }
+    }
+    if (changed) {
+      exploreDirty = true;
+      minimapDirty = true;
+      if (gameState === 'playing') saveDirtyTimer = 3.0;
     }
   }
 
@@ -2008,6 +2030,7 @@
 
   function getExplorationPercent() {
     if (!worldState) return 0;
+    if (!exploreDirty) return cachedExplorePct;
     // Count only playable cells (upper corridor + bell well) so 100% is genuinely achievable!
     let total = 0;
     let seen = 0;
@@ -2021,7 +2044,9 @@
         if (worldState.explored[r][c]) seen++;
       }
     }
-    return total > 0 ? Math.min(100, Math.round((seen / total) * 100)) : 0;
+    cachedExplorePct = total > 0 ? Math.min(100, Math.round((seen / total) * 100)) : 0;
+    exploreDirty = false;
+    return cachedExplorePct;
   }
 
   const GRAPPLE_ANCHORS = [
@@ -2146,6 +2171,41 @@
     for (const code of Object.keys(keysReleased)) keysReleased[code] = false;
   }
 
+  function getControlLabels() {
+    if (controlMode === 'kbmouse') {
+      return {
+        slash: '左键 / J',
+        parry: '右键 / K',
+        grapple: 'F / 中键 / I',
+        spell: 'R / U',
+        seal: 'C / L',
+        heal: 'Q / H',
+        shortGrapple: 'F / 索'
+      };
+    }
+    return {
+      slash: 'J',
+      parry: 'K',
+      grapple: 'I / F / 右键',
+      spell: 'U / R',
+      seal: 'L / C',
+      heal: 'H / Q',
+      shortGrapple: 'I / 索'
+    };
+  }
+
+  function syncHelpModalText() {
+    const el = document.getElementById('help-modal-body');
+    if (!el) return;
+    const k = getControlLabels();
+    el.innerHTML =
+      `<strong>1. 立体断刃剑技 [${k.slash}]</strong>：轻按三连（上挑 → 横扫 → 踏步重劈）；<strong>长按 [${k.slash}]</strong> 沉身收刀蓄力，金芒闪现后松开释放贯穿<strong>「居合 · 一闪」</strong>；配合 <strong>[W+斩]</strong> 上挑斩、空中 <strong>[S+斩]</strong> 踩头与悬灯/钟摆下劈弹跳。<br>` +
+      `<strong>2. 幽鸣灵刃 [${k.spell}] &amp; 幽丝钩索 [${k.grapple}]</strong>：挥刀与弹反回复魂火，按 <strong>[${k.spell}]</strong> 耗 30 魂火发射穿透灵刃（命中悬灯可触发<strong>「灯鸣震荡」</strong>范围爆发）；对准带准星的悬灯、铜钩环或敌人按 <strong>[${k.grapple}]</strong> 高速钩跃，钩中悬灯可翻跃并刷新闪避！<br>` +
+      `<strong>3. 精准弹反 [${k.parry}] &amp; 识破反击 [${k.parry} → 斩]</strong>：0–140ms 完美弹反零伤打铁（可反弹怨灵火球与青铜钟摆！）并攒墨印；弹反后 0.56 秒内接斩派生<strong>「断钟返 · 十字反击斩」</strong>，双倍吸血狂削架势。<br>` +
+      `<strong>4. 普通格挡与红光「危」</strong>：140–260ms 普通格挡化为内伤灰血，平 A 可吸回实血；猩红「危」技不可弹反，需按 <strong>[Shift]</strong> 闪避或钩索飞跃。<br>` +
+      `<strong>5. 墨印引爆 [${k.seal}]、灯油回血 [${k.heal}] 与处决 [斩]</strong>：攒墨印后按 <strong>[${k.seal}]</strong> 突刺贴符引爆；敌方架势崩溃跪地时，近身按斩触发黑白反色处决！`;
+  }
+
   function syncControlModeUI() {
     const btn = document.getElementById('btn-ctrl');
     const bar = document.getElementById('quick-bar');
@@ -2155,6 +2215,7 @@
         ? 'A/D 移 · Space 跳 · 左键/J 三连·长按居合 · 右键/K 弹反 · F/中键/I 钩索 · R/U 灵刃 · Shift 闪 · C/L 墨印 · Q/H 回血 · E 交互 · M 舆图 · 支持手柄'
         : 'A/D 移动 · Space 跳/蹬墙 · J/长按J 三连/居合 · W+J 上挑 · S+J 下劈 · K→J 弹反/反击 · U 灵刃 · I/F/右键 钩索 · Shift 闪 · L 墨印 · H 回血 · E 交互 · M 舆图';
     }
+    syncHelpModalText();
   }
 
   window.addEventListener('keydown', onKeyDown);
@@ -2236,7 +2297,10 @@
 
     // Allow Gamepad A/B to navigate overlays
     if (gameState === 'title') {
-      if (btnA && !gpPrev._gpStart) startGame();
+      if (btnA && !gpPrev._gpStart) {
+        if (readSaveData()) continueSavedGame();
+        else startGame();
+      }
       gpPrev._gpStart = btnA;
       return;
     }
@@ -2560,6 +2624,9 @@
       healDone: false,
       execTimer: 0,
 
+      lastSafeX: x,
+      lastSafeY: y,
+      riverCd: 0,
       iframeTimer: 0,
       hurtTimer: 0,
       deathTimer: 0,
@@ -2667,10 +2734,10 @@
       // Sunken Bell Well Enemies
       makeGolem('golem_1', 5060, FLOOR_Y - 78, 4740, 5260),
       makeGolem('golem_2', 5015, 1020 - 78, 4740, 5240),
-      makeGolem('golem_3', 5110, WELL_BOTTOM_Y - 78, 4940, 5320),
+      makeGolem('golem_3', 5175, WELL_BOTTOM_Y - 78, 5070, 5330),
       makeWraith('wraith_3', 4415, 835),
       makeWraith('wraith_4', 4560, 1225),
-      makeSentinel('sent_3', 4320, WELL_BOTTOM_Y - 62, 4190, 4490)
+      makeSentinel('sent_3', 4990, WELL_BOTTOM_Y - 62, 4960, 5110)
     ];
   }
 
@@ -2716,35 +2783,26 @@
     return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
   }
 
-  function getDynamicBlockers() {
-    const blockers = [];
+  const _shortcutGateBox = { x: SHORTCUT_GATE_DEF.x, y: SHORTCUT_GATE_DEF.y, w: SHORTCUT_GATE_DEF.w, h: SHORTCUT_GATE_DEF.h, type: 'pillar' };
+  const _chapelExitBox = { x: CHAPEL_EXIT_GATE_DEF.x, y: CHAPEL_EXIT_GATE_DEF.y, w: CHAPEL_EXIT_GATE_DEF.w, h: CHAPEL_EXIT_GATE_DEF.h, type: 'pillar' };
+  const _dynBlockers = [];
+
+  function refreshDynamicBlockers() {
+    _dynBlockers.length = 0;
     if (worldState) {
-      if (!worldState.shortcutOpen) {
-        blockers.push({ x: SHORTCUT_GATE_DEF.x, y: SHORTCUT_GATE_DEF.y, w: SHORTCUT_GATE_DEF.w, h: SHORTCUT_GATE_DEF.h, type: 'pillar' });
-      }
-      if (!worldState.bossDefeated) {
-        blockers.push({ x: CHAPEL_EXIT_GATE_DEF.x, y: CHAPEL_EXIT_GATE_DEF.y, w: CHAPEL_EXIT_GATE_DEF.w, h: CHAPEL_EXIT_GATE_DEF.h, type: 'pillar' });
-      }
-      for (const w of worldState.secretWalls) {
-        if (!w.broken) blockers.push({ x: w.x, y: w.y, w: w.w, h: w.h, type: 'pillar' });
+      if (!worldState.shortcutOpen) _dynBlockers.push(_shortcutGateBox);
+      if (!worldState.bossDefeated) _dynBlockers.push(_chapelExitBox);
+      const walls = worldState.secretWalls;
+      for (let i = 0; i < walls.length; i++) {
+        if (!walls[i].broken) _dynBlockers.push(walls[i]);
       }
     }
-    return blockers;
+    return _dynBlockers;
   }
 
-  function moveAndCollide(ent, dt, respectBossBarrier = false) {
-    const dynBlockers = getDynamicBlockers();
-
-    // Horizontal
-    ent.x += ent.vx * dt;
-    ent.wallDir = 0;
-
-    if (respectBossBarrier && boss && boss.awake && boss.alive) {
-      if (ent.x < 2648) ent.x = 2648;
-      if (ent.x + ent.w > 3738) ent.x = 3738 - ent.w;
-    }
-
-    for (const s of [...SOLIDS, ...dynBlockers]) {
+  function resolveHorizontalAgainst(ent, list) {
+    for (let i = 0; i < list.length; i++) {
+      const s = list[i];
       if (s.type === 'platform') continue; // platforms are one-way from above
       if (aabbOverlap(ent, s)) {
         if (ent.vx > 0) {
@@ -2757,14 +2815,11 @@
         ent.vx = 0;
       }
     }
+  }
 
-    // Vertical
-    const prevBottom = ent.y + ent.h;
-    ent.y += ent.vy * dt;
-    ent.grounded = false;
-    ent.onPlatform = false;
-
-    for (const s of [...SOLIDS, ...dynBlockers]) {
+  function resolveVerticalAgainst(ent, prevBottom, list) {
+    for (let i = 0; i < list.length; i++) {
+      const s = list[i];
       if (s.type === 'platform') {
         if (ent === player && ent.dropThroughTimer > 0) continue;
         if (ent.vy >= 0 && prevBottom <= s.y + 8 && aabbOverlap(ent, s)) {
@@ -2793,6 +2848,31 @@
         }
       }
     }
+  }
+
+  function moveAndCollide(ent, dt, respectBossBarrier = false) {
+    const dynBlockers = refreshDynamicBlockers();
+
+    // Horizontal
+    ent.x += ent.vx * dt;
+    ent.wallDir = 0;
+
+    if (respectBossBarrier && boss && boss.awake && boss.alive) {
+      if (ent.x < 2648) ent.x = 2648;
+      if (ent.x + ent.w > 3738) ent.x = 3738 - ent.w;
+    }
+
+    resolveHorizontalAgainst(ent, SOLIDS);
+    resolveHorizontalAgainst(ent, dynBlockers);
+
+    // Vertical
+    const prevBottom = ent.y + ent.h;
+    ent.y += ent.vy * dt;
+    ent.grounded = false;
+    ent.onPlatform = false;
+
+    resolveVerticalAgainst(ent, prevBottom, SOLIDS);
+    resolveVerticalAgainst(ent, prevBottom, dynBlockers);
   }
 
   function rallyPlayerGrayHp(amount) {
@@ -2840,7 +2920,11 @@
     spawnShockwave(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, 120, COLORS.parchment, 3, 0.4);
     if (enemy.isBoss) {
       chapelTide = null;
-      if (worldState) worldState.bossDefeated = true;
+      if (worldState) {
+        worldState.bossDefeated = true;
+        minimapDirty = true;
+        saveProgress(false);
+      }
       audio.playBellToll();
       addShake(16);
       spawnFloatText(CHAPEL_EXIT_GATE_DEF.x, CHAPEL_EXIT_GATE_DEF.y - 34, '东侧封门已开 · 通往沉渊钟井', COLORS.cyanBright, 20, 2.0);
@@ -3484,6 +3568,8 @@
   function openSkywayShortcut() {
     if (!worldState || worldState.shortcutOpen) return;
     worldState.shortcutOpen = true;
+    minimapDirty = true;
+    saveProgress(true);
     audio.playBellToll();
     addShake(11);
     screenFlash = { alpha: 0.16, color: COLORS.goldBright };
@@ -3505,6 +3591,8 @@
     spawnParticles(cx, cy, w.hp <= 0 ? 18 : 6, { color: COLORS.cyanBright, speed: 210, spark: true, life: 0.4 });
     if (w.hp <= 0) {
       w.broken = true;
+      minimapDirty = true;
+      saveProgress(false);
       audio.playDetonate();
       spawnShockwave(cx, cy, 96, COLORS.cyanBright, 3.8, 0.34);
       spawnFloatText(cx, w.y - 12, '墨蚀暗墙已破！', COLORS.cyanBright, 20, 1.35);
@@ -3537,7 +3625,9 @@
       worldState.unlockedRelics.add(p.relicId);
       spawnFloatText(p.x, p.y - 54, `${p.name} · ${p.desc}`, COLORS.goldBright, 20, 1.85);
     }
-    syncHUD();
+    minimapDirty = true;
+    saveProgress(true);
+    syncHUD(true);
   }
 
   function capturePlayerInputBuffers() {
@@ -4034,6 +4124,17 @@
     }
 
     moveAndCollide(player, dt, true);
+
+    // Track safe grounding point outside the corrosive Abyssal Ink River
+    if (player.riverCd > 0) player.riverCd = Math.max(0, player.riverCd - dt);
+    if (player.grounded) {
+      const footCx = player.x + player.w * 0.5;
+      const inRiverZone = footCx >= ABYSSAL_RIVER.x - 10 && footCx <= ABYSSAL_RIVER.x + ABYSSAL_RIVER.w + 10 && (player.y + player.h) >= WELL_BOTTOM_Y - 16;
+      if (!inRiverZone) {
+        player.lastSafeX = player.x;
+        player.lastSafeY = player.y;
+      }
+    }
 
     // Multi-frame active hitboxes evaluated after movement sweep
     updatePlayerActiveAttack(dt);
@@ -4623,6 +4724,44 @@
       if (Math.hypot(bx - px, by - py) < pd.r + 18) {
         pd.hitCd = 0.55;
         applyIncomingAttackToPlayer({ x: bx - 10, w: 20, isBoss: false }, 22, false, 230);
+      }
+    }
+
+    // Corrosive Abyssal Ink River Hazard (Sunken Bell Well Floor)
+    if (player && player.hp > 0 && player.riverCd <= 0 && player.grappleState === 'none' && player.execTimer <= 0) {
+      const px = player.x + player.w * 0.5;
+      const py = player.y + player.h;
+      if (px >= ABYSSAL_RIVER.x + 8 && px <= ABYSSAL_RIVER.x + ABYSSAL_RIVER.w - 8 && py >= ABYSSAL_RIVER.y + 2) {
+        player.riverCd = 0.85;
+        audio.playTideRoar();
+        addShake(10);
+        screenFlash = { alpha: 0.28, color: COLORS.cyan };
+        spawnParticles(px, ABYSSAL_RIVER.y, 26, { color: COLORS.ink, speed: 240, grav: 260, life: 0.55 });
+        spawnParticles(px, ABYSSAL_RIVER.y, 16, { color: COLORS.cyanBright, speed: 210, spark: true, life: 0.45 });
+        const dmg = 18;
+        player.hp = Math.max(0, player.hp - dmg);
+        player.grayHp = 0;
+        player.parryActive = false;
+        player.activeAttack = null;
+        player.isCharging = false;
+        player.chargeTime = 0;
+        stats.damageTaken += dmg;
+        spawnFloatText(px, player.y - 22, `墨河侵蚀 -${dmg}`, COLORS.cyanBright, 19, 0.95);
+        if (player.hp <= 0) {
+          player.hp = 0;
+          player.deathTimer = 0.65;
+          player.vx = 0;
+          player.vy = -120;
+          scheduleOutcome(showDeath, 650, false);
+        } else {
+          player.x = player.lastSafeX;
+          player.y = player.lastSafeY - 6;
+          player.vx = 0;
+          player.vy = -120;
+          player.iframeTimer = Math.max(player.iframeTimer, 0.75);
+          player.airJumpsLeft = 1;
+          spawnShockwave(player.x + player.w * 0.5, player.y + 26, 56, COLORS.cyanBright, 3, 0.26);
+        }
       }
     }
 
@@ -5492,6 +5631,14 @@
         ctx.moveTo(rx + wave, rv.y + 3);
         ctx.lineTo(rx + 42 + wave, rv.y + 3);
         ctx.stroke();
+        // Subtle rising corrosive ink bubbles
+        const bubP = ((globalTime * 0.9 + rx * 0.017) % 1);
+        const bx = rx + 20 + Math.sin(globalTime * 4 + rx) * 6;
+        const by = rv.y + 2 - bubP * 20;
+        ctx.fillStyle = `rgba(125, 211, 252, ${((1 - bubP) * 0.55).toFixed(2)})`;
+        ctx.beginPath();
+        ctx.arc(bx, by, 2.4 * (1 - bubP * 0.5), 0, Math.PI * 2);
+        ctx.fill();
       }
     }
 
@@ -5515,11 +5662,18 @@
       const dist = player ? Math.abs((player.x + player.w / 2) - ins.x) : 999;
       const proximity = Math.max(0, 1 - dist / 340);
       const alpha = 0.24 + proximity * 0.56;
+      let label = ins.text;
+      if (ins.dynamicKey) {
+        const k = getControlLabels();
+        if (ins.dynamicKey === 'grapple') label = `「幽丝攀环 · ${k.grapple}」`;
+        else if (ins.dynamicKey === 'pogoSpell') label = `「下劈悬灯 S+斩 · 或以灵刃 ${k.spell} 击鸣」`;
+        else if (ins.dynamicKey === 'parry') label = `「金芒借刃弹反 ${k.parry}→斩 · 猩红危兆须闪」`;
+      }
       ctx.fillStyle = `rgba(216, 207, 184, ${alpha.toFixed(2)})`;
-      ctx.fillText(ins.text, ins.x, ins.y);
+      ctx.fillText(label, ins.x, ins.y);
       ctx.strokeStyle = `rgba(216, 207, 184, ${(alpha * 0.32).toFixed(2)})`;
       ctx.lineWidth = 1;
-      const halfW = Math.min(120, ins.text.length * 5.8);
+      const halfW = Math.min(130, label.length * 5.8);
       boilLine(ctx, ins.x - halfW, ins.y + 6, ins.x + halfW, ins.y + 6, 4100 + ins.x, 0.7, 3);
     }
     ctx.restore();
@@ -5718,10 +5872,11 @@
       ctx.strokeStyle = `rgba(125, 211, 252, ${Math.min(1, pulse).toFixed(2)})`;
       ctx.lineWidth = 1.6 + dmgRatio * 1.2;
       ctx.beginPath();
-      ctx.moveTo(w.x + w.w * 0.72, w.y + 12);
-      ctx.lineTo(w.x + w.w * 0.35, w.y + 42);
-      ctx.lineTo(w.x + w.w * 0.66, w.y + 72);
-      ctx.lineTo(w.x + w.w * 0.28, w.y + 108);
+      ctx.moveTo(w.x + w.w * 0.72, w.y + w.h * 0.08);
+      ctx.lineTo(w.x + w.w * 0.34, w.y + w.h * 0.30);
+      ctx.lineTo(w.x + w.w * 0.68, w.y + w.h * 0.54);
+      ctx.lineTo(w.x + w.w * 0.30, w.y + w.h * 0.76);
+      ctx.lineTo(w.x + w.w * 0.58, w.y + w.h * 0.92);
       ctx.stroke();
 
       ctx.strokeStyle = 'rgba(216, 207, 184, 0.52)';
@@ -5924,7 +6079,7 @@
       ctx.lineWidth = 1;
       ctx.strokeRect(-19, 25, 38, 16);
       ctx.fillStyle = COLORS.cyanBright;
-      ctx.fillText('I / 索', 0, 37);
+      ctx.fillText(getControlLabels().shortGrapple, 0, 37);
     }
     ctx.restore();
   }
@@ -7220,74 +7375,286 @@
   /* =========================================================================
      13. HUD SYNC, MODALS & GAME FLOW
      ========================================================================= */
-  function syncHUD() {
+  const HUD_DOM = {
+    hpReal: document.getElementById('hp-real'),
+    hpGray: document.getElementById('hp-gray'),
+    hpText: document.getElementById('hp-text'),
+    relicTag: document.getElementById('relic-tag'),
+    abilityTag: document.getElementById('ability-tag'),
+    soulFill: document.getElementById('soul-fill'),
+    soulText: document.getElementById('soul-text'),
+    flaskWrap: document.getElementById('flask-pips'),
+    sealWrap: document.getElementById('seal-pips'),
+    zoneEl: document.getElementById('zone-banner'),
+    explorePct: document.getElementById('explore-pct'),
+    minimapCanvas: document.getElementById('minimapCanvas'),
+    fullMapCanvas: document.getElementById('fullMapCanvas'),
+    bossHud: document.getElementById('boss-hud'),
+    bossHpFill: document.getElementById('boss-hp-fill'),
+    bossPostureFill: document.getElementById('boss-posture-fill'),
+    bossPhaseTag: document.getElementById('boss-phase-tag'),
+    titleSaveInfo: document.getElementById('title-save-info'),
+    btnContinue: document.getElementById('btn-continue'),
+    btnStart: document.getElementById('btn-start')
+  };
+  const hudCache = {};
+
+  function readSaveData() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (!data || data.v !== 8) return null;
+      return data;
+    } catch {
+      return null;
+    }
+  }
+
+  function refreshTitleSaveUI() {
+    const data = readSaveData();
+    if (!HUD_DOM.btnContinue || !HUD_DOM.titleSaveInfo || !HUD_DOM.btnStart) return;
+    if (data) {
+      const altar = ALTARS.find(a => a.id === data.activeAltarId) || ALTARS[0];
+      const pct = typeof data.explorePct === 'number' ? data.explorePct : 0;
+      const relicCount = Array.isArray(data.unlockedRelics) ? data.unlockedRelics.length : 3;
+      const bossTag = data.bossDefeated ? ' · 断钟骑士已斩' : '';
+      const wingTag = data.abilities && data.abilities.doubleJump ? ' · 墨翼步已习得' : '';
+      HUD_DOM.titleSaveInfo.textContent = `已有存档：${altar.shortName} · 探索 ${pct}% · 圣物 ${relicCount}/${RELICS.length}${bossTag}${wingTag}`;
+      HUD_DOM.titleSaveInfo.style.display = 'block';
+      HUD_DOM.btnContinue.style.display = 'inline-block';
+      HUD_DOM.btnStart.textContent = '重开新周目';
+    } else {
+      HUD_DOM.titleSaveInfo.style.display = 'none';
+      HUD_DOM.btnContinue.style.display = 'none';
+      HUD_DOM.btnStart.textContent = '唤醒人偶';
+    }
+  }
+
+  function saveProgress(showToast = false) {
+    if (!worldState) return;
+    try {
+      const exploredStr = worldState.explored
+        .map(row => row.map(cell => (cell ? '1' : '0')).join(''))
+        .join('|');
+      const payload = {
+        v: 8,
+        savedAt: Date.now(),
+        controlMode,
+        muted: audio.muted,
+        relicId: currentRelic.id,
+        litAltars: [...worldState.litAltars],
+        activeAltarId: worldState.activeAltarId,
+        bossDefeated: !!worldState.bossDefeated,
+        shortcutOpen: !!worldState.shortcutOpen,
+        brokenWalls: worldState.secretWalls.filter(w => w.broken).map(w => w.id),
+        collectedPickups: worldState.pickups.filter(p => p.collected).map(p => p.id),
+        bonusFlasks: worldState.bonusFlasks,
+        abilities: { doubleJump: !!worldState.abilities.doubleJump },
+        unlockedRelics: [...worldState.unlockedRelics],
+        exploredStr,
+        explorePct: getExplorationPercent()
+      };
+      localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+      saveDirtyTimer = 0;
+      refreshTitleSaveUI();
+      if (showToast && player && gameState === 'playing') {
+        spawnFloatText(player.x + player.w * 0.5, player.y - 68, '灯火已铭刻', COLORS.cyanBright, 14, 1.0);
+      }
+    } catch {
+      // Ignore storage quota or private-browsing errors
+    }
+  }
+
+  function applySaveData(data) {
+    worldState = createFreshWorldState();
+    worldState.litAltars = new Set(Array.isArray(data.litAltars) && data.litAltars.length ? data.litAltars : ['altar_start']);
+    worldState.activeAltarId = ALTARS.some(a => a.id === data.activeAltarId) ? data.activeAltarId : 'altar_start';
+    worldState.bossDefeated = !!data.bossDefeated;
+    worldState.chapelExitAnim = worldState.bossDefeated ? 1 : 0;
+    worldState.shortcutOpen = !!data.shortcutOpen;
+    worldState.shortcutAnim = worldState.shortcutOpen ? 1 : 0;
+    worldState.bonusFlasks = Number(data.bonusFlasks) || 0;
+    worldState.abilities = { doubleJump: !!(data.abilities && data.abilities.doubleJump) };
+    worldState.unlockedRelics = new Set(Array.isArray(data.unlockedRelics) && data.unlockedRelics.length ? data.unlockedRelics : ['thorn', 'mirror', 'ember']);
+
+    const brokenSet = new Set(Array.isArray(data.brokenWalls) ? data.brokenWalls : []);
+    for (const w of worldState.secretWalls) {
+      if (brokenSet.has(w.id)) { w.broken = true; w.hp = 0; }
+    }
+    const pickedSet = new Set(Array.isArray(data.collectedPickups) ? data.collectedPickups : []);
+    for (const p of worldState.pickups) {
+      if (pickedSet.has(p.id)) p.collected = true;
+    }
+
+    if (typeof data.exploredStr === 'string') {
+      const rows = data.exploredStr.split('|');
+      for (let r = 0; r < Math.min(MAP_ROWS, rows.length); r++) {
+        for (let c = 0; c < Math.min(MAP_COLS, rows[r].length); c++) {
+          worldState.explored[r][c] = rows[r][c] === '1';
+        }
+      }
+    }
+
+    const savedRelic = RELICS.find(r => r.id === data.relicId && (!r.hidden || worldState.unlockedRelics.has(r.id)));
+    currentRelic = savedRelic || RELICS[0];
+    if (data.controlMode === 'kbmouse' || data.controlMode === 'keyboard') {
+      controlMode = data.controlMode;
+      syncControlModeUI();
+    }
+    if (typeof data.muted === 'boolean') {
+      audio.setMuted(data.muted);
+      const muteBtn = document.getElementById('btn-mute');
+      if (muteBtn) muteBtn.textContent = audio.muted ? '音效: 关' : '音效: 开';
+    }
+    exploreDirty = true;
+    minimapDirty = true;
+  }
+
+  function continueSavedGame() {
+    const data = readSaveData();
+    if (!data) {
+      startGame();
+      return;
+    }
+    clearOutcomeTimer();
+    applySaveData(data);
+    stats = { parries: 0, executions: 0, damageTaken: 0, startTime: performance.now() };
+    audio.init();
+    const altar = getActiveAltar();
+    player = createPlayer(altar.x - 14, altar.y - 54);
+    respawnAtActiveAltar();
+    spawnFloatText(altar.x, altar.y - 84, `续燃残誓 · ${altar.shortName}`, COLORS.cyanBright, 18, 1.3);
+  }
+
+  function syncHUD(force = false) {
     if (!player) return;
 
-    const realPct = Math.max(0, Math.min(100, (player.hp / player.maxHp) * 100));
-    const totalPct = Math.max(0, Math.min(100, ((player.hp + player.grayHp) / player.maxHp) * 100));
-    document.getElementById('hp-real').style.width = realPct.toFixed(1) + '%';
-    document.getElementById('hp-gray').style.width = totalPct.toFixed(1) + '%';
-    document.getElementById('hp-text').textContent = `${Math.ceil(player.hp)} / ${player.maxHp}` + (player.grayHp >= 1 ? ` (+${Math.ceil(player.grayHp)} 内伤)` : '');
-    document.getElementById('relic-tag').textContent = currentRelic.name;
-    document.getElementById('ability-tag').classList.toggle('unlocked', !!(worldState && worldState.abilities.doubleJump));
+    const realPctStr = Math.max(0, Math.min(100, (player.hp / player.maxHp) * 100)).toFixed(1) + '%';
+    const totalPctStr = Math.max(0, Math.min(100, ((player.hp + player.grayHp) / player.maxHp) * 100)).toFixed(1) + '%';
+    const hpTextStr = `${Math.ceil(player.hp)} / ${player.maxHp}` + (player.grayHp >= 1 ? ` (+${Math.ceil(player.grayHp)} 内伤)` : '');
+    const hasDoubleJump = !!(worldState && worldState.abilities.doubleJump);
 
-    const soulPct = Math.max(0, Math.min(100, (player.soul / player.maxSoul) * 100));
-    document.getElementById('soul-fill').style.width = soulPct.toFixed(1) + '%';
-    document.getElementById('soul-text').textContent = `魂火 ${Math.floor(player.soul)}`;
+    if (force || hudCache.realPctStr !== realPctStr) {
+      hudCache.realPctStr = realPctStr;
+      HUD_DOM.hpReal.style.width = realPctStr;
+    }
+    if (force || hudCache.totalPctStr !== totalPctStr) {
+      hudCache.totalPctStr = totalPctStr;
+      HUD_DOM.hpGray.style.width = totalPctStr;
+    }
+    if (force || hudCache.hpTextStr !== hpTextStr) {
+      hudCache.hpTextStr = hpTextStr;
+      HUD_DOM.hpText.textContent = hpTextStr;
+    }
+    if (force || hudCache.relicName !== currentRelic.name) {
+      hudCache.relicName = currentRelic.name;
+      HUD_DOM.relicTag.textContent = currentRelic.name;
+    }
+    if (force || hudCache.hasDoubleJump !== hasDoubleJump) {
+      hudCache.hasDoubleJump = hasDoubleJump;
+      HUD_DOM.abilityTag.classList.toggle('unlocked', hasDoubleJump);
+    }
 
-    const flaskWrap = document.getElementById('flask-pips');
-    if (flaskWrap.children.length !== player.maxFlasks) {
-      flaskWrap.innerHTML = '';
+    const soulPctStr = Math.max(0, Math.min(100, (player.soul / player.maxSoul) * 100)).toFixed(1) + '%';
+    const soulTextStr = `魂火 ${Math.floor(player.soul)}`;
+    if (force || hudCache.soulPctStr !== soulPctStr) {
+      hudCache.soulPctStr = soulPctStr;
+      HUD_DOM.soulFill.style.width = soulPctStr;
+    }
+    if (force || hudCache.soulTextStr !== soulTextStr) {
+      hudCache.soulTextStr = soulTextStr;
+      HUD_DOM.soulText.textContent = soulTextStr;
+    }
+
+    const flaskWrap = HUD_DOM.flaskWrap;
+    if (force || hudCache.maxFlasks !== player.maxFlasks || hudCache.flasks !== player.flasks) {
+      hudCache.maxFlasks = player.maxFlasks;
+      hudCache.flasks = player.flasks;
+      if (flaskWrap.children.length !== player.maxFlasks) {
+        flaskWrap.innerHTML = '';
+        for (let i = 0; i < player.maxFlasks; i++) {
+          const pip = document.createElement('div');
+          pip.className = 'flask-pip';
+          flaskWrap.appendChild(pip);
+        }
+      }
       for (let i = 0; i < player.maxFlasks; i++) {
-        const pip = document.createElement('div');
-        pip.className = 'flask-pip';
-        flaskWrap.appendChild(pip);
+        flaskWrap.children[i].classList.toggle('empty', i >= player.flasks);
       }
     }
-    for (let i = 0; i < player.maxFlasks; i++) {
-      flaskWrap.children[i].classList.toggle('empty', i >= player.flasks);
-    }
 
-    const sealWrap = document.getElementById('seal-pips');
-    if (sealWrap.children.length !== player.maxSeals) {
-      sealWrap.innerHTML = '';
+    const sealWrap = HUD_DOM.sealWrap;
+    if (force || hudCache.maxSeals !== player.maxSeals || hudCache.seals !== player.seals) {
+      hudCache.maxSeals = player.maxSeals;
+      hudCache.seals = player.seals;
+      if (sealWrap.children.length !== player.maxSeals) {
+        sealWrap.innerHTML = '';
+        for (let i = 0; i < player.maxSeals; i++) {
+          const pip = document.createElement('div');
+          pip.className = 'seal-pip';
+          sealWrap.appendChild(pip);
+        }
+      }
       for (let i = 0; i < player.maxSeals; i++) {
-        const pip = document.createElement('div');
-        pip.className = 'seal-pip';
-        sealWrap.appendChild(pip);
+        sealWrap.children[i].classList.toggle('active', i < player.seals);
       }
     }
-    for (let i = 0; i < player.maxSeals; i++) {
-      sealWrap.children[i].classList.toggle('active', i < player.seals);
-    }
 
-    const zoneEl = document.getElementById('zone-banner');
+    let zoneText;
     if (player.x >= 3780) {
-      if (player.y > 1160) zoneEl.textContent = '沉渊钟井 · 暗河深殿';
-      else if (player.y > 760 && player.x < 4200) zoneEl.textContent = '沉渊钟井 · 井中悬坛';
-      else if (player.y > 760) zoneEl.textContent = '沉渊钟井 · 钟摆石廊';
-      else zoneEl.textContent = '沉渊钟井 · 上层钟阁';
+      if (player.y > 1160) zoneText = '沉渊钟井 · 暗河深殿';
+      else if (player.y > 760 && player.x < 4200) zoneText = '沉渊钟井 · 井中悬坛';
+      else if (player.y > 760) zoneText = '沉渊钟井 · 钟摆石廊';
+      else zoneText = '沉渊钟井 · 上层钟阁';
     } else if (player.x >= 680 && player.x <= 940 && player.y < 210) {
-      zoneEl.textContent = '沉钟回廊 · 苍穹残钟阁';
-    } else if (player.x < 780) zoneEl.textContent = '沉钟回廊 · 熄灯祭坛';
-    else if (player.x < 2420) zoneEl.textContent = '沉钟回廊 · 枯骨长廊';
-    else if (player.x < 2645) zoneEl.textContent = '沉钟回廊 · 礼拜堂前';
-    else zoneEl.textContent = '沉钟回廊 · 断钟礼拜堂';
+      zoneText = '沉钟回廊 · 苍穹残钟阁';
+    } else if (player.x < 780) zoneText = '沉钟回廊 · 熄灯祭坛';
+    else if (player.x < 2420) zoneText = '沉钟回廊 · 枯骨长廊';
+    else if (player.x < 2645) zoneText = '沉钟回廊 · 礼拜堂前';
+    else zoneText = '沉钟回廊 · 断钟礼拜堂';
 
-    document.getElementById('explore-pct').textContent = `探索 ${getExplorationPercent()}%`;
-    renderParchmentMap(document.getElementById('minimapCanvas'), false);
-    if (activeModal === 'map') {
-      renderParchmentMap(document.getElementById('fullMapCanvas'), true);
+    if (force || hudCache.zoneText !== zoneText) {
+      hudCache.zoneText = zoneText;
+      HUD_DOM.zoneEl.textContent = zoneText;
     }
 
-    const bossHud = document.getElementById('boss-hud');
-    if (boss && boss.awake && boss.alive) {
-      bossHud.classList.add('visible');
-      document.getElementById('boss-hp-fill').style.width = `${Math.max(0, boss.hp / boss.maxHp * 100).toFixed(1)}%`;
-      document.getElementById('boss-posture-fill').style.width = `${Math.max(0, boss.posture / boss.maxPosture * 100).toFixed(1)}%`;
-      document.getElementById('boss-phase-tag').textContent = boss.phase === 2 ? '第二幕 · 墨钟长鸣' : '第一幕 · 寂静守誓';
-    } else {
-      bossHud.classList.remove('visible');
+    const exploreText = `探索 ${getExplorationPercent()}%`;
+    if (force || hudCache.exploreText !== exploreText) {
+      hudCache.exploreText = exploreText;
+      HUD_DOM.explorePct.textContent = exploreText;
+    }
+
+    if (force || minimapDirty || (globalTime - lastMinimapRenderTime >= 0.083)) {
+      renderParchmentMap(HUD_DOM.minimapCanvas, false);
+      minimapDirty = false;
+      lastMinimapRenderTime = globalTime;
+    }
+    if (activeModal === 'map') {
+      renderParchmentMap(HUD_DOM.fullMapCanvas, true);
+    }
+
+    const bossVisible = !!(boss && boss.awake && boss.alive);
+    if (force || hudCache.bossVisible !== bossVisible) {
+      hudCache.bossVisible = bossVisible;
+      HUD_DOM.bossHud.classList.toggle('visible', bossVisible);
+    }
+    if (bossVisible) {
+      const bossHpStr = `${Math.max(0, boss.hp / boss.maxHp * 100).toFixed(1)}%`;
+      const bossPosStr = `${Math.max(0, boss.posture / boss.maxPosture * 100).toFixed(1)}%`;
+      const bossPhaseStr = boss.phase === 2 ? '第二幕 · 墨钟长鸣' : '第一幕 · 寂静守誓';
+      if (force || hudCache.bossHpStr !== bossHpStr) {
+        hudCache.bossHpStr = bossHpStr;
+        HUD_DOM.bossHpFill.style.width = bossHpStr;
+      }
+      if (force || hudCache.bossPosStr !== bossPosStr) {
+        hudCache.bossPosStr = bossPosStr;
+        HUD_DOM.bossPostureFill.style.width = bossPosStr;
+      }
+      if (force || hudCache.bossPhaseStr !== bossPhaseStr) {
+        hudCache.bossPhaseStr = bossPhaseStr;
+        HUD_DOM.bossPhaseTag.textContent = bossPhaseStr;
+      }
     }
   }
 
@@ -7308,6 +7675,7 @@
     hideAllOverlays();
     gameState = 'modal';
     activeModal = name;
+    if (name === 'help') syncHelpModalText();
     modal.classList.remove('hidden');
   }
 
@@ -7531,7 +7899,8 @@
             player.soul = player.maxSoul;
           }
           renderRelicChoices();
-          syncHUD();
+          saveProgress(false);
+          syncHUD(true);
         };
         card.addEventListener('click', equip);
         card.addEventListener('keydown', e => {
@@ -7555,6 +7924,7 @@
         btn.textContent = `提灯跃迁 → ${altar.shortName}`;
         btn.addEventListener('click', () => {
           worldState.activeAltarId = altar.id;
+          saveProgress(false);
           respawnAtActiveAltar();
           audio.playBellToll();
           spawnFloatText(altar.x, altar.y - 84, `已跃迁至 ${altar.shortName}`, COLORS.cyanBright, 18, 1.2);
@@ -7616,8 +7986,10 @@
     talismans = [];
     groundWaves = [];
     chapelTide = null;
+    minimapDirty = true;
+    saveProgress(true);
     renderRelicChoices();
-    syncHUD();
+    syncHUD(true);
     audio.playBellToll();
     openModal('altar');
   }
@@ -7658,8 +8030,9 @@
     screenFlash = { alpha: 0, color: '#fff' };
     markMapExplored(altar.x, altar.y - 40);
     hideAllOverlays();
+    minimapDirty = true;
     gameState = 'playing';
-    syncHUD();
+    syncHUD(true);
   }
 
   function resetToAltar() {
@@ -7718,9 +8091,11 @@
     stats = { parries: 0, executions: 0, damageTaken: 0, startTime: performance.now() };
     globalTime = 0;
     boilFrame = 0;
+    minimapDirty = true;
     gameState = 'playing';
     audio.init();
-    syncHUD();
+    saveProgress(false);
+    syncHUD(true);
   }
 
   function resizeCanvas() {
@@ -7786,6 +8161,10 @@
         updateWorldEffects(dt);
         updateCamera(dt);
       }
+      if (saveDirtyTimer > 0) {
+        saveDirtyTimer -= dt;
+        if (saveDirtyTimer <= 0) saveProgress(false);
+      }
       syncHUD();
     } else if (gameState === 'title') {
       updateAmbientOnly(dt);
@@ -7802,10 +8181,12 @@
   }
 
   // UI actions
+  document.getElementById('btn-continue').addEventListener('click', continueSavedGame);
   document.getElementById('btn-start').addEventListener('click', startGame);
   document.getElementById('btn-ctrl').addEventListener('click', () => {
     controlMode = controlMode === 'kbmouse' ? 'keyboard' : 'kbmouse';
     syncControlModeUI();
+    if (gameState !== 'title') saveProgress(false);
   });
   document.getElementById('btn-map').addEventListener('click', openMapModal);
   document.getElementById('minimap-strip').addEventListener('click', openMapModal);
@@ -7813,6 +8194,7 @@
   document.getElementById('btn-mute').addEventListener('click', () => {
     audio.setMuted(!audio.muted);
     document.getElementById('btn-mute').textContent = audio.muted ? '音效: 关' : '音效: 开';
+    if (gameState !== 'title') saveProgress(false);
   });
   document.getElementById('btn-respawn').addEventListener('click', respawnAtActiveAltar);
   document.getElementById('btn-close-altar').addEventListener('click', () => closeModal('altar'));
@@ -7843,7 +8225,8 @@
     } else if (e.code === 'Escape' && gameState === 'modal' && activeModal) {
       closeModal(activeModal);
     } else if (e.code === 'Enter' && gameState === 'title') {
-      startGame();
+      if (readSaveData()) continueSavedGame();
+      else startGame();
     }
   });
 
@@ -7869,13 +8252,18 @@
 
   // Initial scene setup. The title screen is interactive while the world idles behind it.
   buildGlowSprites();
+  const bootSave = readSaveData();
+  if (bootSave && (bootSave.controlMode === 'kbmouse' || bootSave.controlMode === 'keyboard')) {
+    controlMode = bootSave.controlMode;
+  }
   syncControlModeUI();
   worldState = createFreshWorldState();
   markMapExplored(ALTARS[0].x, FLOOR_Y - 40);
+  refreshTitleSaveUI();
   resizeCanvas();
   lanterns = createLanterns();
   initAmbientMotes();
-  renderParchmentMap(document.getElementById('minimapCanvas'), false);
+  renderParchmentMap(HUD_DOM.minimapCanvas, false);
   requestAnimationFrame(gameLoop);
 })();
 </script>
