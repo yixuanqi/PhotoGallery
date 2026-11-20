@@ -721,159 +721,41 @@ html.cosmos-arrival.cosmos-arrival-ready #cosmos-arrival-curtain::after {
 /* ============================================================================
  * 1. PROJECTS, POSTS & ORGANIC 3D PLANET CONSTELLATION DATA
  * ============================================================================ */
-var PROJECTS = [
+var PROJECTS = [];
+
+var BASE_POSTS = [
   {
-    id: 'astra', index: '01', name: '手绘天体运行志', en: 'Astra · Celestial Sketchbook', icon: '✺', category: 'online',
-    tags: ['Three.js', '3D 交互', '浏览器体验'],
-    desc: '一册可以转动的太阳系博物手帐。拖拽观测天体，切换水彩、蓝晒与手稿画风，探索星球和地球奇观。',
-    note: '这是目前可以直接在网页里完整体验的一颗星。',
-    link: '../astra/', linkText: '↗ 立即进入体验',
-    source: 'https://github.com/yixuanqi/PhotoGallery/blob/main/docs/astra/index.html',
-    palette: ['#9e653d', '#e5b884', '#56392c'], atmo: '#f2c185', ring: '#f2cfa0', style: 'banded'
+    "id": "welcome",
+    "no": "01 · 星河缘起",
+    "title": "为什么把个人主页画成一片银河？",
+    "summary": "一个项目一颗星。让作品不再只是简历上的一行文字。",
+    "paragraphs": [
+      "普通的作品集像一张排列整齐的清单。但我更喜欢手帐：它有空白、有涂改、有相互连接的线索，也允许故事继续生长。",
+      "所以这片银河并不追求天文学的严格比例。中心是好奇心，星星是一次次动手做出来的东西。能在浏览器运行的，点开就玩；需要安装的软件，找到它的下载页；尚在研究的项目，打开实验记录。",
+      "以后每做完一个项目，就点亮一颗新的星。文章也会从星际间慢慢长出来。"
+    ],
+    "order": 1
   },
   {
-    id: 'cannon', index: '02', name: '桌面小炮', en: 'Desktop Cannon · Tiny Desk Game', icon: '✹', category: 'download',
-    tags: ['Windows', 'Tauri 2', '桌面小玩具'],
-    desc: '一门住在 Windows 桌面上的可爱小炮，面向轻松、有趣的桌面交互。最新公开 Release 提供安装包和免安装版。',
-    note: '这是一款 Windows 程序，不能直接在网页里运行。',
-    link: 'https://github.com/yixuanqi/desktop_cannon_v01_app/releases/tag/v0.7.0', linkText: '⇩ 下载 Windows 版',
-    source: 'https://github.com/yixuanqi/desktop_cannon_v01_app',
-    palette: ['#ab5e48', '#e6b892', '#64372c'], atmo: '#f09e7d', ring: '#eab495', style: 'crater'
-  },
-  {
-    id: 'audioalgo', index: '03', name: 'AudioAlgo Lab', en: 'Audio Algorithm Laboratory', icon: '✧', category: 'download',
-    tags: ['JUCE', '音频算法', 'Windows'],
-    desc: '一个用于音频算法可视化与实验的桌面平台，围绕算法处理链、听感验证与快速实验展开。公开版本提供 Windows 安装包。',
-    note: '这是桌面音频工具，点击可前往公开版本下载页。',
-    link: 'https://github.com/yixuanqi/audioalgo/releases/tag/v0.1.0', linkText: '⇩ 下载实验平台',
-    source: 'https://github.com/yixuanqi/audioalgo',
-    palette: ['#2e6c82', '#89ccd2', '#1d4659'], atmo: '#7ce0ea', ring: '#9ae2e8', style: 'wave'
-  },
-  {
-    id: 'learning', index: '04', name: '终身学习实验室', en: 'Lifelong Learning Lab', icon: '✳', category: 'lab',
-    tags: ['AI 研究', '实验记录', 'GitHub'],
-    desc: '将持续学习、遗忘、记忆与实验方法整理成可复现的工程研究。这里收藏的不只是结果，还有探索过程。',
-    note: '实验室仓库可公开查看；研究仍在持续，页面不宣称已发表论文。',
-    link: 'https://github.com/yixuanqi/lifelong-learning-lab', linkText: '↗ 查看研究仓库',
-    source: null,
-    palette: ['#5f5182', '#b9a6dc', '#3b3058'], atmo: '#c7aff0', ring: '#d2c0f2', style: 'nebula'
-  },
-  {
-    id: 'gallery', index: '05', name: '小笨相册', en: 'PhotoGallery · Little Photo Companion', icon: '✴', category: 'lab',
-    tags: ['Android', '应用开发', '开源代码'],
-    desc: '相册应用的开发项目，也为这座银河和 Astra 网页提供了目前的 GitHub Pages 发布空间。',
-    note: '目前提供源代码链接，不是网页在线体验版。',
-    link: 'https://github.com/yixuanqi/PhotoGallery', linkText: '↗ 查看项目代码',
-    source: null,
-    palette: ['#937e58', '#e2c997', '#5a4c36'], atmo: '#e8d09e', ring: '#f0ddb2', style: 'crater'
-  },
-  {
-    id: 'earthplant', index: '06', name: '手绘博物航海志', en: 'EarthPlant · Atlas Orbis Terrarum', icon: '⊕', category: 'online',
-    tags: ['Three.js', '3D 地球', '地标探索', '纸飞机航线'],
-    desc: '一册能转动的手绘地球航海志。探索八处世界地标，规划两地间的大圆航线，让纸飞机沿球面巡航，还能切换第三人称跟随视角。',
-    note: '可以直接在浏览器中体验，无需下载安装。',
-    link: '../earthplant/', linkText: '↗ 在线探索地球',
-    source: 'https://github.com/yixuanqi/PhotoGallery/blob/main/docs/earthplant/index.html',
-    palette: ['#256991', '#88c3ba', '#4e835c'], atmo: '#7ec8eb', ring: '#a6d9e8', style: 'earth'
-  },
-  {
-    id: 'islebound', index: '07', name: '手绘群岛漫游', en: 'Islebound · A Little Flight Across the Sea', icon: '✈', category: 'online',
-    tags: ['Three.js', '飞行探索', '手绘海洋', '互动游戏'],
-    desc: '驾驶小小的螺旋桨飞机，飞往狗狗岛、猫猫岛、灯塔岛和星星花园。沿着海岸寻找村庄、灯塔、主题小火车与可以降落的机场。',
-    note: '可以直接在浏览器里驾驶飞机探索；这个入口会随群岛的新版本持续更新。',
-    link: '../islebound/', linkText: '↗ 开始群岛之旅',
-    source: 'https://github.com/yixuanqi/PhotoGallery/blob/main/docs/islebound/index.html',
-    palette: ['#2c788c', '#92d6c4', '#4a8a78'], atmo: '#85e0cd', ring: '#a9e6d8', style: 'archipelago'
-  },
-  {
-    id: 'doudou-tank', index: '08', name: '豆豆号坦克实验室', en: 'Doudou Tank · Storybook Terrain Lab', icon: '⚙', category: 'online',
-    tags: ['Three.js', '履带与悬挂', '楼梯斜坡', '3D 交互'],
-    desc: '驾驶可爱的豆豆号小坦克，在青石阶梯、木梯跳台、风车山丘与波浪路之间自由切换。观察履带贴地、车身俯仰与负重轮行程，亲手调整弹簧、阻尼和驱动参数。',
-    note: '采用交互式地形接触与悬挂近似模型，适合探索物理现象，并非工程级高精度求解器；后续更新仍会直接进入这个页面。',
-    link: '../doudou-tank/', linkText: '↗ 驾驶豆豆号',
-    source: 'https://github.com/yixuanqi/PhotoGallery/blob/main/docs/doudou-tank/index.html',
-    palette: ['#8a7c4f', '#dfc48b', '#5d7356'], atmo: '#e8cc8f', ring: '#ebd49d', style: 'dunes'
-  },
-  {
-    id: 'helicopter', index: '09', name: '手绘直升机飞行实验室', en: 'Sketch Helicopter · Rotor Flight Lab', icon: '🚁', category: 'online',
-    tags: ['Three.js', '旋翼气动', '3D 飞行', '双摇杆交互'],
-    desc: '驾驶一架圆滚滚的手绘小直升机，体验前后左右飞行、升降与机头转向。可观察旋翼叶素升力、总升力矢量、飞行轨迹和下洗气流，并探索停机坪、灯塔与空中穿环航道。',
-    note: '浏览器直接游玩。基于叶素动量理论（BEMT）与简化六自由度控制的交互演示，并非工程级气动仿真；更新后沿用同一入口。',
-    link: '../helicopter/', linkText: '↗ 开始直升机飞行',
-    source: 'https://github.com/yixuanqi/PhotoGallery/blob/main/docs/helicopter/index.html',
-    palette: ['#a64b3e', '#e7a98d', '#6d322c'], atmo: '#f29e83', ring: '#f2b79f', style: 'banded'
-  },
-  {
-    id: 'excavator', index: '10', name: '豆豆挖掘机实验室', en: 'Doudou Excavator · Storybook Worksite', icon: '🚜', category: 'online',
-    tags: ['Three.js', '可变形地形', '挖掘物理', '3D 交互'],
-    desc: '驾驶可爱的豆豆挖掘机，在金沙丘陵、粘稠泥地、绘本水塘与装车料斗之间切换。操纵大臂、小臂与铲斗，挖出会改变形状的土地，体验装土、卸土与智能平斗联动。',
-    note: '可以直接在浏览器里体验。使用实时高度场、沙土流动与液压联动的简化交互模型，不代表工程级土体力学仿真；后续版本沿用同一个入口。',
-    link: '../excavator/', linkText: '↗ 开始挖掘',
-    source: 'https://github.com/yixuanqi/PhotoGallery/blob/main/docs/excavator/index.html',
-    palette: ['#a87a2d', '#ecc87f', '#73582c'], atmo: '#f5ce7d', ring: '#f5d996', style: 'dunes'
-  },
-  {
-    id: 'gravity-lens', index: '11', name: '引力透镜实验室', en: 'Gravitational Lensing · GPGPU Lab', icon: '◉', category: 'online',
-    tags: ['WebGL2', 'Three.js', 'GPGPU', '广义相对论'],
-    desc: '在浏览器中观察多体引力场下的测地线光线弯曲、黑洞阴影与相对论吸积盘，同时运行 GPU 粒子系综，探索双体混沌、相对论进动和三体共振。',
-    note: '支持 65K–262K 粒子规模、时间流速与初始扰动调节，并提供 GPU 采样遥测和 Ping-Pong FBO 画中画检视；需要支持 WebGL2 的现代浏览器。',
-    link: '../gravity-lens/', linkText: '↗ 进入引力透镜实验室',
-    source: 'https://github.com/yixuanqi/PhotoGallery/blob/main/docs/gravity-lens/index.html',
-    palette: ['#32477a', '#8ea6e2', '#1d274d'], atmo: '#8fb4ff', ring: '#b4c8ff', style: 'vortex'
-  },
-  {
-    id: 'star-courier', index: '12', name: '星际小快递 · 引力弹弓', en: 'Star Courier · Gravity Slingshot', icon: '🚀', category: 'online',
-    tags: ['Three.js', '轨道物理', '引力弹弓', '3D 游戏'],
-    desc: '驾驶一艘圆滚滚的手绘小火箭，在暖阳太阳与四颗公转星球之间穿行。利用引力弹弓改变速度与方向，沿预测轨道送达星际包裹，收集星星糖，管理燃料。',
-    note: '支持键盘与手机触屏控制；采用多体引力与 RK4 积分的实时交互模型，是可玩的轨道物理游戏而非精密航天导航软件。',
-    link: '../star-courier/', linkText: '↗ 开始星际快递',
-    source: 'https://github.com/yixuanqi/PhotoGallery/blob/main/docs/star-courier/index.html',
-    palette: ['#9d6e91', '#f2bf9e', '#65486a'], atmo: '#f4b7bc', ring: '#f0cc9e', style: 'banded'
-  },
-  {
-    id: 'ashen-bell-vow', index: '13', name: '灰钟残誓', en: 'Ashen Bell Vow · Hand-Drawn Metroidvania', icon: '⚔', category: 'online',
-    tags: ['2D 横版', '动作 RPG', '弹反与居合', 'Boss 战'],
-    desc: '一款暗黑手绘风格的横版动作 RPG。操纵提灯人偶探索沉钟回廊与枯骨长廊，组合三连斩、居合、弹反、闪避和幽丝钩索，挑战断钟骑士。',
-    note: '可以直接在浏览器中游玩；包含手绘地图、祭坛与圣物、架势崩溃和处决系统，并提供移动端触控按键。',
-    link: '../ashen-bell-vow/', linkText: '↗ 进入晦渊',
-    source: 'https://github.com/yixuanqi/PhotoGallery/blob/main/docs/ashen-bell-vow/index.html',
-    palette: ['#4c4d55', '#b68d77', '#222832'], atmo: '#d78a6a', ring: '#d7c6aa', style: 'crater'
+    "id": "open-door",
+    "no": "03 · 制作原则",
+    "title": "点亮一颗星，应该能去到哪里？",
+    "summary": "区分在线体验、下载安装和实验代码，让入口说人话。",
+    "paragraphs": [
+      "如果一个页面可以直接在浏览器运行，就应该尽量提供“一键进入体验”的入口。Astra 就属于这一类。",
+      "有些作品天然是桌面应用，例如 Desktop Cannon 和 AudioAlgo。银河会清楚写明平台与安装方式，而不是让人以为点击后就能在网页上运行。",
+      "还有些项目更适合展示研究过程或源码。它们不需要硬做成游戏，仍然可以拥有自己的星位。"
+    ],
+    "order": 3
   }
 ];
-
-var POSTS = [
-  { id: 'welcome', no: '01 · 星河缘起', title: '为什么把个人主页画成一片银河？', summary: '一个项目一颗星。让作品不再只是简历上的一行文字。', paragraphs: ['普通的作品集像一张排列整齐的清单。但我更喜欢手帐：它有空白、有涂改、有相互连接的线索，也允许故事继续生长。', '所以这片银河并不追求天文学的严格比例。中心是好奇心，星星是一次次动手做出来的东西。能在浏览器运行的，点开就玩；需要安装的软件，找到它的下载页；尚在研究的项目，打开实验记录。', '以后每做完一个项目，就点亮一颗新的星。文章也会从星际间慢慢长出来。'] },
-  { id: 'astra-note', no: '02 · 作品手记', title: '从一颗手绘星球到一整册天体运行志', summary: 'Astra 的有趣之处，不止在 3D，还在“像一本旧书”。', paragraphs: ['Astra 是一页可以旋转、缩放和点击的天体手帐。它用 Three.js 承载 3D 交互，再把水彩、钢笔排线和旧纸张的视觉语言铺在星球周围。', '对我来说，最有意思的并不是把一颗球渲染得多逼真，而是让界面本身像一件手工制作的小作品。它不一定高效，却让探索的过程有了一点趣味。', '这也是银河主页延续这套视觉语言的原因：星系像地图，项目像被收藏在地图上的小标本。'] },
-  { id: 'open-door', no: '03 · 制作原则', title: '点亮一颗星，应该能去到哪里？', summary: '区分在线体验、下载安装和实验代码，让入口说人话。', paragraphs: ['如果一个页面可以直接在浏览器运行，就应该尽量提供“一键进入体验”的入口。Astra 就属于这一类。', '有些作品天然是桌面应用，例如 Desktop Cannon 和 AudioAlgo。银河会清楚写明平台与安装方式，而不是让人以为点击后就能在网页上运行。', '还有些项目更适合展示研究过程或源码。它们不需要硬做成游戏，仍然可以拥有自己的星位。'] },
-  { id: 'earthplant-note', no: '04 · 地球航海志', title: '把世界画在一张可以旋转的纸上', summary: '从手绘地球到地标探索，再到一架沿球面航行的纸飞机。', paragraphs: ['EarthPlant 是一张可以转动的立体航海图。它延续旧纸、水彩、钢笔排线的风格，试着让地球本身变成一本可以翻阅的博物手帐。', '除了八处世界地标，我还把两地之间的大圆航线做成了可交互的巡航路线。纸飞机可以沿路径飞行，也能从第三人称视角跟随它穿过天空。', '它和 Astra 一起成为银河里可以直接进入体验的作品。希望未来每一颗星背后都有这样一段可以亲手探索的旅程。'] },
-  { id: 'islebound-note', no: '05 · 群岛飞行手记', title: '把一片海洋变成可以亲自飞进去的世界', summary: '从狗狗岛和猫猫岛出发，飞过海面、火车和灯塔。', paragraphs: ['Islebound 是一片用 Three.js 绘制的手绘群岛。它不是静态的作品展示，而是可以驾驶小飞机穿行的互动世界。', '四座岛屿各有自己的地形、村镇、动物主题元素和可以降落的机场。沿海有灯塔、轨道与小火车，探索时总会发现新的细节。', '我把它接到了星海漫游的第七颗星上。以后随着小游戏不断修改，这颗星通往的仍是最新的群岛。'] },
-  { id: 'doudou-tank-note', no: '06 · 坦克物理手记', title: '让一辆圆滚滚的小坦克翻过台阶', summary: '把履带、悬挂和地形接触变成一座可以亲手驾驶的绘本实验场。', paragraphs: ['豆豆号坦克实验室是一页可以直接在浏览器打开的 3D 互动实验：同一辆小坦克，会遇到庭院石阶、高阶木梯、风车斜坡与交错原木。', '除了手动驾驶和自动巡航，我还为它做了车身姿态、轮组行程和受力辅助显示。玩家可以改变悬挂刚度、阻尼、履带张力和驱动扭矩，观察不同地形下的响应。', '这是一套为了探索和学习而设计的近似仿真，并不把网页演示等同于工程级履带动力学验证。第八颗星通往独立页面，以后还能继续打磨物理细节与关卡。'] },
-  { id: 'helicopter-note', no: '07 · 旋翼飞行手记', title: '给手绘小直升机装上一套气动模型', summary: '从叶素升力到双摇杆操纵，把旋翼动力学做成可以飞进场景的小游戏。', paragraphs: ['这个直升机项目是一页独立的 Three.js 手绘互动世界：圆滚滚的机身、四片主旋翼、小小的飞行员，以及供起降的停机坪和空中圆环。', '除了操纵前后左右与升降转向，还能观察总距角、主旋翼升力、离地高度和巡航速度。旋翼升力与下洗流通过简化的叶素气动计算与可视化元素呈现。', '它更接近一座可玩的飞行物理实验场，而不是专业飞行训练器。第九颗星连接到独立网页，接下来可以继续丰富飞行场景、操控手感与气动细节。'] },
-  { id: 'excavator-note', no: '08 · 挖掘机工地手记', title: '给豆豆号一片能真正挖开的土地', summary: '从履带底盘、液压挖臂到可变形沙土、泥地与水塘，把手绘工地变成一座可操作的实验场。', paragraphs: ['豆豆挖掘机是一页可以直接在浏览器运行的 3D 手绘工地。四个分区分别有金沙丘陵、泥地、水塘清淤和料斗装车，铲斗挖下去之后，地形会随之变化。', '玩家既能驾驶履带底盘，也能用按键和滑块控制大臂、小臂、铲斗与旋转平台，还能切换智能平斗、一键铲土和一键卸土。页面同步显示铲斗装载、累计挖运量和履带悬挂等数据。', '为了让过程有趣且能实时运行，它采用离散高度场、简化的土料流动与接触模型，而不是完整的工业级颗粒或液压求解器。这第十颗星，先把挖掘和装运的乐趣装进星海。'] },
-  { id: 'gravity-lens-note', no: '09 · 引力透镜与 GPGPU', title: '让光线在黑洞附近转弯，让粒子在 GPU 上演化', summary: '把广义相对论测地线可视化与大规模 GPU 粒子系综放进同一个浏览器实验室。', paragraphs: ['这个项目把 3D 测地线光线步进、黑洞阴影和相对论吸积盘放在同一幅实时画面里；背景之外，还有一套独立运行的 GPU 粒子演化系统。', '粒子系统通过 Ping-Pong FBO 与 RK4 积分推进状态，可以在双体混沌引力井、相对论进动与三体共振等场景之间切换。页面还会采样 GPU 状态，显示束缚、逃逸和吸积粒子的比例，以及空间弥散和混沌发散代理量。', '粒子规模可以从约 6.5 万调整到 26 万，并能实时调节时间流速、初始扰动和光线步进精度。它是一座可以直接在浏览器里探索的引力与 GPU 计算实验室。'] },
-  { id: 'star-courier-note', no: '10 · 星际快递与引力弹弓', title: '让一枚小火箭借行星引力去送快递', summary: '手绘星球与 RK4 轨道模拟相遇，变成一场轻松的星际送达游戏。', paragraphs: ['小火箭穿梭在太阳与四颗按开普勒规律公转的星球之间，玩家需要利用推进、制动、转向与引力弹弓完成快递目标。', '场景采用 Three.js、水彩贴图与柔和卡通色阶，动力学使用多体引力和 RK4 积分，并提供预测轨迹、慢动作瞄准、燃料回复与星星糖收集。', '这是一套面向体验的轨道物理游戏，而不是实际航天任务的精密轨道设计器。点击第十二颗星球即可直接开始。'] },
-  { id: 'ashen-bell-vow-note', no: '11 · 灰钟残誓', title: '在沉钟回廊里，练成一场属于自己的反击', summary: '从弹反、居合到幽丝钩索，在暗黑手绘世界里探索并挑战断钟骑士。', paragraphs: ['《灰钟残誓》是一款暗黑手绘风格的横版动作 RPG 原型。玩家扮演提灯人偶，在沉钟回廊、枯骨长廊与断钟礼拜堂之间探索，点燃祭坛并逐步打开晦渊舆图。', '战斗把三连斩、蓄力居合、上挑与下劈、精准弹反、墨影闪避和幽丝钩索组合在一起；积攒魂火后可释放幽鸣灵刃，击破敌人架势还能近身处决。', '探索中可以在祭坛恢复生命与资源、切换不同圣物，并挑战断钟骑士·晦。页面内置合成音效和触屏控制，可直接在浏览器体验。'] }
-];
+var POSTS = BASE_POSTS.slice();
 
 /* Organic 3D spiral constellation anchors (varied spacing & vertical depth) */
-var PLANET_BASE_COORDS = [
-  [ 13.0,  2.8,  -9.5],
-  [ 22.5, -3.5,  17.5],
-  [-20.5, -1.9,  15.0],
-  [  6.5,  4.8, -31.5],
-  [ -3.0, -4.4,  28.5],
-  [-10.5,  1.4,   3.0],
-  [-26.5,  3.4, -15.5],
-  [-14.5,  5.2, -39.5],
-  [-35.5, -2.5,   3.5],
-  [ 34.5,  1.1,   4.5],
-  [ 31.0,  4.5, -26.0],
-  [ -1.5,  1.6, -54.0],
-  [-38.0, -3.4, -52.5]
-];
+var PLANET_BASE_COORDS = [];
 
 /* Distinct planet archetypes (from petite dwarf moons to grand ringed giants) */
-var PLANET_BASE_RADII = [2.95, 1.32, 2.30, 1.62, 1.24, 2.68, 1.98, 1.48, 2.45, 1.72, 3.08, 2.26, 1.92];
+var PLANET_BASE_RADII = [];;
 
 /* Generate organic, non-uniform 3D positions with safe minimum separation */
 function buildOrganicPlanetCoords() {
@@ -906,7 +788,41 @@ function buildOrganicPlanetCoords() {
   }
   return coords;
 }
-var PLANET_COORDS = buildOrganicPlanetCoords();
+var PLANET_COORDS = [];
+
+function loadProjectCatalog() {
+  return fetch('../projects.json', { cache: 'no-cache' }).then(function (response) {
+    if (!response.ok) throw new Error('HTTP ' + response.status + ' while loading docs/projects.json');
+    return response.json();
+  }).then(function (catalog) {
+    if (!catalog || !Array.isArray(catalog.projects)) throw new Error('Invalid project catalog structure');
+    var records = catalog.projects.filter(function (project) { return project.id !== 'galaxy'; });
+    records.sort(function (a, b) { return a.sortOrder - b.sortOrder; });
+    if (!records.length) throw new Error('No project records found');
+    PROJECTS = records.map(function (project) {
+      var view = project.galaxy;
+      if (!view || !Array.isArray(view.position) || view.position.length !== 3 || !Number.isFinite(view.radius)) {
+        throw new Error('Missing galaxy presentation data for ' + project.id);
+      }
+      return {
+        id: project.id, index: String(project.sortOrder).padStart(2, '0'),
+        name: project.name, en: project.nameEn || project.name, icon: view.icon,
+        category: view.category, tags: project.tags.slice(), desc: view.description,
+        note: view.note, link: project.sourcePath ? '../' + project.id + '/' : project.primaryUrl,
+        linkText: view.linkText || project.primaryAction, source: view.sourceUrl || null,
+        palette: view.palette.slice(), atmo: view.atmo, ring: view.ring, style: view.style,
+        position: view.position.slice(), radius: view.radius, journal: view.journal || null
+      };
+    });
+    PLANET_BASE_COORDS = PROJECTS.map(function (project) { return project.position; });
+    PLANET_BASE_RADII = PROJECTS.map(function (project) { return project.radius; });
+    PLANET_COORDS = buildOrganicPlanetCoords();
+    POSTS = BASE_POSTS.concat(PROJECTS.filter(function (project) { return !!project.journal; })
+      .map(function (project) { return project.journal; }))
+      .sort(function (a, b) { return a.order - b.order; });
+  });
+}
+
 
 /* ============================================================================
  * 2. BUILT-IN SILKY DAMPED ORBIT / PAN / PINCH CONTROLLER (ZERO EXTRA CDN)
@@ -2443,9 +2359,18 @@ function listen() {
   });
 }
 
-listen();
-if (document.readyState === 'complete') init();
-else window.addEventListener('load', init, { once: true });
+function boot() {
+  loadProjectCatalog().then(function () {
+    listen();
+    init();
+  }).catch(function (error) {
+    listen();
+    fail('作品目录加载失败。请刷新页面，或检查网络连接后重试。');
+    if (window.console && console.error) console.error('Galaxy project catalog failed to load:', error);
+  });
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
+else boot();
 })();
 </script>
 </body>
