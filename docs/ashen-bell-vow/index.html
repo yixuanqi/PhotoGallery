@@ -281,9 +281,30 @@
   #minimapCanvas {
     display: block;
     width: 216px;
-    height: 44px;
+    height: 62px;
     border-radius: 3px;
     background: rgba(12, 14, 20, 0.85);
+  }
+
+  .ability-badge {
+    font-size: 10.5px;
+    color: var(--cyan-bright);
+    background: rgba(56, 189, 248, 0.16);
+    border: 1px solid rgba(56, 189, 248, 0.45);
+    border-radius: 4px;
+    padding: 1px 6px;
+    display: none;
+  }
+
+  .ability-badge.unlocked {
+    display: inline-block;
+  }
+
+  .modal-btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
   }
 
   .parchment-map-box {
@@ -675,7 +696,10 @@
       <div class="player-status">
         <div class="hp-header">
           <span id="hp-text">100 / 100</span>
-          <span id="relic-tag" class="relic-badge">噬痛荆棘</span>
+          <div style="display:flex;gap:5px;align-items:center;">
+            <span id="ability-tag" class="ability-badge" title="已习得墨翼步：空中可再按 Space 二段跳">墨翼步</span>
+            <span id="relic-tag" class="relic-badge">噬痛荆棘</span>
+          </div>
         </div>
         <div class="hp-bar-frame">
           <div id="hp-gray" class="hp-gray-fill" style="width: 100%"></div>
@@ -713,7 +737,7 @@
             <span>晦渊舆图</span>
             <span id="explore-pct">探索 0%</span>
           </div>
-          <canvas id="minimapCanvas" width="216" height="44"></canvas>
+          <canvas id="minimapCanvas" width="216" height="62"></canvas>
         </div>
       </div>
     </div>
@@ -773,7 +797,7 @@
       <div class="modal-title">晦渊舆图</div>
       <div id="map-modal-sub" class="modal-sub">沉钟回廊 · 已探索 0% · 已点燃祭坛 1 / 2</div>
       <div class="parchment-map-box">
-        <canvas id="fullMapCanvas" width="580" height="200"></canvas>
+        <canvas id="fullMapCanvas" width="600" height="230"></canvas>
       </div>
       <div class="map-legend">
         <span class="legend-item"><span class="legend-dot" style="background:#38bdf8;box-shadow:0 0 6px #38bdf8;"></span>已点燃祭坛</span>
@@ -789,14 +813,9 @@
   <!-- Lore Tablet Modal -->
   <div id="lore-modal" class="overlay-screen hidden">
     <div class="modal-card">
-      <div class="modal-title">风化残碑</div>
-      <div class="modal-sub">枯骨长廊 · 高台铭文</div>
-      <div class="lore-text">
-        “昔日晦渊无夜，青铜巨钟每鸣一声，墨蚀便退潮三里。<br>
-        直至守誓者亲手斩断钟索——宁愿让圣城坠入永恒寂静，也不愿再听见地底传来的回响。<br><br>
-        提灯的人偶啊，若你听见礼拜堂深处的拖剑声，请记住：<br>
-        <strong>金芒可借刃弹开，猩红危兆须以墨影穿身；唯有敲碎他的架势，残誓方得终结。</strong>”
-      </div>
+      <div id="lore-modal-title" class="modal-title">风化残碑</div>
+      <div id="lore-modal-sub" class="modal-sub">枯骨长廊 · 高台铭文</div>
+      <div id="lore-modal-body" class="lore-text"></div>
       <button id="btn-close-lore" class="primary-btn">收起残碑</button>
     </div>
   </div>
@@ -830,9 +849,12 @@
   <div id="victory-modal" class="overlay-screen hidden">
     <div class="modal-card">
       <div class="modal-title" style="color: var(--gold-bright); letter-spacing: 8px;">残 誓 已 断</div>
-      <div class="modal-sub">断钟骑士 · 晦 已被斩落 · 沉钟回廊重现微光</div>
+      <div class="modal-sub">断钟骑士 · 晦 已被斩落 · 礼拜堂东侧青铜封门已开启</div>
       <div id="victory-stats" class="lore-text" style="border-left-color: var(--gold-bright); text-align:center; white-space: pre-line;"></div>
-      <button id="btn-play-again" class="primary-btn">再赴晦渊</button>
+      <div class="modal-btn-row">
+        <button id="btn-enter-well" class="primary-btn" style="border-color: var(--cyan-bright); color: var(--cyan-bright);">踏入沉渊钟井 →</button>
+        <button id="btn-play-again" class="primary-btn">重开新周目</button>
+      </div>
     </div>
   </div>
 
@@ -939,14 +961,32 @@
       spellCost: 22,
       spellPostureBonus: 12,
       hidden: true
+    },
+    {
+      id: 'bellcore',
+      name: '古钟心核',
+      desc: '苍穹秘宝 · 终极打铁流：墨印上限增至 4 枚，每次完美弹反回复 6 点生命，居合与断钟返伤害提升 25%。',
+      parryWindowMs: 145,
+      blockWindowMs: 265,
+      parryPostureMult: 1.25,
+      parryReflectDmg: 6,
+      parryHeal: 6,
+      grayDuration: 4.0,
+      rallyMult: 1.25,
+      maxFlasks: 3,
+      maxSeals: 4,
+      heavySkillMult: 1.25,
+      execHealPct: 0.20,
+      hidden: true
     }
   ];
 
   let currentRelic = RELICS[0];
 
-  const WORLD_W = 3920;
-  const WORLD_H = 720;
+  const WORLD_W = 5560;
+  const WORLD_H = 1520;
   const FLOOR_Y = 580;
+  const WELL_BOTTOM_Y = 1380;
   const GRAVITY = 1580;
 
   /* =========================================================================
@@ -1498,6 +1538,50 @@
       osc.start(t); osc.stop(t + 0.1);
     }
 
+    playWingJump() {
+      if (!this.ctx || this.muted) return;
+      const t = this.ctx.currentTime;
+      const n = this.ctx.createBufferSource();
+      n.buffer = this.noiseBuf;
+      const bp = this.ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.setValueAtTime(520, t);
+      bp.frequency.exponentialRampToValueAtTime(1450, t + 0.14);
+      bp.Q.value = 1.3;
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.16, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+      n.connect(bp); bp.connect(g); g.connect(this.ctx.destination);
+      n.start(t); n.stop(t + 0.18);
+
+      [587.3, 880].forEach((f, i) => {
+        const osc = this.ctx.createOscillator();
+        const og = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(f, t + i * 0.03);
+        osc.frequency.exponentialRampToValueAtTime(f * 1.18, t + 0.2);
+        og.gain.setValueAtTime(0.075 / (i + 1), t + i * 0.03);
+        og.gain.exponentialRampToValueAtTime(0.0008, t + 0.22);
+        osc.connect(og); og.connect(this.ctx.destination);
+        osc.start(t + i * 0.03); osc.stop(t + 0.24);
+      });
+    }
+
+    playShieldBreak() {
+      if (!this.ctx || this.muted) return;
+      this.playParry(true, 2);
+      const t = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, t);
+      osc.frequency.exponentialRampToValueAtTime(55, t + 0.24);
+      g.gain.setValueAtTime(0.26, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.26);
+      osc.connect(g); g.connect(this.ctx.destination);
+      osc.start(t); osc.stop(t + 0.28);
+    }
+
     playGrayShatter() {
       if (!this.ctx || this.muted) return;
       const t = this.ctx.currentTime;
@@ -1688,18 +1772,22 @@
      4. LEVEL ARCHITECTURE & WORLD PROPS
      ========================================================================= */
   const SOLIDS = [
-    // Main Floor & Boundary Walls
-    { x: 0, y: FLOOR_Y, w: WORLD_W, h: 240, type: 'ground' },
+    // Boundary Walls (full vertical height for Sunken Bell Well)
     { x: -40, y: 0, w: 60, h: WORLD_H, type: 'pillar' },
     { x: WORLD_W - 20, y: 0, w: 60, h: WORLD_H, type: 'pillar' },
+
+    // Upper Corridor & Broken Bell Chapel Floor (splits open at x = 4140 for the Bell Well Shaft)
+    { x: 0, y: FLOOR_Y, w: 3780, h: 980, type: 'ground' },
+    { x: 3780, y: FLOOR_Y, w: 360, h: 170, type: 'ground' }, // Well Entry Ledge (ceiling of West Sanctuary at y=750)
 
     // Zone 1 Upper Secret Sanctuary Chamber (behind cracked ink wall)
     { x: 45, y: 135, w: 217, h: 20, type: 'pillar' },
     { x: 45, y: 280, w: 295, h: 22, type: 'platform' },
     { x: 355, y: 365, w: 115, h: 22, type: 'platform' },
 
-    // Zone 1 -> Zone 2 Transition
+    // Zone 1 -> Zone 2 Transition + Sky Belfry (Metroidvania Backtrack Balcony requiring Ink-Wing Double Jump!)
     { x: 640, y: 475, w: 155, h: 22, type: 'platform' },
+    { x: 700, y: 170, w: 220, h: 22, type: 'platform' },
     { x: 960, y: 410, w: 170, h: 22, type: 'platform' },
     // High Skyway approach ledge before One-Way Shortcut Chain Gate
     { x: 1175, y: 255, w: 170, h: 22, type: 'platform' },
@@ -1714,17 +1802,60 @@
     { x: 2130, y: 255, w: 160, h: 22, type: 'platform' },
     { x: 2340, y: 380, w: 155, h: 22, type: 'platform' },
 
-    // Zone 3: Boss Chapel side pillars (optional wall-jump evades)
+    // Zone 3: Boss Chapel side pillars (East wall closes upper gap; doorway y=480..580 guarded by Chapel Exit Gate)
     { x: 2610, y: 270, w: 36, h: 210, type: 'pillar' },
-    { x: 3740, y: 270, w: 36, h: 210, type: 'pillar' }
+    { x: 3740, y: 0, w: 40, h: 480, type: 'pillar' },
+
+    // ==================== ZONE 4: 沉渊钟井 (SUNKEN BELL WELL, x: 3780..5560, y: 0..1520) ====================
+    // Tier 1 East: Upper Bell Loft (y = 580)
+    { x: 4640, y: FLOOR_Y, w: 920, h: 160, type: 'ground' },
+
+    // Tier 2 West: Sunken Bell Altar Sanctuary (y = 1020)
+    { x: 3780, y: 1020, w: 360, h: 520, type: 'ground' },
+
+    // Tier 2 East: Pendulum Gauntlet Hall (y = 1020)
+    { x: 4640, y: 1020, w: 920, h: 120, type: 'ground' },
+
+    // Tier 3 Bottom: Abyssal Ink River & Ink-Wing Shrine (y = 1380)
+    { x: 4140, y: WELL_BOTTOM_Y, w: 1420, h: 180, type: 'ground' },
+    { x: 4250, y: 1315, w: 120, h: 20, type: 'platform' },
+    { x: 4480, y: 1300, w: 115, h: 20, type: 'platform' },
+    { x: 4795, y: 1305, w: 120, h: 20, type: 'platform' },
+
+    // Vertical Well Shaft Platforms (x = 4140..4640, spaced <= 115px vertically so climb/descent is smooth)
+    { x: 4210, y: 690, w: 150, h: 22, type: 'platform' },
+    { x: 4440, y: 800, w: 155, h: 22, type: 'platform' },
+    { x: 4200, y: 910, w: 155, h: 22, type: 'platform' },
+    { x: 4440, y: 1020, w: 170, h: 22, type: 'platform' },
+    { x: 4210, y: 1135, w: 155, h: 22, type: 'platform' },
+    { x: 4435, y: 1245, w: 155, h: 22, type: 'platform' }
   ];
 
   const ALTARS = [
     { id: 'altar_start', x: 330, y: FLOOR_Y, name: '沉钟回廊 · 熄灯祭坛', shortName: '起点 · 熄灯祭坛', defaultLit: true },
-    { id: 'altar_chapel', x: 2515, y: FLOOR_Y, name: '礼拜堂前 · 断索祭坛', shortName: '礼拜堂 · 断索祭坛', defaultLit: false }
+    { id: 'altar_chapel', x: 2515, y: FLOOR_Y, name: '礼拜堂前 · 断索祭坛', shortName: '礼拜堂 · 断索祭坛', defaultLit: false },
+    { id: 'altar_well', x: 3945, y: 1020, name: '沉渊钟井 · 井中悬坛', shortName: '钟井 · 井中悬坛', defaultLit: false }
   ];
   const ALTAR_POS = ALTARS[0];
-  const LORE_POS = { x: 1565, y: 245 };
+
+  const LORE_TABLETS = [
+    {
+      id: 'lore_corridor',
+      x: 1565,
+      y: 245,
+      title: '风化残碑',
+      sub: '枯骨长廊 · 高台铭文',
+      html: '“昔日晦渊无夜，青铜巨钟每鸣一声，墨蚀便退潮三里。<br>直至守誓者亲手斩断钟索——宁愿让圣城坠入永恒寂静，也不愿再听见地底传来的回响。<br><br>提灯的人偶啊，若你听见礼拜堂深处的拖剑声，请记住：<br><strong>金芒可借刃弹开，猩红危兆须以墨影穿身；唯有敲碎他的架势，残誓方得终结。</strong>”'
+    },
+    {
+      id: 'lore_well',
+      x: 5365,
+      y: FLOOR_Y,
+      title: '铸钟匠遗碑',
+      sub: '沉渊钟井 · 东侧钟阁',
+      html: '“守钟铁卫手执青铜巨盾，寻常轻斩难伤其分毫。<br>唯有以<strong>居合一闪、三段重劈、幽鸣灵刃或完美弹反</strong>，方能震裂盾锋。<br><br>井底暗河深处封存着失落的<strong>「墨翼步」</strong>。习得之后，不妨跃迁回起点回廊——<br><strong>苍穹残钟阁正悬于初见悬灯的高空之上，古钟心核犹在彼处长鸣。</strong>”'
+    }
+  ];
 
   const SHORTCUT_GATE_DEF = {
     id: 'gate_skyway',
@@ -1736,8 +1867,17 @@
     leverY: 245
   };
 
+  const CHAPEL_EXIT_GATE_DEF = {
+    id: 'gate_chapel_exit',
+    x: 3740,
+    y: 480,
+    w: 40,
+    h: 100
+  };
+
   const SECRET_WALLS_DEF = [
-    { id: 'wall_sanctuary', x: 230, y: 155, w: 32, h: 125, maxHp: 3 }
+    { id: 'wall_sanctuary', x: 230, y: 155, w: 32, h: 125, maxHp: 3 },
+    { id: 'wall_well_mid', x: 5310, y: 865, w: 34, h: 155, maxHp: 3 }
   ];
 
   const PICKUPS_DEF = [
@@ -1757,19 +1897,61 @@
       y: 280,
       name: '隐藏圣物 · 幽丝断钟',
       desc: '已解锁并可在祭坛铭刻！'
+    },
+    {
+      id: 'pickup_flask_core_well',
+      kind: 'flaskCore',
+      x: 5440,
+      y: 1020,
+      name: '深井灯油残芯',
+      desc: '灯油上限再 +1！'
+    },
+    {
+      id: 'pickup_ink_wings',
+      kind: 'ability',
+      abilityId: 'doubleJump',
+      x: 5390,
+      y: WELL_BOTTOM_Y,
+      name: '绝技 · 墨翼步',
+      desc: '习得二段跳！空中再按 Space 可振翼跃升，可返回起点探索苍穹残钟阁！'
+    },
+    {
+      id: 'pickup_relic_core',
+      kind: 'relic',
+      relicId: 'bellcore',
+      x: 810,
+      y: 170,
+      name: '苍穹秘宝 · 古钟心核',
+      desc: '墨印上限 +1，弹反回血，居合/断钟返增伤 25%！'
     }
   ];
 
+  const PENDULUMS = [
+    { id: 'pend_1', x: 4390, anchorY: 645, len: 180, amp: 0.72, speed: 1.65, phase: 0.2, r: 28, hitCd: 0 },
+    { id: 'pend_2', x: 4855, anchorY: 740, len: 222, amp: 0.54, speed: 1.80, phase: 0.0, r: 29, hitCd: 0 },
+    { id: 'pend_3', x: 5175, anchorY: 740, len: 222, amp: 0.54, speed: 1.80, phase: Math.PI, r: 29, hitCd: 0 },
+    { id: 'pend_4', x: 4680, anchorY: 1140, len: 185, amp: 0.64, speed: 1.72, phase: 1.1, r: 28, hitCd: 0 }
+  ];
+
+  const ABYSSAL_RIVER = { x: 4180, w: 770, y: WELL_BOTTOM_Y - 12 };
+
   const WALL_INSCRIPTIONS = [
     { x: 520, y: 492, text: '「幽丝攀环 · I / F / 右键」' },
+    { x: 810, y: 315, text: '「苍穹残钟阁 · 非墨翼不可及」', hideWhenDoubleJump: true },
     { x: 880, y: 492, text: '「下劈悬灯 S+J · 或以灵刃 U 击鸣」' },
     { x: 1165, y: 492, text: '「金芒借刃弹反 K→J · 猩红危兆须闪」' },
     { x: 1260, y: 215, text: '「青铜锁链闸 · 须自东侧残碑台启锁」', hideWhenShortcutOpen: true },
-    { x: 2060, y: 372, text: '「高台钟龛藏有灯油残芯」' }
+    { x: 2060, y: 372, text: '「高台钟龛藏有灯油残芯」' },
+    { x: 3960, y: 492, text: '「沉渊钟井 · 循井壁与钩环深潜」' },
+    { x: 4860, y: 492, text: '「重盾铁卫 · 居合 / 灵刃 / 弹反可破盾」' },
+    { x: 4980, y: 920, text: '「青铜钟摆 · 可闪避、下劈或精准弹反」' },
+    { x: 5180, y: 1295, text: '「井底暗河尽头 · 封存墨翼神龛」' }
   ];
 
-  const MAP_CHUNKS = 28;
-  const MAP_CHUNK_W = WORLD_W / MAP_CHUNKS;
+  const MAP_COLS = 36;
+  const MAP_ROWS = 10;
+  const MAP_CELL_W = WORLD_W / MAP_COLS;
+  const MAP_CELL_H = WORLD_H / MAP_ROWS;
 
   let worldState = null;
 
@@ -1777,13 +1959,16 @@
     return {
       litAltars: new Set(['altar_start']),
       activeAltarId: 'altar_start',
+      bossDefeated: false,
+      chapelExitAnim: 0,
       shortcutOpen: false,
       shortcutAnim: 0, // 0 = closed, 1 = fully raised
       secretWalls: SECRET_WALLS_DEF.map(w => ({ ...w, hp: w.maxHp, broken: false, shake: 0 })),
       pickups: PICKUPS_DEF.map(p => ({ ...p, collected: false })),
       bonusFlasks: 0,
+      abilities: { doubleJump: false },
       unlockedRelics: new Set(['thorn', 'mirror', 'ember']),
-      explored: new Array(MAP_CHUNKS).fill(false)
+      explored: Array.from({ length: MAP_ROWS }, () => new Array(MAP_COLS).fill(false))
     };
   }
 
@@ -1796,19 +1981,47 @@
     return currentRelic.maxFlasks + (worldState ? worldState.bonusFlasks : 0);
   }
 
-  function markMapExplored(px) {
+  function getPlayerMaxSeals() {
+    return currentRelic.maxSeals || 3;
+  }
+
+  function markMapExplored(px, py = FLOOR_Y - 60) {
     if (!worldState) return;
-    const idx = Math.floor(px / MAP_CHUNK_W);
-    for (let d = -2; d <= 2; d++) {
-      const c = idx + d;
-      if (c >= 0 && c < MAP_CHUNKS) worldState.explored[c] = true;
+    const col = Math.floor(px / MAP_CELL_W);
+    const row = Math.floor(py / MAP_CELL_H);
+    for (let dr = -2; dr <= 2; dr++) {
+      const r = row + dr;
+      if (r < 0 || r >= MAP_ROWS) continue;
+      for (let dc = -2; dc <= 2; dc++) {
+        const c = col + dc;
+        if (c >= 0 && c < MAP_COLS) worldState.explored[r][c] = true;
+      }
     }
+  }
+
+  function isWorldPosExplored(x, y) {
+    if (!worldState) return false;
+    const c = Math.max(0, Math.min(MAP_COLS - 1, Math.floor(x / MAP_CELL_W)));
+    const r = Math.max(0, Math.min(MAP_ROWS - 1, Math.floor(y / MAP_CELL_H)));
+    return worldState.explored[r][c];
   }
 
   function getExplorationPercent() {
     if (!worldState) return 0;
-    const count = worldState.explored.reduce((acc, v) => acc + (v ? 1 : 0), 0);
-    return Math.round((count / MAP_CHUNKS) * 100);
+    // Count only playable cells (upper corridor + bell well) so 100% is genuinely achievable!
+    let total = 0;
+    let seen = 0;
+    for (let r = 0; r < MAP_ROWS; r++) {
+      const cy = (r + 0.5) * MAP_CELL_H;
+      for (let c = 0; c < MAP_COLS; c++) {
+        const cx = (c + 0.5) * MAP_CELL_W;
+        const playable = (cy <= 720) || (cx >= 3720);
+        if (!playable) continue;
+        total++;
+        if (worldState.explored[r][c]) seen++;
+      }
+    }
+    return total > 0 ? Math.min(100, Math.round((seen / total) * 100)) : 0;
   }
 
   const GRAPPLE_ANCHORS = [
@@ -1819,7 +2032,13 @@
     { id: 'anc_5', x: 2450, y: 215 },
     { id: 'anc_boss_l', x: 2990, y: 240 },
     { id: 'anc_boss_c', x: 3200, y: 200 },
-    { id: 'anc_boss_r', x: 3410, y: 240 }
+    { id: 'anc_boss_r', x: 3410, y: 240 },
+    // Sunken Bell Well Anchors
+    { id: 'anc_well_1', x: 4390, y: 420, topY: 0 },
+    { id: 'anc_well_2', x: 4390, y: 745, topY: 0 },
+    { id: 'anc_well_3', x: 4390, y: 1075, topY: 0 },
+    { id: 'anc_well_east', x: 5015, y: 815, topY: 740 },
+    { id: 'anc_well_river', x: 4950, y: 1210, topY: 1140 }
   ];
 
   const PUDDLES = [
@@ -1836,7 +2055,9 @@
     { x: 2770, y: 95, len: 185, color: '#421621' },
     { x: 3060, y: 85, len: 200, color: '#421621' },
     { x: 3340, y: 85, len: 200, color: '#421621' },
-    { x: 3620, y: 95, len: 185, color: '#421621' }
+    { x: 3620, y: 95, len: 185, color: '#421621' },
+    { x: 4780, y: 120, len: 175, color: '#1a2736' },
+    { x: 5240, y: 120, len: 175, color: '#1a2736' }
   ];
 
   const CANDLE_CLUSTERS = [
@@ -1849,10 +2070,14 @@
     { x: 2675, y: FLOOR_Y, count: 4 },
     { x: 2940, y: FLOOR_Y, count: 3 },
     { x: 3460, y: FLOOR_Y, count: 3 },
-    { x: 3710, y: FLOOR_Y, count: 4 }
+    { x: 3710, y: FLOOR_Y, count: 4 },
+    { x: 3890, y: 1020, count: 4 },
+    { x: 3998, y: 1020, count: 3 },
+    { x: 5330, y: WELL_BOTTOM_Y, count: 4 },
+    { x: 5445, y: WELL_BOTTOM_Y, count: 4 }
   ];
 
-  const BONE_CAIRNS = [840, 1210, 1790, 2110, 2435, 2740, 3660];
+  const BONE_CAIRNS = [840, 1210, 1790, 2110, 2435, 2740, 3660, 4760, 5210];
 
   function createLanterns() {
     return [
@@ -1861,7 +2086,10 @@
       { id: 'lan_2', x: 1845, anchorY: 110, len: 145, angle: 0.04, angVel: 0, hitCd: 0, ringFlash: 0 },
       { id: 'lan_3', x: 2245, anchorY: 170, len: 160, angle: -0.06, angVel: 0, hitCd: 0, ringFlash: 0 },
       { id: 'lan_4', x: 2870, anchorY: 150, len: 180, angle: 0.04, angVel: 0, hitCd: 0, ringFlash: 0 },
-      { id: 'lan_5', x: 3480, anchorY: 150, len: 180, angle: -0.04, angVel: 0, hitCd: 0, ringFlash: 0 }
+      { id: 'lan_5', x: 3480, anchorY: 150, len: 180, angle: -0.04, angVel: 0, hitCd: 0, ringFlash: 0 },
+      { id: 'lan_6', x: 4390, anchorY: 455, len: 125, angle: 0.05, angVel: 0, hitCd: 0, ringFlash: 0 },
+      { id: 'lan_7', x: 4960, anchorY: 285, len: 145, angle: -0.05, angVel: 0, hitCd: 0, ringFlash: 0 },
+      { id: 'lan_8', x: 4680, anchorY: 1140, topY: 1140, len: 120, angle: 0.05, angVel: 0, hitCd: 0, ringFlash: 0 }
     ];
   }
 
@@ -2023,7 +2251,9 @@
       return;
     }
     if (gameState === 'victory') {
-      if (btnA && !gpPrev._gpAgain) startGame();
+      if (btnA && !gpPrev._gpAgain) {
+        continueIntoBellWell();
+      }
       gpPrev._gpAgain = btnA;
       return;
     }
@@ -2269,6 +2499,7 @@
       dropThroughTimer: 0,
       wallDir: 0,
       coyoteTimer: 0,
+      airJumpsLeft: 1,
       jumpBufTimer: 0,
       attackBufTimer: 0,
       parryBufTimer: 0,
@@ -2288,7 +2519,7 @@
       soul: 100,
       maxSoul: 100,
       seals: 0,
-      maxSeals: 3,
+      maxSeals: getPlayerMaxSeals(),
 
       // Attack / Combo / Charge Iai / Riposte
       attackTimer: 0,
@@ -2398,12 +2629,48 @@
     };
   }
 
+  function makeGolem(id, x, y, minX, maxX) {
+    return {
+      id,
+      name: '守钟铁卫',
+      kind: 'golem',
+      isBoss: false,
+      x, y,
+      w: 46,
+      h: 78,
+      vx: 0,
+      vy: 0,
+      facing: -1,
+      minX, maxX,
+      hp: 165,
+      maxHp: 165,
+      posture: 0,
+      maxPosture: 95,
+      postureDecayDelay: 0,
+      alive: true,
+      state: 'patrol', // patrol, chase, windup, attack, recover, stagger
+      stateTimer: 0,
+      attackKind: 'smash', // smash (gold parryable), redBash (crimson unparryable)
+      shieldBrokenTimer: 0,
+      didHit: false,
+      hurtFlash: 0,
+      cloak: createCloak(x, y + 26, 6, 10)
+    };
+  }
+
   function createSentinels() {
     return [
       makeSentinel('sent_1', 1290, FLOOR_Y - 62, 1080, 1450),
       makeSentinel('sent_2', 2160, FLOOR_Y - 62, 1980, 2380),
       makeWraith('wraith_1', 1420, 315),
-      makeWraith('wraith_2', 2280, 270)
+      makeWraith('wraith_2', 2280, 270),
+      // Sunken Bell Well Enemies
+      makeGolem('golem_1', 5060, FLOOR_Y - 78, 4740, 5260),
+      makeGolem('golem_2', 5015, 1020 - 78, 4740, 5240),
+      makeGolem('golem_3', 5110, WELL_BOTTOM_Y - 78, 4940, 5320),
+      makeWraith('wraith_3', 4415, 835),
+      makeWraith('wraith_4', 4560, 1225),
+      makeSentinel('sent_3', 4320, WELL_BOTTOM_Y - 62, 4190, 4490)
     ];
   }
 
@@ -2454,6 +2721,9 @@
     if (worldState) {
       if (!worldState.shortcutOpen) {
         blockers.push({ x: SHORTCUT_GATE_DEF.x, y: SHORTCUT_GATE_DEF.y, w: SHORTCUT_GATE_DEF.w, h: SHORTCUT_GATE_DEF.h, type: 'pillar' });
+      }
+      if (!worldState.bossDefeated) {
+        blockers.push({ x: CHAPEL_EXIT_GATE_DEF.x, y: CHAPEL_EXIT_GATE_DEF.y, w: CHAPEL_EXIT_GATE_DEF.w, h: CHAPEL_EXIT_GATE_DEF.h, type: 'pillar' });
       }
       for (const w of worldState.secretWalls) {
         if (!w.broken) blockers.push({ x: w.x, y: w.y, w: w.w, h: w.h, type: 'pillar' });
@@ -2570,8 +2840,10 @@
     spawnShockwave(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, 120, COLORS.parchment, 3, 0.4);
     if (enemy.isBoss) {
       chapelTide = null;
+      if (worldState) worldState.bossDefeated = true;
       audio.playBellToll();
       addShake(16);
+      spawnFloatText(CHAPEL_EXIT_GATE_DEF.x, CHAPEL_EXIT_GATE_DEF.y - 34, '东侧封门已开 · 通往沉渊钟井', COLORS.cyanBright, 20, 2.0);
       scheduleOutcome(showVictory, 1100, true);
     }
   }
@@ -2617,6 +2889,12 @@
 
         if (player.seals < player.maxSeals) player.seals++;
         player.soul = Math.min(player.maxSoul, player.soul + 28);
+        if (currentRelic.parryHeal) {
+          player.hp = Math.min(player.maxHp, player.hp + currentRelic.parryHeal);
+        }
+        if (attacker && attacker.kind === 'golem') {
+          attacker.shieldBrokenTimer = Math.max(attacker.shieldBrokenTimer || 0, 2.4);
+        }
 
         const posDmg = (attacker.isBoss ? 26 : 36) * currentRelic.parryPostureMult;
         if (attacker.hp !== undefined) {
@@ -2729,9 +3007,7 @@
       player.vy = -120;
       spawnParticles(player.x + player.w / 2, player.y + 24, 24, { color: COLORS.ink, speed: 180, grav: 120, life: 0.65 });
       spawnParticles(player.x + player.w / 2, player.y + 24, 14, { color: COLORS.cyanBright, speed: 140, grav: -110, life: 0.6 });
-      if (!boss || boss.alive) {
-        scheduleOutcome(showDeath, 650, false);
-      }
+      scheduleOutcome(showDeath, 650, false);
     }
   }
 
@@ -2864,8 +3140,41 @@
         if (atk.type === 'iai' || atk.type === 'counter') punchZoom(1.036);
         else if (atk.heavy) punchZoom(1.02);
 
-        damageEnemyHP(t, atk.dmg, true);
-        addPostureToEnemy(t, atk.posture);
+        // Shielded Bell-Golem Greatshield Check!
+        const isGolemShieldUp = t.kind === 'golem' && t.state !== 'stagger' && t.shieldBrokenTimer <= 0 &&
+          (t.state === 'patrol' || t.state === 'chase' || t.state === 'recover');
+        const hitFromFront = (player.x + player.w / 2 - (t.x + t.w / 2)) * t.facing > 0;
+        const canBreakShield = atk.type === 'iai' || atk.type === 'slash3' || atk.type === 'counter';
+        const bypassShield = atk.type === 'pogo' || !hitFromFront;
+
+        let finalDmg = atk.dmg;
+        if ((atk.type === 'iai' || atk.type === 'counter') && currentRelic.heavySkillMult) {
+          finalDmg = Math.round(finalDmg * currentRelic.heavySkillMult);
+        }
+
+        if (isGolemShieldUp && !bypassShield) {
+          if (canBreakShield) {
+            t.shieldBrokenTimer = 2.6;
+            audio.playShieldBreak();
+            addShake(9);
+            spawnImpactBurst(t.x + t.w / 2 + t.facing * 18, t.y + 38, 'parry', 0.95);
+            spawnFloatText(t.x + t.w / 2, t.y - 26, '重盾破防！', COLORS.goldBright, 20, 1.0);
+            damageEnemyHP(t, finalDmg, true);
+            addPostureToEnemy(t, atk.posture + 24);
+          } else {
+            // Light front attack clangs off the bronze greatshield!
+            audio.playParry(false);
+            spawnImpactBurst(t.x + t.w / 2 + t.facing * 20, t.y + 38, 'block', 0.85);
+            spawnFloatText(t.x + t.w / 2, t.y - 24, '巨盾格挡 · 用居合/灵刃/弹反破防', '#cbd5e1', 15, 0.9);
+            damageEnemyHP(t, Math.max(3, Math.round(finalDmg * 0.2)), true);
+            addPostureToEnemy(t, 4);
+            player.vx = -player.facing * 155;
+            continue;
+          }
+        } else {
+          damageEnemyHP(t, finalDmg, true);
+          addPostureToEnemy(t, atk.posture);
+        }
         rallyPlayerGrayHp(atk.rally);
         player.soul = Math.min(player.maxSoul, player.soul + (atk.heavy ? 24 : 14));
 
@@ -2926,13 +3235,14 @@
           atk.pogoBounced = true;
           player.vy = -510;
           player.dashCd = 0;
+          player.airJumpsLeft = 1;
           player.squashX = 0.8;
           player.squashY = 1.25;
         }
       }
     }
 
-    // Pogo off Hanging Brass Lanterns during active window
+    // Pogo off Hanging Brass Lanterns & Swinging Bronze Pendulums during active window
     if (atk.type === 'pogo' && !atk.pogoBounced) {
       for (const l of lanterns) {
         if (l.hitCd > 0) continue;
@@ -2945,12 +3255,33 @@
           atk.pogoBounced = true;
           player.vy = -545;
           player.dashCd = 0;
+          player.airJumpsLeft = 1;
           player.soul = Math.min(player.maxSoul, player.soul + 12);
           audio.playPogoLantern();
           hitstopTimer = 0.032;
           spawnShockwave(lx, ly, 58, COLORS.goldBright, 3, 0.24);
           spawnParticles(lx, ly, 14, { color: COLORS.goldBright, speed: 220, spark: true });
           tryQuellChapelTideByLantern(l, lx, ly);
+          break;
+        }
+      }
+    }
+    if (atk.type === 'pogo' && !atk.pogoBounced) {
+      for (const pd of PENDULUMS) {
+        const ang = Math.sin(globalTime * pd.speed + pd.phase) * pd.amp;
+        const bx = pd.x + Math.sin(ang) * pd.len;
+        const by = pd.anchorY + Math.cos(ang) * pd.len;
+        if (Math.hypot(bx - px, by - (player.y + player.h + 14)) < pd.r + 34) {
+          atk.pogoBounced = true;
+          pd.hitCd = 0.35;
+          player.vy = -545;
+          player.dashCd = 0;
+          player.airJumpsLeft = 1;
+          player.soul = Math.min(player.maxSoul, player.soul + 14);
+          audio.playParry(true, 1);
+          hitstopTimer = 0.038;
+          spawnImpactBurst(bx, by, 'parry', 0.78);
+          spawnShockwave(bx, by, 54, COLORS.goldBright, 3, 0.22);
           break;
         }
       }
@@ -3195,6 +3526,13 @@
       player.maxFlasks = getPlayerMaxFlasks();
       player.flasks = player.maxFlasks;
       spawnFloatText(p.x, p.y - 54, `${p.name} · ${p.desc}`, COLORS.cyanBright, 20, 1.7);
+    } else if (p.kind === 'ability') {
+      worldState.abilities[p.abilityId] = true;
+      player.airJumpsLeft = 1;
+      audio.playWingJump();
+      punchZoom(1.045);
+      spawnShockwave(p.x, p.y - 26, 150, COLORS.cyanBright, 5, 0.48);
+      spawnFloatText(p.x, p.y - 58, `${p.name} · 二段跳已解锁！`, COLORS.cyanBright, 22, 2.2);
     } else if (p.kind === 'relic') {
       worldState.unlockedRelics.add(p.relicId);
       spawnFloatText(p.x, p.y - 54, `${p.name} · ${p.desc}`, COLORS.goldBright, 20, 1.85);
@@ -3230,6 +3568,8 @@
         }
         updateCloak(player.cloak, player.x + player.w / 2 - player.facing * 4, player.y + 26, player.facing, 0, dt);
         updateCloak(player.scarf, player.x + player.w / 2 - player.facing * 2, player.y + 24, player.facing, 0, dt);
+      } else if (gameState === 'playing' && outcomeTimer === null) {
+        showDeath();
       }
       return;
     }
@@ -3314,9 +3654,11 @@
         return;
       }
 
-      if (Math.hypot(px - LORE_POS.x, py - LORE_POS.y) < 78) {
-        openModal('lore');
-        return;
+      for (const lt of LORE_TABLETS) {
+        if (Math.hypot(px - lt.x, py - lt.y) < 78) {
+          openLoreModal(lt);
+          return;
+        }
       }
 
       if (worldState) {
@@ -3570,6 +3912,7 @@
           player.grappleState = 'none';
           player.jumpBufTimer = 0;
           player.dashCd = 0;
+          player.airJumpsLeft = 1;
           player.coyoteTimer = 0.08;
           player.squashX = 0.78;
           player.squashY = 1.28;
@@ -3637,8 +3980,11 @@
       }
       if (player.vy > 960) player.vy = 960;
 
-      // Coyote & Buffered Jump / Platform Drop / Wall Jump
-      if (player.grounded) player.coyoteTimer = 0.11;
+      // Coyote & Buffered Jump / Platform Drop / Wall Jump / Ink-Wing Double Jump
+      if (player.grounded) {
+        player.coyoteTimer = 0.11;
+        player.airJumpsLeft = 1;
+      }
       if (player.jumpBufTimer > 0 && player.healTimer <= 0) {
         if (player.grounded && player.onPlatform && isHeld(['KeyS', 'ArrowDown'])) {
           player.dropThroughTimer = 0.22;
@@ -3660,10 +4006,24 @@
           player.vx = -player.wallDir * 355;
           player.facing = -player.wallDir;
           player.wallJumpLock = 0.15;
+          player.airJumpsLeft = 1;
           player.jumpBufTimer = 0;
           player.squashX = 0.8;
           player.squashY = 1.24;
           spawnParticles(player.x + (player.wallDir > 0 ? player.w : 0), player.y + 30, 8, { color: COLORS.parchment, speed: 140, life: 0.28 });
+        } else if (!player.grounded && worldState && worldState.abilities.doubleJump && player.airJumpsLeft > 0) {
+          // Ink-Wing Double Jump (墨翼步!)
+          player.airJumpsLeft--;
+          player.vy = -585;
+          player.jumpBufTimer = 0;
+          player.squashX = 0.74;
+          player.squashY = 1.32;
+          audio.playWingJump();
+          const wx = player.x + player.w / 2;
+          const wy = player.y + player.h - 4;
+          spawnShockwave(wx, wy, 56, COLORS.cyanBright, 3.2, 0.24);
+          spawnParticles(wx, wy, 12, { color: COLORS.ink, speed: 185, grav: 90, size: 3.4, angle: Math.PI * 0.5, spread: 2.2, life: 0.4 });
+          spawnParticles(wx, wy, 10, { color: COLORS.cyanBright, speed: 170, spark: true, grav: 40, angle: Math.PI * 0.5, spread: 2.2, life: 0.34 });
         }
       }
 
@@ -3718,8 +4078,8 @@
     updateCloak(player.cloak, player.x + player.w / 2 - player.facing * 5, player.y + 18, player.facing, -player.vx * 0.45, dt);
     updateCloak(player.scarf, player.x + player.w / 2 - player.facing * 3, player.y + 16, player.facing, -player.vx * 0.6 - player.facing * 60, dt);
 
-    // Update Map Exploration & Touch-Collect Glowing Pickups
-    markMapExplored(player.x + player.w / 2);
+    // Update 2D Map Exploration & Touch-Collect Glowing Pickups
+    markMapExplored(player.x + player.w / 2, player.y + player.h / 2);
     if (worldState) {
       const px = player.x + player.w / 2;
       const py = player.y + player.h / 2;
@@ -3745,6 +4105,7 @@
   function updateEnemy(e, dt) {
     if (!e.alive) return;
     if (e.kind === 'wraith') updateWraith(e, dt);
+    else if (e.kind === 'golem') updateGolem(e, dt);
     else updateSentinel(e, dt);
   }
 
@@ -3761,7 +4122,8 @@
 
     if (e.state === 'stagger') {
       e.vx *= 0.85;
-      e.vy = Math.min(180, (FLOOR_Y - e.h - 20 - e.y) * 3.5);
+      const groundBelow = getGroundSurfaceY(e.x + e.w / 2, e.y + e.h);
+      e.vy = Math.min(180, (groundBelow - e.h - 16 - e.y) * 3.5);
       e.x += e.vx * dt;
       e.y += e.vy * dt;
       if (e.stateTimer <= 0) {
@@ -3902,6 +4264,98 @@
     e.vy += GRAVITY * dt;
     moveAndCollide(e, dt, false);
     updateCloak(e.cloak, e.x + e.w / 2 - e.facing * 6, e.y + 18, e.facing, -e.vx * 0.4, dt);
+  }
+
+  function updateGolem(e, dt) {
+    if (e.hurtFlash > 0) e.hurtFlash -= dt;
+    if (e.shieldBrokenTimer > 0) e.shieldBrokenTimer -= dt;
+    if (e.postureDecayDelay > 0) e.postureDecayDelay -= dt;
+    else if (e.state !== 'stagger' && e.posture > 0) e.posture = Math.max(0, e.posture - 6 * dt);
+
+    const dx = (player.x + player.w / 2) - (e.x + e.w / 2);
+    const dy = (player.y + player.h / 2) - (e.y + e.h / 2);
+    const absDx = Math.abs(dx);
+    e.stateTimer -= dt;
+
+    if (e.state === 'stagger') {
+      e.vx *= 0.85;
+      if (e.stateTimer <= 0) {
+        e.state = 'chase';
+        e.posture = e.maxPosture * 0.28;
+      }
+    } else if (e.state === 'patrol') {
+      e.vx = e.facing * 48;
+      if (e.x < e.minX) e.facing = 1;
+      if (e.x > e.maxX) e.facing = -1;
+      if (absDx < 300 && Math.abs(dy) < 110) e.state = 'chase';
+    } else if (e.state === 'chase') {
+      e.facing = dx >= 0 ? 1 : -1;
+      if (absDx > 92) e.vx = e.facing * 82;
+      else e.vx *= 0.8;
+
+      if (absDx < 128 && Math.abs(dy) < 88 && e.stateTimer <= 0) {
+        e.state = 'windup';
+        e.attackKind = Math.random() < 0.34 ? 'redBash' : 'smash';
+        e.stateTimer = e.attackKind === 'redBash' ? 0.72 : 0.62;
+        e.didHit = false;
+        e.vx = 0;
+        if (e.attackKind === 'redBash') audio.playDangerAlert();
+      } else if (absDx > 440 || Math.abs(dy) > 220) {
+        e.state = 'patrol';
+      }
+    } else if (e.state === 'windup') {
+      if (e.stateTimer > 0.22) e.facing = dx >= 0 ? 1 : -1;
+      e.vx *= 0.82;
+      if (e.stateTimer <= 0) {
+        e.state = 'attack';
+        e.stateTimer = e.attackKind === 'redBash' ? 0.26 : 0.22;
+        e.vx = e.facing * (e.attackKind === 'redBash' ? 390 : 175);
+        audio.playSlash(0.72, true);
+        slashes.push({
+          x: e.x + e.w / 2 + e.facing * 32,
+          y: e.y + 38,
+          facing: e.facing,
+          type: e.attackKind === 'redBash' ? 'enemyRedThrust' : 'bossSlam',
+          life: 0.24,
+          maxLife: 0.24
+        });
+      }
+    } else if (e.state === 'attack') {
+      e.vx *= 0.9;
+      if (!e.didHit) {
+        const reach = e.attackKind === 'redBash' ? 86 : 94;
+        const hitBox = {
+          x: e.x + e.w / 2 + (e.facing > 0 ? -4 : -reach + 4),
+          y: e.y + 8,
+          w: reach,
+          h: 68
+        };
+        if (aabbOverlap(hitBox, player)) {
+          e.didHit = true;
+          applyIncomingAttackToPlayer(e, e.attackKind === 'redBash' ? 28 : 24, e.attackKind === 'redBash', 260);
+        }
+      }
+      if (e.stateTimer <= 0) {
+        if (e.attackKind === 'smash') {
+          addShake(6);
+          spawnShockwave(e.x + e.w / 2 + e.facing * 42, e.y + e.h - 4, 72, COLORS.goldBright, 3, 0.22);
+        }
+        e.state = 'recover';
+        e.stateTimer = 0.92;
+      }
+    } else if (e.state === 'recover') {
+      e.vx *= 0.84;
+      if (e.stateTimer <= 0) {
+        e.state = 'chase';
+        e.stateTimer = 0.4;
+      }
+    }
+
+    e.vy += GRAVITY * dt;
+    moveAndCollide(e, dt, false);
+    if (e.x < e.minX - 60) e.x = e.minX - 60;
+    if (e.x > e.maxX + 60) e.x = e.maxX + 60;
+    updateCloak(e.cloak, e.x + e.w / 2 - e.facing * 8, e.y + 24, e.facing, -e.vx * 0.4, dt);
   }
 
   function updateBoss(b, dt) {
@@ -4144,13 +4598,31 @@
      11. WORLD EFFECTS, PROJECTILES & CAMERA UPDATE
      ========================================================================= */
   function updateWorldEffects(dt) {
-    // Shortcut Chain Gate Opening Animation & Breakable Wall Shake
+    // Shortcut Gate & Boss Chapel Exit Gate Animations + Breakable Wall Shake
     if (worldState) {
       if (worldState.shortcutOpen && worldState.shortcutAnim < 1) {
         worldState.shortcutAnim = Math.min(1, worldState.shortcutAnim + dt * 2.1);
       }
+      if (worldState.bossDefeated && worldState.chapelExitAnim < 1) {
+        worldState.chapelExitAnim = Math.min(1, worldState.chapelExitAnim + dt * 1.6);
+      }
       for (const w of worldState.secretWalls) {
         if (w.shake > 0) w.shake = Math.max(0, w.shake - dt);
+      }
+    }
+
+    // Swinging Bronze Pendulum Blades (Dodgeable, Pogoable, & Parryable!)
+    for (const pd of PENDULUMS) {
+      if (pd.hitCd > 0) pd.hitCd -= dt;
+      if (!player || player.hp <= 0 || pd.hitCd > 0) continue;
+      const ang = Math.sin(globalTime * pd.speed + pd.phase) * pd.amp;
+      const bx = pd.x + Math.sin(ang) * pd.len;
+      const by = pd.anchorY + Math.cos(ang) * pd.len;
+      const px = player.x + player.w / 2;
+      const py = player.y + player.h / 2;
+      if (Math.hypot(bx - px, by - py) < pd.r + 18) {
+        pd.hitCd = 0.55;
+        applyIncomingAttackToPlayer({ x: bx - 10, w: 20, isBoss: false }, 22, false, 230);
       }
     }
 
@@ -4184,6 +4656,11 @@
             audio.playHit(true);
             hitstopTimer = Math.max(hitstopTimer, 0.032);
             addShake(5);
+            if (t.kind === 'golem' && t.shieldBrokenTimer <= 0) {
+              t.shieldBrokenTimer = 2.4;
+              audio.playShieldBreak();
+              spawnFloatText(t.x + t.w / 2, t.y - 26, '灵刃破盾！', COLORS.cyanBright, 19, 0.95);
+            }
             damageEnemyHP(t, pr.dmg, true);
             addPostureToEnemy(t, pr.posture);
             rallyPlayerGrayHp(10);
@@ -4298,7 +4775,15 @@
         }
       }
 
-      if (pr.life <= 0 || pr.x < 0 || pr.x > WORLD_W || pr.y > FLOOR_Y + 20 || pr.y < -40) {
+      let hitSolid = false;
+      if (pr.kind === 'wraithOrb') {
+        const pb = { x: pr.x - 5, y: pr.y - 5, w: 10, h: 10 };
+        for (const s of SOLIDS) {
+          if (s.type !== 'platform' && aabbOverlap(pb, s)) { hitSolid = true; break; }
+        }
+      }
+      if (hitSolid || pr.life <= 0 || pr.x < 0 || pr.x > WORLD_W || pr.y > WORLD_H + 40 || pr.y < -40) {
+        if (hitSolid) spawnParticles(pr.x, pr.y, 7, { color: COLORS.crimsonBright, speed: 120, life: 0.22 });
         projectiles.splice(i, 1);
       }
     }
@@ -4408,12 +4893,16 @@
       p.vy += p.grav * dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
-      if (p.bounce && p.y >= FLOOR_Y - 2 && p.vy > 0) {
-        p.y = FLOOR_Y - 2;
-        p.vy = -p.vy * 0.42;
-        p.vx *= 0.72;
-        p.bounce = false;
+      if (p.bounce && p.vy > 0) {
+        const surfY = getGroundSurfaceY(p.x, p.y - 4);
+        if (p.y >= surfY - 2) {
+          p.y = surfY - 2;
+          p.vy = -p.vy * 0.42;
+          p.vx *= 0.72;
+          p.bounce = false;
+        }
       }
+
       if (p.life <= 0) particles.splice(i, 1);
     }
     for (let i = floatTexts.length - 1; i >= 0; i--) {
@@ -4435,14 +4924,16 @@
   }
 
   function updateCamera(dt) {
-    const targetX = boss && boss.awake && boss.alive
-      ? Math.max(2620, Math.min(WORLD_W - canvasW, (player.x + boss.x) * 0.5 - canvasW * 0.5 + 30))
+    const inBossFight = boss && boss.awake && boss.alive;
+    const targetX = inBossFight
+      ? Math.max(2620, Math.min(3780 - canvasW, (player.x + boss.x) * 0.5 - canvasW * 0.5 + 30))
       : player.x + player.facing * 95 - canvasW * 0.5;
     const clampedX = Math.max(0, Math.min(Math.max(0, WORLD_W - canvasW), targetX));
     cam.x += (clampedX - cam.x) * Math.min(1, dt * 6.5);
 
-    const targetY = Math.min(WORLD_H - canvasH, Math.max(-40, player.y - canvasH * 0.58));
-    cam.y += (targetY - cam.y) * Math.min(1, dt * 5);
+    const maxCamY = inBossFight ? Math.max(0, 720 - canvasH) : Math.max(0, WORLD_H - canvasH);
+    const targetY = Math.min(maxCamY, Math.max(-40, player.y - canvasH * 0.54));
+    cam.y += (targetY - cam.y) * Math.min(1, dt * 5.8);
 
     if (cam.shake > 0) cam.shake = Math.max(0, cam.shake - dt * 36);
     const kickDecay = Math.exp(-18 * dt);
@@ -4479,16 +4970,18 @@
     // 3. Hand-Crafted World Architecture & Storytelling Props
     drawWorldEnvironment();
 
-    // 4. Diegetic Wall Inscriptions, Altars, Shortcut Gate, Secret Walls, Pickups & Lore Tablet
+    // 4. Diegetic Wall Inscriptions, Altars, Gates, Secret Walls, Pickups & Lore Tablets
     drawWallInscriptions();
     drawAltars();
     drawShortcutGate();
+    drawChapelExitGate();
     drawSecretWalls();
     drawPickups();
-    drawLoreTablet();
+    drawLoreTablets();
 
-    // 5. Hanging Brass Lanterns & Grapple Bell Anchors
+    // 5. Hanging Brass Lanterns, Swinging Pendulums & Grapple Bell Anchors
     drawLanterns();
+    drawPendulums();
     drawGrappleAnchors();
 
     // 6. Boss Ink Mist Barrier
@@ -4572,16 +5065,20 @@
   }
 
   function drawParallaxBackground(isPhase2) {
+    const depthPct = Math.max(0, Math.min(1, (cam.y - 140) / 560));
     const bg = ctx.createLinearGradient(0, 0, 0, canvasH);
-    bg.addColorStop(0, isPhase2 ? '#160910' : '#090e18');
-    bg.addColorStop(0.55, isPhase2 ? '#1f0d16' : '#101827');
-    bg.addColorStop(1, '#070a10');
+    bg.addColorStop(0, isPhase2 ? '#160910' : depthPct > 0.5 ? '#060a12' : '#090e18');
+    bg.addColorStop(0.55, isPhase2 ? '#1f0d16' : depthPct > 0.5 ? '#0b1420' : '#101827');
+    bg.addColorStop(1, '#05080e');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, canvasW, canvasH);
 
-    // Pale Cold Moon
+    // Pale Cold Moon (fades smoothly as player descends deep into the Sunken Bell Well)
     const moonX = canvasW * 0.72 - cam.x * 0.04;
-    const moonY = canvasH * 0.22;
+    const moonY = canvasH * 0.22 - cam.y * 0.18;
+    if (depthPct < 0.9) {
+      ctx.save();
+      ctx.globalAlpha = 1 - depthPct;
     const mg = ctx.createRadialGradient(moonX, moonY, 10, moonX, moonY, 150);
     mg.addColorStop(0, isPhase2 ? 'rgba(220, 38, 38, 0.26)' : 'rgba(216, 207, 184, 0.22)');
     mg.addColorStop(1, 'transparent');
@@ -4591,6 +5088,8 @@
     ctx.fillStyle = isPhase2 ? 'rgba(248, 113, 113, 0.45)' : 'rgba(226, 220, 202, 0.42)';
     boilCircle(ctx, moonX, moonY, 34, 90, 0.8, 18);
     ctx.fill();
+      ctx.restore();
+    }
 
     // Far Layer (0.14x): Giant Broken Bronze Bell Silhouette & Distant Spires
     ctx.save();
@@ -4846,31 +5345,38 @@
       if (s.x + s.w < cam.x - 80 || s.x > cam.x + canvasW + 80) return;
       ctx.save();
       if (s.type === 'ground') {
-        const g = ctx.createLinearGradient(0, s.y, 0, s.y + 180);
-        g.addColorStop(0, '#1c2434');
-        g.addColorStop(0.14, '#131926');
-        g.addColorStop(0.45, '#0b0f17');
+        const g = ctx.createLinearGradient(0, s.y, 0, s.y + Math.min(220, s.h));
+        g.addColorStop(0, s.y > 900 ? '#162130' : '#1c2434');
+        g.addColorStop(0.18, '#131926');
+        g.addColorStop(0.55, '#0b0f17');
         g.addColorStop(1, '#06080d');
         ctx.fillStyle = g;
         ctx.fillRect(s.x, s.y, s.w, s.h);
 
-        const startX = Math.max(0, Math.floor(cam.x / 64) * 64 - 64);
-        const endX = Math.min(WORLD_W, cam.x + canvasW + 128);
-        for (let bx = startX; bx < endX; bx += 64) {
-          ctx.fillStyle = (bx / 64) % 2 === 0 ? 'rgba(216, 207, 184, 0.045)' : 'rgba(10, 14, 22, 0.14)';
-          ctx.fillRect(bx + 2, s.y + 2, 60, 18);
+        // Exposed vertical shaft walls on carved ground edges
+        ctx.strokeStyle = 'rgba(216, 207, 184, 0.34)';
+        ctx.lineWidth = 1.8;
+        if (s.x > 0) boilLine(ctx, s.x, s.y, s.x, s.y + s.h, 600 + idx * 17, 1.2, 6);
+        if (s.x + s.w < WORLD_W) boilLine(ctx, s.x + s.w, s.y, s.x + s.w, s.y + s.h, 650 + idx * 17, 1.2, 6);
 
-          ctx.strokeStyle = 'rgba(216, 207, 184, 0.52)';
+        const startX = Math.max(s.x, Math.floor(cam.x / 64) * 64 - 64);
+        const endX = Math.min(s.x + s.w, cam.x + canvasW + 128);
+        for (let bx = startX; bx < endX; bx += 64) {
+          const segW = Math.min(64, s.x + s.w - bx);
+          if (segW < 4) break;
+          ctx.fillStyle = (Math.floor(bx / 64)) % 2 === 0 ? 'rgba(216, 207, 184, 0.045)' : 'rgba(10, 14, 22, 0.14)';
+          ctx.fillRect(bx + 2, s.y + 2, Math.max(2, segW - 4), 18);
+
+          ctx.strokeStyle = s.y > 900 ? 'rgba(125, 211, 252, 0.38)' : 'rgba(216, 207, 184, 0.52)';
           ctx.lineWidth = 2.2;
-          boilLine(ctx, bx, s.y + 1, bx + 64, s.y + 1, 500 + bx, 1.25, 3);
+          boilLine(ctx, bx, s.y + 1, bx + segW, s.y + 1, 500 + bx + s.y, 1.25, 3);
 
           ctx.strokeStyle = 'rgba(216, 207, 184, 0.14)';
           ctx.lineWidth = 1.1;
-          boilLine(ctx, bx, s.y + 21, bx + 64, s.y + 21, 700 + bx, 0.9, 2);
+          boilLine(ctx, bx, s.y + 21, bx + segW, s.y + 21, 700 + bx, 0.9, 2);
           boilLine(ctx, bx, s.y + 2, bx, s.y + 21, 900 + bx, 0.8, 2);
-          boilLine(ctx, bx + 32, s.y + 21, bx + 32, s.y + 44, 950 + bx, 0.8, 2);
 
-          if ((bx / 64) % 3 === 1) {
+          if (s.y === FLOOR_Y && (Math.floor(bx / 64)) % 3 === 1 && segW >= 32) {
             const sway = Math.sin(globalTime * 2.5 + bx) * 2.5;
             ctx.strokeStyle = 'rgba(130, 150, 138, 0.42)';
             ctx.lineWidth = 1.3;
@@ -4883,8 +5389,9 @@
           }
         }
 
-        // Moonlit Puddles
-        for (const p of PUDDLES) {
+        // Moonlit Puddles (upper corridor floor only)
+        if (s.y === FLOOR_Y) for (const p of PUDDLES) {
+          if (p.x < s.x || p.x + p.w > s.x + s.w) continue;
           if (p.x + p.w < cam.x - 40 || p.x > cam.x + canvasW + 40) continue;
           const pg = ctx.createLinearGradient(p.x, s.y, p.x + p.w, s.y);
           pg.addColorStop(0, 'transparent');
@@ -4968,12 +5475,32 @@
       ctx.restore();
     });
 
+    // Abyssal Ink River Shimmer at Bottom of Sunken Bell Well
+    if (cam.x + canvasW > ABYSSAL_RIVER.x - 40 && cam.y + canvasH > WELL_BOTTOM_Y - 140) {
+      const rv = ABYSSAL_RIVER;
+      const rg = ctx.createLinearGradient(0, rv.y - 10, 0, WELL_BOTTOM_Y + 14);
+      rg.addColorStop(0, 'rgba(56, 189, 248, 0.34)');
+      rg.addColorStop(0.5, 'rgba(12, 74, 110, 0.55)');
+      rg.addColorStop(1, 'rgba(5, 8, 14, 0.85)');
+      ctx.fillStyle = rg;
+      ctx.fillRect(rv.x, rv.y, rv.w, 16);
+      ctx.strokeStyle = 'rgba(186, 230, 253, 0.58)';
+      ctx.lineWidth = 1.6;
+      for (let rx = rv.x + 12; rx < rv.x + rv.w - 30; rx += 84) {
+        const wave = Math.sin(globalTime * 3.2 + rx * 0.03) * 8;
+        ctx.beginPath();
+        ctx.moveTo(rx + wave, rv.y + 3);
+        ctx.lineTo(rx + 42 + wave, rv.y + 3);
+        ctx.stroke();
+      }
+    }
+
     // Low Creeping Ink Mist
     const mistG = ctx.createLinearGradient(0, FLOOR_Y - 46, 0, FLOOR_Y + 8);
     mistG.addColorStop(0, 'transparent');
     mistG.addColorStop(1, 'rgba(8, 12, 20, 0.56)');
     ctx.fillStyle = mistG;
-    ctx.fillRect(cam.x - 20, FLOOR_Y - 46, canvasW + 40, 54);
+    ctx.fillRect(cam.x - 20, FLOOR_Y - 46, Math.min(canvasW + 40, Math.max(0, 4140 - (cam.x - 20))), 54);
     ctx.restore();
   }
 
@@ -4983,6 +5510,7 @@
     ctx.textAlign = 'center';
     for (const ins of WALL_INSCRIPTIONS) {
       if (ins.hideWhenShortcutOpen && worldState && worldState.shortcutOpen) continue;
+      if (ins.hideWhenDoubleJump && worldState && worldState.abilities.doubleJump) continue;
       if (ins.x < cam.x - 180 || ins.x > cam.x + canvasW + 180) continue;
       const dist = player ? Math.abs((player.x + player.w / 2) - ins.x) : 999;
       const proximity = Math.max(0, 1 - dist / 340);
@@ -5114,6 +5642,65 @@
     ctx.restore();
   }
 
+  function drawChapelExitGate() {
+    if (!worldState) return;
+    const g = CHAPEL_EXIT_GATE_DEF;
+    if (g.x < cam.x - 160 || g.x > cam.x + canvasW + 160) return;
+    const lift = worldState.chapelExitAnim * (g.h - 14);
+    const barH = g.h - lift;
+    if (barH <= 14) return;
+    ctx.save();
+    ctx.fillStyle = '#151218';
+    ctx.fillRect(g.x + 2, g.y, g.w - 4, barH);
+    ctx.strokeStyle = worldState.bossDefeated ? COLORS.cyanBright : COLORS.crimsonBright;
+    ctx.lineWidth = 2.2;
+    for (let bx = g.x + 8; bx <= g.x + g.w - 8; bx += 11) {
+      boilLine(ctx, bx, g.y, bx, g.y + barH, 7100 + bx, 0.9, 3);
+    }
+    ctx.fillStyle = '#2a181b';
+    ctx.strokeStyle = worldState.bossDefeated ? COLORS.goldBright : COLORS.crimsonBright;
+    ctx.fillRect(g.x - 3, g.y + barH - 10, g.w + 6, 10);
+    ctx.strokeRect(g.x - 3, g.y + barH - 10, g.w + 6, 10);
+    ctx.restore();
+  }
+
+  function drawPendulums() {
+    PENDULUMS.forEach((pd, idx) => {
+      if (pd.x < cam.x - 240 || pd.x > cam.x + canvasW + 240) return;
+      const ang = Math.sin(globalTime * pd.speed + pd.phase) * pd.amp;
+      const bx = pd.x + Math.sin(ang) * pd.len;
+      const by = pd.anchorY + Math.cos(ang) * pd.len;
+      ctx.save();
+      // Heavy iron chain
+      ctx.strokeStyle = 'rgba(216, 207, 184, 0.45)';
+      ctx.lineWidth = 2.6;
+      boilLine(ctx, pd.x, pd.anchorY, bx, by, 7900 + idx * 31, 1.2, 5);
+      // Ceiling gear mount
+      ctx.fillStyle = '#1d2230';
+      ctx.strokeStyle = COLORS.gold;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(pd.x, pd.anchorY, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+      // Crescent Bronze Pendulum Blade
+      drawGlowSprite('crimson', bx, by, pd.r * 1.45, 0.42);
+      ctx.translate(bx, by);
+      ctx.rotate(-ang);
+      ctx.fillStyle = '#261d19';
+      ctx.strokeStyle = COLORS.crimsonBright;
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.arc(0, -6, pd.r, 0.18, Math.PI - 0.18);
+      ctx.quadraticCurveTo(0, 6, Math.cos(0.18) * pd.r, -6 + Math.sin(0.18) * pd.r);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // Central bronze bell rivet
+      ctx.fillStyle = COLORS.goldBright;
+      ctx.beginPath(); ctx.arc(0, 2, 5.5, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    });
+  }
+
   function drawSecretWalls() {
     if (!worldState) return;
     for (const w of worldState.secretWalls) {
@@ -5152,11 +5739,12 @@
       const bob = Math.sin(globalTime * 3.6 + p.x) * 5;
       const py = p.y - 28 + bob;
       const isFlask = p.kind === 'flaskCore';
-      const col = isFlask ? COLORS.cyanBright : COLORS.goldBright;
+      const isAbility = p.kind === 'ability';
+      const col = isFlask || isAbility ? COLORS.cyanBright : COLORS.goldBright;
 
       ctx.save();
-      const g = ctx.createRadialGradient(p.x, py, 3, p.x, py, 46);
-      g.addColorStop(0, isFlask ? 'rgba(56, 189, 248, 0.42)' : 'rgba(245, 158, 11, 0.44)');
+      const g = ctx.createRadialGradient(p.x, py, 3, p.x, py, isAbility ? 62 : 46);
+      g.addColorStop(0, isAbility ? 'rgba(125, 211, 252, 0.56)' : isFlask ? 'rgba(56, 189, 248, 0.42)' : 'rgba(245, 158, 11, 0.44)');
       g.addColorStop(1, 'transparent');
       ctx.fillStyle = g;
       ctx.beginPath(); ctx.arc(p.x, py, 46, 0, Math.PI * 2); ctx.fill();
@@ -5173,7 +5761,23 @@
       ctx.fillStyle = col;
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 1.4;
-      if (isFlask) {
+      if (isAbility) {
+        // Twin Ink-Wing Emblem
+        const flap = Math.sin(globalTime * 5) * 0.16;
+        [-1, 1].forEach(side => {
+          ctx.save();
+          ctx.scale(side, 1);
+          ctx.rotate(flap);
+          ctx.beginPath();
+          ctx.moveTo(2, 4);
+          ctx.quadraticCurveTo(15, -14, 22, -6);
+          ctx.quadraticCurveTo(16, 4, 4, 8);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        });
+      } else if (isFlask) {
         ctx.beginPath();
         ctx.moveTo(0, -11);
         ctx.quadraticCurveTo(9, 0, 7, 8);
@@ -5198,27 +5802,30 @@
     }
   }
 
-  function drawLoreTablet() {
-    const { x, y } = LORE_POS;
-    ctx.save();
-    ctx.fillStyle = '#1b2436';
-    ctx.strokeStyle = COLORS.parchment;
-    ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    ctx.moveTo(x - 18, y);
-    ctx.lineTo(x - 15, y - 54);
-    ctx.quadraticCurveTo(x, y - 66, x + 15, y - 54);
-    ctx.lineTo(x + 18, y);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+  function drawLoreTablets() {
+    for (const lt of LORE_TABLETS) {
+      const { x, y } = lt;
+      if (x < cam.x - 100 || x > cam.x + canvasW + 100) continue;
+      ctx.save();
+      ctx.fillStyle = '#1b2436';
+      ctx.strokeStyle = COLORS.parchment;
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(x - 18, y);
+      ctx.lineTo(x - 15, y - 54);
+      ctx.quadraticCurveTo(x, y - 66, x + 15, y - 54);
+      ctx.lineTo(x + 18, y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
 
-    ctx.strokeStyle = 'rgba(253, 224, 71, 0.55)';
-    ctx.lineWidth = 1.3;
-    for (let r = 0; r < 3; r++) {
-      boilLine(ctx, x - 9, y - 42 + r * 11, x + 9, y - 42 + r * 11, 3100 + r * 7, 0.7, 2);
+      ctx.strokeStyle = 'rgba(253, 224, 71, 0.55)';
+      ctx.lineWidth = 1.3;
+      for (let r = 0; r < 3; r++) {
+        boilLine(ctx, x - 9, y - 42 + r * 11, x + 9, y - 42 + r * 11, 3100 + x + r * 7, 0.7, 2);
+      }
+      ctx.restore();
     }
-    ctx.restore();
   }
 
   function drawLanterns() {
@@ -5229,7 +5836,8 @@
       ctx.save();
       ctx.strokeStyle = 'rgba(216, 207, 184, 0.36)';
       ctx.lineWidth = 1.6;
-      boilLine(ctx, l.x, 0, l.x, l.anchorY, 1900 + idx * 11, 0.8, 3);
+      const topY = l.topY !== undefined ? l.topY : 0;
+      if (l.anchorY > topY) boilLine(ctx, l.x, topY, l.x, l.anchorY, 1900 + idx * 11, 0.8, 3);
       boilLine(ctx, l.x, l.anchorY, lx, ly - 10, 1950 + idx * 13, 1.0, 3);
 
       const glowR = l.ringFlash > 0 ? 86 : 46;
@@ -5262,7 +5870,8 @@
       ctx.save();
       ctx.strokeStyle = 'rgba(216, 207, 184, 0.30)';
       ctx.lineWidth = 1.5;
-      boilLine(ctx, a.x, 0, a.x, a.y - 12, 2300 + idx * 17, 1.1, 4);
+      const topY = a.topY !== undefined ? a.topY : 0;
+      boilLine(ctx, a.x, topY, a.x, a.y - 12, 2300 + idx * 17, 1.1, 4);
 
       const isTideBeacon = chapelTide && a.id.startsWith('anc_boss');
       const pulse = 0.65 + Math.sin(globalTime * (isTideBeacon ? 12 : 3.8) + idx) * 0.35;
@@ -5284,7 +5893,7 @@
   }
 
   function drawGrappleReticle() {
-    if (!grapplePreviewTarget || player.grappleState !== 'none' || gameState !== 'playing') return;
+    if (!player || player.hp <= 0 || !grapplePreviewTarget || player.grappleState !== 'none' || gameState !== 'playing') return;
     const t = grapplePreviewTarget;
     const pulse = 1 + Math.sin(globalTime * 11) * 0.1;
     const rot = globalTime * 1.9;
@@ -5360,9 +5969,9 @@
   }
 
   function getGroundSurfaceY(cx, footY) {
-    let bestY = FLOOR_Y;
+    let bestY = WORLD_H;
     for (const s of SOLIDS) {
-      if (s.type === 'platform' && cx >= s.x - 6 && cx <= s.x + s.w + 6 && s.y >= footY - 6 && s.y < bestY) {
+      if (cx >= s.x - 6 && cx <= s.x + s.w + 6 && s.y >= footY - 6 && s.y < bestY) {
         bestY = s.y;
       }
     }
@@ -5693,7 +6302,107 @@
   function drawEnemy(e) {
     if (!e.alive) return;
     if (e.kind === 'wraith') drawWraith(e);
+    else if (e.kind === 'golem') drawGolem(e);
     else drawSentinel(e);
+  }
+
+  function drawGolem(e) {
+    const cx = e.x + e.w / 2;
+    const fy = e.y + e.h;
+    const isStagger = e.state === 'stagger';
+    const isRed = e.attackKind === 'redBash' && (e.state === 'windup' || e.state === 'attack');
+    const shieldUp = !isStagger && e.shieldBrokenTimer <= 0 && (e.state === 'patrol' || e.state === 'chase' || e.state === 'recover');
+
+    ctx.save();
+    drawCloakMesh(e.cloak, '#141925', 'rgba(216, 207, 184, 0.35)', 18, 520);
+
+    const joltX = e.hurtFlash > 0 ? (Math.random() - 0.5) * 6 : 0;
+    ctx.translate(cx + joltX, fy);
+    if (isStagger) ctx.translate(0, 10);
+
+    // Broad Iron Bell-Guard Armor
+    ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#1a2232';
+    ctx.strokeStyle = isRed ? COLORS.crimsonBright : 'rgba(216, 207, 184, 0.78)';
+    ctx.lineWidth = 2.1;
+    ctx.beginPath();
+    ctx.moveTo(-19, 0);
+    ctx.lineTo(-17, -56);
+    ctx.lineTo(17, -56);
+    ctx.lineTo(19, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Bell-Dome Greathelm
+    ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#262d3d';
+    ctx.beginPath();
+    ctx.moveTo(-14, -56);
+    ctx.quadraticCurveTo(-15, -78, 0, -82);
+    ctx.quadraticCurveTo(15, -78, 14, -56);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Glowing Eye Slit
+    ctx.fillStyle = isRed ? COLORS.crimsonBright : COLORS.goldBright;
+    ctx.fillRect(e.facing > 0 ? 2 : -10, -67, 8, 3);
+
+    // Heavy Bronze Censer Mace (back hand)
+    ctx.save();
+    ctx.translate(-e.facing * 8, -46);
+    let maceAng = e.facing > 0 ? -0.8 : Math.PI + 0.8;
+    if (e.state === 'windup' && e.attackKind === 'smash') maceAng = e.facing > 0 ? -2.35 : Math.PI + 2.35;
+    else if (e.state === 'attack' && e.attackKind === 'smash') maceAng = e.facing > 0 ? 0.35 : Math.PI - 0.35;
+    ctx.rotate(maceAng);
+    ctx.strokeStyle = COLORS.parchment;
+    ctx.lineWidth = 3.2;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(52, 0); ctx.stroke();
+    ctx.fillStyle = '#3b2c1a';
+    ctx.strokeStyle = COLORS.gold;
+    ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.arc(56, 0, 10, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.restore();
+
+    // Towering Front Bronze Bell-Shield!
+    ctx.save();
+    const shX = shieldUp ? e.facing * 20 : e.facing * 12;
+    const shY = shieldUp ? -36 : -28;
+    ctx.translate(shX, shY);
+    if (!shieldUp) ctx.rotate(e.facing * 0.45);
+    ctx.fillStyle = isRed ? '#7f1d1d' : '#2e2419';
+    ctx.strokeStyle = isRed ? COLORS.crimsonBright : shieldUp ? COLORS.goldBright : 'rgba(216, 207, 184, 0.5)';
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(-7, -28);
+    ctx.lineTo(7, -28);
+    ctx.lineTo(10, 22);
+    ctx.lineTo(0, 32);
+    ctx.lineTo(-10, 22);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Shield emblem crack
+    ctx.strokeStyle = shieldUp ? COLORS.gold : 'rgba(148, 163, 184, 0.4)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(0, -18); ctx.lineTo(0, 18); ctx.stroke();
+    ctx.restore();
+
+    // Telegraph
+    if (e.state === 'windup') {
+      if (isRed) {
+        drawGlowSprite('crimson', 0, -96, 22, 0.75);
+        ctx.fillStyle = COLORS.crimsonBright;
+        ctx.font = 'bold 24px "Noto Serif SC", serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('危', 0, -88);
+      } else if (e.stateTimer < 0.25) {
+        drawParryStarGlint(e.facing * 16, -72, 20, COLORS.goldBright);
+      }
+    }
+    ctx.restore();
+
+    drawEnemyOverheadBars(e);
+    if (isStagger) drawExecutionSigil(cx, e.y + 36);
   }
 
   function drawWraith(e) {
@@ -6434,14 +7143,16 @@
     for (const altar of ALTARS) {
       if (Math.hypot(px - altar.x, py - altar.y) < 86) {
         const isLit = !worldState || worldState.litAltars.has(altar.id);
-        drawPromptBadge(altar.x, altar.y - 96, isLit ? '[E] 歇息 · 圣物与跃迁' : '[E] 点燃断索祭坛');
+        drawPromptBadge(altar.x, altar.y - 96, isLit ? '[E] 歇息 · 圣物与跃迁' : `[E] 点燃${altar.shortName}`);
       }
     }
     if (worldState && !worldState.shortcutOpen && Math.hypot(px - SHORTCUT_GATE_DEF.leverX, py - SHORTCUT_GATE_DEF.leverY) < 76) {
       drawPromptBadge(SHORTCUT_GATE_DEF.leverX, SHORTCUT_GATE_DEF.leverY - 68, '[E / 斩] 拉动青铜锁链');
     }
-    if (Math.hypot(px - LORE_POS.x, py - LORE_POS.y) < 78) {
-      drawPromptBadge(LORE_POS.x, LORE_POS.y - 80, '[E] 研读残碑');
+    for (const lt of LORE_TABLETS) {
+      if (Math.hypot(px - lt.x, py - lt.y) < 78) {
+        drawPromptBadge(lt.x, lt.y - 80, `[E] 研读 · ${lt.title}`);
+      }
     }
     if (worldState) {
       for (const p of worldState.pickups) {
@@ -6518,6 +7229,7 @@
     document.getElementById('hp-gray').style.width = totalPct.toFixed(1) + '%';
     document.getElementById('hp-text').textContent = `${Math.ceil(player.hp)} / ${player.maxHp}` + (player.grayHp >= 1 ? ` (+${Math.ceil(player.grayHp)} 内伤)` : '');
     document.getElementById('relic-tag').textContent = currentRelic.name;
+    document.getElementById('ability-tag').classList.toggle('unlocked', !!(worldState && worldState.abilities.doubleJump));
 
     const soulPct = Math.max(0, Math.min(100, (player.soul / player.maxSoul) * 100));
     document.getElementById('soul-fill').style.width = soulPct.toFixed(1) + '%';
@@ -6550,7 +7262,14 @@
     }
 
     const zoneEl = document.getElementById('zone-banner');
-    if (player.x < 780) zoneEl.textContent = '沉钟回廊 · 熄灯祭坛';
+    if (player.x >= 3780) {
+      if (player.y > 1160) zoneEl.textContent = '沉渊钟井 · 暗河深殿';
+      else if (player.y > 760 && player.x < 4200) zoneEl.textContent = '沉渊钟井 · 井中悬坛';
+      else if (player.y > 760) zoneEl.textContent = '沉渊钟井 · 钟摆石廊';
+      else zoneEl.textContent = '沉渊钟井 · 上层钟阁';
+    } else if (player.x >= 680 && player.x <= 940 && player.y < 210) {
+      zoneEl.textContent = '沉钟回廊 · 苍穹残钟阁';
+    } else if (player.x < 780) zoneEl.textContent = '沉钟回廊 · 熄灯祭坛';
     else if (player.x < 2420) zoneEl.textContent = '沉钟回廊 · 枯骨长廊';
     else if (player.x < 2645) zoneEl.textContent = '沉钟回廊 · 礼拜堂前';
     else zoneEl.textContent = '沉钟回廊 · 断钟礼拜堂';
@@ -6607,9 +7326,9 @@
     const mctx = targetCanvas.getContext('2d');
     const w = targetCanvas.width;
     const h = targetCanvas.height;
-    const padX = detailed ? 18 : 6;
-    const padTop = detailed ? 24 : 5;
-    const padBot = detailed ? 24 : 5;
+    const padX = detailed ? 16 : 5;
+    const padTop = detailed ? 22 : 4;
+    const padBot = detailed ? 16 : 4;
     const mapW = w - padX * 2;
     const mapH = h - padTop - padBot;
     const sx = mapW / WORLD_W;
@@ -6620,96 +7339,91 @@
     // Parchment / Ink backdrop
     const bg = mctx.createLinearGradient(0, 0, 0, h);
     bg.addColorStop(0, detailed ? '#231d15' : '#111520');
-    bg.addColorStop(1, detailed ? '#14110d' : '#090c12');
+    bg.addColorStop(1, detailed ? '#120f0b' : '#080b12');
     mctx.fillStyle = bg;
     mctx.fillRect(0, 0, w, h);
 
     if (detailed) {
-      // Subtle parchment grid & zone dividers
       mctx.strokeStyle = 'rgba(216, 207, 184, 0.12)';
       mctx.setLineDash([4, 4]);
-      [780, 2420, 2645].forEach(zx => {
+      [780, 2645, 3760].forEach(zx => {
         const mx = padX + zx * sx;
-        mctx.beginPath(); mctx.moveTo(mx, padTop - 4); mctx.lineTo(mx, h - padBot + 4); mctx.stroke();
+        mctx.beginPath(); mctx.moveTo(mx, padTop - 2); mctx.lineTo(mx, h - padBot + 2); mctx.stroke();
       });
       mctx.setLineDash([]);
 
       mctx.font = '11px "Noto Serif SC", serif';
-      mctx.fillStyle = 'rgba(216, 207, 184, 0.65)';
+      mctx.fillStyle = 'rgba(216, 207, 184, 0.7)';
       mctx.textAlign = 'center';
-      mctx.fillText('熄灯祭坛', padX + 390 * sx, 16);
-      mctx.fillText('枯骨长廊', padX + 1600 * sx, 16);
-      mctx.fillText('断钟礼拜堂', padX + 3250 * sx, 16);
+      mctx.fillText('熄灯祭坛', padX + 390 * sx, 15);
+      mctx.fillText('枯骨长廊', padX + 1700 * sx, 15);
+      mctx.fillText('断钟礼拜堂', padX + 3200 * sx, 15);
+      mctx.fillText('沉渊钟井 (三层)', padX + 4680 * sx, 15);
     }
 
-    const isXExplored = x => {
-      const idx = Math.max(0, Math.min(MAP_CHUNKS - 1, Math.floor(x / MAP_CHUNK_W)));
-      return worldState.explored[idx];
-    };
-
-    // Draw explored chunks backdrop
-    for (let i = 0; i < MAP_CHUNKS; i++) {
-      const cx = padX + i * MAP_CHUNK_W * sx;
-      const cw = MAP_CHUNK_W * sx + 0.6;
-      if (worldState.explored[i]) {
-        mctx.fillStyle = detailed ? 'rgba(216, 207, 184, 0.08)' : 'rgba(216, 207, 184, 0.1)';
-        mctx.fillRect(cx, padTop, cw, mapH);
+    // 2D Explored Grid Backdrop
+    const cw = MAP_CELL_W * sx + 0.6;
+    const ch = MAP_CELL_H * sy + 0.6;
+    for (let r = 0; r < MAP_ROWS; r++) {
+      for (let c = 0; c < MAP_COLS; c++) {
+        if (!worldState.explored[r][c]) continue;
+        mctx.fillStyle = detailed ? 'rgba(216, 207, 184, 0.08)' : 'rgba(216, 207, 184, 0.11)';
+        mctx.fillRect(padX + c * MAP_CELL_W * sx, padTop + r * MAP_CELL_H * sy, cw, ch);
       }
     }
 
-    // Draw Solids (Platforms, Pillars, Ground) inside explored chunks
+    // Draw Solids (Clipped by explored 2D grid via fog pass below)
     for (const s of SOLIDS) {
-      if (s.type === 'ground') {
-        for (let i = 0; i < MAP_CHUNKS; i++) {
-          if (!worldState.explored[i]) continue;
-          const gx = padX + i * MAP_CHUNK_W * sx;
-          mctx.fillStyle = detailed ? '#8c7e65' : '#64748b';
-          mctx.fillRect(gx, padTop + s.y * sy, MAP_CHUNK_W * sx + 0.6, Math.max(2, (WORLD_H - s.y) * sy));
-        }
-        continue;
-      }
-      if (!isXExplored(s.x + s.w * 0.5)) continue;
-      mctx.fillStyle = s.type === 'pillar'
-        ? (detailed ? '#6b604e' : '#475569')
-        : (detailed ? '#c2b497' : '#94a3b8');
+      if (s.x < 0 || s.x >= WORLD_W - 25) continue;
+      mctx.fillStyle = s.type === 'ground'
+        ? (detailed ? '#5c5242' : '#334155')
+        : s.type === 'pillar'
+          ? (detailed ? '#756854' : '#475569')
+          : (detailed ? '#c8ba9b' : '#94a3b8');
       mctx.fillRect(padX + s.x * sx, padTop + s.y * sy, Math.max(2, s.w * sx), Math.max(2, s.h * sy));
     }
 
-    // Shortcut Gate marker
-    if (isXExplored(SHORTCUT_GATE_DEF.x)) {
-      const gx = padX + SHORTCUT_GATE_DEF.x * sx;
-      const gy = padTop + SHORTCUT_GATE_DEF.y * sy;
-      mctx.fillStyle = worldState.shortcutOpen ? 'rgba(245, 158, 11, 0.35)' : '#f59e0b';
-      mctx.fillRect(gx, gy, Math.max(2.5, SHORTCUT_GATE_DEF.w * sx), Math.max(4, SHORTCUT_GATE_DEF.h * sy * (worldState.shortcutOpen ? 0.25 : 1)));
-    }
+    // Abyssal River Accent
+    mctx.fillStyle = 'rgba(56, 189, 248, 0.55)';
+    mctx.fillRect(padX + ABYSSAL_RIVER.x * sx, padTop + ABYSSAL_RIVER.y * sy, ABYSSAL_RIVER.w * sx, Math.max(2, 16 * sy));
 
-    // Breakable Ink Walls (shown if intact & nearby explored)
+    // Gates
+    const gx1 = padX + SHORTCUT_GATE_DEF.x * sx;
+    const gy1 = padTop + SHORTCUT_GATE_DEF.y * sy;
+    mctx.fillStyle = worldState.shortcutOpen ? 'rgba(245, 158, 11, 0.35)' : '#f59e0b';
+    mctx.fillRect(gx1, gy1, Math.max(2.5, SHORTCUT_GATE_DEF.w * sx), Math.max(4, SHORTCUT_GATE_DEF.h * sy * (worldState.shortcutOpen ? 0.25 : 1)));
+
+    const gx2 = padX + CHAPEL_EXIT_GATE_DEF.x * sx;
+    const gy2 = padTop + CHAPEL_EXIT_GATE_DEF.y * sy;
+    mctx.fillStyle = worldState.bossDefeated ? 'rgba(56, 189, 248, 0.35)' : COLORS.crimsonBright;
+    mctx.fillRect(gx2, gy2, Math.max(2.5, CHAPEL_EXIT_GATE_DEF.w * sx), Math.max(4, CHAPEL_EXIT_GATE_DEF.h * sy * (worldState.bossDefeated ? 0.25 : 1)));
+
+    // Breakable Ink Walls
     for (const sw of worldState.secretWalls) {
-      if (sw.broken || !isXExplored(sw.x + 80)) continue;
+      if (sw.broken) continue;
       mctx.fillStyle = '#38bdf8';
       mctx.fillRect(padX + sw.x * sx, padTop + sw.y * sy, Math.max(2.5, sw.w * sx), Math.max(4, sw.h * sy));
     }
 
-    // Pickups (shown once area explored & uncollected)
+    // Pickups
     for (const p of worldState.pickups) {
-      if (p.collected || !isXExplored(p.x)) continue;
+      if (p.collected) continue;
       const px = padX + p.x * sx;
       const py = padTop + (p.y - 24) * sy;
-      mctx.fillStyle = p.kind === 'flaskCore' ? COLORS.cyanBright : COLORS.goldBright;
+      mctx.fillStyle = p.kind === 'relic' ? COLORS.goldBright : COLORS.cyanBright;
       mctx.beginPath();
-      mctx.arc(px, py, detailed ? 4.2 : 2.4, 0, Math.PI * 2);
+      mctx.arc(px, py, detailed ? 3.8 : 2.1, 0, Math.PI * 2);
       mctx.fill();
     }
 
     // Altars
     for (const altar of ALTARS) {
       const lit = worldState.litAltars.has(altar.id);
-      if (!lit && !isXExplored(altar.x)) continue;
       const ax = padX + altar.x * sx;
       const ay = padTop + (altar.y - 34) * sy;
       mctx.fillStyle = lit ? COLORS.cyan : '#64748b';
       mctx.beginPath();
-      mctx.arc(ax, ay, detailed ? 5 : 2.8, 0, Math.PI * 2);
+      mctx.arc(ax, ay, detailed ? 4.6 : 2.5, 0, Math.PI * 2);
       mctx.fill();
       if (detailed) {
         mctx.strokeStyle = lit ? COLORS.cyanBright : '#94a3b8';
@@ -6719,31 +7433,30 @@
     }
 
     // Boss Chapel Marker
-    if (isXExplored(2900) || (boss && boss.awake)) {
-      const bx = padX + 3320 * sx;
-      const by = padTop + (FLOOR_Y - 56) * sy;
-      mctx.fillStyle = boss && !boss.alive ? 'rgba(245, 158, 11, 0.55)' : COLORS.crimsonBright;
-      mctx.beginPath();
-      mctx.arc(bx, by, detailed ? 5.5 : 3, 0, Math.PI * 2);
-      mctx.fill();
+    const bx = padX + 3320 * sx;
+    const by = padTop + (FLOOR_Y - 56) * sy;
+    mctx.fillStyle = worldState.bossDefeated ? 'rgba(245, 158, 11, 0.55)' : COLORS.crimsonBright;
+    mctx.beginPath();
+    mctx.arc(bx, by, detailed ? 5 : 2.8, 0, Math.PI * 2);
+    mctx.fill();
+
+    // 2D Fog of War mask over unexplored grid cells
+    for (let r = 0; r < MAP_ROWS; r++) {
+      for (let c = 0; c < MAP_COLS; c++) {
+        if (worldState.explored[r][c]) continue;
+        mctx.fillStyle = detailed ? 'rgba(9, 8, 7, 0.9)' : 'rgba(6, 8, 13, 0.92)';
+        mctx.fillRect(padX + c * MAP_CELL_W * sx, padTop + r * MAP_CELL_H * sy, cw, ch);
+      }
     }
 
-    // Fog overlay for unexplored chunks
-    for (let i = 0; i < MAP_CHUNKS; i++) {
-      if (worldState.explored[i]) continue;
-      const cx = padX + i * MAP_CHUNK_W * sx;
-      mctx.fillStyle = detailed ? 'rgba(9, 8, 7, 0.84)' : 'rgba(6, 8, 13, 0.88)';
-      mctx.fillRect(cx, padTop, MAP_CHUNK_W * sx + 0.6, mapH);
-    }
-
-    // Live Player Marker
+    // Live Player Marker (drawn on top of fog)
     if (player) {
       const px = padX + (player.x + player.w / 2) * sx;
       const py = padTop + (player.y + player.h / 2) * sy;
       const pulse = 1 + Math.sin(globalTime * 8) * 0.25;
       mctx.fillStyle = '#ffffff';
       mctx.beginPath();
-      mctx.arc(px, py, (detailed ? 4.5 : 2.6) * pulse, 0, Math.PI * 2);
+      mctx.arc(px, py, (detailed ? 4.2 : 2.4) * pulse, 0, Math.PI * 2);
       mctx.fill();
       if (detailed) {
         mctx.strokeStyle = COLORS.goldBright;
@@ -6759,9 +7472,17 @@
       const litCount = worldState.litAltars.size;
       const secretCount = worldState.pickups.filter(p => p.collected).length;
       document.getElementById('map-modal-sub').textContent =
-        `沉钟回廊 · 已探索 ${getExplorationPercent()}% · 祭坛 ${litCount}/${ALTARS.length} · 秘宝 ${secretCount}/${PICKUPS_DEF.length}` +
-        (worldState.shortcutOpen ? ' · 高空捷径已通' : '');
+        `晦渊全境 · 已探索 ${getExplorationPercent()}% · 祭坛 ${litCount}/${ALTARS.length} · 秘宝 ${secretCount}/${PICKUPS_DEF.length}` +
+        (worldState.abilities.doubleJump ? ' · 已习得墨翼步' : '') +
+        (worldState.bossDefeated ? ' · 钟井已通' : '');
     }
+  }
+
+  function openLoreModal(tablet) {
+    document.getElementById('lore-modal-title').textContent = tablet.title;
+    document.getElementById('lore-modal-sub').textContent = tablet.sub;
+    document.getElementById('lore-modal-body').innerHTML = tablet.html;
+    openModal('lore');
   }
 
   function openMapModal() {
@@ -6788,7 +7509,10 @@
       name.textContent = unlocked ? relic.name : '？？？ · 隐秘圣物';
       const desc = document.createElement('div');
       desc.className = 'relic-desc';
-      desc.textContent = unlocked ? relic.desc : '尚未发现。传闻藏于起点左侧高空的墨蚀壁龛之内，需以钩索攀跃并击碎裂纹暗墙。';
+      const lockedHint = relic.id === 'bellcore'
+        ? '尚未发现。传闻悬于第一区悬灯之上的苍穹残钟阁，唯有习得「墨翼步」方可踏足。'
+        : '尚未发现。传闻藏于起点左侧高空的墨蚀壁龛之内，需以钩索攀跃并击碎裂纹暗墙。';
+      desc.textContent = unlocked ? relic.desc : lockedHint;
       card.append(name, desc);
 
       if (unlocked) {
@@ -6800,6 +7524,8 @@
           if (player) {
             player.maxFlasks = getPlayerMaxFlasks();
             player.flasks = player.maxFlasks;
+            player.maxSeals = getPlayerMaxSeals();
+            player.seals = Math.min(player.seals, player.maxSeals);
             player.hp = player.maxHp;
             player.grayHp = 0;
             player.soul = player.maxSoul;
@@ -6847,7 +7573,7 @@
     if (firstLight) {
       spawnShockwave(altar.x, altar.y - 46, 130, COLORS.cyanBright, 4.5, 0.42);
       spawnParticles(altar.x, altar.y - 46, 30, { color: COLORS.cyanBright, speed: 220, spark: true, life: 0.6 });
-      spawnFloatText(altar.x, altar.y - 96, '断索祭坛已点燃 · 重生点更新', COLORS.cyanBright, 20, 1.5);
+      spawnFloatText(altar.x, altar.y - 96, `${altar.shortName}已点燃 · 重生点更新`, COLORS.cyanBright, 20, 1.5);
     }
     restAtAltar();
   }
@@ -6861,6 +7587,7 @@
     player.soul = player.maxSoul;
     player.maxFlasks = getPlayerMaxFlasks();
     player.flasks = player.maxFlasks;
+    player.maxSeals = getPlayerMaxSeals();
     player.seals = 0;
     player.vx = 0;
     player.vy = 0;
@@ -6880,9 +7607,10 @@
     player.grappleBufTimer = 0;
     player.sealBufTimer = 0;
 
-    // Resting at the altar restores the route's enemies and suspended lanterns while preserving world unlocks.
+    // Resting at the altar restores route enemies & lanterns while preserving world unlocks and slain Boss.
     enemies = createSentinels();
     boss = createBoss();
+    if (worldState && worldState.bossDefeated) boss.alive = false;
     lanterns = createLanterns();
     projectiles = [];
     talismans = [];
@@ -6904,6 +7632,7 @@
     player = createPlayer(altar.x - 14, altar.y - 54);
     enemies = createSentinels();
     boss = createBoss();
+    if (worldState && worldState.bossDefeated) boss.alive = false;
     lanterns = createLanterns();
     particles = [];
     slashes = [];
@@ -6918,7 +7647,7 @@
     projectiles = [];
     cam = {
       x: Math.max(0, Math.min(Math.max(0, WORLD_W - canvasW), altar.x - canvasW * 0.5)),
-      y: 0,
+      y: Math.min(Math.max(0, WORLD_H - canvasH), Math.max(-40, altar.y - canvasH * 0.62)),
       shake: 0,
       kickX: 0,
       kickY: 0,
@@ -6927,7 +7656,7 @@
     hitstopTimer = 0;
     invertTimer = 0;
     screenFlash = { alpha: 0, color: '#fff' };
-    markMapExplored(altar.x);
+    markMapExplored(altar.x, altar.y - 40);
     hideAllOverlays();
     gameState = 'playing';
     syncHUD();
@@ -6966,7 +7695,7 @@
       currentRelic = RELICS[0];
     }
     player = createPlayer(ALTARS[0].x - 14, FLOOR_Y - 54);
-    markMapExplored(ALTARS[0].x);
+    markMapExplored(ALTARS[0].x, FLOOR_Y - 40);
     enemies = createSentinels();
     boss = createBoss();
     lanterns = createLanterns();
@@ -7091,6 +7820,20 @@
   document.getElementById('btn-close-lore').addEventListener('click', () => closeModal('lore'));
   document.getElementById('btn-close-help').addEventListener('click', () => closeModal('help'));
   document.getElementById('btn-retry').addEventListener('click', respawnAtActiveAltar);
+  function continueIntoBellWell() {
+    if (player && player.hp <= 0) {
+      player.hp = player.maxHp;
+      player.grayHp = 0;
+      player.deathTimer = 0;
+      player.iframeTimer = 0.6;
+    }
+    hideAllOverlays();
+    gameState = 'playing';
+    audio.playBellToll();
+    syncHUD();
+    spawnFloatText(player.x + player.w / 2, player.y - 34, '向右踏入沉渊钟井 →', COLORS.cyanBright, 20, 1.5);
+  }
+  document.getElementById('btn-enter-well').addEventListener('click', continueIntoBellWell);
   document.getElementById('btn-play-again').addEventListener('click', startGame);
 
   window.addEventListener('keydown', e => {
@@ -7128,7 +7871,7 @@
   buildGlowSprites();
   syncControlModeUI();
   worldState = createFreshWorldState();
-  markMapExplored(ALTARS[0].x);
+  markMapExplored(ALTARS[0].x, FLOOR_Y - 40);
   resizeCanvas();
   lanterns = createLanterns();
   initAmbientMotes();
