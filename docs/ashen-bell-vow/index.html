@@ -702,6 +702,7 @@
       <div class="hud-right">
         <div id="zone-banner" class="zone-banner">沉钟回廊 · 熄灯祭坛</div>
         <div class="hud-btn-row">
+          <button id="btn-ctrl" class="hud-btn" title="切换键鼠一体 / 纯键盘预设（支持原生手柄即插即用）">操控: 键鼠</button>
           <button id="btn-map" class="hud-btn">地图 [M]</button>
           <button id="btn-help" class="hud-btn">心法</button>
           <button id="btn-mute" class="hud-btn">音效: 开</button>
@@ -732,8 +733,8 @@
     </div>
   </div>
 
-  <div class="quick-bar">
-    A/D 移动 · Space 跳/蹬墙 · J/长按J 三连/居合 · W+J 上挑 · S+J 下劈 · K→J 弹反/反击 · U 灵刃 · I/F/右键 钩索 · Shift 闪 · L 墨印 · H 回血 · E 交互 · M 舆图
+  <div id="quick-bar" class="quick-bar">
+    A/D 移 · Space 跳 · 左键/J 三连·长按居合 · 右键/K 弹反 · F/中键/I 钩索 · R/U 灵刃 · Shift 闪 · C/L 墨印 · Q/H 回血 · E 交互 · M 舆图 · 支持手柄
   </div>
 
   <!-- Title Overlay -->
@@ -743,12 +744,13 @@
       <div class="modal-sub">ASHEN BELL VOW · 暗黑手绘魂系类银河恶魔城原型</div>
       <div class="controls-grid">
         <div class="ctrl-item"><span>移动 / 蹬墙跳</span><span><span class="keycap">A/D</span> <span class="keycap">Space</span></span></div>
-        <div class="ctrl-item"><span>三连斩 / 蓄力居合一闪</span><span><span class="keycap">J</span> / <span class="keycap gold">长按J</span></span></div>
-        <div class="ctrl-item"><span>上挑斩 / 空中下劈</span><span><span class="keycap">W+J</span> / <span class="keycap">S+J</span></span></div>
-        <div class="ctrl-item"><span>三段弹反 → 派生反击斩</span><span><span class="keycap gold">K</span> → <span class="keycap gold">J</span></span></div>
-        <div class="ctrl-item"><span>幽鸣灵刃 / 幽丝钩索</span><span><span class="keycap cyan">U</span> / <span class="keycap cyan">I · F · 右键</span></span></div>
-        <div class="ctrl-item"><span>墨影闪避 / 墨印引爆斩</span><span><span class="keycap">Shift</span> / <span class="keycap gold">L</span></span></div>
-        <div class="ctrl-item"><span>灯油回血 / 祭坛交互</span><span><span class="keycap cyan">H</span> / <span class="keycap">E</span></span></div>
+        <div class="ctrl-item"><span>三连斩 / 长按居合一闪</span><span><span class="keycap">左键 · J</span> / <span class="keycap gold">长按</span></span></div>
+        <div class="ctrl-item"><span>上挑斩 / 空中下劈</span><span><span class="keycap">W+斩</span> / <span class="keycap">S+斩</span></span></div>
+        <div class="ctrl-item"><span>三段弹反 → 派生反击斩</span><span><span class="keycap gold">右键 · K</span> → <span class="keycap gold">斩</span></span></div>
+        <div class="ctrl-item"><span>幽鸣灵刃 / 幽丝钩索</span><span><span class="keycap cyan">R · U</span> / <span class="keycap cyan">F · 中键 · I</span></span></div>
+        <div class="ctrl-item"><span>墨影闪避 / 墨印引爆斩</span><span><span class="keycap">Shift</span> / <span class="keycap gold">C · L</span></span></div>
+        <div class="ctrl-item"><span>灯油回血 / 交互 / 舆图</span><span><span class="keycap cyan">Q · H</span> <span class="keycap">E</span> <span class="keycap">M</span></span></div>
+        <div class="ctrl-item"><span>原生手柄支持</span><span><span class="keycap gold">Xbox / PS 即插即用</span></span></div>
       </div>
       <button id="btn-start" class="primary-btn">唤醒人偶</button>
     </div>
@@ -955,11 +957,17 @@
       this.ctx = null;
       this.muted = false;
       this.noiseBuf = null;
+      this.ambientStarted = false;
+      this.ambientGain = null;
+      this.windFilter = null;
+      this.distantBellTimer = 11;
+      this.heartbeatTimer = 0.6;
     }
 
     init() {
       if (this.ctx) {
         if (this.ctx.state === 'suspended') this.ctx.resume();
+        this.startAmbience();
         return;
       }
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -969,66 +977,277 @@
       this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
       const data = this.noiseBuf.getChannelData(0);
       for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+      this.startAmbience();
     }
 
-    playSlash(pitch = 1.0) {
+    startAmbience() {
+      if (!this.ctx || this.ambientStarted) return;
+      this.ambientStarted = true;
+      const t = this.ctx.currentTime;
+
+      this.ambientGain = this.ctx.createGain();
+      this.ambientGain.gain.setValueAtTime(this.muted ? 0.0001 : 0.24, t);
+      this.ambientGain.connect(this.ctx.destination);
+
+      // 2-second seamless filtered wind noise loop
+      const windLen = this.ctx.sampleRate * 2;
+      const windBuf = this.ctx.createBuffer(1, windLen, this.ctx.sampleRate);
+      const wd = windBuf.getChannelData(0);
+      let lastOut = 0;
+      for (let i = 0; i < windLen; i++) {
+        const white = Math.random() * 2 - 1;
+        lastOut = (lastOut + 0.03 * white) / 1.03;
+        wd[i] = lastOut * 2.8;
+      }
+      const windSrc = this.ctx.createBufferSource();
+      windSrc.buffer = windBuf;
+      windSrc.loop = true;
+
+      this.windFilter = this.ctx.createBiquadFilter();
+      this.windFilter.type = 'bandpass';
+      this.windFilter.frequency.setValueAtTime(220, t);
+      this.windFilter.Q.value = 1.6;
+
+      // Slow cathedral draft LFO
+      const lfo = this.ctx.createOscillator();
+      const lfoGain = this.ctx.createGain();
+      lfo.type = 'sine';
+      lfo.frequency.setValueAtTime(0.11, t);
+      lfoGain.gain.setValueAtTime(75, t);
+      lfo.connect(lfoGain);
+      lfoGain.connect(this.windFilter.frequency);
+      lfo.start(t);
+
+      const windMix = this.ctx.createGain();
+      windMix.gain.setValueAtTime(0.22, t);
+      windSrc.connect(this.windFilter);
+      this.windFilter.connect(windMix);
+      windMix.connect(this.ambientGain);
+      windSrc.start(t);
+
+      // Subterranean dark cathedral drone (D2 + detuned A2)
+      const droneLp = this.ctx.createBiquadFilter();
+      droneLp.type = 'lowpass';
+      droneLp.frequency.setValueAtTime(165, t);
+      const droneMix = this.ctx.createGain();
+      droneMix.gain.setValueAtTime(0.08, t);
+      droneLp.connect(droneMix);
+      droneMix.connect(this.ambientGain);
+
+      [73.42, 110.35].forEach((freq, i) => {
+        const osc = this.ctx.createOscillator();
+        osc.type = i === 0 ? 'sine' : 'triangle';
+        osc.frequency.setValueAtTime(freq, t);
+        osc.connect(droneLp);
+        osc.start(t);
+      });
+    }
+
+    setMuted(flag) {
+      this.muted = flag;
+      if (this.ctx && this.ambientGain) {
+        const t = this.ctx.currentTime;
+        this.ambientGain.gain.cancelScheduledValues(t);
+        this.ambientGain.gain.setTargetAtTime(flag ? 0.0001 : 0.24, t, 0.08);
+      }
+      if (!flag) this.init();
+    }
+
+    setBackgroundDuck(hidden) {
+      if (!this.ctx || !this.ambientGain || this.muted) return;
+      const t = this.ctx.currentTime;
+      this.ambientGain.gain.setTargetAtTime(hidden ? 0.0001 : 0.24, t, 0.12);
+    }
+
+    playDistantBell() {
       if (!this.ctx || this.muted) return;
       const t = this.ctx.currentTime;
+      [146.8, 293.6, 440.0].forEach((f, i) => {
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(f, t);
+        osc.frequency.exponentialRampToValueAtTime(f * 0.992, t + 2.8);
+        g.gain.setValueAtTime(0.032 / (i + 1), t);
+        g.gain.exponentialRampToValueAtTime(0.0005, t + 2.9);
+        osc.connect(g); g.connect(this.ctx.destination);
+        osc.start(t); osc.stop(t + 3.0);
+      });
+    }
+
+    playHeartbeat() {
+      if (!this.ctx || this.muted) return;
+      const t = this.ctx.currentTime;
+      [0, 0.22].forEach((offset, idx) => {
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(idx === 0 ? 58 : 48, t + offset);
+        osc.frequency.exponentialRampToValueAtTime(28, t + offset + 0.14);
+        g.gain.setValueAtTime(idx === 0 ? 0.18 : 0.12, t + offset);
+        g.gain.exponentialRampToValueAtTime(0.001, t + offset + 0.16);
+        osc.connect(g); g.connect(this.ctx.destination);
+        osc.start(t + offset); osc.stop(t + offset + 0.18);
+      });
+    }
+
+    updateAmbience(dt, bossAwake, bossPhase2) {
+      if (!this.ctx || this.muted || !this.ambientStarted) return;
+      if (this.windFilter) {
+        const targetFreq = bossPhase2 ? 150 : bossAwake ? 185 : 225;
+        this.windFilter.frequency.setTargetAtTime(targetFreq, this.ctx.currentTime, 0.4);
+      }
+      if (bossPhase2) {
+        this.heartbeatTimer -= dt;
+        if (this.heartbeatTimer <= 0) {
+          this.heartbeatTimer = 0.88;
+          this.playHeartbeat();
+        }
+      } else {
+        this.distantBellTimer -= dt;
+        if (this.distantBellTimer <= 0) {
+          this.distantBellTimer = 15 + Math.random() * 10;
+          this.playDistantBell();
+        }
+      }
+    }
+
+    playSlash(pitch = 1.0, heavy = false) {
+      if (!this.ctx || this.muted) return;
+      const t = this.ctx.currentTime;
+      // Filtered air-cut swoosh
       const n = this.ctx.createBufferSource();
       n.buffer = this.noiseBuf;
       const bp = this.ctx.createBiquadFilter();
       bp.type = 'bandpass';
-      bp.frequency.setValueAtTime(1250 * pitch, t);
-      bp.frequency.exponentialRampToValueAtTime(340 * pitch, t + 0.13);
-      bp.Q.value = 1.4;
+      bp.frequency.setValueAtTime((heavy ? 1050 : 1380) * pitch, t);
+      bp.frequency.exponentialRampToValueAtTime((heavy ? 240 : 380) * pitch, t + (heavy ? 0.18 : 0.13));
+      bp.Q.value = heavy ? 1.15 : 1.5;
       const g = this.ctx.createGain();
-      g.gain.setValueAtTime(0.18, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+      g.gain.setValueAtTime(heavy ? 0.24 : 0.17, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + (heavy ? 0.19 : 0.14));
       n.connect(bp); bp.connect(g); g.connect(this.ctx.destination);
-      n.start(t); n.stop(t + 0.15);
+      n.start(t); n.stop(t + 0.2);
+
+      // Subtle steel blade-edge whistle overtone
+      const osc = this.ctx.createOscillator();
+      const og = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime((heavy ? 760 : 1120) * pitch, t);
+      osc.frequency.exponentialRampToValueAtTime((heavy ? 290 : 520) * pitch, t + 0.11);
+      og.gain.setValueAtTime(heavy ? 0.055 : 0.032, t);
+      og.gain.exponentialRampToValueAtTime(0.0008, t + 0.12);
+      osc.connect(og); og.connect(this.ctx.destination);
+      osc.start(t); osc.stop(t + 0.13);
     }
 
-    playHit(heavy = false) {
+    playHit(heavy = false, comboStep = 1) {
       if (!this.ctx || this.muted) return;
       const t = this.ctx.currentTime;
+      const stepPitch = 1 + Math.max(0, comboStep - 1) * 0.08;
+
+      // 1. Meaty low body thump
       const osc = this.ctx.createOscillator();
       const g = this.ctx.createGain();
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(heavy ? 185 : 240, t);
-      osc.frequency.exponentialRampToValueAtTime(48, t + (heavy ? 0.16 : 0.1));
-      g.gain.setValueAtTime(heavy ? 0.34 : 0.22, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + (heavy ? 0.18 : 0.11));
+      osc.frequency.setValueAtTime((heavy ? 195 : 235) * stepPitch, t);
+      osc.frequency.exponentialRampToValueAtTime(heavy ? 38 : 52, t + (heavy ? 0.18 : 0.11));
+      g.gain.setValueAtTime(heavy ? 0.36 : 0.24, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + (heavy ? 0.19 : 0.12));
       osc.connect(g); g.connect(this.ctx.destination);
-      osc.start(t); osc.stop(t + 0.2);
+      osc.start(t); osc.stop(t + 0.21);
+
+      // 2. Crisp steel-bite transient burst
+      const n = this.ctx.createBufferSource();
+      n.buffer = this.noiseBuf;
+      const hp = this.ctx.createBiquadFilter();
+      hp.type = 'bandpass';
+      hp.frequency.setValueAtTime(heavy ? 2600 : 3200, t);
+      hp.Q.value = 1.2;
+      const ng = this.ctx.createGain();
+      ng.gain.setValueAtTime(heavy ? 0.24 : 0.15, t);
+      ng.gain.exponentialRampToValueAtTime(0.001, t + (heavy ? 0.095 : 0.06));
+      n.connect(hp); hp.connect(ng); ng.connect(this.ctx.destination);
+      n.start(t); n.stop(t + 0.11);
+
+      // 3. Subtle armor-iron overtone ring on heavy / finisher hits
+      if (heavy) {
+        const ring = this.ctx.createOscillator();
+        const rg = this.ctx.createGain();
+        ring.type = 'sine';
+        ring.frequency.setValueAtTime(1180 * stepPitch, t);
+        ring.frequency.exponentialRampToValueAtTime(920 * stepPitch, t + 0.22);
+        rg.gain.setValueAtTime(0.075, t);
+        rg.gain.exponentialRampToValueAtTime(0.0008, t + 0.24);
+        ring.connect(rg); rg.connect(this.ctx.destination);
+        ring.start(t); ring.stop(t + 0.25);
+      }
     }
 
-    playParry(perfect = true) {
+    playParry(perfect = true, streak = 1) {
       if (!this.ctx || this.muted) return;
       const t = this.ctx.currentTime;
       if (perfect) {
-        // Metallic Sekiro-style CLANG harmonic stack
-        [1046, 1568, 2489, 3620].forEach((f, i) => {
+        const rise = 1 + Math.min(4, Math.max(0, streak - 1)) * 0.068;
+
+        // 1. Razor-crisp steel transient click
+        const n = this.ctx.createBufferSource();
+        n.buffer = this.noiseBuf;
+        const hp = this.ctx.createBiquadFilter();
+        hp.type = 'highpass';
+        hp.frequency.setValueAtTime(3400, t);
+        const ng = this.ctx.createGain();
+        ng.gain.setValueAtTime(0.28, t);
+        ng.gain.exponentialRampToValueAtTime(0.001, t + 0.055);
+        n.connect(hp); hp.connect(ng); ng.connect(this.ctx.destination);
+        n.start(t); n.stop(t + 0.065);
+
+        // 2. Metallic Sekiro-style CLANG harmonic stack with streak pitch escalation
+        [1046, 1568, 2489, 3620, 4698].forEach((f, i) => {
           const osc = this.ctx.createOscillator();
           const g = this.ctx.createGain();
           osc.type = i % 2 === 0 ? 'triangle' : 'sine';
-          osc.frequency.setValueAtTime(f, t);
-          osc.frequency.exponentialRampToValueAtTime(f * 0.96, t + 0.36);
-          g.gain.setValueAtTime(0.22 / (i * 0.7 + 1), t);
-          g.gain.exponentialRampToValueAtTime(0.0008, t + 0.38);
+          osc.frequency.setValueAtTime(f * rise, t);
+          osc.frequency.exponentialRampToValueAtTime(f * rise * 0.965, t + 0.42);
+          g.gain.setValueAtTime(0.24 / (i * 0.68 + 1), t);
+          g.gain.exponentialRampToValueAtTime(0.0007, t + 0.44);
           osc.connect(g); g.connect(this.ctx.destination);
-          osc.start(t); osc.stop(t + 0.4);
+          osc.start(t); osc.stop(t + 0.46);
         });
+
+        // 3. Low bronze bell anvil resonance
+        const sub = this.ctx.createOscillator();
+        const sg = this.ctx.createGain();
+        sub.type = 'sine';
+        sub.frequency.setValueAtTime(293.6 * rise, t);
+        sub.frequency.exponentialRampToValueAtTime(260 * rise, t + 0.36);
+        sg.gain.setValueAtTime(0.14, t);
+        sg.gain.exponentialRampToValueAtTime(0.0008, t + 0.38);
+        sub.connect(sg); sg.connect(this.ctx.destination);
+        sub.start(t); sub.stop(t + 0.4);
       } else {
-        // Dull partial block thud
+        // Dull damped steel block thud + short scrape
         const osc = this.ctx.createOscillator();
         const g = this.ctx.createGain();
         osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(320, t);
-        osc.frequency.exponentialRampToValueAtTime(110, t + 0.14);
-        g.gain.setValueAtTime(0.18, t);
+        osc.frequency.setValueAtTime(300, t);
+        osc.frequency.exponentialRampToValueAtTime(95, t + 0.14);
+        g.gain.setValueAtTime(0.19, t);
         g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
         osc.connect(g); g.connect(this.ctx.destination);
         osc.start(t); osc.stop(t + 0.17);
+
+        const n = this.ctx.createBufferSource();
+        n.buffer = this.noiseBuf;
+        const bp = this.ctx.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.setValueAtTime(1400, t);
+        bp.Q.value = 1.6;
+        const ng = this.ctx.createGain();
+        ng.gain.setValueAtTime(0.14, t);
+        ng.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+        n.connect(bp); bp.connect(ng); ng.connect(this.ctx.destination);
+        n.start(t); n.stop(t + 0.09);
       }
     }
 
@@ -1278,6 +1497,33 @@
       osc.connect(g); g.connect(this.ctx.destination);
       osc.start(t); osc.stop(t + 0.1);
     }
+
+    playGrayShatter() {
+      if (!this.ctx || this.muted) return;
+      const t = this.ctx.currentTime;
+      const n = this.ctx.createBufferSource();
+      n.buffer = this.noiseBuf;
+      const hp = this.ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.setValueAtTime(2400, t);
+      const ng = this.ctx.createGain();
+      ng.gain.setValueAtTime(0.16, t);
+      ng.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+      n.connect(hp); hp.connect(ng); ng.connect(this.ctx.destination);
+      n.start(t); n.stop(t + 0.2);
+
+      [1980, 1420, 960].forEach((f, i) => {
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(f, t + i * 0.025);
+        osc.frequency.exponentialRampToValueAtTime(f * 0.62, t + i * 0.025 + 0.14);
+        g.gain.setValueAtTime(0.075, t + i * 0.025);
+        g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.025 + 0.16);
+        osc.connect(g); g.connect(this.ctx.destination);
+        osc.start(t + i * 0.025); osc.stop(t + i * 0.025 + 0.17);
+      });
+    }
   }
 
   const audio = new SoundEngine();
@@ -1322,6 +1568,43 @@
       pCtx.stroke();
     }
     paperPattern = ctx.createPattern(paperCanvas, 'repeat');
+  }
+
+  // Offscreen Pre-rendered Radial Glow Sprites (replaces high-cost per-frame ctx.shadowBlur)
+  const GLOW_SPRITES = {};
+
+  function buildGlowSprites() {
+    const defs = {
+      cyan: ['rgba(224, 242, 254, 0.95)', 'rgba(56, 189, 248, 0.45)', 'rgba(56, 189, 248, 0)'],
+      gold: ['rgba(254, 249, 195, 0.95)', 'rgba(245, 158, 11, 0.48)', 'rgba(245, 158, 11, 0)'],
+      crimson: ['rgba(254, 202, 202, 0.92)', 'rgba(220, 38, 38, 0.5)', 'rgba(220, 38, 38, 0)'],
+      parchment: ['rgba(255, 252, 240, 0.85)', 'rgba(216, 207, 184, 0.38)', 'rgba(216, 207, 184, 0)']
+    };
+    const size = 64;
+    const half = size / 2;
+    for (const [key, stops] of Object.entries(defs)) {
+      const c = document.createElement('canvas');
+      c.width = size;
+      c.height = size;
+      const gctx = c.getContext('2d');
+      const g = gctx.createRadialGradient(half, half, 1, half, half, half);
+      g.addColorStop(0, stops[0]);
+      g.addColorStop(0.38, stops[1]);
+      g.addColorStop(1, stops[2]);
+      gctx.fillStyle = g;
+      gctx.fillRect(0, 0, size, size);
+      GLOW_SPRITES[key] = c;
+    }
+  }
+
+  function drawGlowSprite(key, x, y, radius, alpha = 0.85) {
+    const spr = GLOW_SPRITES[key];
+    if (!spr) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+    ctx.drawImage(spr, x - radius, y - radius, radius * 2, radius * 2);
+    ctx.restore();
   }
 
   function hash2(seed, frame) {
@@ -1583,11 +1866,14 @@
   }
 
   /* =========================================================================
-     5. INPUT SYSTEM (KEYBOARD + RIGHT-CLICK + TOUCH)
+     5. INPUT SYSTEM (KEYBOARD + MOUSE PRESET + GAMEPAD API + TOUCH)
      ========================================================================= */
+  let controlMode = 'kbmouse'; // 'kbmouse' (LMB Slash/Iai, RMB Parry, MMB/F Grapple) | 'keyboard' (Classic J/K/L + RMB Grapple)
   const keysHeld = {};
+  const gpHeld = {};
   const keysPressed = {};
   const keysReleased = {};
+  const mouseHeldButtons = {};
 
   function onKeyDown(e) {
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
@@ -1604,7 +1890,7 @@
   }
 
   function isHeld(codes) {
-    return codes.some(c => keysHeld[c]);
+    return codes.some(c => keysHeld[c] || gpHeld[c]);
   }
 
   function consumePress(codes) {
@@ -1632,17 +1918,136 @@
     for (const code of Object.keys(keysReleased)) keysReleased[code] = false;
   }
 
+  function syncControlModeUI() {
+    const btn = document.getElementById('btn-ctrl');
+    const bar = document.getElementById('quick-bar');
+    if (btn) btn.textContent = controlMode === 'kbmouse' ? '操控: 键鼠' : '操控: 纯键';
+    if (bar) {
+      bar.textContent = controlMode === 'kbmouse'
+        ? 'A/D 移 · Space 跳 · 左键/J 三连·长按居合 · 右键/K 弹反 · F/中键/I 钩索 · R/U 灵刃 · Shift 闪 · C/L 墨印 · Q/H 回血 · E 交互 · M 舆图 · 支持手柄'
+        : 'A/D 移动 · Space 跳/蹬墙 · J/长按J 三连/居合 · W+J 上挑 · S+J 下劈 · K→J 弹反/反击 · U 灵刃 · I/F/右键 钩索 · Shift 闪 · L 墨印 · H 回血 · E 交互 · M 舆图';
+    }
+  }
+
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
   window.addEventListener('contextmenu', e => {
     if (e.target.id === 'gameCanvas') e.preventDefault();
   });
   window.addEventListener('mousedown', e => {
-    if (e.button === 2 && gameState === 'playing' && e.target.id === 'gameCanvas') {
-      audio.init();
+    if (gameState !== 'playing' || e.target.id !== 'gameCanvas') return;
+    audio.init();
+    if (e.button === 0 && controlMode === 'kbmouse') {
+      if (!keysHeld['KeyJ']) keysPressed['KeyJ'] = true;
+      keysHeld['KeyJ'] = true;
+      mouseHeldButtons[0] = 'KeyJ';
+    } else if (e.button === 1) {
+      e.preventDefault();
       keysPressed['KeyI'] = true;
+    } else if (e.button === 2) {
+      keysPressed[controlMode === 'kbmouse' ? 'KeyK' : 'KeyI'] = true;
     }
   });
+  window.addEventListener('mouseup', e => {
+    const mapped = mouseHeldButtons[e.button];
+    if (mapped) {
+      if (keysHeld[mapped]) keysReleased[mapped] = true;
+      keysHeld[mapped] = false;
+      delete mouseHeldButtons[e.button];
+    }
+  });
+
+  // Native Gamepad API (Xbox / PlayStation / Switch Pro Standard Mapping)
+  let gpConnectedNotified = false;
+  const gpPrev = {};
+
+  window.addEventListener('gamepadconnected', () => {
+    if (!gpConnectedNotified && player) {
+      gpConnectedNotified = true;
+      spawnFloatText(player.x + player.w / 2, player.y - 42, '手柄已接入 · 支持标准布局', COLORS.cyanBright, 18, 1.4);
+    }
+  });
+
+  function setGpState(code, down) {
+    const prev = !!gpPrev[code];
+    if (down && !prev) keysPressed[code] = true;
+    if (!down && prev) keysReleased[code] = true;
+    gpHeld[code] = down;
+    gpPrev[code] = down;
+  }
+
+  function pollGamepad() {
+    if (!navigator.getGamepads) return;
+    const pads = navigator.getGamepads();
+    let pad = null;
+    for (let i = 0; i < pads.length; i++) {
+      if (pads[i] && pads[i].connected) {
+        pad = pads[i];
+        break;
+      }
+    }
+    if (!pad) {
+      for (const code of Object.keys(gpHeld)) {
+        if (gpHeld[code]) setGpState(code, false);
+      }
+      return;
+    }
+
+    const b = idx => !!(pad.buttons[idx] && (pad.buttons[idx].pressed || pad.buttons[idx].value > 0.35));
+    const axX = pad.axes[0] || 0;
+    const axY = pad.axes[1] || 0;
+
+    const btnA = b(0);
+    const btnB = b(1);
+    const btnMap = b(8) || b(9);
+
+    if (btnMap && !gpPrev._gpMap) {
+      if (gameState === 'playing' || activeModal === 'map') openMapModal();
+    }
+    gpPrev._gpMap = btnMap;
+
+    // Allow Gamepad A/B to navigate overlays
+    if (gameState === 'title') {
+      if (btnA && !gpPrev._gpStart) startGame();
+      gpPrev._gpStart = btnA;
+      return;
+    }
+    if (gameState === 'modal') {
+      if (btnB && !gpPrev._gpBack && activeModal) closeModal(activeModal);
+      gpPrev._gpBack = btnB;
+      return;
+    }
+    if (gameState === 'dead') {
+      if (btnA && !gpPrev._gpRetry) respawnAtActiveAltar();
+      gpPrev._gpRetry = btnA;
+      return;
+    }
+    if (gameState === 'victory') {
+      if (btnA && !gpPrev._gpAgain) startGame();
+      gpPrev._gpAgain = btnA;
+      return;
+    }
+    gpPrev._gpStart = btnA;
+    gpPrev._gpBack = btnB;
+    gpPrev._gpRetry = btnA;
+    gpPrev._gpAgain = btnA;
+
+    if (btnA || b(2) || b(4) || b(5)) audio.init();
+
+    setGpState('KeyA', axX < -0.35 || b(14));
+    setGpState('KeyD', axX > 0.35 || b(15));
+    setGpState('KeyW', axY < -0.45);
+    setGpState('KeyS', axY > 0.45 || b(13));
+    setGpState('Space', btnA);
+    setGpState('KeyJ', b(2) || b(5));         // X / Square or RB / R1 -> Slash / Hold Iai
+    setGpState('KeyK', b(4));                 // LB / L1 -> Parry
+    setGpState('ShiftLeft', btnB);            // B / Circle -> Ink Dash
+    setGpState('KeyU', b(3));                 // Y / Triangle -> Soul Bell-Wave
+    setGpState('KeyI', b(6));                 // LT / L2 -> Grapple Hook
+    setGpState('KeyL', b(7));                 // RT / R2 -> Ink Seal Detonation
+    setGpState('KeyH', b(12) || b(10));       // D-Pad Up / L3 -> Heal Flask
+    setGpState('KeyE', b(11) || (b(13) && !b(2) && !b(5))); // R3 or D-Pad Down -> Interact
+  }
 
   document.querySelectorAll('.t-btn').forEach(btn => {
     const code = btn.dataset.key;
@@ -1720,6 +2125,8 @@
   let particles = [];
   let slashes = [];
   let shockwaves = [];
+  let impactBursts = [];
+  let hitMarks = [];
   let floatTexts = [];
   let afterimages = [];
   let talismans = [];
@@ -1762,15 +2169,40 @@
         grav,
         life: life * (0.65 + Math.random() * 0.5),
         maxLife: life,
-        size: spark ? 2 + Math.random() * 2.5 : 2.5 + Math.random() * 3.5,
+        size: opts.size !== undefined ? opts.size * (0.7 + Math.random() * 0.6) : (spark ? 2 + Math.random() * 2.5 : 2.5 + Math.random() * 3.5),
         color: col,
-        spark
+        spark,
+        bounce: !!opts.bounce
       });
     }
   }
 
   function spawnShockwave(x, y, maxR, color, width = 3, life = 0.28) {
     shockwaves.push({ x, y, r: 8, maxR, color, width, life, maxLife: life });
+  }
+
+  function spawnImpactBurst(x, y, kind = 'parry', scale = 1.0) {
+    const life = kind === 'parry' ? 0.26 : 0.20;
+    impactBursts.push({
+      x, y,
+      kind, // 'parry' | 'block'
+      scale,
+      rot: (Math.random() - 0.5) * 0.38,
+      life,
+      maxLife: life
+    });
+  }
+
+  function spawnHitMark(x, y, angle, color, len = 64, width = 6) {
+    hitMarks.push({
+      x, y,
+      angle,
+      color,
+      len,
+      width,
+      life: 0.17,
+      maxLife: 0.17
+    });
   }
 
   function spawnFloatText(x, y, text, color, size = 18, life = 0.85) {
@@ -1784,7 +2216,7 @@
   let hitstopTimer = 0;
   let invertTimer = 0;
   let screenFlash = { alpha: 0, color: '#fff' };
-  let cam = { x: 0, y: 0, shake: 0 };
+  let cam = { x: 0, y: 0, shake: 0, kickX: 0, kickY: 0, zoom: 1 };
   let stats = { parries: 0, executions: 0, damageTaken: 0, startTime: 0 };
 
   let player = null;
@@ -1812,6 +2244,15 @@
 
   function addShake(amount) {
     cam.shake = Math.min(20, Math.max(cam.shake, amount));
+  }
+
+  function kickCamera(kx, ky) {
+    cam.kickX = Math.max(-18, Math.min(18, cam.kickX + kx));
+    cam.kickY = Math.max(-12, Math.min(12, cam.kickY + ky));
+  }
+
+  function punchZoom(targetZoom) {
+    cam.zoom = Math.min(1.065, Math.max(cam.zoom, targetZoom));
   }
 
   function createPlayer(x = 340, y = FLOOR_Y - 56) {
@@ -1868,6 +2309,8 @@
       parryActive: false,
       parryElapsedMs: 0,
       parryCooldown: 0,
+      parryStreak: 0,
+      parryStreakTimer: 0,
 
       // Dash, Seal Lunge, Spell, Grapple, Heal, Execution
       dashTimer: 0,
@@ -2150,16 +2593,27 @@
     // 2. Three-Tier Parry Check (only if attack is parryable)
     if (player.parryActive && !isUnparryable) {
       if (player.parryElapsedMs <= currentRelic.parryWindowMs) {
-        // TIER 1: PERFECT PARRY (0 - 140ms)
+        // TIER 1: PERFECT PARRY (0 - 140ms) — Sekiro / Nine Sols Clash Juice!
         stats.parries++;
-        audio.playParry(true);
-        hitstopTimer = 0.055;
-        addShake(9);
-        screenFlash = { alpha: 0.22, color: COLORS.goldBright };
+        player.parryStreak = player.parryStreakTimer > 0 ? Math.min(9, player.parryStreak + 1) : 1;
+        player.parryStreakTimer = 2.6;
+        const streakScale = 1 + Math.min(3, player.parryStreak - 1) * 0.14;
+
+        // Auto-face incoming attacker so follow-up [K -> J] Cross Counter always lands cleanly
+        player.facing = -dir;
+
+        audio.playParry(true, player.parryStreak);
+        hitstopTimer = 0.062;
+        addShake(9 + Math.min(4, player.parryStreak));
+        kickCamera(dir * 9, -3);
+        punchZoom(1.042 + Math.min(0.018, (player.parryStreak - 1) * 0.005));
+        screenFlash = { alpha: 0.24, color: COLORS.goldBright };
         player.parryActive = false;
-        player.parryCooldown = 0.04;
-        player.riposteWindow = 0.52; // Opens K -> J Cross Counter Slash!
+        player.parryCooldown = 0.03;
+        player.riposteWindow = 0.56; // Opens K -> J Cross Counter Slash!
         player.vx = dir * 135;
+        player.squashX = 0.82;
+        player.squashY = 1.22;
 
         if (player.seals < player.maxSeals) player.seals++;
         player.soul = Math.min(player.maxSoul, player.soul + 28);
@@ -2182,19 +2636,45 @@
           }
         }
 
-        const sx = player.x + player.w / 2 + player.facing * 18;
+        const sx = player.x + player.w / 2 + player.facing * 20;
         const sy = player.y + 24;
-        spawnParticles(sx, sy, 24, { color: COLORS.goldBright, speed: 340, spark: true, life: 0.36 });
-        spawnShockwave(sx, sy, 68, COLORS.goldBright, 4.2, 0.24);
-        spawnFloatText(player.x + player.w / 2, player.y - 24, '精准弹反！', COLORS.goldBright, 20, 0.78);
+        // Clash starburst + twin shockwaves + bouncing metallic sparks + ink splatter
+        spawnImpactBurst(sx, sy, 'parry', streakScale);
+        spawnShockwave(sx, sy, 58 * streakScale, '#ffffff', 3.4, 0.16);
+        spawnShockwave(sx, sy, 92 * streakScale, COLORS.goldBright, 4.4, 0.28);
+        spawnParticles(sx, sy, 22 + player.parryStreak * 4, {
+          color: COLORS.goldBright,
+          speed: 380,
+          spark: true,
+          bounce: true,
+          grav: 640,
+          angle: dir > 0 ? -0.45 : Math.PI + 0.45,
+          spread: 1.55,
+          life: 0.44
+        });
+        spawnParticles(sx, sy, 10, { color: '#ffffff', speed: 290, spark: true, life: 0.24 });
+        spawnParticles(sx, sy, 10, { color: COLORS.ink, speed: 220, grav: 320, size: 3.2, life: 0.38 });
+
+        const label = player.parryStreak >= 4
+          ? `铁鸣连弹 ×${player.parryStreak}！`
+          : player.parryStreak >= 2
+            ? `连弹 ×${player.parryStreak}！`
+            : '精准弹反！';
+        spawnFloatText(player.x + player.w / 2, player.y - 26, label, COLORS.goldBright, player.parryStreak >= 2 ? 22 : 20, 0.85);
         return;
       } else if (player.parryElapsedMs <= currentRelic.blockWindowMs) {
         // TIER 2: PARTIAL BLOCK -> INTERNAL GRAY HP (Rally recoverable!)
+        player.facing = -dir;
+        player.parryStreak = 0;
+        player.parryStreakTimer = 0;
         audio.playParry(false);
-        hitstopTimer = 0.032;
-        addShake(5);
+        hitstopTimer = 0.036;
+        addShake(5.5);
+        kickCamera(dir * 6, 0);
         player.parryActive = false;
         player.vx = dir * 210;
+        player.squashX = 0.86;
+        player.squashY = 1.14;
         const chip = Math.min(player.hp - 1, Math.round(damage * 0.62));
         if (chip > 0) {
           player.hp -= chip;
@@ -2202,7 +2682,12 @@
           player.grayTimer = currentRelic.grayDuration;
           stats.damageTaken += chip;
         }
-        spawnParticles(player.x + player.w / 2 + player.facing * 14, player.y + 24, 12, { color: COLORS.cyanBright, speed: 200, spark: true });
+        const bx = player.x + player.w / 2 + player.facing * 16;
+        const by = player.y + 24;
+        spawnImpactBurst(bx, by, 'block', 0.9);
+        spawnShockwave(bx, by, 44, COLORS.cyanBright, 2.4, 0.18);
+        spawnParticles(bx, by, 12, { color: COLORS.cyanBright, speed: 210, spark: true, bounce: true, grav: 520 });
+        spawnParticles(bx, by, 7, { color: '#94a3b8', speed: 120, grav: -60, size: 3.6, life: 0.35 });
         spawnFloatText(player.x + player.w / 2, player.y - 20, '格挡 · 内伤', '#cbd5e1', 16, 0.7);
         return;
       }
@@ -2218,10 +2703,16 @@
     addShake(11);
     screenFlash = { alpha: 0.25, color: COLORS.crimson };
     player.parryActive = false;
+    player.parryStreak = 0;
+    player.parryStreakTimer = 0;
     player.activeAttack = null;
     player.healTimer = 0;
     player.hurtTimer = 0.24;
     player.iframeTimer = 0.55;
+    if (player.grayHp >= 4) {
+      audio.playGrayShatter();
+      spawnParticles(player.x + player.w / 2, player.y + 20, 12, { color: '#cbd5e1', speed: 210, spark: true, life: 0.42 });
+    }
     player.grayHp = 0; // Taking direct damage shatters remaining internal gray HP!
     player.hp = Math.max(0, player.hp - damage);
     stats.damageTaken += damage;
@@ -2362,9 +2853,17 @@
       if (aabbOverlap(box, t)) {
         atk.hitIds.add(t.id);
         hitAny = true;
-        audio.playHit(atk.heavy);
-        hitstopTimer = Math.max(hitstopTimer, atk.heavy ? 0.048 : 0.028);
-        addShake(atk.heavy ? 7 : 3.5);
+        const stepIdx = atk.type === 'slash3' ? 3 : atk.type === 'slash2' ? 2 : 1;
+        audio.playHit(atk.heavy, stepIdx);
+        hitstopTimer = Math.max(hitstopTimer, atk.type === 'iai' || atk.type === 'counter' ? 0.056 : atk.heavy ? 0.048 : 0.030);
+        addShake(atk.heavy ? 7.5 : 3.8);
+        kickCamera(
+          atk.type === 'pogo' ? 0 : player.facing * (atk.heavy ? 7.5 : 4.2),
+          atk.type === 'pogo' ? 6 : atk.type === 'up' ? -5.5 : 1.5
+        );
+        if (atk.type === 'iai' || atk.type === 'counter') punchZoom(1.036);
+        else if (atk.heavy) punchZoom(1.02);
+
         damageEnemyHP(t, atk.dmg, true);
         addPostureToEnemy(t, atk.posture);
         rallyPlayerGrayHp(atk.rally);
@@ -2376,7 +2875,52 @@
 
         const hx = t.x + t.w / 2;
         const hy = t.y + t.h * 0.45;
-        spawnParticles(hx, hy, atk.heavy ? 20 : 11, { color: atk.heavy ? COLORS.goldBright : COLORS.parchment, speed: 240, spark: true });
+        const cutAngle = atk.type === 'pogo'
+          ? Math.PI * 0.5
+          : atk.type === 'up'
+            ? -Math.PI * 0.42 * player.facing
+            : atk.type === 'iai'
+              ? 0
+              : atk.type === 'slash1'
+                ? -0.58 * player.facing
+                : atk.type === 'slash2'
+                  ? 0.22 * player.facing
+                  : 0.78 * player.facing;
+
+        // Razor-sharp slash wound flash across enemy silhouette
+        if (atk.type === 'counter') {
+          spawnHitMark(hx, hy, -0.68, COLORS.goldBright, 92, 8);
+          spawnHitMark(hx, hy, 0.68, COLORS.crimsonBright, 86, 7);
+          spawnShockwave(hx, hy, 78, COLORS.goldBright, 3.6, 0.22);
+        } else if (atk.type === 'iai') {
+          spawnHitMark(hx, hy, 0, COLORS.goldBright, 124, 9);
+          spawnShockwave(hx, hy, 84, COLORS.goldBright, 3.8, 0.24);
+        } else {
+          spawnHitMark(hx, hy, cutAngle, atk.heavy ? COLORS.goldBright : '#ffffff', atk.heavy ? 88 : 66, atk.heavy ? 7.5 : 5.5);
+          if (atk.heavy) spawnShockwave(hx, hy, 62, COLORS.goldBright, 3.2, 0.2);
+        }
+
+        // Directional sparks spraying THROUGH enemy + dark ink splatter droplets
+        const sprayAng = atk.type === 'pogo' ? Math.PI * 0.5 : atk.type === 'up' ? -Math.PI * 0.5 : (player.facing > 0 ? -0.18 : Math.PI + 0.18);
+        spawnParticles(hx, hy, atk.heavy ? 18 : 10, {
+          color: atk.heavy ? COLORS.goldBright : COLORS.parchment,
+          speed: atk.heavy ? 310 : 250,
+          spark: true,
+          bounce: atk.heavy,
+          grav: 520,
+          angle: sprayAng,
+          spread: 1.05,
+          life: 0.36
+        });
+        spawnParticles(hx, hy, atk.heavy ? 10 : 6, {
+          color: COLORS.ink,
+          speed: 220,
+          grav: 360,
+          size: atk.heavy ? 3.8 : 2.8,
+          angle: sprayAng,
+          spread: 1.25,
+          life: 0.42
+        });
 
         if (atk.type === 'pogo' && !atk.pogoBounced) {
           atk.pogoBounced = true;
@@ -2497,44 +3041,75 @@
       audio.playCounterSlash();
       player.vx = player.facing * 360;
       player.iframeTimer = Math.max(player.iframeTimer, 0.16);
+      player.squashX = 1.24;
+      player.squashY = 0.84;
       dmg = 42; posture = 36; rally = 26; heavy = true; activeEnd = 0.14;
-      addShake(8);
-      spawnFloatText(px, player.y - 24, '断钟返!', COLORS.goldBright, 19, 0.65);
+      addShake(8.5);
+      kickCamera(player.facing * 7, 0);
+      punchZoom(1.032);
+      spawnFloatText(px, player.y - 24, '断钟返!', COLORS.goldBright, 20, 0.72);
     } else if (type === 'iai') {
       audio.playIaiSlash();
       player.iaiLungeTimer = 0.15;
       player.iframeTimer = Math.max(player.iframeTimer, 0.16);
       player.vx = player.facing * 720;
+      player.squashX = 1.32;
+      player.squashY = 0.78;
       dmg = 48; posture = 32; rally = 20; heavy = true; activeEnd = 0.17;
-      addShake(9);
-      spawnFloatText(px, player.y - 24, '居合 · 一闪', COLORS.goldBright, 20, 0.72);
+      addShake(9.5);
+      kickCamera(player.facing * 9, 0);
+      punchZoom(1.038);
+      spawnParticles(px, py, 16, { color: COLORS.goldBright, speed: 240, spark: true, angle: player.facing > 0 ? Math.PI : 0, spread: 0.65, life: 0.34 });
+      spawnFloatText(px, player.y - 24, '居合 · 一闪', COLORS.goldBright, 21, 0.78);
     } else if (type === 'pogo') {
-      audio.playSlash(1.22);
+      audio.playSlash(1.22, false);
+      player.squashX = 0.88;
+      player.squashY = 1.14;
       dmg = 22; posture = 14; rally = 12; activeEnd = 0.16;
     } else if (type === 'up') {
-      audio.playSlash(1.18);
+      audio.playSlash(1.18, false);
+      player.squashX = 0.88;
+      player.squashY = 1.16;
       dmg = 24; posture = 15; rally = 12; activeEnd = 0.12;
     } else if (type === 'slash3') {
-      audio.playSlash(0.84);
+      audio.playSlash(0.84, true);
       player.vx = player.facing * 240;
+      player.squashX = 1.18;
+      player.squashY = 0.86;
       dmg = 30; posture = 22; rally = 15; heavy = true; activeEnd = 0.14;
+      if (player.grounded) {
+        spawnParticles(px + player.facing * 42, player.y + player.h - 2, 10, { color: COLORS.parchment, speed: 150, grav: 320, angle: -Math.PI * 0.5, spread: 1.2, life: 0.32 });
+      }
     } else if (type === 'slash2') {
-      audio.playSlash(1.06);
+      audio.playSlash(1.08, false);
       player.vx = player.facing * 130;
+      player.squashX = 1.10;
+      player.squashY = 0.92;
       dmg = 21; posture = 12; rally = 11; activeEnd = 0.11;
     } else {
-      audio.playSlash(0.98);
+      audio.playSlash(0.98, false);
       player.vx = player.facing * 105;
+      player.squashX = 1.08;
+      player.squashY = 0.94;
       dmg = 19; posture = 11; rally = 10; activeEnd = 0.11;
     }
 
+    const slashOffX = type === 'pogo' ? 0 : type === 'iai' ? 0 : player.facing * 26;
+    const slashOffY = type === 'pogo' ? 40 : type === 'up' ? -34 : 0;
+    const slashLife = type === 'iai' ? 0.34 : type === 'counter' ? 0.28 : type === 'slash3' ? 0.23 : 0.19;
     slashes.push({
-      x: px + (type === 'pogo' ? 0 : player.facing * 26),
-      y: type === 'pogo' ? player.y + player.h + 14 : type === 'up' ? player.y - 8 : py,
+      x: px + slashOffX,
+      y: py + slashOffY,
+      x0: px - player.facing * 18,
+      x1: px + player.facing * 135,
+      offX: slashOffX,
+      offY: slashOffY,
+      followPlayer: type !== 'iai' && type !== 'counter',
+      isIaiTrack: type === 'iai',
       facing: player.facing,
       type,
-      life: type === 'iai' || type === 'counter' ? 0.25 : 0.19,
-      maxLife: type === 'iai' || type === 'counter' ? 0.25 : 0.19
+      life: slashLife,
+      maxLife: slashLife
     });
 
     player.activeAttack = {
@@ -2633,9 +3208,9 @@
     if (consumePress(['KeyJ'])) player.attackBufTimer = 0.13;
     if (consumePress(['KeyK'])) player.parryBufTimer = 0.12;
     if (consumePress(['ShiftLeft', 'ShiftRight'])) player.dashBufTimer = 0.12;
-    if (consumePress(['KeyU'])) player.castBufTimer = 0.12;
+    if (consumePress(['KeyU', 'KeyR'])) player.castBufTimer = 0.12;
     if (consumePress(['KeyI', 'KeyF'])) player.grappleBufTimer = 0.12;
-    if (consumePress(['KeyL'])) player.sealBufTimer = 0.12;
+    if (consumePress(['KeyL', 'KeyC'])) player.sealBufTimer = 0.12;
   }
 
   function updatePlayer(dt) {
@@ -2682,6 +3257,10 @@
     else player.comboStep = 0;
     if (player.riposteWindow > 0) player.riposteWindow -= dt;
     if (player.parryCooldown > 0) player.parryCooldown -= dt;
+    if (player.parryStreakTimer > 0) {
+      player.parryStreakTimer -= dt;
+      if (player.parryStreakTimer <= 0) player.parryStreak = 0;
+    }
     if (player.dashCd > 0) player.dashCd -= dt;
     if (player.iframeTimer > 0) player.iframeTimer -= dt;
     if (player.hurtTimer > 0) {
@@ -2763,7 +3342,7 @@
         spawnParticles(player.x + player.w / 2, player.y + 24, 20, { color: COLORS.cyanBright, speed: 150, grav: -200, life: 0.55 });
         spawnFloatText(player.x + player.w / 2, player.y - 16, `+${healAmt}`, COLORS.cyanBright, 18);
       }
-    } else if (consumePress(['KeyH']) && player.flasks > 0 && player.grounded && player.dashTimer <= 0 && player.detonateLungeTimer <= 0 && player.iaiLungeTimer <= 0 && player.grappleState === 'none') {
+    } else if (consumePress(['KeyH', 'KeyQ']) && player.flasks > 0 && player.grounded && player.dashTimer <= 0 && player.detonateLungeTimer <= 0 && player.iaiLungeTimer <= 0 && player.grappleState === 'none') {
       player.healTimer = 0.52;
       player.healDone = false;
       player.isCharging = false;
@@ -3666,13 +4245,16 @@
               // Phase cleanly
             } else if (player.parryActive && player.parryElapsedMs <= currentRelic.parryWindowMs) {
               stats.parries++;
-              audio.playParry(true);
-              hitstopTimer = 0.05;
-              addShake(8);
-              screenFlash = { alpha: 0.18, color: COLORS.goldBright };
+              player.parryStreak = player.parryStreakTimer > 0 ? Math.min(9, player.parryStreak + 1) : 1;
+              player.parryStreakTimer = 2.6;
+              audio.playParry(true, player.parryStreak);
+              hitstopTimer = 0.058;
+              addShake(9);
+              punchZoom(1.04);
+              screenFlash = { alpha: 0.2, color: COLORS.goldBright };
               player.parryActive = false;
-              player.parryCooldown = 0.04;
-              player.riposteWindow = 0.45;
+              player.parryCooldown = 0.03;
+              player.riposteWindow = 0.52;
               if (player.seals < player.maxSeals) player.seals++;
               player.soul = Math.min(player.maxSoul, player.soul + 28);
 
@@ -3689,9 +4271,10 @@
                 pr.vx = -pr.vx * 1.8;
                 pr.vy = -pr.vy * 1.8;
               }
-              spawnShockwave(pr.x, pr.y, 64, COLORS.goldBright, 4, 0.24);
-              spawnParticles(pr.x, pr.y, 20, { color: COLORS.goldBright, speed: 300, spark: true });
-              spawnFloatText(pr.x, pr.y - 22, '弹反归元!', COLORS.goldBright, 21, 0.8);
+              spawnImpactBurst(pr.x, pr.y, 'parry', 1.05);
+              spawnShockwave(pr.x, pr.y, 76, COLORS.goldBright, 4.2, 0.26);
+              spawnParticles(pr.x, pr.y, 22, { color: COLORS.goldBright, speed: 320, spark: true, bounce: true, grav: 560 });
+              spawnFloatText(pr.x, pr.y - 22, '弹反归元!', COLORS.goldBright, 21, 0.85);
             } else {
               applyIncomingAttackToPlayer(pr.source || { x: pr.x, w: 0, isBoss: false }, pr.dmg, false, 180);
               pr.life = 0;
@@ -3789,16 +4372,31 @@
       if (gw.life <= 0 || gw.x < 2620 || gw.x > 3760) groundWaves.splice(i, 1);
     }
 
-    // Slashes, Shockwaves, Afterimages, Particles, Float Texts
+    // Slashes, Shockwaves, ImpactBursts, HitMarks, Afterimages, Particles, Float Texts
     for (let i = slashes.length - 1; i >= 0; i--) {
-      slashes[i].life -= dt;
-      if (slashes[i].life <= 0) slashes.splice(i, 1);
+      const s = slashes[i];
+      s.life -= dt;
+      if (s.followPlayer && player && player.hp > 0) {
+        s.x = player.x + player.w / 2 + s.offX;
+        s.y = player.y + 26 + s.offY;
+      } else if (s.isIaiTrack && player && player.iaiLungeTimer > 0) {
+        s.x1 = player.x + player.w / 2 + s.facing * 42;
+      }
+      if (s.life <= 0) slashes.splice(i, 1);
     }
     for (let i = shockwaves.length - 1; i >= 0; i--) {
       const s = shockwaves[i];
       s.life -= dt;
       s.r = s.maxR * (1 - Math.pow(Math.max(0, s.life / s.maxLife), 2));
       if (s.life <= 0) shockwaves.splice(i, 1);
+    }
+    for (let i = impactBursts.length - 1; i >= 0; i--) {
+      impactBursts[i].life -= dt;
+      if (impactBursts[i].life <= 0) impactBursts.splice(i, 1);
+    }
+    for (let i = hitMarks.length - 1; i >= 0; i--) {
+      hitMarks[i].life -= dt;
+      if (hitMarks[i].life <= 0) hitMarks.splice(i, 1);
     }
     for (let i = afterimages.length - 1; i >= 0; i--) {
       afterimages[i].life -= dt;
@@ -3810,6 +4408,12 @@
       p.vy += p.grav * dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
+      if (p.bounce && p.y >= FLOOR_Y - 2 && p.vy > 0) {
+        p.y = FLOOR_Y - 2;
+        p.vy = -p.vy * 0.42;
+        p.vx *= 0.72;
+        p.bounce = false;
+      }
       if (p.life <= 0) particles.splice(i, 1);
     }
     for (let i = floatTexts.length - 1; i >= 0; i--) {
@@ -3841,6 +4445,13 @@
     cam.y += (targetY - cam.y) * Math.min(1, dt * 5);
 
     if (cam.shake > 0) cam.shake = Math.max(0, cam.shake - dt * 36);
+    const kickDecay = Math.exp(-18 * dt);
+    cam.kickX *= kickDecay;
+    cam.kickY *= kickDecay;
+    if (Math.abs(cam.kickX) < 0.08) cam.kickX = 0;
+    if (Math.abs(cam.kickY) < 0.08) cam.kickY = 0;
+    cam.zoom += (1 - cam.zoom) * Math.min(1, dt * 12);
+    if (Math.abs(cam.zoom - 1) < 0.0006) cam.zoom = 1;
   }
 
   /* =========================================================================
@@ -3848,18 +4459,22 @@
      ========================================================================= */
   function render() {
     ctx.save();
-    if (invertTimer > 0) ctx.filter = 'invert(1) contrast(1.4)';
 
     const isPhase2 = boss && boss.awake && boss.alive && boss.phase === 2;
 
     // 1. Background Sky & 3-Layer Gothic Parallax Ruins
     drawParallaxBackground(isPhase2);
 
-    // 2. Camera Transform + Screen Shake
+    // 2. Camera Transform + Micro-Zoom Punch + Directional Kick + Screen Shake
     const sx = (Math.random() - 0.5) * cam.shake * 2;
     const sy = (Math.random() - 0.5) * cam.shake * 2;
     ctx.save();
-    ctx.translate(-Math.round(cam.x + sx), -Math.round(cam.y + sy));
+    if (cam.zoom !== 1) {
+      ctx.translate(canvasW * 0.5, canvasH * 0.5);
+      ctx.scale(cam.zoom, cam.zoom);
+      ctx.translate(-canvasW * 0.5, -canvasH * 0.5);
+    }
+    ctx.translate(-Math.round(cam.x + sx + cam.kickX), -Math.round(cam.y + sy + cam.kickY));
 
     // 3. Hand-Crafted World Architecture & Storytelling Props
     drawWorldEnvironment();
@@ -3910,7 +4525,9 @@
     drawChapelTide();
     drawGroundWaves();
     drawSlashes();
+    drawHitMarks();
     drawShockwaves();
+    drawImpactBursts();
     drawParticles();
 
     // 11. Grapple Reticle, World Prompts & Floating Calligraphy
@@ -3940,6 +4557,15 @@
       ctx.fillStyle = screenFlash.color;
       ctx.globalAlpha = screenFlash.alpha;
       ctx.fillRect(0, 0, canvasW, canvasH);
+      ctx.globalAlpha = 1;
+    }
+
+    // Lightweight GPU-friendly execution inversion flash (replaces slow full-screen ctx.filter)
+    if (invertTimer > 0) {
+      ctx.globalCompositeOperation = 'difference';
+      ctx.fillStyle = '#f5f2ea';
+      ctx.fillRect(0, 0, canvasW, canvasH);
+      ctx.globalCompositeOperation = 'source-over';
     }
 
     ctx.restore();
@@ -4410,11 +5036,10 @@
       }
 
       if (isLit) {
-        // Hanging Soul Flame
+        // Hanging Soul Flame (pre-rendered glow sprite)
         const fl = Math.sin(globalTime * 9 + x) * 3;
+        drawGlowSprite('cyan', x, y - 52 + fl * 0.5, 34, 0.72);
         ctx.fillStyle = COLORS.cyanBright;
-        ctx.shadowColor = COLORS.cyan;
-        ctx.shadowBlur = 16;
         ctx.beginPath();
         ctx.moveTo(x, y - 72 + fl);
         ctx.quadraticCurveTo(x + 14, y - 50, x, y - 38);
@@ -4707,14 +5332,16 @@
       ey = sy + (player.grappleTy - sy) * p;
     }
     ctx.save();
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+    ctx.lineWidth = 6.5;
+    boilLine(ctx, sx, sy, ex, ey, 7700, 1.6, 6);
     ctx.strokeStyle = COLORS.cyanBright;
-    ctx.shadowColor = COLORS.cyanBright;
-    ctx.shadowBlur = 10;
     ctx.lineWidth = 2.4;
     boilLine(ctx, sx, sy, ex, ey, 7700, 1.6, 6);
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+    drawGlowSprite('gold', ex, ey, 14, 0.85);
     ctx.fillStyle = COLORS.goldBright;
     ctx.beginPath(); ctx.arc(ex, ey, 4.5, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
@@ -4834,13 +5461,11 @@
       ctx.lineWidth = 1.2;
       ctx.fillRect(-3.5, 2, 7, 9);
       ctx.strokeRect(-3.5, 2, 7, 9);
-      ctx.fillStyle = soulReady ? '#e0f2fe' : 'rgba(56, 189, 248, 0.42)';
       if (soulReady) {
-        ctx.shadowColor = COLORS.cyanBright;
-        ctx.shadowBlur = 9 + Math.sin(globalTime * 8) * 3;
+        drawGlowSprite('cyan', 0, 6.5, 13 + Math.sin(globalTime * 8) * 2.5, 0.8);
       }
+      ctx.fillStyle = soulReady ? '#e0f2fe' : 'rgba(56, 189, 248, 0.42)';
       ctx.beginPath(); ctx.arc(0, 6.5, soulReady ? 2.7 : 1.9, 0, Math.PI * 2); ctx.fill();
-      ctx.shadowBlur = 0;
       ctx.restore();
 
       // Diegetic Floating Ink Seals Orbiting Behind Shoulder (1-3 Seals)
@@ -4904,15 +5529,14 @@
       ctx.stroke();
 
       // Glowing Cyan Eyes (Turn Gold when Iai Charged or Riposte Ready!)
-      const eyeCol = (player.chargeReadyPlayed || player.riposteWindow > 0) ? COLORS.goldBright : COLORS.cyanBright;
+      const eyeGold = player.chargeReadyPlayed || player.riposteWindow > 0;
+      const eyeCol = eyeGold ? COLORS.goldBright : COLORS.cyanBright;
+      drawGlowSprite(eyeGold ? 'gold' : 'cyan', facing * 3, -1, 11, 0.7);
       ctx.fillStyle = eyeCol;
-      ctx.shadowColor = eyeCol;
-      ctx.shadowBlur = 8;
       ctx.beginPath();
       ctx.ellipse(facing * 3 - 2.5, -1, 2.2, 3.1, 0, 0, Math.PI * 2);
       ctx.ellipse(facing * 3 + 3.2, -1, 2.2, 3.1, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.shadowBlur = 0;
     }
     ctx.restore();
 
@@ -4947,8 +5571,7 @@
       // Curved Ashen Blade (Golden Riposte Glint during K->J counter window!)
       const bladeGold = player.chargeReadyPlayed || player.riposteWindow > 0;
       if (bladeGold) {
-        ctx.shadowColor = COLORS.goldBright;
-        ctx.shadowBlur = 12;
+        drawGlowSprite('gold', 24, 0, 20, 0.72);
       }
       ctx.fillStyle = bladeGold ? COLORS.goldBright : '#d8d2c3';
       ctx.strokeStyle = '#090c12';
@@ -4963,15 +5586,49 @@
       ctx.stroke();
       ctx.restore();
 
-      // Parry Guard Ring Feedback
+      // Calligraphic 3-Tier Parry Guard Stance Feedback
       if (player.parryActive) {
         const isPerfectZone = player.parryElapsedMs <= currentRelic.parryWindowMs;
         const isBlockZone = player.parryElapsedMs <= currentRelic.blockWindowMs;
-        ctx.strokeStyle = isPerfectZone ? COLORS.goldBright : isBlockZone ? COLORS.cyanBright : 'rgba(239,68,68,0.45)';
-        ctx.lineWidth = isPerfectZone ? 3.2 : 2;
-        ctx.beginPath();
-        ctx.arc(facing * 12, -28, 22, facing > 0 ? -1.1 : Math.PI - 1.1, facing > 0 ? 1.1 : Math.PI + 1.1);
-        ctx.stroke();
+        const gx = facing * 14;
+        const gy = -28;
+        const a0 = facing > 0 ? -1.2 : Math.PI - 1.2;
+        const a1 = facing > 0 ? 1.2 : Math.PI + 1.2;
+
+        ctx.save();
+        if (isPerfectZone) {
+          const p = Math.min(1, player.parryElapsedMs / Math.max(1, currentRelic.parryWindowMs));
+          drawGlowSprite('gold', gx + facing * 6, gy, 28, 0.72 * (1 - p * 0.35));
+          // Outer ink-gold calligraphic crescent shield
+          ctx.strokeStyle = 'rgba(245, 158, 11, 0.45)';
+          ctx.lineWidth = 7.5;
+          ctx.beginPath(); ctx.arc(gx, gy, 24, a0, a1); ctx.stroke();
+          ctx.strokeStyle = COLORS.goldBright;
+          ctx.lineWidth = 3.2;
+          ctx.beginPath(); ctx.arc(gx, gy, 24, a0, a1); ctx.stroke();
+          // Shrinking timing pulse arc
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.6;
+          ctx.beginPath(); ctx.arc(gx, gy, 28 - p * 8, a0 + 0.18, a1 - 0.18); ctx.stroke();
+          // Crisp star glint on blade guard
+          drawParryStarGlint(gx + facing * 8, gy - 6, 9 * (1 - p * 0.3), COLORS.goldBright);
+        } else if (isBlockZone) {
+          drawGlowSprite('cyan', gx + facing * 4, gy, 20, 0.48);
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.32)';
+          ctx.lineWidth = 5.5;
+          ctx.beginPath(); ctx.arc(gx, gy, 22, a0 + 0.1, a1 - 0.1); ctx.stroke();
+          ctx.strokeStyle = COLORS.cyanBright;
+          ctx.lineWidth = 2.2;
+          ctx.beginPath(); ctx.arc(gx, gy, 22, a0 + 0.1, a1 - 0.1); ctx.stroke();
+        } else {
+          // Vulnerable guard recovery — fractured crimson dashed arc
+          ctx.setLineDash([4, 4]);
+          ctx.strokeStyle = 'rgba(248, 113, 113, 0.52)';
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(gx, gy, 20, a0 + 0.25, a1 - 0.25); ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        ctx.restore();
       }
 
       // Iai Charge Glint at Waist
@@ -4987,9 +5644,8 @@
   function drawParryStarGlint(x, y, size, color) {
     ctx.save();
     ctx.translate(x, y);
+    drawGlowSprite(color === COLORS.cyanBright ? 'cyan' : 'gold', 0, 0, size * 1.45, 0.85);
     ctx.fillStyle = color;
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 12;
     ctx.beginPath();
     ctx.moveTo(0, -size); ctx.lineTo(size * 0.22, -size * 0.22);
     ctx.lineTo(size, 0); ctx.lineTo(size * 0.22, size * 0.22);
@@ -5072,14 +5728,12 @@
 
     ctx.fillStyle = '#090c12';
     ctx.beginPath(); ctx.ellipse(cx + e.facing * 3, e.y + 15, 7, 9, 0, 0, Math.PI * 2); ctx.fill();
+    drawGlowSprite(e.state === 'windup' ? 'gold' : 'crimson', cx + e.facing * 3.5, e.y + 14, 12, 0.72);
     ctx.fillStyle = e.state === 'windup' ? COLORS.goldBright : COLORS.crimsonBright;
-    ctx.shadowColor = ctx.fillStyle;
-    ctx.shadowBlur = 8;
     ctx.beginPath();
     ctx.arc(cx + e.facing * 1, e.y + 14, 2.2, 0, Math.PI * 2);
     ctx.arc(cx + e.facing * 6, e.y + 14, 2.2, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0;
 
     const lx = cx + e.facing * 19;
     const ly = e.y + 22 + Math.sin(globalTime * 6 + e.bobPhase) * 3;
@@ -5103,7 +5757,8 @@
 
     drawCloakMesh(e.cloak, '#141926', 'rgba(216, 207, 184, 0.35)', 15, 420);
 
-    ctx.translate(cx, fy);
+    const joltX = e.hurtFlash > 0 ? (Math.random() - 0.5) * 6 : 0;
+    ctx.translate(cx + joltX, fy);
     if (isStagger) ctx.translate(0, 8);
 
     // Tattered Priest Robe & Armor
@@ -5182,7 +5837,8 @@
     ctx.save();
     drawCloakMesh(b.cloak, isP2 ? '#290d14' : '#131722', isP2 ? 'rgba(248, 113, 113, 0.5)' : 'rgba(216, 207, 184, 0.4)', 26, 800);
 
-    ctx.translate(cx, fy);
+    const joltX = b.hurtFlash > 0 ? (Math.random() - 0.5) * 6 : 0;
+    ctx.translate(cx + joltX, fy);
     if (isStagger) ctx.translate(0, 14);
 
     // Chained Cracked Bronze Bell on Back
@@ -5244,11 +5900,9 @@
     ctx.stroke();
 
     // Visor Glow
+    drawGlowSprite(isP2 ? 'crimson' : 'gold', b.facing > 0 ? 6 : -6, -91.5, 16, 0.78);
     ctx.fillStyle = isP2 ? COLORS.crimsonBright : COLORS.goldBright;
-    ctx.shadowColor = ctx.fillStyle;
-    ctx.shadowBlur = 10;
     ctx.fillRect(b.facing > 0 ? 1 : -11, -93, 10, 3.5);
-    ctx.shadowBlur = 0;
 
     // Massive Rune Greatsword (Distinct Silhouettes per Move!)
     ctx.save();
@@ -5328,13 +5982,13 @@
     // Boss Attack Telegraph
     if (b.state === 'windup') {
       if (isRed) {
-        ctx.fillStyle = COLORS.crimsonBright;
-        ctx.shadowColor = COLORS.crimson;
-        ctx.shadowBlur = 14;
+        drawGlowSprite('crimson', 0, -138, b.moveKind === 'inkTide' ? 48 : 30, 0.85);
         ctx.font = 'bold 30px "Noto Serif SC", serif';
         ctx.textAlign = 'center';
+        ctx.fillStyle = '#06080d';
+        ctx.fillText(b.moveKind === 'inkTide' ? '危 · 墨潮' : '危', 2, -126);
+        ctx.fillStyle = COLORS.crimsonBright;
         ctx.fillText(b.moveKind === 'inkTide' ? '危 · 墨潮' : '危', 0, -128);
-        ctx.shadowBlur = 0;
       } else if (b.stateTimer < 0.24) {
         drawParryStarGlint(b.facing * 26, -92, 24, COLORS.goldBright);
       }
@@ -5350,10 +6004,10 @@
       ctx.save();
       ctx.translate(pr.x, pr.y);
       if (pr.kind === 'soulWave') {
-        ctx.globalAlpha = Math.min(1, pr.life * 3.5);
+        const alpha = Math.min(1, pr.life * 3.5);
+        ctx.globalAlpha = alpha;
         ctx.scale(pr.facing, 1);
-        ctx.shadowColor = COLORS.cyanBright;
-        ctx.shadowBlur = 18;
+        drawGlowSprite('cyan', 10, 0, 42, 0.78 * alpha);
         drawTaperedCrescent(26, 13, -1.25, 1.25, 'rgba(56, 189, 248, 0.92)', '#e0f2fe');
         ctx.fillStyle = 'rgba(125, 211, 252, 0.35)';
         ctx.beginPath();
@@ -5361,8 +6015,7 @@
         ctx.closePath(); ctx.fill();
       } else if (pr.kind === 'wraithOrb') {
         const col = pr.reflected ? COLORS.goldBright : COLORS.crimsonBright;
-        ctx.shadowColor = col;
-        ctx.shadowBlur = 14;
+        drawGlowSprite(pr.reflected ? 'gold' : 'crimson', 0, 0, pr.r * 2.5, 0.85);
         ctx.fillStyle = pr.reflected ? '#fef08a' : '#fda4af';
         boilCircle(ctx, 0, 0, pr.r * 0.72, 6100, 1.2, 10);
         ctx.fill();
@@ -5457,43 +6110,106 @@
   function drawSlashes() {
     for (const s of slashes) {
       const a = Math.max(0, s.life / s.maxLife);
+      const p = 1 - a; // 0 -> 1 sweep progression
+      const headEase = Math.min(1, p * 3.8);
+      const tailEase = Math.max(0, (p - 0.16) * 1.18);
       ctx.save();
-      ctx.translate(s.x, s.y);
-      ctx.globalAlpha = a;
+      ctx.globalAlpha = Math.min(1, a * 1.35);
 
       if (s.type === 'iai') {
-        ctx.scale(s.facing, 1);
-        ctx.shadowColor = COLORS.goldBright;
-        ctx.shadowBlur = 18;
-        ctx.fillStyle = COLORS.goldBright;
+        // Dimensional Ink-Gold Flash Cut spanning entire lunge path x0 -> x1
+        const x0 = s.x0 !== undefined ? s.x0 : (s.x - s.facing * 45);
+        const x1 = s.x1 !== undefined ? s.x1 : (s.x + s.facing * 145);
+        const midX = (x0 + x1) * 0.5;
+        const halfH = Math.max(1.2, (1 - p * 0.85) * 17);
+
+        drawGlowSprite('gold', midX, s.y, Math.min(92, Math.abs(x1 - x0) * 0.45 + 24), 0.82 * a);
+
+        // Outer dark ink tear
+        ctx.fillStyle = 'rgba(8, 11, 17, 0.88)';
         ctx.beginPath();
-        ctx.moveTo(-45, 0);
-        ctx.quadraticCurveTo(45, -14 * a, 145, 0);
-        ctx.quadraticCurveTo(45, 14 * a, -45, 0);
+        ctx.moveTo(x0, s.y);
+        ctx.quadraticCurveTo(midX, s.y - halfH * 1.35, x1, s.y);
+        ctx.quadraticCurveTo(midX, s.y + halfH * 1.35, x0, s.y);
         ctx.closePath();
         ctx.fill();
-      } else if (s.type === 'counter' || s.type === 'exec') {
-        const col = s.type === 'exec' ? COLORS.crimsonBright : COLORS.goldBright;
-        ctx.shadowColor = col;
-        ctx.shadowBlur = 20;
-        ctx.strokeStyle = col;
-        ctx.lineWidth = 7 * a;
+
+        // Inner radiant gold blade flash
+        ctx.fillStyle = COLORS.goldBright;
         ctx.beginPath();
-        ctx.moveTo(-58, -42); ctx.lineTo(58, 42);
-        ctx.moveTo(58, -42); ctx.lineTo(-58, 42);
+        ctx.moveTo(x0, s.y);
+        ctx.quadraticCurveTo(midX, s.y - halfH * 0.72, x1, s.y);
+        ctx.quadraticCurveTo(midX, s.y + halfH * 0.72, x0, s.y);
+        ctx.closePath();
+        ctx.fill();
+
+        // Razor-thin snapping white after-line
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = Math.max(1, 3.2 * a);
+        ctx.beginPath();
+        ctx.moveTo(x0 - s.facing * 12, s.y);
+        ctx.lineTo(x1 + s.facing * 16, s.y);
         ctx.stroke();
+
+        // End glint spark
+        if (a > 0.35) {
+          drawParryStarGlint(x1, s.y, 16 * a, COLORS.goldBright);
+        }
+      } else if (s.type === 'counter' || s.type === 'exec') {
+        // Staggered Double-Stroke Calligraphic Cross Slash!
+        ctx.translate(s.x, s.y);
+        const isExec = s.type === 'exec';
+        const col = isExec ? COLORS.crimsonBright : COLORS.goldBright;
+        const glowKey = isExec ? 'crimson' : 'gold';
+        drawGlowSprite(glowKey, 0, 0, 74, 0.9 * a);
+
+        const drawCrossBlade = (xA, yA, xB, yB, prog) => {
+          if (prog <= 0) return;
+          const tEnd = Math.min(1, prog * 3.4);
+          const cx = xA + (xB - xA) * tEnd;
+          const cy = yA + (yB - yA) * tEnd;
+          // Outer ink-colored aura
+          ctx.strokeStyle = isExec ? 'rgba(220, 38, 38, 0.48)' : 'rgba(245, 158, 11, 0.45)';
+          ctx.lineWidth = 18 * a;
+          ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(xA, yA); ctx.lineTo(cx, cy); ctx.stroke();
+          // Main blade stroke
+          ctx.strokeStyle = col;
+          ctx.lineWidth = 7.5 * a;
+          ctx.stroke();
+          // White-hot core
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2.4 * a;
+          ctx.stroke();
+        };
+
+        drawCrossBlade(-64, -46, 64, 46, p);
+        drawCrossBlade(64, -46, -64, 46, Math.max(0, p - 0.14));
+        if (a > 0.4) drawParryStarGlint(0, 0, 22 * a, col);
       } else if (s.type === 'pogo') {
-        drawTaperedCrescent(42, 16 * a, 0.25, Math.PI - 0.25, 'rgba(216, 207, 184, 0.88)', '#ffffff');
+        ctx.translate(s.x, s.y);
+        const ang0 = 0.22 + tailEase * 1.4;
+        const ang1 = 0.22 + headEase * (Math.PI - 0.44);
+        if (ang1 > ang0 + 0.08) {
+          drawTaperedCrescent(45, 22 * a, ang0, ang1, 'rgba(10, 14, 22, 0.78)', null);
+          drawTaperedCrescent(43, 15 * a, ang0, ang1, 'rgba(226, 220, 202, 0.92)', '#ffffff');
+        }
       } else if (s.type === 'up') {
-        drawTaperedCrescent(46, 18 * a, -Math.PI + 0.35, -0.35, 'rgba(216, 207, 184, 0.9)', '#ffffff');
+        ctx.translate(s.x, s.y);
+        const ang0 = -Math.PI + 0.3 + tailEase * 1.4;
+        const ang1 = -Math.PI + 0.3 + headEase * (Math.PI - 0.6);
+        if (ang1 > ang0 + 0.08) {
+          drawTaperedCrescent(50, 24 * a, ang0, ang1, 'rgba(10, 14, 22, 0.8)', null);
+          drawTaperedCrescent(48, 17 * a, ang0, ang1, 'rgba(226, 220, 202, 0.94)', '#ffffff');
+        }
       } else if (s.type === 'enemyThrust' || s.type === 'enemyRedThrust' || s.type === 'bossThrust') {
+        ctx.translate(s.x, s.y);
         const isRed = s.type === 'enemyRedThrust';
         const isBoss = s.type === 'bossThrust';
         const len = isBoss ? 128 : 82;
         const halfH = (isBoss ? 16 : 9) * a;
         ctx.scale(s.facing, 1);
-        ctx.shadowColor = isRed ? COLORS.crimsonBright : COLORS.goldBright;
-        ctx.shadowBlur = 14;
+        drawGlowSprite(isRed ? 'crimson' : 'gold', len * 0.45, 0, isBoss ? 46 : 30, 0.65 * a);
         ctx.fillStyle = isRed ? 'rgba(248, 113, 113, 0.85)' : isBoss ? 'rgba(253, 224, 71, 0.82)' : 'rgba(226, 220, 202, 0.78)';
         ctx.beginPath();
         ctx.moveTo(-24, 0);
@@ -5502,24 +6218,173 @@
         ctx.closePath();
         ctx.fill();
       } else if (s.type === 'bossSlam' || s.type === 'bossRedSlam') {
+        ctx.translate(s.x, s.y);
         const isRed = s.type === 'bossRedSlam';
         ctx.scale(s.facing, 1);
-        ctx.shadowColor = isRed ? COLORS.crimsonBright : COLORS.goldBright;
-        ctx.shadowBlur = 16;
+        drawGlowSprite(isRed ? 'crimson' : 'gold', 56, -12, 68, 0.65 * a);
         drawTaperedCrescent(96, 30 * a, -1.65, 0.95, isRed ? 'rgba(220, 38, 38, 0.84)' : 'rgba(245, 158, 11, 0.78)', isRed ? '#fecaca' : '#fef08a');
       } else if (s.type === 'bossSweep' || s.type === 'bossRedSweep' || s.type === 'bossUpSweep') {
+        ctx.translate(s.x, s.y);
         const isRed = s.type === 'bossRedSweep';
         const isUp = s.type === 'bossUpSweep';
         ctx.scale(s.facing, isUp ? -1 : 1);
-        ctx.shadowColor = isRed ? COLORS.crimsonBright : COLORS.parchment;
-        ctx.shadowBlur = 12;
+        drawGlowSprite(isRed ? 'crimson' : 'parchment', 50, 0, 56, 0.55 * a);
         drawTaperedCrescent(86, 26 * a, -1.25, 1.15, isRed ? 'rgba(220, 38, 38, 0.78)' : 'rgba(216, 207, 184, 0.76)', isRed ? '#fde047' : '#ffffff');
       } else {
-        ctx.scale(s.facing, 1);
-        const heavy = s.type === 'slash3';
-        const r = heavy ? 62 : 50;
-        const fill = heavy ? 'rgba(245, 158, 11, 0.88)' : 'rgba(216, 207, 184, 0.86)';
-        drawTaperedCrescent(r, (heavy ? 22 : 16) * a, -1.25, 1.15, fill, '#ffffff');
+        // Player 3-Hit Combo: Distinct Animated Calligraphic Brush Arcs!
+        ctx.translate(s.x, s.y);
+        const isSlash1 = s.type === 'slash1';
+        const isSlash2 = s.type === 'slash2';
+        const isSlash3 = s.type === 'slash3';
+
+        // slash1 sweeps UP (inverted Y), slash2 sweeps horizontal/down, slash3 is huge golden heavy overhead cleave
+        ctx.scale(s.facing, isSlash1 ? -1 : 1);
+
+        const r = isSlash3 ? 68 : isSlash2 ? 55 : 51;
+        const spanStart = isSlash3 ? -1.65 : isSlash2 ? -1.15 : -1.25;
+        const spanTotal = isSlash3 ? 2.75 : isSlash2 ? 2.35 : 2.3;
+        const ang0 = spanStart + tailEase * (spanTotal * 0.62);
+        const ang1 = spanStart + headEase * spanTotal;
+
+        if (ang1 > ang0 + 0.08) {
+          if (isSlash3) {
+            drawGlowSprite('gold', 38, 0, 62, 0.72 * a);
+          } else {
+            drawGlowSprite('parchment', 32, 0, 40, 0.36 * a);
+          }
+          // Outer calligraphic dark ink brush stroke
+          drawTaperedCrescent(r + 3, (isSlash3 ? 32 : 22) * a, ang0, ang1, 'rgba(8, 11, 17, 0.84)', null);
+          // Main steel / gold blade arc
+          const fill = isSlash3
+            ? 'rgba(245, 158, 11, 0.94)'
+            : isSlash2
+              ? 'rgba(232, 227, 212, 0.9)'
+              : 'rgba(216, 207, 184, 0.88)';
+          const core = isSlash3 ? '#fef08a' : '#ffffff';
+          drawTaperedCrescent(r, (isSlash3 ? 23 : 15) * a, ang0, ang1, fill, core);
+
+          // Fine trailing outer bristle wisp
+          ctx.strokeStyle = isSlash3 ? 'rgba(253, 224, 71, 0.65)' : 'rgba(216, 207, 184, 0.45)';
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.arc(0, 0, r + 9, ang0 + 0.1, ang1 - 0.05);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+  }
+
+  function drawHitMarks() {
+    for (const hm of hitMarks) {
+      const a = Math.max(0, hm.life / hm.maxLife);
+      const p = 1 - a;
+      const halfL = hm.len * (0.45 + p * 0.65) * 0.5;
+      const halfW = hm.width * a;
+      ctx.save();
+      ctx.translate(hm.x, hm.y);
+      ctx.rotate(hm.angle);
+      ctx.globalAlpha = Math.min(1, a * 1.4);
+
+      const glowKey = hm.color === COLORS.crimsonBright ? 'crimson' : hm.color === COLORS.goldBright ? 'gold' : 'parchment';
+      drawGlowSprite(glowKey, 0, 0, halfL * 0.72, 0.65 * a);
+
+      // Dark ink border slit
+      ctx.fillStyle = 'rgba(8, 11, 17, 0.82)';
+      ctx.beginPath();
+      ctx.moveTo(-halfL * 1.08, 0);
+      ctx.quadraticCurveTo(0, -halfW * 1.5, halfL * 1.08, 0);
+      ctx.quadraticCurveTo(0, halfW * 1.5, -halfL * 1.08, 0);
+      ctx.closePath();
+      ctx.fill();
+
+      // Bright razor cut core
+      ctx.fillStyle = hm.color;
+      ctx.beginPath();
+      ctx.moveTo(-halfL, 0);
+      ctx.quadraticCurveTo(0, -halfW, halfL, 0);
+      ctx.quadraticCurveTo(0, halfW, -halfL, 0);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(-halfL * 0.75, 0);
+      ctx.quadraticCurveTo(0, -halfW * 0.35, halfL * 0.75, 0);
+      ctx.quadraticCurveTo(0, halfW * 0.35, -halfL * 0.75, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function drawImpactBursts() {
+    for (const ib of impactBursts) {
+      const a = Math.max(0, ib.life / ib.maxLife);
+      const p = 1 - a;
+      ctx.save();
+      ctx.translate(ib.x, ib.y);
+      ctx.rotate(ib.rot + p * 0.22);
+
+      if (ib.kind === 'parry') {
+        const sc = ib.scale * (0.75 + Math.sin(p * Math.PI * 0.65) * 0.45);
+        // Radiant golden core bloom
+        drawGlowSprite('gold', 0, 0, 74 * sc, 0.95 * a);
+
+        // Ink splatter ring silhouette behind the clash flare
+        ctx.strokeStyle = `rgba(8, 11, 17, ${(0.72 * a).toFixed(2)})`;
+        ctx.lineWidth = 4.5 * a;
+        boilCircle(ctx, 0, 0, (18 + p * 44) * ib.scale, 8100, 3.2, 16);
+        ctx.stroke();
+
+        // Diagonal secondary golden spikes
+        const diagR = 38 * sc;
+        ctx.save();
+        ctx.rotate(Math.PI * 0.25);
+        ctx.fillStyle = `rgba(245, 158, 11, ${(0.9 * a).toFixed(2)})`;
+        ctx.beginPath();
+        ctx.moveTo(0, -diagR); ctx.lineTo(diagR * 0.14, -diagR * 0.14);
+        ctx.lineTo(diagR, 0); ctx.lineTo(diagR * 0.14, diagR * 0.14);
+        ctx.lineTo(0, diagR); ctx.lineTo(-diagR * 0.14, diagR * 0.14);
+        ctx.lineTo(-diagR, 0); ctx.lineTo(-diagR * 0.14, -diagR * 0.14);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        // Primary razor-sharp 4-point gold starburst
+        const mainR = 66 * sc;
+        ctx.fillStyle = `rgba(253, 224, 71, ${Math.min(1, a * 1.4).toFixed(2)})`;
+        ctx.beginPath();
+        ctx.moveTo(0, -mainR); ctx.lineTo(mainR * 0.11, -mainR * 0.11);
+        ctx.lineTo(mainR, 0); ctx.lineTo(mainR * 0.11, mainR * 0.11);
+        ctx.lineTo(0, mainR); ctx.lineTo(-mainR * 0.11, mainR * 0.11);
+        ctx.lineTo(-mainR, 0); ctx.lineTo(-mainR * 0.11, -mainR * 0.11);
+        ctx.closePath();
+        ctx.fill();
+
+        // White-hot inner clash star
+        const coreR = 34 * sc;
+        ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(1, a * 1.5).toFixed(2)})`;
+        ctx.beginPath();
+        ctx.moveTo(0, -coreR); ctx.lineTo(coreR * 0.14, -coreR * 0.14);
+        ctx.lineTo(coreR, 0); ctx.lineTo(coreR * 0.14, coreR * 0.14);
+        ctx.lineTo(0, coreR); ctx.lineTo(-coreR * 0.14, coreR * 0.14);
+        ctx.lineTo(-coreR, 0); ctx.lineTo(-coreR * 0.14, -coreR * 0.14);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        // Partial Block: Blunt cool cyan-silver crack burst
+        const sc = ib.scale * (0.85 + p * 0.35);
+        drawGlowSprite('cyan', 0, 0, 38 * sc, 0.72 * a);
+        ctx.strokeStyle = `rgba(186, 230, 253, ${a.toFixed(2)})`;
+        ctx.lineWidth = 3 * a;
+        for (let k = 0; k < 5; k++) {
+          const ang = (k / 5) * Math.PI * 2 + 0.3;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(ang) * 7, Math.sin(ang) * 7);
+          ctx.lineTo(Math.cos(ang) * (24 * sc), Math.sin(ang) * (24 * sc));
+          ctx.stroke();
+        }
       }
       ctx.restore();
     }
@@ -6043,6 +6908,8 @@
     particles = [];
     slashes = [];
     shockwaves = [];
+    impactBursts = [];
+    hitMarks = [];
     floatTexts = [];
     afterimages = [];
     talismans = [];
@@ -6052,7 +6919,10 @@
     cam = {
       x: Math.max(0, Math.min(Math.max(0, WORLD_W - canvasW), altar.x - canvasW * 0.5)),
       y: 0,
-      shake: 0
+      shake: 0,
+      kickX: 0,
+      kickY: 0,
+      zoom: 1
     };
     hitstopTimer = 0;
     invertTimer = 0;
@@ -6103,6 +6973,8 @@
     particles = [];
     slashes = [];
     shockwaves = [];
+    impactBursts = [];
+    hitMarks = [];
     floatTexts = [];
     afterimages = [];
     talismans = [];
@@ -6113,7 +6985,7 @@
     hitstopTimer = 0;
     invertTimer = 0;
     screenFlash = { alpha: 0, color: '#fff' };
-    cam = { x: 0, y: 0, shake: 0 };
+    cam = { x: 0, y: 0, shake: 0, kickX: 0, kickY: 0, zoom: 1 };
     stats = { parries: 0, executions: 0, damageTaken: 0, startTime: performance.now() };
     globalTime = 0;
     boilFrame = 0;
@@ -6123,7 +6995,7 @@
   }
 
   function resizeCanvas() {
-    const dpr = Math.min(2.5, Math.max(1, window.devicePixelRatio || 1));
+    const dpr = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
     canvasW = Math.max(320, window.innerWidth || 1280);
     canvasH = Math.max(240, window.innerHeight || 720);
     canvas.width = Math.round(canvasW * dpr);
@@ -6171,8 +7043,11 @@
 
     if (invertTimer > 0) invertTimer = Math.max(0, invertTimer - dt);
 
+    pollGamepad();
+
     if (gameState === 'playing') {
       capturePlayerInputBuffers();
+      audio.updateAmbience(dt, !!(boss && boss.awake && boss.alive), !!(boss && boss.awake && boss.alive && boss.phase === 2));
       if (hitstopTimer > 0) {
         hitstopTimer = Math.max(0, hitstopTimer - dt);
       } else if (player) {
@@ -6199,13 +7074,16 @@
 
   // UI actions
   document.getElementById('btn-start').addEventListener('click', startGame);
+  document.getElementById('btn-ctrl').addEventListener('click', () => {
+    controlMode = controlMode === 'kbmouse' ? 'keyboard' : 'kbmouse';
+    syncControlModeUI();
+  });
   document.getElementById('btn-map').addEventListener('click', openMapModal);
   document.getElementById('minimap-strip').addEventListener('click', openMapModal);
   document.getElementById('btn-help').addEventListener('click', () => openModal('help'));
   document.getElementById('btn-mute').addEventListener('click', () => {
-    audio.muted = !audio.muted;
+    audio.setMuted(!audio.muted);
     document.getElementById('btn-mute').textContent = audio.muted ? '音效: 关' : '音效: 开';
-    if (!audio.muted) audio.init();
   });
   document.getElementById('btn-respawn').addEventListener('click', respawnAtActiveAltar);
   document.getElementById('btn-close-altar').addEventListener('click', () => closeModal('altar'));
@@ -6228,8 +7106,14 @@
 
   window.addEventListener('blur', () => {
     for (const code of Object.keys(keysHeld)) keysHeld[code] = false;
+    for (const code of Object.keys(gpHeld)) gpHeld[code] = false;
     for (const code of Object.keys(keysPressed)) keysPressed[code] = false;
     for (const code of Object.keys(keysReleased)) keysReleased[code] = false;
+    for (const btn of Object.keys(mouseHeldButtons)) delete mouseHeldButtons[btn];
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    audio.setBackgroundDuck(document.hidden);
   });
 
   document.querySelectorAll('.t-btn').forEach(btn => {
@@ -6241,6 +7125,8 @@
   });
 
   // Initial scene setup. The title screen is interactive while the world idles behind it.
+  buildGlowSprites();
+  syncControlModeUI();
   worldState = createFreshWorldState();
   markMapExplored(ALTARS[0].x);
   resizeCanvas();
