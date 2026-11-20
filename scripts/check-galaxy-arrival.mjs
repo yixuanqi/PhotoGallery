@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { Script } from "node:vm";
 const html = readFileSync("docs/galaxy/index.html", "utf8");
+const catalog = JSON.parse(readFileSync("docs/projects.json", "utf8"));
 
 // Keep the homepage-to-galaxy handoff backward-compatible while preferring the
 // synchronized v3 portal contract and its shared animation clock.
@@ -49,21 +50,32 @@ assert.match(html, /function updateShootingStars\(dt\)/, "subtle shooting-star l
 assert.match(html, /prefers-reduced-motion: reduce/, "reduced-motion styling must be respected");
 assert.match(html, /target\.isContentEditable \|\| \/\^\(INPUT\|TEXTAREA\|SELECT\)\$\//, "keyboard navigation must not steal slider/form arrow keys");
 
-// Every registered project needs one stable constellation anchor and one base radius.
-const projectBlock = html.match(/var PROJECTS = \[([\s\S]*?)\n\];/);
-const coordinateBlock = html.match(/var PLANET_BASE_COORDS = \[([\s\S]*?)\n\];/);
-const radiusBlock = html.match(/var PLANET_BASE_RADII = \[([^\]]+)\]/);
-assert.ok(projectBlock && coordinateBlock && radiusBlock, "project and planet layout data must exist");
-const projectIds = [...projectBlock[1].matchAll(/\bid:\s*'([^']+)'/g)].map(match => match[1]);
-const coordinateCount = [...coordinateBlock[1].matchAll(/^\s*\[\s*-?\d/mg)].length;
-const radiusCount = radiusBlock[1].split(",").filter(value => value.trim()).length;
-assert.ok(projectIds.length > 0, "at least one project planet must be registered");
-assert.equal(new Set(projectIds).size, projectIds.length, "project planet IDs must be unique");
-assert.equal(coordinateCount, projectIds.length, "every project must have exactly one constellation anchor");
-assert.equal(radiusCount, projectIds.length, "every project must have exactly one base radius");
-const catalog = JSON.parse(readFileSync("docs/projects.json", "utf8"));
-const listedIds = catalog.projects.filter(project => project.id !== "galaxy").map(project => project.id);
-assert.deepEqual([...projectIds].sort(), [...listedIds].sort(), "every published catalog project must appear as a galaxy planet");
-assert.ok(projectIds.includes("star-courier"), "the new gravity-slingshot courier must have a planet");
-
-console.log("Galaxy arrival checks passed: shared portal position/clock, synchronized camera exit, and " + projectIds.length + " project planets.");
+// Project metadata is sourced from docs/projects.json; the HTML must not duplicate it.
+assert.match(html, /fetch\('\.\.\/projects\.json'/, "galaxy must load the canonical project catalog");
+assert.match(html, /var PROJECTS = \[\];/, "galaxy must not embed a second project metadata list");
+assert.match(html, /PROJECTS = records\.map\(function \(project\)/, "galaxy projects must be mapped from catalog records");
+assert.match(html, /PLANET_BASE_COORDS = PROJECTS\.map\(function \(project\) \{ return project\.position; \}\)/, "planet coordinates must be derived from ID-keyed catalog presentation data");
+assert.match(html, /PLANET_BASE_RADII = PROJECTS\.map\(function \(project\) \{ return project\.radius; \}\)/, "planet radii must be derived from catalog presentation data");
+assert.match(html, /POSTS = BASE_POSTS\.concat\(PROJECTS\.filter\(function \(project\) \{ return !!project\.journal; \}\)/, "project journals must be derived from catalog records");
+assert.match(html, /function boot\(\)[\s\S]*loadProjectCatalog\(\)/, "galaxy must wait for catalog loading before initialization");
+const projects = catalog.projects.filter(project => project.id !== "galaxy").sort((a,b) => a.sortOrder - b.sortOrder);
+const projectIds = projects.map(project => project.id);
+assert.ok(projectIds.length > 0, "at least one project must be registered");
+assert.equal(new Set(projectIds).size, projectIds.length, "catalog project IDs must be unique");
+assert.equal(new Set(projects.map(project => project.sortOrder)).size, projects.length, "project sort orders must be unique");
+for (const project of projects) {
+  const view = project.galaxy;
+  assert.ok(view && typeof view === "object", project.id + " must have galaxy presentation data");
+  assert.ok(Array.isArray(view.position) && view.position.length === 3 && view.position.every(Number.isFinite), project.id + " must have one 3D position");
+  assert.ok(Number.isFinite(view.radius) && view.radius > 0, project.id + " must have a positive planet radius");
+  assert.ok(Array.isArray(view.palette) && view.palette.length === 3, project.id + " must have a three-color palette");
+  if (view.journal) {
+    assert.equal(view.journal.id, project.id + "-note", project.id + " journal ID must be stable");
+    assert.ok(Number.isInteger(view.journal.order) && view.journal.order > 0, project.id + " journal order must be positive");
+  }
+}
+const journalIds = projects.filter(project => project.galaxy.journal).map(project => project.galaxy.journal.id);
+const journalOrders = projects.filter(project => project.galaxy.journal).map(project => project.galaxy.journal.order);
+assert.equal(new Set(journalIds).size, journalIds.length, "journal IDs must be unique");
+assert.equal(new Set(journalOrders).size, journalOrders.length, "journal order values must be unique");
+console.log("Galaxy arrival checks passed: shared portal clock, catalog-driven " + projectIds.length + " project planets, and " + journalIds.length + " project journal entries.");
