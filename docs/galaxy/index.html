@@ -809,7 +809,7 @@ function loadProjectCatalog() {
         name: project.name, en: project.nameEn || project.name, icon: view.icon,
         category: view.category, tags: project.tags.slice(), desc: view.description,
         note: view.note, link: project.sourcePath ? '../' + project.id + '/' : project.primaryUrl,
-        linkText: view.linkText || project.primaryAction, source: view.sourceUrl || null,
+        linkText: view.linkText || project.primaryAction,
         palette: view.palette.slice(), atmo: view.atmo, ring: view.ring, style: view.style,
         position: view.position.slice(), radius: view.radius, journal: view.journal || null
       };
@@ -1870,12 +1870,6 @@ function showCard(i) {
   setHref(go, p.link);
   links.appendChild(go);
 
-  if (p.source) {
-    var src = document.createElement('a');
-    src.textContent = '{} 查看源码';
-    setHref(src, p.source);
-    links.appendChild(src);
-  }
   var back = document.createElement('a');
   back.href = '#';
   back.textContent = '↶ 返回星海';
