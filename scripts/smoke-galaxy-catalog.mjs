@@ -21,7 +21,14 @@ try{
  await page.route("**/favicon.ico",r=>r.fulfill({status:204,body:""}));
  await page.route("**/three.min.js",r=>r.fulfill({status:200,contentType:"application/javascript",body:"window.THREE = undefined;"}));
  await page.goto(origin+"/galaxy/",{waitUntil:"domcontentloaded",timeout:45000});
- await page.waitForFunction(()=>document.querySelectorAll("#index-items button").length===13,null,{timeout:10000});
+ await page.waitForTimeout(1000);
+ const hydration=await page.evaluate(()=>({
+  entryCount:document.querySelectorAll("#index-items button").length,
+  failVisible:document.getElementById("fail").classList.contains("show"),
+  failReason:document.getElementById("reason").textContent,
+  readyState:document.readyState
+ }));
+ if(hydration.entryCount!==13) throw new Error("Galaxy catalog hydration failed: "+JSON.stringify({hydration,catalogResponses,pageErrors}));
  assert.equal(catalogResponses.length,1,"galaxy must fetch catalog exactly once");
  assert.equal(catalogResponses[0].status,200,"canonical catalog must load");
  if(await page.locator("#fail-index").isVisible()) await page.locator("#fail-index").click();
