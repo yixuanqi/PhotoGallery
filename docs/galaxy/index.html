@@ -553,6 +553,18 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-
 }
 #fail.show { display: block; }
 
+#render-status {
+  display: none; position: fixed; z-index: 49; top: 50%; left: 50%;
+  transform: translate(-50%, -50%); width: min(420px, calc(100vw - 40px));
+  padding: 22px; border: 1px solid var(--line); border-radius: 16px;
+  background: rgba(8, 17, 36, 0.94); color: var(--ink); text-align: center;
+  line-height: 1.9; box-shadow: 0 16px 44px rgba(0, 6, 20, 0.52);
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+}
+#render-status.show { display: block; }
+#render-status strong { font-size: 14px; }
+#render-status p { margin: 8px 0 14px; color: var(--mute); font-size: 12px; }
+
 @media (max-width: 640px) {
   .top { right: 18px; top: 18px; }
   .nav .btn { font-size: 10px; padding: 7px 9px; }
@@ -717,6 +729,12 @@ html.cosmos-arrival.cosmos-arrival-ready #cosmos-arrival-curtain::after {
   <strong>3D 星图暂时无法启动</strong>
   <p id="reason">浏览器需要支持 WebGL 并能够加载 Three.js。</p>
   <button class="btn" id="fail-index" type="button">查看作品星球入口</button>
+</div>
+
+<div id="render-status" role="status" aria-live="polite">
+  <strong id="render-status-title">星海渲染暂时中断</strong>
+  <p id="render-status-message">正在尝试恢复图形上下文。</p>
+  <button class="btn" id="render-reload" type="button">重新加载星海</button>
 </div>
 
 <!-- Single reliable Three.js r128 library; damped orbit/pan/pinch controls are built in below -->
@@ -1026,6 +1044,14 @@ var speed = reduced ? 0 : 0.7;
 var started = false;
 var theme = 'night';
 var themeMix = 0;
+var animationFrameId = 0;
+var contextLost = false;
+var renderFailed = false;
+var renderQualityScale = 1;
+var renderPixelRatio = 1;
+var slowFrameMs = 0;
+var fastFrameMs = 0;
+var lastQualityAdjust = 0;
 
 /* Smooth label state for collision-free floating */
 var labelState = [];
@@ -1589,7 +1615,7 @@ function populateGalaxy(glowTex) {
   galaxyStarsMat = new THREE.ShaderMaterial({
     uniforms: {
       uTime: { value: 0 },
-      uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 1.85) },
+      uPixelRatio: { value: renderPixelRatio },
       uTheme: { value: themeMix }
     },
     vertexShader: STAR_POINTS_VERT,
@@ -1959,6 +1985,107 @@ function fail(s) {
   setText('reason', s);
 }
 
+function showRenderStatus(title, message) {
+  setText('render-status-title', title);
+  setText('render-status-message', message);
+  el('render-status').classList.add('show');
+}
+
+function hideRenderStatus() {
+  el('render-status').classList.remove('show');
+}
+
+function stopAnimationFrame() {
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = 0;
+  }
+}
+
+function scheduleAnimationFrame() {
+  if (!started || contextLost || renderFailed || document.hidden || animationFrameId) return;
+  animationFrameId = requestAnimationFrame(animate);
+}
+
+function getBaseRenderPixelRatio() {
+  return Math.min(window.devicePixelRatio || 1, mobile ? 1.35 : 1.5);
+}
+
+function applyRenderPixelRatio() {
+  if (!renderer) return;
+  var baseRatio = getBaseRenderPixelRatio();
+  renderPixelRatio = Math.min(baseRatio, Math.max(0.75, baseRatio * renderQualityScale));
+  renderer.setPixelRatio(renderPixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  if (galaxyStarsMat) galaxyStarsMat.uniforms.uPixelRatio.value = renderPixelRatio;
+}
+
+function updateAdaptiveQuality(now, frameMs) {
+  if (frameMs > 24) {
+    slowFrameMs += Math.min(frameMs, 50);
+    fastFrameMs = 0;
+  } else if (frameMs < 18) {
+    fastFrameMs += frameMs;
+    slowFrameMs = 0;
+  } else {
+    slowFrameMs = 0;
+    fastFrameMs = 0;
+  }
+  if (now - lastQualityAdjust < 5000) return;
+  if (slowFrameMs >= 2400 && renderQualityScale > 0.7) {
+    renderQualityScale = Math.max(0.7, renderQualityScale * 0.85);
+    slowFrameMs = 0; fastFrameMs = 0; lastQualityAdjust = now;
+    applyRenderPixelRatio();
+    console.warn('[Galaxy] Sustained slow frames; reduced render scale to', renderQualityScale.toFixed(2));
+  } else if (fastFrameMs >= 12000 && renderQualityScale < 0.999) {
+    renderQualityScale = Math.min(1, renderQualityScale + 0.1);
+    slowFrameMs = 0; fastFrameMs = 0; lastQualityAdjust = now;
+    applyRenderPixelRatio();
+    console.info('[Galaxy] Frame time recovered; increased render scale to', renderQualityScale.toFixed(2));
+  }
+}
+
+function handleRenderFailure(error, phase) {
+  renderFailed = true;
+  stopAnimationFrame();
+  console.error('[Galaxy] ' + phase + ' failed:', error);
+  showRenderStatus('星海渲染遇到异常', '渲染过程发生错误。作品索引仍可使用，请重新加载星海后重试。');
+}
+
+function installRendererLifecycleHandlers() {
+  var canvas = renderer.domElement;
+  canvas.addEventListener('webglcontextlost', function (event) {
+    event.preventDefault();
+    contextLost = true;
+    stopAnimationFrame();
+    showRenderStatus('星海图形上下文中断', '浏览器正在尝试恢复 GPU 渲染；如果没有自动恢复，可以重新加载星海。');
+    console.warn('[Galaxy] WebGL context lost', event.statusMessage || '');
+  }, false);
+  canvas.addEventListener('webglcontextrestored', function () {
+    contextLost = false;
+    renderFailed = false;
+    lastTime = 0; slowFrameMs = 0; fastFrameMs = 0;
+    try {
+      resize();
+      renderScene();
+      hideRenderStatus();
+      console.info('[Galaxy] WebGL context restored; rendering resumed');
+      scheduleAnimationFrame();
+    } catch (error) {
+      handleRenderFailure(error, 'context restore');
+    }
+  }, false);
+  try {
+    var gl = renderer.getContext();
+    console.info('[Galaxy] WebGL renderer ready', {
+      version: gl.getParameter(gl.VERSION), vendor: gl.getParameter(gl.VENDOR),
+      pixelRatio: renderPixelRatio, canvasWidth: canvas.width, canvasHeight: canvas.height
+    });
+  } catch (error) {
+    console.warn('[Galaxy] Could not read WebGL diagnostics:', error);
+  }
+}
+
 /* ============================================================================
  * 8. ENGINE INIT, RAYCASTING, CAMERA FLIGHT & ANTI-COLLISION LABELS
  * ============================================================================ */
@@ -1977,13 +2104,15 @@ function init() {
     return;
   }
 
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 1.85));
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderQualityScale = 1;
+  slowFrameMs = 0; fastFrameMs = 0; lastQualityAdjust = 0;
+  applyRenderPixelRatio();
   renderer.setClearColor(0x030714, 0);
   renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.08;
   el('scene').appendChild(renderer.domElement);
+  installRendererLifecycleHandlers();
 
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(50, window.innerWidth / Math.max(window.innerHeight, 1), 0.1, 1800);
@@ -2063,7 +2192,8 @@ function init() {
 
   window.addEventListener('resize', resize);
   started = true;
-  requestAnimationFrame(animate);
+  lastQualityAdjust = (window.performance && performance.now) ? performance.now() : 0;
+  scheduleAnimationFrame();
 }
 
 function hit(e) {
@@ -2219,90 +2349,85 @@ function renderScene() {
 }
 
 function animate(now) {
-  if (!started) return;
-  requestAnimationFrame(animate);
-
-  var dt = lastTime ? Math.min(0.05, (now - lastTime) / 1000) : 0.016;
+  animationFrameId = 0;
+  if (!started || contextLost || renderFailed || document.hidden) return;
+  var frameMs = lastTime ? Math.max(0, now - lastTime) : 16.67;
+  var dt = Math.min(0.05, frameMs / 1000);
   lastTime = now;
 
-  var targetThemeMix = theme === 'paper' ? 1.0 : 0.0;
-  themeMix += (targetThemeMix - themeMix) * (1.0 - Math.exp(-dt * 4.2));
-
-  if (!paused) {
-    clock += dt * speed;
-    galaxyGroup.rotation.y += dt * 0.014 * speed;
-    nebulaPlanes.forEach(function (layer) {
-      layer.mesh.rotation.z += dt * layer.rotSpeed * speed;
-      layer.mat.uniforms.uTime.value = clock;
-      layer.mat.uniforms.uTheme.value = themeMix;
-    });
-    if (skyMat) {
-      skyMat.uniforms.uTime.value = clock;
-      skyMat.uniforms.uTheme.value = themeMix;
-    }
-    if (galaxyStarsMat) {
-      galaxyStarsMat.uniforms.uTime.value = clock;
-      galaxyStarsMat.uniforms.uTheme.value = themeMix;
-    }
-    updateShootingStars(dt);
-  } else {
-    nebulaPlanes.forEach(function (layer) { layer.mat.uniforms.uTheme.value = themeMix; });
-    if (skyMat) skyMat.uniforms.uTheme.value = themeMix;
-    if (galaxyStarsMat) galaxyStarsMat.uniforms.uTheme.value = themeMix;
-  }
-
-  var ease = 1.0 - Math.exp(-dt * 7.5);
-  planets.forEach(function (p, i) {
-    var ud = p.userData;
-    p.position.y = ud.baseY + Math.sin(clock * 0.55 + i * 1.35) * 0.28;
-    ud.mesh.rotation.y += dt * 0.11 * speed;
-    ud.ringMat.uniforms.uTime.value = clock;
-    ud.moonPivot.rotation.y += dt * ud.moonSpeed * speed;
-
-    var active = (i === selected || i === hovered);
-    var targetAtmo = active ? 1.25 : 0.72;
-    var targetHalo = active ? 0.42 : 0.23;
-    var targetRing = active ? Math.min(0.95, ud.baseRingOpacity + 0.34) : ud.baseRingOpacity;
-    ud.atmoMat.uniforms.uIntensity.value += (targetAtmo - ud.atmoMat.uniforms.uIntensity.value) * ease;
-    ud.halo.material.opacity += (targetHalo - ud.halo.material.opacity) * ease;
-    ud.ringMat.uniforms.uOpacity.value += (targetRing - ud.ringMat.uniforms.uOpacity.value) * ease;
-  });
-
-  if (flight) {
-    if (arrivalData && arrivalData.version === 3 && Number.isFinite(arrivalData.startedAt)) {
-      flight.t = Math.min(1, Math.max(flight.t, (Date.now() - arrivalData.startedAt) / flight.durationMs));
+  try {
+    var targetThemeMix = theme === 'paper' ? 1.0 : 0.0;
+    themeMix += (targetThemeMix - themeMix) * (1.0 - Math.exp(-dt * 4.2));
+    if (!paused) {
+      clock += dt * speed;
+      galaxyGroup.rotation.y += dt * 0.014 * speed;
+      nebulaPlanes.forEach(function (layer) {
+        layer.mesh.rotation.z += dt * layer.rotSpeed * speed;
+        layer.mat.uniforms.uTime.value = clock;
+        layer.mat.uniforms.uTheme.value = themeMix;
+      });
+      if (skyMat) { skyMat.uniforms.uTime.value = clock; skyMat.uniforms.uTheme.value = themeMix; }
+      if (galaxyStarsMat) { galaxyStarsMat.uniforms.uTime.value = clock; galaxyStarsMat.uniforms.uTheme.value = themeMix; }
+      updateShootingStars(dt);
     } else {
-      flight.t = Math.min(1, flight.t + dt * flight.rate);
+      nebulaPlanes.forEach(function (layer) { layer.mat.uniforms.uTheme.value = themeMix; });
+      if (skyMat) skyMat.uniforms.uTheme.value = themeMix;
+      if (galaxyStarsMat) galaxyStarsMat.uniforms.uTheme.value = themeMix;
     }
-    var t = flight.t;
-    var k = t * t * t * (t * (t * 6 - 15) + 10);
-    camera.position.copy(flight.from).lerp(flight.to, k);
-    controls.target.copy(flight.lookFrom).lerp(flight.lookTo, k);
-    if (Number.isFinite(flight.fromFov) && Number.isFinite(flight.toFov)) {
-      camera.fov = flight.fromFov + (flight.toFov - flight.fromFov) * k;
-      camera.updateProjectionMatrix();
-    }
-    if (t >= 1) {
-      flight = null;
-      controls.syncFromCamera();
-      controls.enabled = true;
-      controls.autoRotate = selected < 0 && !reduced;
-    }
-  }
 
-  controls.update(dt);
-  updateLabels(dt);
-  renderScene();
+    var ease = 1.0 - Math.exp(-dt * 7.5);
+    planets.forEach(function (p, i) {
+      var ud = p.userData;
+      p.position.y = ud.baseY + Math.sin(clock * 0.55 + i * 1.35) * 0.28;
+      ud.mesh.rotation.y += dt * 0.11 * speed;
+      ud.ringMat.uniforms.uTime.value = clock;
+      ud.moonPivot.rotation.y += dt * ud.moonSpeed * speed;
+      var active = (i === selected || i === hovered);
+      var targetAtmo = active ? 1.25 : 0.72;
+      var targetHalo = active ? 0.42 : 0.23;
+      var targetRing = active ? Math.min(0.95, ud.baseRingOpacity + 0.34) : ud.baseRingOpacity;
+      ud.atmoMat.uniforms.uIntensity.value += (targetAtmo - ud.atmoMat.uniforms.uIntensity.value) * ease;
+      ud.halo.material.opacity += (targetHalo - ud.halo.material.opacity) * ease;
+      ud.ringMat.uniforms.uOpacity.value += (targetRing - ud.ringMat.uniforms.uOpacity.value) * ease;
+    });
+
+    if (flight) {
+      if (arrivalData && arrivalData.version === 3 && Number.isFinite(arrivalData.startedAt)) {
+        flight.t = Math.min(1, Math.max(flight.t, (Date.now() - arrivalData.startedAt) / flight.durationMs));
+      } else {
+        flight.t = Math.min(1, flight.t + dt * flight.rate);
+      }
+      var t = flight.t;
+      var k = t * t * t * (t * (t * 6 - 15) + 10);
+      camera.position.copy(flight.from).lerp(flight.to, k);
+      controls.target.copy(flight.lookFrom).lerp(flight.lookTo, k);
+      if (Number.isFinite(flight.fromFov) && Number.isFinite(flight.toFov)) {
+        camera.fov = flight.fromFov + (flight.toFov - flight.fromFov) * k;
+        camera.updateProjectionMatrix();
+      }
+      if (t >= 1) {
+        flight = null;
+        controls.syncFromCamera();
+        controls.enabled = true;
+        controls.autoRotate = selected < 0 && !reduced;
+      }
+    }
+    controls.update(dt);
+    updateLabels(dt);
+    renderScene();
+    updateAdaptiveQuality(now, frameMs);
+  } catch (error) {
+    handleRenderFailure(error, 'animation frame');
+    return;
+  }
+  scheduleAnimationFrame();
 }
 
 function resize() {
-  if (!started) return;
-  var dpr = Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 1.85);
+  if (!renderer) return;
   camera.aspect = window.innerWidth / Math.max(window.innerHeight, 1);
   camera.updateProjectionMatrix();
-  renderer.setPixelRatio(dpr);
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  if (galaxyStarsMat) galaxyStarsMat.uniforms.uPixelRatio.value = dpr;
+  applyRenderPixelRatio();
 }
 
 function applyTheme() {
@@ -2345,6 +2470,23 @@ function listen() {
     el('fail').classList.remove('show');
     openIndex();
   });
+  el('render-reload').addEventListener('click', function () {
+    window.location.reload();
+  });
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      stopAnimationFrame();
+      lastTime = 0;
+    } else {
+      lastTime = 0;
+      scheduleAnimationFrame();
+    }
+  });
+  window.addEventListener('pagehide', stopAnimationFrame);
+  window.addEventListener('pageshow', function () {
+    lastTime = 0;
+    scheduleAnimationFrame();
+  });
   el('pause').addEventListener('click', function () {
     paused = !paused;
     el('pause').textContent = paused ? '▶ 恢复星流' : 'Ⅱ 暂停星流';
@@ -2367,11 +2509,16 @@ function listen() {
 function boot() {
   loadProjectCatalog().then(function () {
     listen();
-    init();
-  }).catch(function (error) {
+    try {
+      init();
+    } catch (error) {
+      console.error('[Galaxy] Scene initialization failed:', error);
+      fail('星海初始化失败。请刷新页面重试；作品索引仍可使用。');
+    }
+  }, function (error) {
     listen();
     fail('作品目录加载失败。请刷新页面，或检查网络连接后重试。');
-    if (window.console && console.error) console.error('Galaxy project catalog failed to load:', error);
+    if (window.console && console.error) console.error('[Galaxy] Project catalog failed to load:', error);
   });
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
