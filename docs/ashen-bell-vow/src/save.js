@@ -1,118 +1,151 @@
-// Versioned localStorage persistence (v9 with seamless v8 migration)
+// Versioned 3-slot persistence built on StorageAdapter (ready for Electron FS / Steam Cloud)
 import {
   COLORS, RELICS, DEFAULT_KEYBINDS, ALTARS, MAP_COLS, MAP_ROWS,
   SAVE_KEY, LEGACY_SAVE_KEY_V9, LEGACY_SAVE_KEY_V8, SETTINGS_KEY
 } from './config.js';
 import { G, hooks, createFreshWorldState, getExplorationPercent } from './state.js';
+import { storage } from './storage.js';
 import { audio } from './audio.js';
 import { syncControlModeUI } from './input.js';
 import { spawnFloatText } from './vfx.js';
 
-export function saveUserSettings() {
+export const SAVE_SLOT_COUNT = 3;
+const SLOT_KEY_PREFIX = 'ashen_bell_vow_slot_';
+
+function slotKey(slot) {
+  const s = Math.max(0, Math.min(SAVE_SLOT_COUNT - 1, Number(slot) || 0));
+  return `${SLOT_KEY_PREFIX}${s}`;
+}
+
+export function migrateLegacySaveIfNeeded() {
+  if (storage.get(slotKey(0))) return;
+  const legacyRaw = storage.get(SAVE_KEY) || storage.get(LEGACY_SAVE_KEY_V9) || storage.get(LEGACY_SAVE_KEY_V8);
+  if (!legacyRaw) return;
   try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify({
-      parryWindowMult: G.settings.parryWindowMult,
-      damageTakenMult: G.settings.damageTakenMult,
-      haptics: !!G.settings.haptics,
-      musicEnabled: G.settings.musicEnabled !== false,
-      keybinds: { ...G.settings.keybinds }
-    }));
+    const parsed = JSON.parse(legacyRaw);
+    if (parsed && [8, 9, 10, 11, 12, 15].includes(parsed.v)) {
+      storage.set(slotKey(0), legacyRaw);
+    }
   } catch {
-    // Ignore storage errors
+    // Ignore corrupt legacy data
   }
+}
+
+export function saveUserSettings() {
+  storage.setJSON(SETTINGS_KEY, {
+    parryWindowMult: G.settings.parryWindowMult,
+    damageTakenMult: G.settings.damageTakenMult,
+    haptics: !!G.settings.haptics,
+    musicEnabled: G.settings.musicEnabled !== false,
+    masterVol: G.settings.masterVol,
+    musicVol: G.settings.musicVol,
+    sfxVol: G.settings.sfxVol,
+    keybinds: { ...G.settings.keybinds }
+  });
 }
 
 export function loadUserSettings() {
-  try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return;
-    const s = JSON.parse(raw);
-    if (!s || typeof s !== 'object') return;
-    if ([1.0, 1.35, 1.7].includes(Number(s.parryWindowMult))) G.settings.parryWindowMult = Number(s.parryWindowMult);
-    if ([1.0, 0.7, 0.5].includes(Number(s.damageTakenMult))) G.settings.damageTakenMult = Number(s.damageTakenMult);
-    if (typeof s.haptics === 'boolean') G.settings.haptics = s.haptics;
-    if (typeof s.musicEnabled === 'boolean') {
-      G.settings.musicEnabled = s.musicEnabled;
-      audio.setMusicEnabled(s.musicEnabled);
-    }
-    if (s.keybinds && typeof s.keybinds === 'object') {
-      G.settings.keybinds = { ...DEFAULT_KEYBINDS };
-      for (const k of Object.keys(DEFAULT_KEYBINDS)) {
-        if (typeof s.keybinds[k] === 'string' && s.keybinds[k].length > 0) {
-          G.settings.keybinds[k] = s.keybinds[k];
-        }
+  const s = storage.getJSON(SETTINGS_KEY);
+  if (!s || typeof s !== 'object') {
+    audio.setVolumes(G.settings.masterVol, G.settings.musicVol, G.settings.sfxVol);
+    return;
+  }
+  if ([1.0, 1.35, 1.7].includes(Number(s.parryWindowMult))) G.settings.parryWindowMult = Number(s.parryWindowMult);
+  if ([1.0, 0.7, 0.5].includes(Number(s.damageTakenMult))) G.settings.damageTakenMult = Number(s.damageTakenMult);
+  if (typeof s.haptics === 'boolean') G.settings.haptics = s.haptics;
+  if (typeof s.musicEnabled === 'boolean') {
+    G.settings.musicEnabled = s.musicEnabled;
+    audio.setMusicEnabled(s.musicEnabled);
+  }
+  if (typeof s.masterVol === 'number' && !Number.isNaN(s.masterVol)) G.settings.masterVol = Math.max(0, Math.min(1, s.masterVol));
+  if (typeof s.musicVol === 'number' && !Number.isNaN(s.musicVol)) G.settings.musicVol = Math.max(0, Math.min(1, s.musicVol));
+  if (typeof s.sfxVol === 'number' && !Number.isNaN(s.sfxVol)) G.settings.sfxVol = Math.max(0, Math.min(1, s.sfxVol));
+  audio.setVolumes(G.settings.masterVol, G.settings.musicVol, G.settings.sfxVol);
+
+  if (s.keybinds && typeof s.keybinds === 'object') {
+    G.settings.keybinds = { ...DEFAULT_KEYBINDS };
+    for (const k of Object.keys(DEFAULT_KEYBINDS)) {
+      if (typeof s.keybinds[k] === 'string' && s.keybinds[k].length > 0) {
+        G.settings.keybinds[k] = s.keybinds[k];
       }
     }
-  } catch {
-    // Ignore malformed settings
   }
 }
 
+export function readSaveSlot(slot = G.activeSaveSlot) {
+  migrateLegacySaveIfNeeded();
+  const data = storage.getJSON(slotKey(slot));
+  if (!data || ![8, 9, 10, 11, 12, 15].includes(data.v)) return null;
+  return data;
+}
+
 export function readSaveData() {
-  try {
-    const raw = localStorage.getItem(SAVE_KEY) || localStorage.getItem(LEGACY_SAVE_KEY_V9) || localStorage.getItem(LEGACY_SAVE_KEY_V8);
-    if (!raw) return null;
-    const data = JSON.parse(raw);
-    if (!data || (data.v !== 8 && data.v !== 9 && data.v !== 10 && data.v !== 11 && data.v !== 12)) return null;
-    return data;
-  } catch {
-    return null;
+  return readSaveSlot(G.activeSaveSlot);
+}
+
+export function listSaveSlots() {
+  migrateLegacySaveIfNeeded();
+  const list = [];
+  for (let i = 0; i < SAVE_SLOT_COUNT; i++) {
+    list.push({ slot: i, data: readSaveSlot(i) });
   }
+  return list;
+}
+
+export function deleteSaveSlot(slot) {
+  storage.remove(slotKey(slot));
+  if (slot === 0) {
+    storage.remove(SAVE_KEY);
+  }
+  hooks.refreshTitleSaveUI();
 }
 
 export function saveProgress(showToast = false) {
   if (!G.worldState) return;
-  try {
-    const exploredStr = G.worldState.explored
-      .map(row => row.map(cell => (cell ? '1' : '0')).join(''))
-      .join('|');
-    const eqIds = (G.equippedRelics || [G.currentRelic, null]).map(r => (r ? r.id : null));
-    saveUserSettings();
-    const payload = {
-      v: 12,
-      savedAt: Date.now(),
-      controlMode: G.controlMode,
-      muted: audio.muted,
-      settings: {
-        parryWindowMult: G.settings.parryWindowMult,
-        damageTakenMult: G.settings.damageTakenMult,
-        haptics: !!G.settings.haptics,
-        keybinds: { ...G.settings.keybinds }
-      },
-      relicId: eqIds[0] || G.currentRelic.id,
-      equippedRelicIds: eqIds,
-      litAltars: [...G.worldState.litAltars],
-      activeAltarId: G.worldState.activeAltarId,
-      bossDefeated: !!G.worldState.bossDefeated,
-      boss2Defeated: !!G.worldState.boss2Defeated,
-      echoRecords: G.worldState.echoRecords || { hui: null, ji: null, rush: null },
-      shortcutOpen: !!G.worldState.shortcutOpen,
-      solvedPuzzles: [...(G.worldState.solvedPuzzles || [])],
-      brokenWalls: G.worldState.secretWalls.filter(w => w.broken).map(w => w.id),
-      collectedPickups: G.worldState.pickups.filter(p => p.collected).map(p => p.id),
-      bonusFlasks: G.worldState.bonusFlasks,
-      bonusMaxHp: G.worldState.bonusMaxHp || 0,
-      bonusMaxSoul: G.worldState.bonusMaxSoul || 0,
-      echoes: G.worldState.echoes || 0,
-      smithUpgrades: { ...(G.worldState.smithUpgrades || { blade: 0, posture: 0, forge: 0 }) },
-      abilities: { doubleJump: !!G.worldState.abilities.doubleJump },
-      unlockedRelics: [...G.worldState.unlockedRelics],
-      exploredStr,
-      explorePct: getExplorationPercent()
-    };
-    localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
-    G.saveDirtyTimer = 0;
-    hooks.refreshTitleSaveUI();
-    if (showToast && G.player && G.gameState === 'playing') {
-      spawnFloatText(G.player.x + G.player.w * 0.5, G.player.y - 68, '灯火已铭刻', COLORS.cyanBright, 14, 1.0);
-    }
-  } catch {
-    // Ignore storage quota or private-browsing errors
+  const exploredStr = G.worldState.explored
+    .map(row => row.map(cell => (cell ? '1' : '0')).join(''))
+    .join('|');
+  const eqIds = (G.equippedRelics || [G.currentRelic, null]).map(r => (r ? r.id : null));
+  saveUserSettings();
+  const payload = {
+    v: 15,
+    slot: G.activeSaveSlot,
+    savedAt: Date.now(),
+    playTimeSec: Math.floor(G.playTimeSec || 0),
+    controlMode: G.controlMode,
+    muted: audio.muted,
+    relicId: eqIds[0] || G.currentRelic.id,
+    equippedRelicIds: eqIds,
+    litAltars: [...G.worldState.litAltars],
+    activeAltarId: G.worldState.activeAltarId,
+    bossDefeated: !!G.worldState.bossDefeated,
+    boss2Defeated: !!G.worldState.boss2Defeated,
+    echoRecords: G.worldState.echoRecords || { hui: null, ji: null, rush: null },
+    shortcutOpen: !!G.worldState.shortcutOpen,
+    solvedPuzzles: [...(G.worldState.solvedPuzzles || [])],
+    brokenWalls: G.worldState.secretWalls.filter(w => w.broken).map(w => w.id),
+    collectedPickups: G.worldState.pickups.filter(p => p.collected).map(p => p.id),
+    bonusFlasks: G.worldState.bonusFlasks,
+    bonusMaxHp: G.worldState.bonusMaxHp || 0,
+    bonusMaxSoul: G.worldState.bonusMaxSoul || 0,
+    echoes: G.worldState.echoes || 0,
+    smithUpgrades: { ...(G.worldState.smithUpgrades || { blade: 0, posture: 0, forge: 0 }) },
+    abilities: { doubleJump: !!G.worldState.abilities.doubleJump },
+    unlockedRelics: [...G.worldState.unlockedRelics],
+    exploredStr,
+    explorePct: getExplorationPercent()
+  };
+  storage.setJSON(slotKey(G.activeSaveSlot), payload);
+  G.saveDirtyTimer = 0;
+  hooks.refreshTitleSaveUI();
+  if (showToast && G.player && G.gameState === 'playing') {
+    spawnFloatText(G.player.x + G.player.w * 0.5, G.player.y - 68, `档案 ${G.activeSaveSlot + 1} · 灯火已铭刻`, COLORS.cyanBright, 14, 1.0);
   }
 }
 
 export function applySaveData(data) {
   G.worldState = createFreshWorldState();
+  G.playTimeSec = Math.max(0, Number(data.playTimeSec) || 0);
   G.worldState.litAltars = new Set(Array.isArray(data.litAltars) && data.litAltars.length ? data.litAltars : ['altar_start']);
   G.worldState.activeAltarId = ALTARS.some(a => a.id === data.activeAltarId) ? data.activeAltarId : 'altar_start';
   G.worldState.bossDefeated = !!data.bossDefeated;

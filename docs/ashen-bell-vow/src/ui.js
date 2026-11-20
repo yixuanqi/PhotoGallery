@@ -19,7 +19,8 @@ import {
 import { isPickupUnlocked } from './combat.js';
 import { spawnParticles, spawnShockwave, spawnFloatText } from './vfx.js';
 import { createPlayer, createSentinels, createBoss, createBoss2 } from './entities.js';
-import { readSaveData, saveProgress, applySaveData, saveUserSettings } from './save.js';
+import { readSaveData, listSaveSlots, deleteSaveSlot, saveProgress, applySaveData, saveUserSettings } from './save.js';
+import { t, getLocale } from './i18n.js';
 
 export const HUD_DOM = {
   hpReal: document.getElementById('hp-real'),
@@ -51,27 +52,84 @@ export const HUD_DOM = {
 };
 const hudCache = {};
 
+function formatPlayTime(sec) {
+  const s = Math.max(0, Math.floor(Number(sec) || 0));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const r = s % 60;
+  return h > 0 ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m ${String(r).padStart(2, '0')}s`;
+}
+
 export function refreshTitleSaveUI() {
+  const slotsGrid = document.getElementById('save-slots-grid');
+  if (slotsGrid) {
+    slotsGrid.innerHTML = '';
+    const slots = listSaveSlots();
+    for (const item of slots) {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = `save-slot-card${G.activeSaveSlot === item.slot ? ' active' : ''}`;
+      const head = document.createElement('div');
+      head.className = 'save-slot-head';
+      head.innerHTML = `<span>${t('slot.label', item.slot + 1)}</span><span>${item.data ? formatPlayTime(item.data.playTimeSec) : t('slot.empty')}</span>`;
+      const meta = document.createElement('div');
+      meta.className = 'save-slot-meta';
+      if (item.data) {
+        const altar = ALTARS.find(a => a.id === item.data.activeAltarId) || ALTARS[0];
+        const pct = typeof item.data.explorePct === 'number' ? item.data.explorePct : 0;
+        const bossCnt = (item.data.bossDefeated ? 1 : 0) + (item.data.boss2Defeated ? 1 : 0);
+        meta.textContent = t('slot.summary', altar ? altar.shortName : 'Sanctuary', pct, bossCnt);
+      } else {
+        meta.textContent = t('slot.emptyDesc');
+      }
+      card.append(head, meta);
+      card.addEventListener('click', () => {
+        G.activeSaveSlot = item.slot;
+        refreshTitleSaveUI();
+      });
+      if (item.data) {
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'save-slot-del';
+        delBtn.textContent = t('slot.erase');
+        delBtn.addEventListener('click', e => {
+          e.stopPropagation();
+          if (window.confirm(t('slot.confirmErase', item.slot + 1))) {
+            deleteSaveSlot(item.slot);
+          }
+        });
+        card.appendChild(delBtn);
+      }
+      slotsGrid.appendChild(card);
+    }
+  }
+
+  const titleH1 = document.querySelector('#title-screen .game-title');
+  const titleSub = document.querySelector('#title-screen .modal-sub');
+  if (titleH1) titleH1.textContent = t('game.title');
+  if (titleSub) titleSub.textContent = t('game.subtitle');
   const data = readSaveData();
   if (!HUD_DOM.btnContinue || !HUD_DOM.titleSaveInfo || !HUD_DOM.btnStart) return;
+  HUD_DOM.btnContinue.textContent = t('btn.continue');
   if (data) {
     const altar = ALTARS.find(a => a.id === data.activeAltarId) || ALTARS[0];
     const pct = typeof data.explorePct === 'number' ? data.explorePct : 0;
     const relicCount = Array.isArray(data.unlockedRelics) ? data.unlockedRelics.length : 3;
-    const bossTag = data.boss2Defeated ? ' · 双钟首领皆斩' : data.bossDefeated ? ' · 断钟骑士已斩' : '';
-    const wingTag = data.abilities && data.abilities.doubleJump ? ' · 墨翼步' : '';
-    HUD_DOM.titleSaveInfo.textContent = `已有存档：${altar.shortName} · 探索 ${pct}% · 圣物 ${relicCount}/${RELICS.length}${bossTag}${wingTag}`;
+    const bossTag = data.boss2Defeated ? ' · 2/2 Bosses' : data.bossDefeated ? ' · 1/2 Bosses' : '';
+    const wingTag = data.abilities && data.abilities.doubleJump ? ' · InkWing' : '';
+    HUD_DOM.titleSaveInfo.textContent = t('slot.selectedInfo', G.activeSaveSlot + 1, altar.shortName, pct, relicCount, RELICS.length, bossTag, wingTag);
     HUD_DOM.titleSaveInfo.style.display = 'block';
     HUD_DOM.btnContinue.style.display = 'inline-block';
-    HUD_DOM.btnStart.textContent = '重开新周目';
+    HUD_DOM.btnStart.textContent = t('btn.startOverwrite', G.activeSaveSlot + 1);
   } else {
     HUD_DOM.titleSaveInfo.style.display = 'none';
     HUD_DOM.btnContinue.style.display = 'none';
-    HUD_DOM.btnStart.textContent = '唤醒人偶';
+    HUD_DOM.btnStart.textContent = t('btn.startSlot', G.activeSaveSlot + 1);
   }
 }
 
 export function continueSavedGame() {
+  if (!G.levelBundle) return;
   const data = readSaveData();
   if (!data) {
     startGame();
@@ -318,6 +376,8 @@ export function openModal(name) {
   G.activeModal = name;
   if (name === 'help') syncHelpModalText();
   if (name === 'settings') renderSettingsModal();
+  const card = modal.querySelector('.modal-card');
+  if (card) card.scrollTop = 0;
   modal.classList.remove('hidden');
 }
 
@@ -607,6 +667,28 @@ export function openLoreModal(tablet) {
   openModal('lore');
 }
 
+export function openPauseModal() {
+  if (G.gameState !== 'playing') return;
+  const pt = document.querySelector('#pause-modal .modal-title');
+  if (pt) pt.textContent = t('pause.title');
+  const sub = document.getElementById('pause-slot-sub');
+  if (sub) {
+    sub.textContent = t('pause.sub', G.activeSaveSlot + 1, getExplorationPercent(), formatPlayTime(G.playTimeSec));
+  }
+  openModal('pause');
+}
+
+export function returnToTitle() {
+  clearOutcomeTimer();
+  if (G.worldState) saveProgress(false);
+  G.echoSession = null;
+  hideAllOverlays();
+  G.gameState = 'title';
+  refreshTitleSaveUI();
+  const titleEl = document.getElementById('title-screen');
+  if (titleEl) titleEl.classList.remove('hidden');
+}
+
 export function openMapModal() {
   if (G.gameState === 'dead' || G.gameState === 'victory' || G.gameState === 'title') return;
   if (G.activeModal === 'map') {
@@ -618,6 +700,11 @@ export function openMapModal() {
 }
 
 export function renderSettingsModal() {
+  const curLoc = getLocale();
+  const bZh = document.getElementById('btn-lang-zh');
+  const bEn = document.getElementById('btn-lang-en');
+  if (bZh) bZh.classList.toggle('active', curLoc === 'zh-CN');
+  if (bEn) bEn.classList.toggle('active', curLoc === 'en-US');
   const parryGroup = document.getElementById('assist-parry-group');
   if (parryGroup) {
     parryGroup.innerHTML = '';
@@ -658,10 +745,21 @@ export function renderSettingsModal() {
     });
   }
 
+  const syncSlider = (id, val) => {
+    const pct = Math.round(Math.max(0, Math.min(1, val)) * 100);
+    const inp = document.getElementById(id);
+    const lbl = document.getElementById(`${id}-val`);
+    if (inp) inp.value = String(pct);
+    if (lbl) lbl.textContent = `${pct}%`;
+  };
+  syncSlider('vol-master', G.settings.masterVol);
+  syncSlider('vol-music', G.settings.musicVol);
+  syncSlider('vol-sfx', G.settings.sfxVol);
+
   const musBtn = document.getElementById('btn-music-toggle');
   if (musBtn) {
     const on = G.settings.musicEnabled !== false;
-    musBtn.textContent = on ? '配乐: 开' : '配乐: 关';
+    musBtn.textContent = on ? '开' : '关';
     musBtn.classList.toggle('active', on);
   }
 
@@ -1194,10 +1292,14 @@ export function showVictory(bossId = 'boss_hui') {
   }
   hideAllOverlays();
   G.gameState = 'victory';
-  document.getElementById('victory-modal').classList.remove('hidden');
+  const vm = document.getElementById('victory-modal');
+  const vcard = vm && vm.querySelector('.modal-card');
+  if (vcard) vcard.scrollTop = 0;
+  if (vm) vm.classList.remove('hidden');
 }
 
 export function startGame() {
+  if (!G.levelBundle) return;
   clearOutcomeTimer();
   hideAllOverlays();
   G.worldState = createFreshWorldState();
@@ -1238,6 +1340,7 @@ export function startGame() {
     y: Math.min(Math.max(0, WORLD_H - G.canvasH), Math.max(-40, spawnPt.y - G.canvasH * 0.55)),
     shake: 0, kickX: 0, kickY: 0, zoom: 1
   };
+  G.playTimeSec = 0;
   G.stats = { parries: 0, executions: 0, damageTaken: 0, startTime: performance.now() };
   G.globalTime = 0;
   G.boilFrame = 0;

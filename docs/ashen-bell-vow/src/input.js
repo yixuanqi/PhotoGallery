@@ -3,6 +3,7 @@ import { COLORS, DEFAULT_KEYBINDS, ACTION_META } from './config.js';
 import { G, hooks } from './state.js';
 import { audio } from './audio.js';
 import { spawnFloatText } from './vfx.js';
+import { ensureOverlayFocus, navigateOverlay, confirmOverlayFocus, clearGamepadFocus } from './uiNav.js';
 
 export const keysHeld = {};
 export const gpHeld = {};
@@ -94,7 +95,22 @@ export function formatKeyCode(code) {
   return map[code] || code;
 }
 
+const GAMEPAD_LABELS = {
+  left: '←', right: '→', up: '↑', down: '↓',
+  jump: 'A', attack: 'X/RB', parry: 'LB', dash: 'B',
+  spell: 'Y', grapple: 'LT', seal: 'RT', heal: '↑键',
+  interact: 'R3/↓', map: 'View'
+};
+
+function setActiveInputDevice(dev) {
+  if (G.inputDevice === dev) return;
+  G.inputDevice = dev;
+  if (dev !== 'gamepad') clearGamepadFocus();
+  syncControlModeUI();
+}
+
 export function getActionKeyLabel(action) {
+  if (G.inputDevice === 'gamepad' && GAMEPAD_LABELS[action]) return GAMEPAD_LABELS[action];
   return formatKeyCode(getActionKeyCode(action));
 }
 
@@ -158,6 +174,7 @@ export function onKeyDown(e) {
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
     e.preventDefault();
   }
+  setActiveInputDevice('kbmouse');
   if (!keysHeld[e.code]) keysPressed[e.code] = true;
   keysHeld[e.code] = true;
   if (G.gameState === 'playing') audio.init();
@@ -323,6 +340,18 @@ export function getControlLabels() {
       shortGrapple: '索'
     };
   }
+  if (G.inputDevice === 'gamepad') {
+    return {
+      slash: 'X / RB',
+      parry: 'LB',
+      grapple: 'LT',
+      spell: 'Y',
+      seal: 'RT',
+      heal: '十字↑',
+      interact: 'R3 / ↓',
+      shortGrapple: 'LT'
+    };
+  }
   const atk = getActionKeyLabel('attack');
   const par = getActionKeyLabel('parry');
   const grp = getActionKeyLabel('grapple');
@@ -421,47 +450,51 @@ export function pollGamepad() {
 
   const btnA = b(0);
   const btnB = b(1);
-  const btnMap = b(8) || b(9);
+  const btnView = b(8);
+  const btnStart = b(9);
+  const navUp = axY < -0.55 || b(12);
+  const navDown = axY > 0.55 || b(13);
+  const navLeft = axX < -0.55 || b(14);
+  const navRight = axX > 0.55 || b(15);
 
-  if (btnMap && !gpPrev._gpMap) {
+  if (btnA || btnB || btnView || btnStart || navUp || navDown || navLeft || navRight || b(2) || b(3) || b(4) || b(5)) {
+    setActiveInputDevice('gamepad');
+  }
+
+  if (btnView && !gpPrev._gpView) {
     if (G.gameState === 'playing' || G.activeModal === 'map') hooks.openMapModal();
   }
-  gpPrev._gpMap = btnMap;
+  gpPrev._gpView = btnView;
 
-  // Allow Gamepad A/B to navigate overlays
-  if (G.gameState === 'title') {
-    if (btnA && !gpPrev._gpStart) {
-      if (hooks.readSaveData()) hooks.continueSavedGame();
-      else hooks.startGame();
+  if (btnStart && !gpPrev._gpPause) {
+    if (G.gameState === 'playing') hooks.openPauseModal();
+    else if (G.activeModal === 'pause') hooks.closeModal('pause');
+  }
+  gpPrev._gpPause = btnStart;
+
+  // Full Gamepad Focus Navigation for all overlays (Title, Pause, Altar, Smith, Settings, Map, Death, Victory)
+  if (G.gameState !== 'playing') {
+    if (G.inputDevice === 'gamepad') ensureOverlayFocus();
+    if (navUp && !gpPrev._navUp) navigateOverlay('up');
+    if (navDown && !gpPrev._navDown) navigateOverlay('down');
+    if (navLeft && !gpPrev._navLeft) navigateOverlay('left');
+    if (navRight && !gpPrev._navRight) navigateOverlay('right');
+    if (btnA && !gpPrev._uiConfirm) {
+      audio.init();
+      confirmOverlayFocus();
     }
-    gpPrev._gpStart = btnA;
-    return;
-  }
-  if (G.gameState === 'modal') {
-    if (btnB && !gpPrev._gpBack && G.activeModal) hooks.closeModal(G.activeModal);
-    gpPrev._gpBack = btnB;
-    return;
-  }
-  if (G.gameState === 'dead') {
-    if (btnA && !gpPrev._gpRetry) {
-      if (G.echoSession) hooks.startEchoChallenge(G.echoSession.mode);
-      else hooks.respawnAtActiveAltar();
+    if (btnB && !gpPrev._uiBack && G.gameState === 'modal' && G.activeModal) {
+      hooks.closeModal(G.activeModal);
     }
-    gpPrev._gpRetry = btnA;
+    gpPrev._navUp = navUp; gpPrev._navDown = navDown;
+    gpPrev._navLeft = navLeft; gpPrev._navRight = navRight;
+    gpPrev._uiConfirm = btnA; gpPrev._uiBack = btnB;
     return;
   }
-  if (G.gameState === 'victory') {
-    if (btnA && !gpPrev._gpAgain) {
-      if (G.echoSession) hooks.startEchoChallenge(G.echoSession.mode);
-      else hooks.continueIntoBellWell();
-    }
-    gpPrev._gpAgain = btnA;
-    return;
-  }
-  gpPrev._gpStart = btnA;
-  gpPrev._gpBack = btnB;
-  gpPrev._gpRetry = btnA;
-  gpPrev._gpAgain = btnA;
+  clearGamepadFocus();
+  gpPrev._navUp = navUp; gpPrev._navDown = navDown;
+  gpPrev._navLeft = navLeft; gpPrev._navRight = navRight;
+  gpPrev._uiConfirm = btnA; gpPrev._uiBack = btnB;
 
   if (btnA || b(2) || b(4) || b(5)) audio.init();
 
@@ -487,6 +520,7 @@ export function initInputListeners() {
     if (e.target.id === 'gameCanvas') e.preventDefault();
   });
   window.addEventListener('mousedown', e => {
+    setActiveInputDevice('kbmouse');
     if (G.gameState !== 'playing' || e.target.id !== 'gameCanvas') return;
     audio.init();
     if (e.button === 0 && G.controlMode === 'kbmouse') {
@@ -703,6 +737,39 @@ export function initInputListeners() {
   };
   bindTapPulse('flasks-btn', 'heal');
   bindTapPulse('seals-btn', 'seal');
+
+  // Smooth touch-scroll bridge for .modal-card when portrait-forced-landscape (rotate 90deg) is active
+  document.querySelectorAll('.modal-card').forEach(card => {
+    let dragId = null;
+    let lastX = 0;
+    let moved = false;
+    card.addEventListener('touchstart', e => {
+      if (!isForceLandscape() || e.touches.length !== 1) return;
+      const t = e.touches[0];
+      dragId = t.identifier;
+      lastX = t.clientX;
+      moved = false;
+    }, { passive: true });
+    card.addEventListener('touchmove', e => {
+      if (!isForceLandscape() || dragId === null) return;
+      for (let i = 0; i < e.touches.length; i++) {
+        const t = e.touches[i];
+        if (t.identifier === dragId) {
+          const dx = t.clientX - lastX;
+          if (Math.abs(dx) > 4) moved = true;
+          if (moved && card.scrollHeight > card.clientHeight) {
+            card.scrollTop += dx;
+            lastX = t.clientX;
+            e.preventDefault();
+          }
+          break;
+        }
+      }
+    }, { passive: false });
+    const endDrag = () => { dragId = null; moved = false; };
+    card.addEventListener('touchend', endDrag, { passive: true });
+    card.addEventListener('touchcancel', endDrag, { passive: true });
+  });
 
   window.addEventListener('blur', () => {
     resetJoystick();

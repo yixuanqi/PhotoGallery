@@ -1635,3 +1635,218 @@
     color: var(--parchment-dim);
     background: rgba(15, 20, 30, 0.7);
   }
+
+  /* ==================== v15 PC UX: 3-Slot Saves, Pause Menu, Volume Sliders & Gamepad Focus ==================== */
+  .save-slots-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0 0 14px;
+    text-align: left;
+  }
+
+  .save-slot-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    background: rgba(11, 15, 24, 0.82);
+    border: 1px solid rgba(216, 207, 184, 0.24);
+    color: var(--parchment);
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .save-slot-card:hover {
+    border-color: var(--gold);
+    transform: translateY(-1px);
+  }
+
+  .save-slot-card.active {
+    border-color: var(--gold-bright);
+    background: rgba(245, 158, 11, 0.14);
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.22);
+  }
+
+  .save-slot-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--gold-bright);
+  }
+
+  .save-slot-meta {
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: var(--parchment-dim);
+  }
+
+  .save-slot-del {
+    margin-top: 4px;
+    align-self: flex-end;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(127, 29, 29, 0.35);
+    border: 1px solid rgba(248, 113, 113, 0.45);
+    color: var(--crimson-bright);
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  .save-slot-del:hover {
+    background: rgba(185, 28, 28, 0.55);
+  }
+
+  .pause-menu-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 8px 0 4px;
+  }
+
+  .pause-menu-list .primary-btn {
+    width: 100%;
+    padding: 10px 18px;
+  }
+
+  .vol-slider-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .vol-slider {
+    width: 132px;
+    accent-color: var(--gold-bright);
+    cursor: pointer;
+  }
+
+  .vol-val {
+    min-width: 36px;
+    text-align: right;
+    font-size: 11.5px;
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    color: var(--cyan-bright);
+  }
+
+  /* Crisp Gamepad UI Navigation Focus Ring */
+  .gp-focus {
+    outline: 2px solid var(--gold-bright) !important;
+    outline-offset: 2px;
+    box-shadow: 0 0 18px rgba(253, 224, 71, 0.52) !important;
+  }
+
+  @media (max-width: 560px) {
+    .save-slots-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* ==================== v15.2 Mobile Stability, Performance & Always-Visible Return Button ==================== */
+  .modal-top-bar {
+    position: sticky;
+    top: -2px;
+    z-index: 6;
+    display: flex;
+    justify-content: flex-end;
+    margin: -8px -8px 4px;
+    pointer-events: none;
+  }
+
+  .modal-top-close {
+    pointer-events: auto;
+    background: linear-gradient(135deg, rgba(42, 24, 18, 0.96), rgba(16, 20, 32, 0.96));
+    color: var(--gold-bright);
+    border: 1.5px solid rgba(245, 158, 11, 0.78);
+    border-radius: 999px;
+    padding: 5px 14px;
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.68);
+  }
+
+  .modal-top-close:active {
+    transform: scale(0.94);
+  }
+
+  /* Critical fix for WeChat / Android Chromium rotate(90deg) + backdrop-filter half-screen clipping & severe lag */
+  body.is-mobile .player-status,
+  body.is-mobile .joystick-base,
+  body.is-mobile .t-btn,
+  body.is-mobile .overlay-screen {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  body.is-mobile .overlay-screen {
+    background: rgba(5, 8, 14, 0.92);
+    transition: none;
+    touch-action: pan-x pan-y;
+  }
+
+  body.is-mobile .overlay-screen.hidden {
+    display: none !important;
+  }
+
+  body.is-mobile .modal-card {
+    width: min(580px, 94%) !important;
+    max-height: 92%;
+    padding: 12px 16px 14px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y;
+  }
+
+  /* Title screen on mobile: hide PC keyboard grid so save slots & start buttons are immediately visible */
+  body.is-mobile #title-screen .controls-grid {
+    display: none;
+  }
+
+  body.is-mobile .lore-text {
+    font-size: 12.5px;
+    line-height: 1.55;
+    padding: 9px 12px;
+    margin: 8px 0 12px;
+  }
+
+  body.is-mobile .relic-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+    margin: 8px 0 12px;
+  }
+
+  body.is-mobile .relic-card {
+    padding: 8px 10px;
+  }
+
+  body.is-mobile .relic-name {
+    font-size: 12.5px;
+    margin-bottom: 3px;
+  }
+
+  body.is-mobile .relic-desc {
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  body.is-mobile .save-slots-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin: 0 0 8px;
+  }
+
+  body.is-mobile .modal-top-close {
+    padding: 6px 16px;
+    font-size: 13px;
+  }

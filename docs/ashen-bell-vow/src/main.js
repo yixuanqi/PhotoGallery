@@ -1,4 +1,5 @@
 // Entry point: wires cross-module hooks, canvas lifecycle, UI listeners & main gameLoop
+window.__ABV_MODULE_LOADED__ = true;
 import { ALTARS, WORLD_W, WORLD_H, FLOOR_Y } from './config.js';
 import { G, hooks, createFreshWorldState, markMapExplored, createLanterns, createResonancePuzzles, createCrumblePlatforms, getAwakeBoss } from './state.js';
 import { loadWorldData, getPreviewSpawnRoomId } from './levelLoader.js';
@@ -14,9 +15,10 @@ import { updateEnemy, updateBoss, updateBoss2 } from './ai.js';
 import { updateWorldEffects, updateCamera, updateAmbientOnly } from './world.js';
 import { render } from './renderer.js';
 import { readSaveData, saveProgress, loadUserSettings, saveUserSettings } from './save.js';
+import { t, setLocale, loadSavedLocale } from './i18n.js';
 import {
   HUD_DOM, refreshTitleSaveUI, syncHUD, openModal, closeModal, renderParchmentMap, renderSettingsModal,
-  openSmithModal, openLoreModal, openMapModal, interactWithAltar, respawnAtActiveAltar,
+  openSmithModal, openLoreModal, openMapModal, openPauseModal, returnToTitle, interactWithAltar, respawnAtActiveAltar,
   startEchoChallenge, advanceEchoRushStage2, showDeath, showVictory,
   startGame, continueSavedGame, continueIntoBellWell
 } from './ui.js';
@@ -34,6 +36,8 @@ Object.assign(hooks, {
   openSmithModal,
   openLoreModal,
   openMapModal,
+  openPauseModal,
+  returnToTitle,
   closeModal,
   startGame,
   continueSavedGame,
@@ -47,9 +51,10 @@ G.canvas = document.getElementById('gameCanvas');
 G.ctx = G.canvas.getContext('2d');
 
 function resizeCanvas() {
-  updateMobileOrientationLayout();
+  const { mobile } = updateMobileOrientationLayout();
   const root = document.getElementById('game-root');
-  const dpr = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+  const maxDpr = mobile ? 1.25 : 2;
+  const dpr = Math.min(maxDpr, Math.max(1, window.devicePixelRatio || 1));
   const cssW = Math.max(320, (root && root.clientWidth) || window.innerWidth || 1280);
   const cssH = Math.max(240, (root && root.clientHeight) || window.innerHeight || 720);
   // Auto zoom-out on short mobile landscape screens (< 540px tall) for wide Metroidvania visibility
@@ -79,6 +84,7 @@ if (window.visualViewport) window.visualViewport.addEventListener('resize', sche
 
 let lastFrameTime = 0;
 let boilAccumulator = 0;
+let lastStaticRenderKey = '';
 
 function gameLoop(timestamp) {
   const elapsed = lastFrameTime ? (timestamp - lastFrameTime) / 1000 : 0;
@@ -97,6 +103,7 @@ function gameLoop(timestamp) {
   pollGamepad();
 
   if (G.gameState === 'playing') {
+    G.playTimeSec += dt;
     capturePlayerInputBuffers();
     const curBoss = getAwakeBoss();
     let inCombat = false;
@@ -136,9 +143,19 @@ function gameLoop(timestamp) {
   }
 
   clearFrameInputs();
-  render();
+  const isStaticOverlay = G.gameState === 'modal' || G.gameState === 'dead' || G.gameState === 'victory';
+  if (isStaticOverlay) {
+    const key = `${G.gameState}:${G.activeModal || ''}:${G.canvasW}x${G.canvasH}`;
+    if (key !== lastStaticRenderKey) {
+      render();
+      lastStaticRenderKey = key;
+    }
+  } else {
+    lastStaticRenderKey = '';
+    render();
+  }
   window.__ABV_BOOTED__ = true;
-requestAnimationFrame(gameLoop);
+  requestAnimationFrame(gameLoop);
 }
 
 // Wire DOM UI actions
@@ -192,6 +209,39 @@ document.getElementById('btn-music-toggle').addEventListener('click', () => {
   saveUserSettings();
   renderSettingsModal();
 });
+const wireVolSlider = (id, key) => {
+  const el = document.getElementById(id);
+  const lbl = document.getElementById(`${id}-val`);
+  if (!el) return;
+  el.addEventListener('input', () => {
+    const pct = Math.max(0, Math.min(100, Number(el.value) || 0));
+    G.settings[key] = pct / 100;
+    if (lbl) lbl.textContent = `${pct}%`;
+    audio.setVolumes(G.settings.masterVol, G.settings.musicVol, G.settings.sfxVol);
+  });
+  el.addEventListener('change', () => saveUserSettings());
+};
+wireVolSlider('vol-master', 'masterVol');
+wireVolSlider('vol-music', 'musicVol');
+wireVolSlider('vol-sfx', 'sfxVol');
+document.getElementById('btn-pause-resume').addEventListener('click', () => closeModal('pause'));
+document.getElementById('btn-pause-settings').addEventListener('click', () => openModal('settings'));
+document.getElementById('btn-pause-respawn').addEventListener('click', respawnAtActiveAltar);
+document.getElementById('btn-pause-title').addEventListener('click', returnToTitle);
+const langZh = document.getElementById('btn-lang-zh');
+const langEn = document.getElementById('btn-lang-en');
+if (langZh) langZh.addEventListener('click', () => {
+  setLocale('zh-CN', true);
+  renderSettingsModal();
+  refreshTitleSaveUI();
+  syncHUD(true);
+});
+if (langEn) langEn.addEventListener('click', () => {
+  setLocale('en-US', true);
+  renderSettingsModal();
+  refreshTitleSaveUI();
+  syncHUD(true);
+});
 document.getElementById('btn-haptics-toggle').addEventListener('click', () => {
   G.settings.haptics = !G.settings.haptics;
   saveUserSettings();
@@ -216,6 +266,25 @@ document.getElementById('btn-mute').addEventListener('click', () => {
   document.getElementById('btn-mute').textContent = audio.muted ? '音效: 关' : '音效: 开';
   if (G.gameState !== 'title') saveProgress(false);
 });
+const mobilePauseBtn = document.getElementById('btn-pause');
+if (mobilePauseBtn) mobilePauseBtn.addEventListener('click', openPauseModal);
+document.querySelectorAll('[data-close-modal]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const m = btn.getAttribute('data-close-modal');
+    if (m === 'settings') saveUserSettings();
+    closeModal(m);
+  });
+});
+['altar', 'map', 'lore', 'help', 'smith', 'settings', 'pause'].forEach(m => {
+  const ov = document.getElementById(`${m}-modal`);
+  if (!ov) return;
+  ov.addEventListener('click', e => {
+    if (e.target === ov && G.activeModal === m) {
+      if (m === 'settings') saveUserSettings();
+      closeModal(m);
+    }
+  });
+});
 document.getElementById('btn-respawn').addEventListener('click', respawnAtActiveAltar);
 document.getElementById('btn-close-altar').addEventListener('click', () => closeModal('altar'));
 document.getElementById('btn-close-map').addEventListener('click', () => closeModal('map'));
@@ -239,7 +308,9 @@ window.addEventListener('keydown', e => {
   if ((e.code === 'Tab' || e.code === mapCode) && (G.gameState === 'playing' || G.activeModal === 'map')) {
     e.preventDefault();
     if (!e.repeat) openMapModal();
-  } else if (e.code === 'Escape' && G.gameState === 'modal' && G.activeModal) {
+  } else if (e.code === 'Escape' && G.gameState === 'playing' && !e.repeat) {
+    openPauseModal();
+  } else if (e.code === 'Escape' && G.gameState === 'modal' && G.activeModal && !e.repeat) {
     closeModal(G.activeModal);
   } else if (e.code === 'Enter' && G.gameState === 'title') {
     if (readSaveData()) continueSavedGame();
@@ -263,6 +334,7 @@ if (backEditorBtn) {
 // Async Bootstrap: load room-based JSON data stream before initializing scene
 async function bootstrapGame() {
   loadUserSettings();
+  loadSavedLocale();
   buildGlowSprites();
   await loadWorldData();
   const bootSave = readSaveData();
@@ -273,6 +345,12 @@ async function bootstrapGame() {
   syncControlModeUI();
   G.worldState = createFreshWorldState();
   if (ALTARS[0]) markMapExplored(ALTARS[0].x, ALTARS[0].y - 40);
+  const diagBox = document.getElementById('file-protocol-warning');
+  if (diagBox) diagBox.style.display = 'none';
+  const startBtnEl = document.getElementById('btn-start');
+  const contBtnEl = document.getElementById('btn-continue');
+  if (startBtnEl) { startBtnEl.disabled = false; startBtnEl.style.opacity = ''; }
+  if (contBtnEl) { contBtnEl.disabled = false; contBtnEl.style.opacity = ''; }
   refreshTitleSaveUI();
   resizeCanvas();
   G.lanterns = createLanterns();

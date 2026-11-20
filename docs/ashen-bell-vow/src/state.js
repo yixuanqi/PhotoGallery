@@ -31,13 +31,20 @@ export const G = {
   lastMinimapRenderTime: -1,
   saveDirtyTimer: 0,
 
-  // Control mode & user accessibility / keybind settings
+  // Control mode, active input device, save slot & user settings
   controlMode: 'kbmouse',
+  inputDevice: 'kbmouse', // 'kbmouse' | 'gamepad'
+  activeSaveSlot: 0,
+  playTimeSec: 0,
+  locale: 'zh-CN',
   settings: {
     parryWindowMult: 1.0,
     damageTakenMult: 1.0,
     haptics: true,
     musicEnabled: true,
+    masterVol: 0.85,
+    musicVol: 0.75,
+    sfxVol: 0.90,
     keybinds: { ...DEFAULT_KEYBINDS }
   },
 
@@ -105,6 +112,8 @@ export const hooks = {
   openSmithModal: () => {},
   openLoreModal: () => {},
   openMapModal: () => {},
+  openPauseModal: () => {},
+  returnToTitle: () => {},
   closeModal: () => {},
   startGame: () => {},
   continueSavedGame: () => {},

@@ -6,8 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="screen-orientation" content="landscape" />
 <meta name="x5-orientation" content="landscape" />
-<title>灰钟残誓 v14 — 动态配乐 · 新敌生态 · 铸钟淬炼 · 隐藏地窖</title>
-<link rel="stylesheet" href="./styles.css?v=14" />
+<title>灰钟残誓 v15.2 — 移动端光影性能优化 · 弹窗裁剪修复 · 置顶返回键</title>
+<link rel="stylesheet" href="./styles.css?v=15.2" />
 </head>
 <body>
 <div id="game-root">
@@ -59,6 +59,7 @@
           <button id="btn-help" class="hud-btn">心法</button>
           <button id="btn-settings" class="hud-btn">设置</button>
           <button id="btn-mute" class="hud-btn">音效: 开</button>
+          <button id="btn-pause" class="hud-btn mobile-only-btn">暂停</button>
           <button id="btn-respawn" class="hud-btn">回祭坛</button>
         </div>
         <div id="editor-preview-pill" class="editor-preview-pill hidden">
@@ -118,10 +119,11 @@
           <strong>线上部署：</strong>直接上传至 GitHub Pages（HTTPS）即可零配置游玩。
         </div>
       </div>
-      <div id="title-save-info" class="modal-sub" style="margin-bottom:12px;color:var(--cyan-bright);display:none;"></div>
+      <div id="save-slots-grid" class="save-slots-grid"></div>
+      <div id="title-save-info" class="modal-sub" style="margin-bottom:10px;color:var(--cyan-bright);display:none;"></div>
       <div class="modal-btn-row">
-        <button id="btn-continue" class="primary-btn" style="display:none;border-color:var(--cyan-bright);color:var(--cyan-bright);">继续残誓</button>
-        <button id="btn-start" class="primary-btn">唤醒人偶</button>
+        <button id="btn-continue" class="primary-btn" disabled style="display:none;border-color:var(--cyan-bright);color:var(--cyan-bright);">载入中...</button>
+        <button id="btn-start" class="primary-btn" disabled>正在载入晦渊地图...</button>
       </div>
     </div>
   </div>
@@ -129,6 +131,7 @@
   <!-- Altar / Relic Swap Modal -->
   <div id="altar-modal" class="overlay-screen hidden">
     <div class="modal-card">
+      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="altar">✕ 返回游戏</button></div>
       <div id="altar-modal-title" class="modal-title">熄灯祭坛</div>
       <div class="modal-sub">灯油与魂火已回满 · 提灯可同时铭刻「主印 + 副印」两枚圣物</div>
       <div id="relic-slots-bar" class="relic-slots-bar"></div>
@@ -143,6 +146,7 @@
   <!-- Hand-Drawn Parchment Map Modal -->
   <div id="map-modal" class="overlay-screen hidden">
     <div class="modal-card" style="width: min(680px, 94%);">
+      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="map">✕ 返回</button></div>
       <div class="modal-title">晦渊舆图</div>
       <div id="map-modal-sub" class="modal-sub">沉钟回廊 · 已探索 0% · 已点燃祭坛 1 / 2</div>
       <div class="parchment-map-box">
@@ -162,6 +166,7 @@
   <!-- Lore Tablet Modal -->
   <div id="lore-modal" class="overlay-screen hidden">
     <div class="modal-card">
+      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="lore">✕ 返回</button></div>
       <div id="lore-modal-title" class="modal-title">风化残碑</div>
       <div id="lore-modal-sub" class="modal-sub">枯骨长廊 · 高台铭文</div>
       <div id="lore-modal-body" class="lore-text"></div>
@@ -172,6 +177,7 @@
   <!-- Controls Help Modal -->
   <div id="help-modal" class="overlay-screen hidden">
     <div class="modal-card">
+      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="help">✕ 返回</button></div>
       <div class="modal-title">战斗心法</div>
       <div class="modal-sub">三段弹反 · 居合一闪 · 幽鸣灵刃 · 幽丝钩索 · 墨印处决</div>
       <div id="help-modal-body" class="lore-text" style="border-left-color: var(--gold); font-size: 13.5px;">
@@ -188,6 +194,7 @@
   <!-- Blind Old Bellsmith Forge Modal -->
   <div id="smith-modal" class="overlay-screen hidden">
     <div class="modal-card" style="width: min(620px, 94%);">
+      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="smith">✕ 返回</button></div>
       <div id="smith-modal-title" class="modal-title">盲眼老铸钟匠 · 砺</div>
       <div class="modal-sub">熄灯铁砧 · 以击杀强敌所得「残响」淬炼断刃与魂炉</div>
       <div id="smith-dialogue" class="lore-text" style="border-left-color:var(--gold);margin-bottom:12px;"></div>
@@ -200,10 +207,18 @@
   <!-- Settings, Assist Mode & Custom Keybinds Modal -->
   <div id="settings-modal" class="overlay-screen hidden">
     <div class="modal-card" style="width: min(640px, 94%);">
+      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="settings">✕ 返回</button></div>
       <div class="modal-title">设置与护道辅助</div>
       <div class="modal-sub">辅助难度微调 · 手柄双马达震动 · 键盘自定义改键</div>
       <div class="settings-section">
-        <div class="settings-sec-title">护道辅助 &amp; 外设反馈</div>
+        <div class="settings-sec-title">语言、护道辅助 &amp; 外设反馈</div>
+        <div class="settings-row">
+          <span>界面语言 (Language)</span>
+          <div class="seg-group">
+            <button id="btn-lang-zh" class="seg-btn active">简体中文</button>
+            <button id="btn-lang-en" class="seg-btn">English</button>
+          </div>
+        </div>
         <div class="settings-row">
           <span>弹反判定窗口</span>
           <div id="assist-parry-group" class="seg-group"></div>
@@ -213,10 +228,16 @@
           <div id="assist-dmg-group" class="seg-group"></div>
         </div>
         <div class="settings-row">
-          <span>动态交互配乐 (D 弗里吉亚)</span>
-          <div class="seg-group">
-            <button id="btn-music-toggle" class="seg-btn active">配乐: 开</button>
-          </div>
+          <span>主音量 (Master)</span>
+          <div class="vol-slider-wrap"><input id="vol-master" class="vol-slider" type="range" min="0" max="100" step="5" value="85" /><span id="vol-master-val" class="vol-val">85%</span></div>
+        </div>
+        <div class="settings-row">
+          <span>背景配乐 (D 弗里吉亚)</span>
+          <div class="vol-slider-wrap"><input id="vol-music" class="vol-slider" type="range" min="0" max="100" step="5" value="75" /><span id="vol-music-val" class="vol-val">75%</span><button id="btn-music-toggle" class="seg-btn active">开</button></div>
+        </div>
+        <div class="settings-row">
+          <span>战斗与环境音效 (SFX)</span>
+          <div class="vol-slider-wrap"><input id="vol-sfx" class="vol-slider" type="range" min="0" max="100" step="5" value="90" /><span id="vol-sfx-val" class="vol-val">90%</span></div>
         </div>
         <div class="settings-row">
           <span>手柄双马达震动</span>
@@ -234,6 +255,21 @@
         <div id="keybind-grid" class="keybind-grid"></div>
       </div>
       <button id="btn-close-settings" class="primary-btn">保存并返回</button>
+    </div>
+  </div>
+
+  <!-- Pause Modal (Esc / Gamepad Start) -->
+  <div id="pause-modal" class="overlay-screen hidden">
+    <div class="modal-card" style="width: min(420px, 92%);">
+      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="pause">✕ 继续</button></div>
+      <div class="modal-title" style="letter-spacing: 8px;">残 誓 暂 歇</div>
+      <div id="pause-slot-sub" class="modal-sub">档案 1 · 探索 0%</div>
+      <div class="pause-menu-list">
+        <button id="btn-pause-resume" class="primary-btn">继续前行</button>
+        <button id="btn-pause-settings" class="primary-btn" style="border-color:rgba(216,207,184,0.5);color:var(--parchment);">设置与音频</button>
+        <button id="btn-pause-respawn" class="primary-btn" style="border-color:rgba(56,189,248,0.55);color:var(--cyan-bright);">返回最近祭坛</button>
+        <button id="btn-pause-title" class="primary-btn" style="border-color:rgba(248,113,113,0.55);color:var(--crimson-bright);">保存并返回标题</button>
+      </div>
     </div>
   </div>
 
@@ -354,16 +390,25 @@
   });
 
   window.setTimeout(function () {
-    if (window.__ABV_BOOTED__) return;
-    showDiag(
-      '⚠ 浏览器拦截了 ES Modules 脚本加载',
-      '最常见原因是 Windows 注册表将 <code>.js</code> 的 MIME 类型设为了 <code>text/plain</code>，导致原生 <code>python -m http.server</code> 被浏览器拒载。<br>' +
-      '<strong>解决方法：</strong>请使用本目录内置的 <code>start_game.bat</code> 或执行 <code>python serve_local.py</code> 启动（已强制修正 <code>.js</code> 为 <code>text/javascript</code>），然后刷新页面；或按 <code>F12</code> 查看 Console 详情。',
-      '请使用 serve_local.py 启动'
-    );
-  }, 1200);
+    if (window.__ABV_BOOTED__ || window.__ABV_MODULE_LOADED__) return;
+    var isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    if (isLocal) {
+      showDiag(
+        '⚠ 本地服务未正确返回 ES Modules 脚本',
+        '最常见原因是 Windows 注册表将 <code>.js</code> 的 MIME 类型设为了 <code>text/plain</code>，导致原生 <code>python -m http.server</code> 被浏览器拒载。<br>' +
+        '<strong>解决方法：</strong>请使用本目录内置的 <code>start_game.bat</code> 或执行 <code>python serve_local.py</code> 启动（已强制修正 <code>.js</code> 为 <code>text/javascript</code>），然后刷新页面。',
+        '请使用 serve_local.py 启动'
+      );
+    } else {
+      showDiag(
+        '⚠ 移动端网络加载较慢，请稍候或刷新重试',
+        '当前网络环境下脚本仍在下载中；若长时间未响应，请点击右上角刷新页面或切换更稳定的网络后重试。',
+        null
+      );
+    }
+  }, 8000);
 })();
 </script>
-<script type="module" src="./src/main.js?v=14"></script>
+<script type="module" src="./src/main.js?v=15.2"></script>
 </body>
 </html>

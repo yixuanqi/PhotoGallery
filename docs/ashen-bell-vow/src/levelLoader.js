@@ -320,19 +320,30 @@ export async function loadWorldData() {
     }
   }
 
-  // 2. Fetch data/world.json and all room JSON files concurrently
-  const worldResp = await fetch('./data/world.json', { cache: 'no-cache' });
-  if (!worldResp.ok) throw new Error(`加载 data/world.json 失败 (HTTP ${worldResp.status})`);
-  const world = await worldResp.json();
+  const fetchJsonWithRetry = async (url, retries = 2) => {
+    let lastErr = null;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const resp = await fetch(url, { cache: 'no-cache' });
+        if (!resp.ok) throw new Error(`加载 ${url} 失败 (HTTP ${resp.status})`);
+        return await resp.json();
+      } catch (err) {
+        lastErr = err;
+        if (attempt < retries) await new Promise(r => setTimeout(r, 450 * (attempt + 1)));
+      }
+    }
+    throw lastErr;
+  };
+
+  // 2. Fetch data/world.json and all room JSON files concurrently with mobile retry
+  const world = await fetchJsonWithRetry('./data/world.json', 2);
   if (!world || !Array.isArray(world.rooms) || world.rooms.length === 0) {
     throw new Error('data/world.json 缺少有效的 rooms 房间清单');
   }
 
   const rooms = await Promise.all(
     world.rooms.map(async entry => {
-      const resp = await fetch(entry.file, { cache: 'no-cache' });
-      if (!resp.ok) throw new Error(`加载房间 ${entry.file} 失败 (HTTP ${resp.status})`);
-      const data = await resp.json();
+      const data = await fetchJsonWithRetry(entry.file, 2);
       // Keep world.json manifest bounds authoritative if edited in world overview
       return {
         ...data,
