@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": 4,
+  "catalogVersion": 5,
   "repository": "yixuanqi/PhotoGallery",
   "baseUrl": "https://yixuanqi.github.io/PhotoGallery/",
   "updatedAt": "2026-11-20",
@@ -726,6 +726,66 @@
             "探索中可以在祭坛恢复生命与资源、切换不同圣物，并挑战断钟骑士·晦。页面内置合成音效和触屏控制，可直接在浏览器体验。"
           ],
           "order": 11
+        }
+      }
+    },
+    {
+      "id": "wind-messenger",
+      "name": "拾风信使",
+      "nameEn": "Wind Messenger · A Little Breeze Valley",
+      "kind": "interactive-web",
+      "category": "game",
+      "status": "published",
+      "summary": "在手绘水彩风格的阳光山谷里奔跑、跳跃与滑翔，操纵风场推动云朵、护送纸飞机，唤醒风车并让向日葵重新盛开。",
+      "tags": [
+        "Canvas 2D",
+        "横版探索",
+        "风场交互",
+        "程序化音效",
+        "移动端触控"
+      ],
+      "techStack": [
+        "HTML5 Canvas 2D",
+        "JavaScript",
+        "Web Audio API"
+      ],
+      "primaryUrl": "https://yixuanqi.github.io/PhotoGallery/wind-messenger/",
+      "primaryAction": "开始拾风之旅",
+      "repositoryUrl": "https://github.com/yixuanqi/PhotoGallery",
+      "sourcePath": "docs/wind-messenger/index.html",
+      "sortOrder": 14,
+      "galaxy": {
+        "icon": "🍃",
+        "category": "online",
+        "description": "在一座暖色水彩山谷里奔跑、跳跃与滑翔。划出风线推动云朵、旋风聚气与吹散雨云，护送纸飞机、唤醒风车和向日葵。",
+        "note": "单文件 Canvas 2D 游戏，无需安装；支持键盘、鼠标与手机触控。唤醒三座风车可让盛夏大季风与彩虹重返山谷，完成四封信件与两朵向日葵还可触发额外庆典。",
+        "linkText": "↗ 开始拾风之旅",
+        "sourceUrl": "https://github.com/yixuanqi/PhotoGallery/blob/main/docs/wind-messenger/index.html",
+        "palette": [
+          "#6E9FB5",
+          "#F2D5A0",
+          "#456B79"
+        ],
+        "atmo": "#8BC7D8",
+        "ring": "#C5E2C6",
+        "style": "wave",
+        "position": [
+          45,
+          -4,
+          -44
+        ],
+        "radius": 1.82,
+        "journal": {
+          "id": "wind-messenger-note",
+          "no": "12 · 风之邮路",
+          "title": "用一阵风，重新点亮一座山谷",
+          "summary": "把划风、旋风、纸飞机和水彩云朵变成一场轻盈的横版探索。",
+          "paragraphs": [
+            "《拾风信使》把一座 4000 像素宽的阳光山谷做成可以亲自走进去的手绘世界。玩家可以奔跑、跳跃和滑翔，也能用鼠标划出风线，让风场真正参与场景中的云朵与纸飞机运动。",
+            "游戏的核心不是击败敌人，而是让山谷重新有风：推动云朵聚合，唤醒三座风车，随着大季风回归让水彩彩虹重新出现。风线与旋风也能帮助护送四架纸飞机完成投递，并驱散雨云，让两处向日葵重新盛开。",
+            "整个场景由 Canvas 2D 程序化绘制，风声、钟鸣与互动音效由 Web Audio API 实时生成，不依赖外部图片、模型或音频素材。它更像一封可以亲手参与的夏日小信。"
+          ],
+          "order": 12
         }
       }
     }
