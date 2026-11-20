@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": 2,
+  "catalogVersion": 3,
   "repository": "yixuanqi/PhotoGallery",
   "baseUrl": "https://yixuanqi.github.io/PhotoGallery/",
-  "updatedAt": "2026-11-19",
+  "updatedAt": "2026-11-20",
   "projects": [
     {
       "id": "galaxy",
@@ -309,6 +309,31 @@
       "repositoryUrl": "https://github.com/yixuanqi/PhotoGallery",
       "sourcePath": "docs/star-courier/index.html",
       "sortOrder": 12
+    },
+    {
+      "id": "ashen-bell-vow",
+      "name": "灰钟残誓",
+      "nameEn": "Ashen Bell Vow · Hand-Drawn Metroidvania",
+      "kind": "interactive-web",
+      "category": "game",
+      "status": "published",
+      "summary": "暗黑手绘风格的横版动作 RPG 原型。操纵提灯人偶探索晦渊，组合斩击、居合、弹反、闪避与钩索，挑战断钟骑士。",
+      "tags": [
+        "2D 横版",
+        "动作 RPG",
+        "类银河恶魔城",
+        "弹反与居合"
+      ],
+      "techStack": [
+        "Canvas 2D",
+        "JavaScript",
+        "Web Audio"
+      ],
+      "primaryUrl": "https://yixuanqi.github.io/PhotoGallery/ashen-bell-vow/",
+      "primaryAction": "进入晦渊",
+      "repositoryUrl": "https://github.com/yixuanqi/PhotoGallery",
+      "sourcePath": "docs/ashen-bell-vow/index.html",
+      "sortOrder": 13
     }
   ]
 }
