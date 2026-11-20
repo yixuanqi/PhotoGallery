@@ -15,6 +15,14 @@ import { drawLanternCastShadows, drawVolumetricLanternLights } from './renderLig
 import { getGroundSurfaceY } from './physics.js';
 import { isPickupUnlocked } from './combat.js';
 
+// Preserve the theme color formatter after the lighting-module extraction.
+function rgbStr(arr, alpha = 1) {
+  const r = Math.round(arr[0]);
+  const g = Math.round(arr[1]);
+  const b = Math.round(arr[2]);
+  return alpha >= 0.999 ? `rgb(${r},${g},${b})` : `rgba(${r},${g},${b},${alpha.toFixed(3)})`;
+}
+
 export function render() {
   G.ctx.save();
 
