@@ -1,0 +1,343 @@
+// Central mutable game state container (G) and cross-module hook registry (hooks)
+import {
+  RELICS, ROOMS, ALTARS, FLOOR_Y, MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H,
+  SECRET_WALLS_DEF, PICKUPS_DEF, RESONANCE_PUZZLES_DEF, CRUMBLE_PLATFORMS_DEF, LANTERNS_DEF
+} from './config.js';
+
+export const G = {
+  currentRelic: RELICS[0],
+  equippedRelics: [RELICS[0], null],
+  activeRelicSlot: 0,
+
+  // Canvas & procedural frame state
+  canvas: null,
+  ctx: null,
+  canvasW: 1280,
+  canvasH: 720,
+  globalTime: 0,
+  boilFrame: 0,
+  paperPattern: null,
+
+  // Loaded Room JSON bundle & current room state
+  levelBundle: null,
+  isEditorPreview: false,
+  currentRoomId: null,
+
+  // Persistent world & exploration state
+  worldState: null,
+  exploreDirty: true,
+  cachedExplorePct: 0,
+  minimapDirty: true,
+  lastMinimapRenderTime: -1,
+  saveDirtyTimer: 0,
+
+  // Control mode
+  controlMode: 'kbmouse',
+
+  // VFX & dynamic pools
+  particles: [],
+  slashes: [],
+  shockwaves: [],
+  impactBursts: [],
+  hitMarks: [],
+  floatTexts: [],
+  afterimages: [],
+  talismans: [],
+  groundWaves: [],
+  chapelTide: null,
+  projectiles: [],
+  bellQuakes: [],
+  crumblePlatforms: [],
+  resonancePuzzles: [],
+  ambientMotes: [],
+  weatherParticles: [],
+  weatherRipples: [],
+  themeBlend: {
+    activeTheme: 'sanctuary',
+    weather: 'ash',
+    skyTop: [8, 14, 26],
+    skyMid: [16, 28, 44],
+    skyBot: [5, 9, 16],
+    mist: [14, 28, 46],
+    accent: [56, 189, 248]
+  },
+  lanterns: [],
+  grapplePreviewTarget: null,
+
+  // Runtime gameplay state
+  gameState: 'title',
+  hitstopTimer: 0,
+  invertTimer: 0,
+  screenFlash: { alpha: 0, color: '#fff' },
+  cam: { x: 0, y: 0, shake: 0, kickX: 0, kickY: 0, zoom: 1 },
+  stats: { parries: 0, executions: 0, damageTaken: 0, startTime: 0 },
+
+  // Actors
+  player: null,
+  enemies: [],
+  boss: null,
+  boss2: null,
+  echoSession: null,
+  outcomeTimer: null,
+
+  // Modal state
+  activeModal: null,
+  modalReturnState: 'playing'
+};
+
+// Populated once at startup in main.js to avoid circular imports between gameplay & UI layers
+export const hooks = {
+  syncHUD: () => {},
+  saveProgress: () => {},
+  readSaveData: () => null,
+  refreshTitleSaveUI: () => {},
+  showDeath: () => {},
+  showVictory: () => {},
+  advanceEchoRushStage2: () => {},
+  interactWithAltar: () => {},
+  openLoreModal: () => {},
+  openMapModal: () => {},
+  closeModal: () => {},
+  startGame: () => {},
+  continueSavedGame: () => {},
+  respawnAtActiveAltar: () => {},
+  startEchoChallenge: () => {},
+  continueIntoBellWell: () => {}
+};
+
+export function createFreshWorldState() {
+  G.exploreDirty = true;
+  G.minimapDirty = true;
+  return {
+    litAltars: new Set(['altar_start']),
+    activeAltarId: 'altar_start',
+    bossDefeated: false,
+    boss2Defeated: false,
+    chapelExitAnim: 0,
+    foundryGateAnim: 0,
+    echoRecords: { hui: null, ji: null, rush: null },
+    shortcutOpen: false,
+    shortcutAnim: 0, // 0 = closed, 1 = fully raised
+    secretWalls: SECRET_WALLS_DEF.map(w => ({ ...w, type: 'pillar', hp: w.maxHp, broken: false, shake: 0 })),
+    pickups: PICKUPS_DEF.map(p => ({ ...p, collected: false })),
+    solvedPuzzles: new Set(),
+    bonusFlasks: 0,
+    bonusMaxHp: 0,
+    bonusMaxSoul: 0,
+    abilities: { doubleJump: false },
+    unlockedRelics: new Set(['thorn', 'mirror', 'ember']),
+    explored: Array.from({ length: MAP_ROWS }, () => new Array(MAP_COLS).fill(false))
+  };
+}
+
+export function getActiveAltar() {
+  const id = G.worldState ? G.worldState.activeAltarId : 'altar_start';
+  return ALTARS.find(a => a.id === id) || ALTARS[0];
+}
+
+export function getRelicStats() {
+  const active = (G.equippedRelics || [G.currentRelic]).filter(Boolean);
+  if (active.length === 0) active.push(RELICS[0]);
+  const has = id => active.some(r => r.id === id);
+
+  let parryWindowMs = has('mirror') ? 100 : Math.max(...active.map(r => r.parryWindowMs || 140));
+  let blockWindowMs = has('mirror') ? 225 : Math.max(...active.map(r => r.blockWindowMs || 260));
+  let parryPostureMult = active.reduce((acc, r) => acc * (r.parryPostureMult || 1.0), 1.0);
+  let parryReflectDmg = active.reduce((acc, r) => acc + (r.parryReflectDmg || 0), 0);
+  let parryHeal = active.reduce((acc, r) => acc + (r.parryHeal || 0), 0);
+  let grayDuration = Math.max(...active.map(r => r.grayDuration || 3.4)) + active.reduce((acc, r) => acc + (r.grayDurationBonus || 0), 0);
+  let rallyMult = 1.0 + active.reduce((acc, r) => acc + Math.max(0, (r.rallyMult || 1.0) - 1.0), 0);
+  let flaskPenalty = has('ember') ? -1 : 0;
+  let maxFlasks = Math.max(2, 3 + flaskPenalty);
+  let maxSeals = Math.max(3, ...active.map(r => r.maxSeals || 3));
+  let execHealPct = Math.max(...active.map(r => r.execHealPct || 0.12));
+  let execFullSoul = has('ember');
+  let grappleCd = Math.min(0.52, ...active.map(r => r.grappleCd || 0.52));
+  let spellCost = Math.min(30, ...active.map(r => r.spellCost || 30));
+  let quakeCost = Math.min(40, ...active.map(r => r.quakeCost || (r.id === 'bellthread' ? 32 : 40)));
+  let spellPostureBonus = active.reduce((acc, r) => acc + (r.spellPostureBonus || 0), 0);
+  let heavySkillMult = active.reduce((acc, r) => acc * (r.heavySkillMult || 1.0), 1.0);
+  let soulGainMult = active.reduce((acc, r) => acc * (r.soulGainMult || 1.0), 1.0);
+  let spellDmgMult = active.reduce((acc, r) => acc * (r.spellDmgMult || 1.0), 1.0);
+  let spellRadiusMult = active.reduce((acc, r) => acc * (r.spellRadiusMult || 1.0), 1.0);
+  let postureDmgMult = active.reduce((acc, r) => acc * (r.postureDmgMult || 1.0), 1.0);
+  let iaiChargeTime = Math.min(0.42, ...active.map(r => r.iaiChargeTime || 0.42));
+  let bellTimerBonus = active.reduce((acc, r) => acc + (r.bellTimerBonus || 0), 0);
+
+  return {
+    parryWindowMs, blockWindowMs, parryPostureMult, parryReflectDmg, parryHeal,
+    grayDuration, rallyMult, maxFlasks, maxSeals, execHealPct, execFullSoul,
+    grappleCd, spellCost, quakeCost, spellPostureBonus, heavySkillMult,
+    soulGainMult, spellDmgMult, spellRadiusMult, postureDmgMult,
+    iaiChargeTime, bellTimerBonus
+  };
+}
+
+export function getEquippedRelicLabel() {
+  const active = (G.equippedRelics || [G.currentRelic]).filter(Boolean);
+  if (active.length === 0) return RELICS[0].name;
+  return active.map(r => r.name).join(' · ');
+}
+
+export function getPlayerMaxHp() {
+  return 100 + (G.worldState ? (G.worldState.bonusMaxHp || 0) : 0);
+}
+
+export function getPlayerMaxSoul() {
+  return 100 + (G.worldState ? (G.worldState.bonusMaxSoul || 0) : 0);
+}
+
+export function getPlayerMaxFlasks() {
+  return getRelicStats().maxFlasks + (G.worldState ? G.worldState.bonusFlasks : 0);
+}
+
+export function getPlayerMaxSeals() {
+  return getRelicStats().maxSeals;
+}
+
+export function createResonancePuzzles() {
+  const solvedSet = G.worldState && G.worldState.solvedPuzzles ? G.worldState.solvedPuzzles : new Set();
+  return RESONANCE_PUZZLES_DEF.map(p => {
+    const solved = solvedSet.has(p.id);
+    return {
+      ...p,
+      solved,
+      timer: 0,
+      maxTimer: p.timeLimit,
+      cageAnim: solved ? 1 : 0,
+      bells: p.bells.map(b => ({
+        ...b,
+        lit: solved,
+        swing: 0,
+        swingVel: 0,
+        hitCd: 0,
+        flash: 0
+      }))
+    };
+  });
+}
+
+export function createCrumblePlatforms() {
+  return CRUMBLE_PLATFORMS_DEF.map(p => ({
+    ...p,
+    type: 'platform',
+    crumble: true,
+    state: 'solid', // solid | shaking | broken
+    timer: 0
+  }));
+}
+
+export function markMapExplored(px, py = FLOOR_Y - 60) {
+  if (!G.worldState) return;
+  const col = Math.floor(px / MAP_CELL_W);
+  const row = Math.floor(py / MAP_CELL_H);
+  let changed = false;
+  for (let dr = -2; dr <= 2; dr++) {
+    const r = row + dr;
+    if (r < 0 || r >= MAP_ROWS) continue;
+    for (let dc = -2; dc <= 2; dc++) {
+      const c = col + dc;
+      if (c >= 0 && c < MAP_COLS && !G.worldState.explored[r][c]) {
+        G.worldState.explored[r][c] = true;
+        changed = true;
+      }
+    }
+  }
+  if (changed) {
+    G.exploreDirty = true;
+    G.minimapDirty = true;
+    if (G.gameState === 'playing') G.saveDirtyTimer = 3.0;
+  }
+}
+
+export function isWorldPosExplored(x, y) {
+  if (!G.worldState) return false;
+  const c = Math.max(0, Math.min(MAP_COLS - 1, Math.floor(x / MAP_CELL_W)));
+  const r = Math.max(0, Math.min(MAP_ROWS - 1, Math.floor(y / MAP_CELL_H)));
+  return G.worldState.explored[r][c];
+}
+
+export function getExplorationPercent() {
+  if (!G.worldState) return 0;
+  if (!G.exploreDirty) return G.cachedExplorePct;
+  // Dynamically count cells inside any loaded room's bounds so custom rooms work automatically!
+  let total = 0;
+  let seen = 0;
+  for (let r = 0; r < MAP_ROWS; r++) {
+    const cy = (r + 0.5) * MAP_CELL_H;
+    for (let c = 0; c < MAP_COLS; c++) {
+      const cx = (c + 0.5) * MAP_CELL_W;
+      let playable = ROOMS.length === 0;
+      for (let i = 0; i < ROOMS.length; i++) {
+        const b = ROOMS[i].bounds;
+        if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) {
+          playable = true;
+          break;
+        }
+      }
+      if (!playable) continue;
+      total++;
+      if (G.worldState.explored[r][c]) seen++;
+    }
+  }
+  G.cachedExplorePct = total > 0 ? Math.min(100, Math.round((seen / total) * 100)) : 0;
+  G.exploreDirty = false;
+  return G.cachedExplorePct;
+}
+
+export function createLanterns() {
+  return LANTERNS_DEF.map(l => ({
+    ...l,
+    angle: l.angle !== undefined ? l.angle : 0.05,
+    angVel: 0,
+    hitCd: 0,
+    ringFlash: 0
+  }));
+}
+
+export function getAwakeBoss() {
+  if (G.boss && G.boss.awake && G.boss.alive) return G.boss;
+  if (G.boss2 && G.boss2.awake && G.boss2.alive) return G.boss2;
+  return null;
+}
+
+export function getLivingFoes() {
+  const list = [];
+  for (let i = 0; i < G.enemies.length; i++) {
+    if (G.enemies[i] && G.enemies[i].alive) list.push(G.enemies[i]);
+  }
+  if (G.boss && G.boss.alive) list.push(G.boss);
+  if (G.boss2 && G.boss2.alive) list.push(G.boss2);
+  return list;
+}
+
+export function clearOutcomeTimer() {
+  if (G.outcomeTimer !== null) {
+    clearTimeout(G.outcomeTimer);
+    G.outcomeTimer = null;
+  }
+}
+
+export function scheduleOutcome(fn, delayMs, forceOverride = false) {
+  if (G.outcomeTimer !== null) {
+    if (!forceOverride) return;
+    clearTimeout(G.outcomeTimer);
+  }
+  G.outcomeTimer = setTimeout(() => {
+    G.outcomeTimer = null;
+    fn();
+  }, delayMs);
+}
+
+export function addShake(amount) {
+  G.cam.shake = Math.min(20, Math.max(G.cam.shake, amount));
+}
+
+export function kickCamera(kx, ky) {
+  G.cam.kickX = Math.max(-18, Math.min(18, G.cam.kickX + kx));
+  G.cam.kickY = Math.max(-12, Math.min(12, G.cam.kickY + ky));
+}
+
+export function punchZoom(targetZoom) {
+  G.cam.zoom = Math.min(1.065, Math.max(G.cam.zoom, targetZoom));
+}

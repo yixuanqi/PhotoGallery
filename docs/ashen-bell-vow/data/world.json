@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "title": "灰钟残誓 · 晦渊全境",
+  "floorY": 580,
+  "wellBottomY": 1380,
+  "startAltarId": "altar_start",
+  "rooms": [
+    {
+      "id": "r01_sanctuary",
+      "file": "./data/rooms/r01_sanctuary.json",
+      "zoneName": "沉钟回廊",
+      "name": "熄灯祭坛",
+      "theme": "sanctuary",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "w": 940,
+        "h": 720
+      },
+      "connections": [
+        "r02_corridor"
+      ]
+    },
+    {
+      "id": "r02_corridor",
+      "file": "./data/rooms/r02_corridor.json",
+      "zoneName": "沉钟回廊",
+      "name": "枯骨长廊",
+      "theme": "corridor",
+      "bounds": {
+        "x": 940,
+        "y": 0,
+        "w": 1705,
+        "h": 720
+      },
+      "connections": [
+        "r01_sanctuary",
+        "r03_chapel"
+      ]
+    },
+    {
+      "id": "r03_chapel",
+      "file": "./data/rooms/r03_chapel.json",
+      "zoneName": "沉钟回廊",
+      "name": "断钟礼拜堂",
+      "theme": "chapel",
+      "bounds": {
+        "x": 2645,
+        "y": 0,
+        "w": 1135,
+        "h": 720
+      },
+      "connections": [
+        "r02_corridor",
+        "r04_bell_well"
+      ]
+    },
+    {
+      "id": "r04_bell_well",
+      "file": "./data/rooms/r04_bell_well.json",
+      "zoneName": "沉渊钟井",
+      "name": "沉渊钟井",
+      "theme": "bell_well",
+      "bounds": {
+        "x": 3780,
+        "y": 0,
+        "w": 1780,
+        "h": 1520
+      },
+      "connections": [
+        "r03_chapel",
+        "r05_foundry"
+      ]
+    },
+    {
+      "id": "r05_foundry",
+      "file": "./data/rooms/r05_foundry.json",
+      "zoneName": "沉渊钟井",
+      "name": "沉渊铸钟殿",
+      "theme": "foundry",
+      "bounds": {
+        "x": 5560,
+        "y": 780,
+        "w": 1180,
+        "h": 740
+      },
+      "connections": [
+        "r04_bell_well"
+      ]
+    }
+  ]
+}

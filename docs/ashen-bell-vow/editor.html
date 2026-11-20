@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>灰钟残誓 v12 — 房间化关卡编辑器</title>
+<link rel="stylesheet" href="./editor.css?v=12" />
+</head>
+<body>
+<div class="ed-shell">
+  <!-- Top Bar -->
+  <header class="ed-topbar">
+    <div class="ed-brand">
+      <span>灰钟残誓 · 房间编辑器</span>
+    </div>
+    <div class="ed-top-group">
+      <button id="btn-view-room" class="ed-btn active">单房间编辑</button>
+      <button id="btn-view-world" class="ed-btn">全境箱庭总览</button>
+      <select id="sel-grid" class="ed-select" title="坐标吸附网格">
+        <option value="10" selected>吸附: 10px</option>
+        <option value="20">吸附: 20px</option>
+        <option value="5">吸附: 5px</option>
+        <option value="1">吸附: 自由</option>
+      </select>
+      <button id="btn-fit" class="ed-btn" title="居中适配画布 [F]">适配视野</button>
+      <button id="btn-undo" class="ed-btn" title="撤销 [Ctrl+Z]">↶ 撤销</button>
+      <button id="btn-redo" class="ed-btn" title="重做 [Ctrl+Y]">↷ 重做</button>
+    </div>
+    <div class="ed-top-group">
+      <button id="btn-playtest" class="ed-btn primary" title="直接跳入当前编辑的房间试玩">▶ 试玩当前房</button>
+      <button id="btn-save-disk" class="ed-btn gold" title="直接写回 data/world.json 与 data/rooms/*.json（需通过 serve_local.py 运行）">💾 保存到本地</button>
+      <button id="btn-export-room" class="ed-btn" title="下载当前房间的 JSON 文件">导出房间</button>
+      <button id="btn-export-world" class="ed-btn" title="下载完整世界合并包 JSON">导出全境</button>
+      <label class="ed-btn" style="display:inline-flex;align-items:center;" title="导入单个房间 JSON 或完整世界 JSON">
+        导入JSON<input id="file-import" type="file" accept=".json" style="display:none;" />
+      </label>
+      <a href="./index.html" class="ed-btn" style="text-decoration:none;">返回游戏</a>
+    </div>
+  </header>
+
+  <!-- Left Sidebar: Rooms & Tools -->
+  <aside class="ed-sidebar">
+    <div>
+      <div class="ed-sec-title">
+        <span>房间列表 (ROOMS)</span>
+        <button id="btn-add-room" class="ed-btn" style="padding:2px 7px;font-size:11px;">+ 新建房</button>
+      </div>
+      <div id="room-list" class="room-list"></div>
+    </div>
+
+    <div>
+      <div class="ed-sec-title"><span>地形与碰撞（拖拽拉框）</span></div>
+      <div class="tool-grid">
+        <button class="tool-btn active" data-tool="select"><span class="tool-dot" style="background:#fde047"></span>选择 [V]</button>
+        <button class="tool-btn" data-tool="ground"><span class="tool-dot" style="background:#475569"></span>实心大地</button>
+        <button class="tool-btn" data-tool="pillar"><span class="tool-dot" style="background:#64748b"></span>石柱/墙体</button>
+        <button class="tool-btn" data-tool="platform"><span class="tool-dot" style="background:#d8cfb8"></span>单向平台</button>
+        <button class="tool-btn" data-tool="crumble"><span class="tool-dot" style="background:#f59e0b"></span>崩塌石板</button>
+        <button class="tool-btn" data-tool="secretWall"><span class="tool-dot" style="background:#38bdf8"></span>墨蚀暗墙</button>
+        <button class="tool-btn" data-tool="river"><span class="tool-dot" style="background:#0284c7"></span>腐蚀暗河</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="ed-sec-title"><span>敌兵与机关（点击放置）</span></div>
+      <div class="tool-grid">
+        <button class="tool-btn" data-tool="sentinel"><span class="tool-dot" style="background:#ef4444"></span>持矛哨兵</button>
+        <button class="tool-btn" data-tool="wraith"><span class="tool-dot" style="background:#f43f5e"></span>悬灯怨灵</button>
+        <button class="tool-btn" data-tool="golem"><span class="tool-dot" style="background:#fb923c"></span>守钟铁卫</button>
+        <button class="tool-btn" data-tool="lantern"><span class="tool-dot" style="background:#fde047"></span>青铜悬灯</button>
+        <button class="tool-btn" data-tool="anchor"><span class="tool-dot" style="background:#7dd3fc"></span>钩索铜环</button>
+        <button class="tool-btn" data-tool="pendulum"><span class="tool-dot" style="background:#dc2626"></span>青铜钟摆</button>
+        <button class="tool-btn" data-tool="altar"><span class="tool-dot" style="background:#38bdf8"></span>熄灯祭坛</button>
+        <button class="tool-btn" data-tool="pickup"><span class="tool-dot" style="background:#facc15"></span>秘宝/残芯</button>
+        <button class="tool-btn" data-tool="lore"><span class="tool-dot" style="background:#c8ba9b"></span>风化残碑</button>
+        <button class="tool-btn" data-tool="inscription"><span class="tool-dot" style="background:#94a3b8"></span>墙面铭文</button>
+        <button class="tool-btn" data-tool="banner"><span class="tool-dot" style="background:#881337"></span>垂吊旗帜</button>
+        <button class="tool-btn" data-tool="candle"><span class="tool-dot" style="background:#fbbf24"></span>蜡烛簇</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Center Canvas -->
+  <main class="ed-viewport">
+    <canvas id="editorCanvas"></canvas>
+    <div id="ed-toast" class="ed-toast"></div>
+    <div class="ed-hint-pill">左键选择/绘制 · 右键或中键拖拽平移 · 滚轮缩放 · Ctrl+D 复制 · Del 删除 · F 适配视野</div>
+  </main>
+
+  <!-- Right Sidebar: Inspector -->
+  <aside class="ed-inspector">
+    <div>
+      <div class="ed-sec-title"><span>房间属性 (ROOM)</span></div>
+      <div id="room-props" class="prop-grid"></div>
+    </div>
+    <div>
+      <div class="ed-sec-title"><span>选中物件属性 (INSPECTOR)</span></div>
+      <div id="obj-inspector" style="color:var(--dim);font-size:12px;">点击画布中的任意平台、敌兵或机关以编辑属性。</div>
+    </div>
+  </aside>
+
+  <!-- Bottom Status Bar -->
+  <footer class="ed-statusbar">
+    <span id="status-pos">房间坐标: (0, 0) | 世界坐标: (0, 0)</span>
+    <span id="status-info">就绪</span>
+  </footer>
+</div>
+<script type="module" src="./src/editor.js?v=12"></script>
+</body>
+</html>

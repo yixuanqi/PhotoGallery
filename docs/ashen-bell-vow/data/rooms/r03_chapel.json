@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 1,
+  "id": "r03_chapel",
+  "zoneName": "沉钟回廊",
+  "name": "断钟礼拜堂",
+  "theme": "chapel",
+  "bounds": {
+    "x": 2645,
+    "y": 0,
+    "w": 1135,
+    "h": 720
+  },
+  "subZones": [
+    {
+      "name": "沉钟回廊 · 断钟礼拜堂",
+      "x": 0,
+      "y": 0,
+      "w": 1135,
+      "h": 720
+    }
+  ],
+  "connections": [
+    "r02_corridor",
+    "r04_bell_well"
+  ],
+  "solids": [
+    {
+      "x": 0,
+      "y": 580,
+      "w": 1135,
+      "h": 980,
+      "type": "ground"
+    },
+    {
+      "x": 1095,
+      "y": 0,
+      "w": 40,
+      "h": 480,
+      "type": "pillar"
+    }
+  ],
+  "crumblePlatforms": [],
+  "altars": [],
+  "loreTablets": [],
+  "gates": [
+    {
+      "id": "gate_chapel_exit",
+      "role": "chapelExit",
+      "x": 1095,
+      "y": 480,
+      "w": 40,
+      "h": 100
+    }
+  ],
+  "secretWalls": [],
+  "pickups": [],
+  "resonancePuzzles": [],
+  "pendulums": [],
+  "rivers": [],
+  "grappleAnchors": [
+    {
+      "id": "anc_boss_l",
+      "x": 345,
+      "y": 240
+    },
+    {
+      "id": "anc_boss_c",
+      "x": 555,
+      "y": 200
+    },
+    {
+      "id": "anc_boss_r",
+      "x": 765,
+      "y": 240
+    }
+  ],
+  "lanterns": [
+    {
+      "id": "lan_4",
+      "x": 225,
+      "anchorY": 150,
+      "len": 180,
+      "angle": 0.04
+    },
+    {
+      "id": "lan_5",
+      "x": 835,
+      "anchorY": 150,
+      "len": 180,
+      "angle": -0.04
+    }
+  ],
+  "enemies": [],
+  "bosses": [
+    {
+      "id": "boss_hui",
+      "kind": "boss",
+      "x": 775,
+      "y": 476,
+      "arenaMinX": 3,
+      "arenaMaxX": 1093,
+      "arenaFloorY": 580,
+      "arenaTopY": 0
+    }
+  ],
+  "inscriptions": [],
+  "props": {
+    "puddles": [
+      {
+        "x": 215,
+        "w": 165
+      },
+      {
+        "x": 705,
+        "w": 150
+      }
+    ],
+    "banners": [
+      {
+        "x": 125,
+        "y": 95,
+        "len": 185,
+        "color": "#421621"
+      },
+      {
+        "x": 415,
+        "y": 85,
+        "len": 200,
+        "color": "#421621"
+      },
+      {
+        "x": 695,
+        "y": 85,
+        "len": 200,
+        "color": "#421621"
+      },
+      {
+        "x": 975,
+        "y": 95,
+        "len": 185,
+        "color": "#421621"
+      }
+    ],
+    "candles": [
+      {
+        "x": 30,
+        "y": 580,
+        "count": 4
+      },
+      {
+        "x": 295,
+        "y": 580,
+        "count": 3
+      },
+      {
+        "x": 815,
+        "y": 580,
+        "count": 3
+      },
+      {
+        "x": 1065,
+        "y": 580,
+        "count": 4
+      }
+    ],
+    "boneCairns": [
+      95,
+      1015
+    ]
+  }
+}

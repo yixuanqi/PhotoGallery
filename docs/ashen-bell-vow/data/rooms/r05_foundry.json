@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "id": "r05_foundry",
+  "zoneName": "沉渊钟井",
+  "name": "沉渊铸钟殿",
+  "theme": "foundry",
+  "bounds": {
+    "x": 5560,
+    "y": 780,
+    "w": 1180,
+    "h": 740
+  },
+  "subZones": [
+    {
+      "name": "沉渊钟井 · 沉渊铸钟殿",
+      "x": 0,
+      "y": 0,
+      "w": 1180,
+      "h": 740
+    }
+  ],
+  "connections": [
+    "r04_bell_well"
+  ],
+  "solids": [
+    {
+      "x": 1160,
+      "y": -780,
+      "w": 60,
+      "h": 1520,
+      "type": "pillar"
+    },
+    {
+      "x": 0,
+      "y": 600,
+      "w": 1180,
+      "h": 180,
+      "type": "ground"
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 1180,
+      "h": 40,
+      "type": "pillar"
+    },
+    {
+      "x": 160,
+      "y": 425,
+      "w": 155,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 845,
+      "y": 425,
+      "w": 155,
+      "h": 22,
+      "type": "platform"
+    }
+  ],
+  "crumblePlatforms": [],
+  "altars": [],
+  "loreTablets": [],
+  "gates": [],
+  "secretWalls": [],
+  "pickups": [],
+  "resonancePuzzles": [],
+  "pendulums": [],
+  "rivers": [],
+  "grappleAnchors": [
+    {
+      "id": "anc_ji_l",
+      "x": 340,
+      "y": 275,
+      "topY": 40
+    },
+    {
+      "id": "anc_ji_c",
+      "x": 580,
+      "y": 205,
+      "topY": 40
+    },
+    {
+      "id": "anc_ji_r",
+      "x": 820,
+      "y": 275,
+      "topY": 40
+    }
+  ],
+  "lanterns": [
+    {
+      "id": "lan_9",
+      "x": 400,
+      "anchorY": 160,
+      "topY": 40,
+      "len": 135,
+      "angle": 0.05
+    },
+    {
+      "id": "lan_10",
+      "x": 760,
+      "anchorY": 160,
+      "topY": 40,
+      "len": 135,
+      "angle": -0.05
+    }
+  ],
+  "enemies": [],
+  "bosses": [
+    {
+      "id": "boss_ji",
+      "kind": "boss2",
+      "x": 800,
+      "y": 458,
+      "arenaMinX": 24,
+      "arenaMaxX": 1156,
+      "arenaFloorY": 600,
+      "arenaTopY": 40
+    }
+  ],
+  "inscriptions": [
+    {
+      "x": 85,
+      "y": 510,
+      "text": "「沉渊铸钟殿 · 借墨翼与钩环迎战铸钟师」"
+    }
+  ],
+  "props": {
+    "puddles": [],
+    "banners": [],
+    "candles": [
+      {
+        "x": 65,
+        "y": 600,
+        "count": 4
+      },
+      {
+        "x": 580,
+        "y": 600,
+        "count": 5
+      },
+      {
+        "x": 1095,
+        "y": 600,
+        "count": 4
+      }
+    ],
+    "boneCairns": []
+  }
+}

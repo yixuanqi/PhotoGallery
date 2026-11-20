@@ -1,0 +1,366 @@
+{
+  "schemaVersion": 1,
+  "id": "r02_corridor",
+  "zoneName": "沉钟回廊",
+  "name": "枯骨长廊",
+  "theme": "corridor",
+  "bounds": {
+    "x": 940,
+    "y": 0,
+    "w": 1705,
+    "h": 720
+  },
+  "subZones": [
+    {
+      "name": "沉钟回廊 · 枯骨长廊",
+      "x": 0,
+      "y": 0,
+      "w": 1480,
+      "h": 720
+    },
+    {
+      "name": "沉钟回廊 · 礼拜堂前",
+      "x": 1480,
+      "y": 0,
+      "w": 225,
+      "h": 720
+    }
+  ],
+  "connections": [
+    "r01_sanctuary",
+    "r03_chapel"
+  ],
+  "solids": [
+    {
+      "x": 0,
+      "y": 580,
+      "w": 1705,
+      "h": 980,
+      "type": "ground"
+    },
+    {
+      "x": 20,
+      "y": 410,
+      "w": 170,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 235,
+      "y": 255,
+      "w": 170,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 440,
+      "y": 245,
+      "w": 38,
+      "h": 240,
+      "type": "pillar"
+    },
+    {
+      "x": 535,
+      "y": 245,
+      "w": 215,
+      "h": 24,
+      "type": "platform"
+    },
+    {
+      "x": 795,
+      "y": 365,
+      "w": 165,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1100,
+      "y": 430,
+      "w": 135,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1190,
+      "y": 255,
+      "w": 160,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1400,
+      "y": 380,
+      "w": 155,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1670,
+      "y": 270,
+      "w": 36,
+      "h": 210,
+      "type": "pillar"
+    }
+  ],
+  "crumblePlatforms": [
+    {
+      "id": "crumble_corridor_1",
+      "x": 980,
+      "y": 325,
+      "w": 96,
+      "h": 20
+    }
+  ],
+  "altars": [
+    {
+      "id": "altar_chapel",
+      "x": 1575,
+      "y": 580,
+      "name": "礼拜堂前 · 断索祭坛",
+      "shortName": "礼拜堂 · 断索祭坛",
+      "defaultLit": false
+    }
+  ],
+  "loreTablets": [
+    {
+      "id": "lore_corridor",
+      "x": 625,
+      "y": 245,
+      "title": "风化残碑",
+      "sub": "枯骨长廊 · 高台铭文",
+      "html": "“昔日晦渊无夜，青铜巨钟每鸣一声，墨蚀便退潮三里。<br>直至守誓者亲手斩断钟索——宁愿让圣城坠入永恒寂静，也不愿再听见地底传来的回响。<br><br>提灯的人偶啊，若你听见礼拜堂深处的拖剑声，请记住：<br><strong>金芒可借刃弹开，猩红危兆须以墨影穿身；唯有敲碎他的架势，残誓方得终结。</strong>”"
+    }
+  ],
+  "gates": [
+    {
+      "id": "gate_skyway",
+      "role": "shortcut",
+      "x": 440,
+      "y": 0,
+      "w": 38,
+      "h": 245,
+      "leverX": 555,
+      "leverY": 245
+    }
+  ],
+  "secretWalls": [],
+  "pickups": [
+    {
+      "id": "pickup_flask_core",
+      "kind": "flaskCore",
+      "x": 1270,
+      "y": 255,
+      "name": "灯油残芯",
+      "desc": "灯油上限永久 +1！"
+    },
+    {
+      "id": "pickup_relic_clapper",
+      "kind": "relic",
+      "relicId": "clapper",
+      "requiresPuzzle": "puzzle_corridor",
+      "bonusSoul": 20,
+      "x": 980,
+      "y": 580,
+      "name": "共鸣秘宝 · 回响钟舌",
+      "desc": "解锁法术圣物「回响钟舌」且魂火上限永久 +20！"
+    }
+  ],
+  "resonancePuzzles": [
+    {
+      "id": "puzzle_corridor",
+      "name": "枯骨长廊 · 三钟共鸣",
+      "timeLimit": 7.5,
+      "cageX": 980,
+      "cageY": 580,
+      "bells": [
+        {
+          "id": "rb_c1",
+          "x": 850,
+          "y": 470,
+          "topY": 387,
+          "noteFreq": 392.0
+        },
+        {
+          "id": "rb_c2",
+          "x": 1028,
+          "y": 255,
+          "topY": 0,
+          "noteFreq": 493.88
+        },
+        {
+          "id": "rb_c3",
+          "x": 1165,
+          "y": 355,
+          "topY": 0,
+          "noteFreq": 587.33
+        }
+      ]
+    }
+  ],
+  "pendulums": [],
+  "rivers": [],
+  "grappleAnchors": [
+    {
+      "id": "anc_2",
+      "x": 120,
+      "y": 250
+    },
+    {
+      "id": "anc_3",
+      "x": 680,
+      "y": 155
+    },
+    {
+      "id": "anc_4",
+      "x": 1120,
+      "y": 170
+    },
+    {
+      "id": "anc_5",
+      "x": 1510,
+      "y": 215
+    }
+  ],
+  "lanterns": [
+    {
+      "id": "lan_1",
+      "x": 355,
+      "anchorY": 165,
+      "len": 175,
+      "angle": -0.05
+    },
+    {
+      "id": "lan_2",
+      "x": 905,
+      "anchorY": 110,
+      "len": 145,
+      "angle": 0.04
+    },
+    {
+      "id": "lan_3",
+      "x": 1305,
+      "anchorY": 170,
+      "len": 160,
+      "angle": -0.06
+    }
+  ],
+  "enemies": [
+    {
+      "id": "sent_1",
+      "kind": "sentinel",
+      "x": 350,
+      "y": 518,
+      "minX": 140,
+      "maxX": 510
+    },
+    {
+      "id": "sent_2",
+      "kind": "sentinel",
+      "x": 1220,
+      "y": 518,
+      "minX": 1040,
+      "maxX": 1440
+    },
+    {
+      "id": "wraith_1",
+      "kind": "wraith",
+      "x": 480,
+      "y": 315
+    },
+    {
+      "id": "wraith_2",
+      "kind": "wraith",
+      "x": 1340,
+      "y": 270
+    }
+  ],
+  "bosses": [],
+  "inscriptions": [
+    {
+      "x": 225,
+      "y": 492,
+      "dynamicKey": "parry"
+    },
+    {
+      "x": 320,
+      "y": 215,
+      "text": "「青铜锁链闸 · 须自东侧残碑台启锁」",
+      "hideWhenShortcutOpen": true
+    },
+    {
+      "x": 980,
+      "y": 492,
+      "dynamicKey": "bellPuzzle",
+      "hideWhenPuzzleSolved": "puzzle_corridor"
+    },
+    {
+      "x": 1120,
+      "y": 372,
+      "text": "「高台钟龛藏有灯油残芯」"
+    }
+  ],
+  "props": {
+    "puddles": [
+      {
+        "x": 25,
+        "w": 130
+      },
+      {
+        "x": 475,
+        "w": 118
+      },
+      {
+        "x": 1055,
+        "w": 108
+      }
+    ],
+    "banners": [
+      {
+        "x": 180,
+        "y": 110,
+        "len": 165,
+        "color": "#33151e"
+      },
+      {
+        "x": 715,
+        "y": 100,
+        "len": 150,
+        "color": "#1e2433"
+      },
+      {
+        "x": 1370,
+        "y": 120,
+        "len": 155,
+        "color": "#33151e"
+      }
+    ],
+    "candles": [
+      {
+        "x": 592,
+        "y": 245,
+        "count": 3
+      },
+      {
+        "x": 658,
+        "y": 245,
+        "count": 2
+      },
+      {
+        "x": 1528,
+        "y": 580,
+        "count": 3
+      },
+      {
+        "x": 1622,
+        "y": 580,
+        "count": 3
+      }
+    ],
+    "boneCairns": [
+      270,
+      850,
+      1170,
+      1495
+    ]
+  }
+}
