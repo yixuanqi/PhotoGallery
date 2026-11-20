@@ -16,6 +16,10 @@ assert.match(html, /--cosmos-portal-y/, "arrival portal must reuse the projected
 assert.match(html, /function renderScene\(\)\s*\{[\s\S]*cosmos-arrival-ready/, "galaxy must reveal only after its first rendered frame");
 assert.match(html, /window\.setTimeout\(function \(\) \{[\s\S]*cosmos-arrival-ready[\s\S]*8000/, "failed renderer must not trap navigation indefinitely");
 
+// Project detail cards must not expose source-code links.
+assert.doesNotMatch(html, /source:\s*view\.sourceUrl/, "galaxy project data must not carry source-link URLs");
+assert.doesNotMatch(html, /查看源码/, "galaxy project cards must not render source-code links");
+
 // Compile every inline script without executing browser-dependent code.
 const inlineScripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)];
 for (const [index, match] of inlineScripts.entries()) {
