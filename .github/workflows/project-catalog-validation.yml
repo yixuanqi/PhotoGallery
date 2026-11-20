@@ -47,6 +47,11 @@ jobs:
           CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
           test -n "$CHROME_BIN"
           CHROME_BIN="$CHROME_BIN" node scripts/smoke-ashen-bell-vow.mjs
+      - name: Smoke test galaxy catalog hydration
+        run: |
+          CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME_BIN"
+          CHROME_BIN="$CHROME_BIN" node scripts/smoke-galaxy-catalog.mjs
       - name: Preserve browser regression screenshots
         if: always()
         uses: actions/upload-artifact@v4
