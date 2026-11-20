@@ -19,6 +19,13 @@ async function smokeViewport(viewport, mobile) {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   page.on("console", message => { if (message.type() === "error") pageErrors.push(message.text()); });
+  // Chromium probes favicon.ico by default; the game is intentionally self-contained and ships no favicon.
+  await page.route("**/favicon.ico", route => route.fulfill({ status: 204, body: "" }));
+  page.on("response", response => {
+    if (response.status() >= 400 && !new URL(response.url()).pathname.endsWith("/favicon.ico")) {
+      pageErrors.push("HTTP " + response.status() + " " + response.url());
+    }
+  });
   await page.goto(origin + "/ashen-bell-vow/", { waitUntil: "domcontentloaded", timeout: 45000 });
   await page.locator("#btn-start").waitFor({ state: "visible", timeout: 10000 });
   const initial = await page.evaluate(() => {
@@ -35,7 +42,7 @@ async function smokeViewport(viewport, mobile) {
   await page.waitForFunction(() => {
     const title = document.getElementById("title-screen");
     return title && title.classList.contains("hidden");
-  }, { timeout: 8000 });
+  }, null, { timeout: 8000 });
   await page.waitForTimeout(250);
   const playing = await page.evaluate(() => ({
     titleHidden: document.getElementById("title-screen").classList.contains("hidden"),
