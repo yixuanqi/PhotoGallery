@@ -1965,6 +1965,9 @@ function init() {
     fail('Three.js 加载失败。请检查网络连接，或直接点击下方按钮浏览作品星球索引。');
     return;
   }
+  // Defer Three.js object construction until after the availability guard.
+  tmpCamUp = new THREE.Vector3();
+  tmpAnchor = new THREE.Vector3();
   try {
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
   } catch (e) {
@@ -2108,8 +2111,8 @@ function reset() {
   controls.autoRotate = false;
 }
 
-var tmpCamUp = new THREE.Vector3();
-var tmpAnchor = new THREE.Vector3();
+var tmpCamUp = null;
+var tmpAnchor = null;
 
 function updateLabels(dt) {
   camera.updateMatrixWorld();
