@@ -1,21 +1,224 @@
 // Enemy AI (Sentinel, Lantern Wraith, Bell Golem) & Boss AI (断钟骑士·晦 & 沉渊铸钟师·寂)
-import { COLORS, FLOOR_Y, WELL_BOTTOM_Y, GRAVITY } from './config.js';
-import { G, addShake, triggerBossBanner } from './state.js';
+import { COLORS, FLOOR_Y, WELL_BOTTOM_Y, GRAVITY, DUMMY_MODES } from './config.js';
+import { G, addShake, triggerBossBanner, getCombatScaling, damp } from './state.js';
 import { audio } from './audio.js';
 import { triggerHaptic } from './input.js';
 import { updateCloak, spawnParticles, spawnShockwave, spawnFloatText } from './vfx.js';
 import { aabbOverlap, moveAndCollide, getGroundSurfaceY } from './physics.js';
 import { applyIncomingAttackToPlayer } from './combat.js';
+import { t } from './i18n.js';
 
 export function updateEnemy(e, dt) {
   if (!e.alive) return;
+  if (e.kind === 'dummy') {
+    updateDummy(e, dt);
+    return;
+  }
   if (e.wardShield > 0) e.wardShield = Math.max(0, e.wardShield - dt);
-  if (e.kind === 'wraith') updateWraith(e, dt);
-  else if (e.kind === 'golem') updateGolem(e, dt);
-  else if (e.kind === 'priest') updatePriest(e, dt);
-  else if (e.kind === 'duelist') updateDuelist(e, dt);
-  else if (e.kind === 'leech') updateLeech(e, dt);
-  else updateSentinel(e, dt);
+  // Subtle aggression speed-up on NG+ and Fierce Foes vow (keeps parry timings fair!)
+  const sc = getCombatScaling();
+  const effDt = (e.state === 'recover' || e.state === 'chase' || e.state === 'idle' || e.state === 'hover') ? dt * sc.aggroMult : dt;
+  if (e.kind === 'wraith') updateWraith(e, effDt);
+  else if (e.kind === 'golem') updateGolem(e, effDt);
+  else if (e.kind === 'priest') updatePriest(e, effDt);
+  else if (e.kind === 'duelist') updateDuelist(e, effDt);
+  else if (e.kind === 'leech') updateLeech(e, effDt);
+  else updateSentinel(e, effDt);
+}
+
+export function updateDummy(e, dt) {
+  if (e.hurtFlash > 0) e.hurtFlash = Math.max(0, e.hurtFlash - dt);
+  if (e.bellShake > 0) e.bellShake = Math.max(0, e.bellShake - dt);
+  if (e.shieldBrokenTimer > 0) e.shieldBrokenTimer = Math.max(0, e.shieldBrokenTimer - dt);
+  if (e.postureDecayDelay > 0) e.postureDecayDelay -= dt;
+  else if (e.state !== 'stagger' && e.posture > 0) e.posture = Math.max(0, e.posture - 10 * dt);
+
+  const modeObj = DUMMY_MODES[e.modeIdx] || DUMMY_MODES[0];
+  const px = G.player ? (G.player.x + G.player.w * 0.5) : e.homeX;
+  const py = G.player ? (G.player.y + G.player.h * 0.5) : e.y;
+  const cx = e.x + e.w * 0.5;
+  const dx = px - cx;
+  const absDx = Math.abs(dx);
+  const absDy = Math.abs(py - (e.y + e.h * 0.5));
+
+  // Auto-disengage & gently heal player training damage when walking away
+  if (e.active && (absDx > 320 || absDy > 190)) {
+    e.active = false;
+    e.state = 'idle';
+    e.shieldUp = false;
+    e.hp = e.maxHp;
+    e.posture = 0;
+    e.drillStep = 0;
+    if (e.hitPlayerDuringDrill && G.player && G.player.hp > 0 && G.player.hp < G.player.maxHp) {
+      G.player.hp = G.player.maxHp;
+      G.player.grayHp = 0;
+      spawnFloatText(px, G.player.y - 26, t('combat.dummyHeal'), COLORS.cyanBright, 16, 1.0);
+    }
+    e.hitPlayerDuringDrill = false;
+  }
+
+  // Dormant or Pure Punching-Bag Mode
+  if (!e.active || modeObj.id === 'dormant') {
+    e.shieldUp = false;
+    if (e.state === 'stagger') {
+      e.stateTimer -= dt;
+      if (e.stateTimer <= 0) {
+        e.state = 'idle';
+        e.posture = 0;
+      }
+    } else {
+      e.state = 'idle';
+      const toHome = e.homeX - e.x;
+      e.vx = Math.abs(toHome) > 4 ? Math.sign(toHome) * 95 : 0;
+      if (Math.abs(toHome) <= 4) e.facing = dx >= 0 ? 1 : -1;
+      if (e.hp < e.maxHp) {
+        e.idleResetTimer += dt;
+        if (e.idleResetTimer >= 2.8) {
+          e.idleResetTimer = 0;
+          e.hp = e.maxHp;
+          e.posture = 0;
+        }
+      } else {
+        e.idleResetTimer = 0;
+      }
+    }
+    e.vy += GRAVITY * dt;
+    moveAndCollide(e, dt, false);
+    return;
+  }
+
+  e.stateTimer -= dt;
+  if (e.state === 'stagger') {
+    e.shieldUp = false;
+    e.vx *= damp(0.84, dt);
+    if (e.stateTimer <= 0) {
+      e.state = 'recover';
+      e.stateTimer = 0.75;
+      e.posture = 0;
+      e.hp = e.maxHp;
+    }
+  } else if (e.state === 'idle' || e.state === 'stalk') {
+    e.shieldUp = false;
+    e.facing = dx >= 0 ? 1 : -1;
+    if (absDx > 106) e.vx = e.facing * 125;
+    else if (absDx < 62) e.vx = -e.facing * 78;
+    else e.vx *= damp(0.8, dt);
+
+    if (e.stateTimer <= 0 && absDx < 175) {
+      let nextMove = 'parry1';
+      if (modeObj.id === 'parryOnly') {
+        nextMove = (e.drillStep % 2 === 0) ? 'parry1' : 'combo2';
+      } else if (modeObj.id === 'redOnly') {
+        nextMove = 'redThrust';
+      } else {
+        const seq = ['parry1', 'combo2', 'redThrust', 'shieldGuard'];
+        nextMove = seq[e.drillStep % seq.length];
+      }
+      e.drillStep++;
+      e.attackKind = nextMove;
+      e.comboIdx = 0;
+      e.comboTotal = nextMove === 'combo2' ? 2 : 1;
+      e.isDelayedHit = false;
+      e.glintPlayed = false;
+      e.didHit = false;
+      e.vx = 0;
+
+      if (nextMove === 'shieldGuard') {
+        e.state = 'shieldGuard';
+        e.stateTimer = 2.6;
+        e.shieldUp = true;
+        e.shieldBrokenTimer = 0;
+        audio.playResonanceBell(392, false);
+        spawnFloatText(cx, e.y - 28, t('combat.dummyShieldHint'), COLORS.goldBright, 15, 1.35);
+      } else {
+        e.state = 'windup';
+        e.stateTimer = nextMove === 'redThrust' ? 0.72 : (nextMove === 'combo2' ? 0.48 : 0.58);
+        e.windupDuration = e.stateTimer;
+        if (nextMove === 'redThrust') {
+          audio.playDangerAlert();
+          spawnFloatText(cx, e.y - 34, t('combat.dummyRedHint'), COLORS.crimsonBright, 15, 0.9);
+        }
+      }
+    }
+  } else if (e.state === 'shieldGuard') {
+    e.facing = dx >= 0 ? 1 : -1;
+    e.vx *= damp(0.8, dt);
+    if (!e.shieldUp || e.shieldBrokenTimer > 0) {
+      e.shieldUp = false;
+      e.state = 'recover';
+      e.stateTimer = 1.1;
+    } else if (e.stateTimer <= 0) {
+      e.shieldUp = false;
+      e.state = 'recover';
+      e.stateTimer = 0.65;
+    }
+  } else if (e.state === 'windup') {
+    const isRed = e.attackKind === 'redThrust';
+    if (e.stateTimer > 0.20) e.facing = dx >= 0 ? 1 : -1;
+    e.vx *= damp(0.82, dt);
+    if (!isRed && !e.glintPlayed && e.stateTimer <= 0.23) {
+      e.glintPlayed = true;
+      audio.playGlintCue(e.isDelayedHit);
+    }
+    if (e.stateTimer <= 0) {
+      e.state = 'attack';
+      e.didHit = false;
+      e.stateTimer = isRed ? 0.22 : 0.18;
+      e.vx = e.facing * (isRed ? 340 : 165);
+      audio.playSlash(isRed ? 0.75 : (0.94 + e.comboIdx * 0.14), isRed || e.comboIdx === 1);
+      G.slashes.push({
+        x: cx + e.facing * 28,
+        y: e.y + 32,
+        facing: e.facing,
+        type: isRed ? 'enemyRedThrust' : (e.comboIdx === 1 ? 'bossSlam' : 'enemyThrust'),
+        life: 0.22,
+        maxLife: 0.22
+      });
+    }
+  } else if (e.state === 'attack') {
+    e.vx *= damp(0.9, dt);
+    if (!e.didHit) {
+      const isRed = e.attackKind === 'redThrust';
+      const reach = isRed ? 92 : 80;
+      const hitBox = {
+        x: cx + (e.facing > 0 ? -4 : -reach + 4),
+        y: e.y + 10,
+        w: reach,
+        h: 52
+      };
+      if (aabbOverlap(hitBox, G.player)) {
+        e.didHit = true;
+        applyIncomingAttackToPlayer(e, 12, isRed, 195);
+      }
+    }
+    if (e.stateTimer <= 0) {
+      e.comboIdx++;
+      if (e.comboIdx < e.comboTotal) {
+        e.state = 'windup';
+        e.isDelayedHit = true;
+        e.glintPlayed = false;
+        e.stateTimer = 0.58;
+        e.windupDuration = 0.58;
+        e.didHit = false;
+      } else {
+        e.state = 'recover';
+        e.stateTimer = 0.95;
+      }
+    }
+  } else if (e.state === 'recover') {
+    e.shieldUp = false;
+    e.vx *= damp(0.84, dt);
+    if (e.stateTimer <= 0) {
+      e.state = 'stalk';
+      e.stateTimer = 0.45;
+    }
+  }
+
+  e.vy += GRAVITY * dt;
+  moveAndCollide(e, dt, false);
+  if (e.x < e.minX) { e.x = e.minX; e.vx = 0; }
+  if (e.x > e.maxX) { e.x = e.maxX; e.vx = 0; }
+  if (Math.abs(e.vx) > 15 && e.grounded) e.walkCycle = (e.walkCycle || 0) + dt * Math.abs(e.vx) * 0.045;
 }
 
 export function updatePriest(e, dt) {
@@ -33,7 +236,7 @@ export function updatePriest(e, dt) {
   e.stateTimer -= dt;
 
   if (e.state === 'stagger') {
-    e.vx *= 0.85;
+    e.vx *= damp(0.85, dt);
     e.chantTargetId = null;
     if (e.stateTimer <= 0) {
       e.state = 'idle';
@@ -41,7 +244,7 @@ export function updatePriest(e, dt) {
       e.stateTimer = 0.9;
     }
   } else if (e.state === 'idle') {
-    e.vx *= 0.8;
+    e.vx *= damp(0.8, dt);
     if (e.stateTimer <= 0 && dist < 640) {
       // Find nearest living non-priest ally to bless with Golden Bell Barrier
       let bestAlly = null;
@@ -71,8 +274,8 @@ export function updatePriest(e, dt) {
       }
     }
   } else if (e.state === 'chant') {
-    e.vx *= 0.8;
-    if (Math.random() < 0.45) {
+    e.vx *= damp(0.8, dt);
+    if (Math.random() < 27.0 * dt) {
       spawnParticles(cx, e.y + 8, 1, { color: COLORS.goldBright, speed: 65, grav: -90, life: 0.34 });
     }
     if (e.stateTimer <= 0) {
@@ -82,7 +285,7 @@ export function updatePriest(e, dt) {
         audio.playPogoLantern();
         spawnShockwave(cx, e.y + 12, 72, COLORS.goldBright, 2.8, 0.28);
         spawnShockwave(ally.x + ally.w / 2, ally.y + ally.h * 0.45, 76, COLORS.goldBright, 3.2, 0.32);
-        spawnFloatText(ally.x + ally.w / 2, ally.y - 24, '钟佑护盾!', COLORS.goldBright, 16, 0.85);
+        spawnFloatText(ally.x + ally.w / 2, ally.y - 24, t('combat.wardCast'), COLORS.goldBright, 16, 0.85);
       } else {
         // Launch a golden parryable resonance orb if solo
         const len = Math.max(1, dist);
@@ -109,7 +312,7 @@ export function updatePriest(e, dt) {
       e.stateTimer = 2.2;
     }
   } else if (e.state === 'pulse') {
-    e.vx *= 0.8;
+    e.vx *= damp(0.8, dt);
     if (e.stateTimer <= 0.14 && !e.didHit) {
       e.didHit = true;
       audio.playPogoLantern();
@@ -121,7 +324,7 @@ export function updatePriest(e, dt) {
       e.stateTimer = 1.2;
     }
   } else if (e.state === 'recover') {
-    e.vx *= 0.82;
+    e.vx *= damp(0.82, dt);
     if (e.stateTimer <= 0) {
       e.state = 'idle';
       e.stateTimer = 0.6;
@@ -144,7 +347,7 @@ export function updateDuelist(e, dt) {
   e.stateTimer -= dt;
 
   if (e.state === 'stagger') {
-    e.vx *= 0.85;
+    e.vx *= damp(0.85, dt);
     if (e.stateTimer <= 0) {
       e.state = 'chase';
       e.posture = e.maxPosture * 0.28;
@@ -157,7 +360,7 @@ export function updateDuelist(e, dt) {
   } else if (e.state === 'chase') {
     e.facing = dx >= 0 ? 1 : -1;
     if (absDx > 92) e.vx = e.facing * 178;
-    else e.vx *= 0.8;
+    else e.vx *= damp(0.8, dt);
     if (absDx < 142 && Math.abs(dy) < 86 && e.stateTimer <= 0) {
       e.state = 'windup';
       e.comboIdx = 0;
@@ -171,7 +374,7 @@ export function updateDuelist(e, dt) {
     }
   } else if (e.state === 'windup') {
     if (e.stateTimer > 0.16) e.facing = dx >= 0 ? 1 : -1;
-    e.vx *= 0.82;
+    e.vx *= damp(0.82, dt);
     if (e.attackKind === 'combo3' && e.comboIdx === 2 && Math.random() < 0.45) {
       spawnParticles(e.x + e.w / 2 + e.facing * 12, e.y + 24, 1, { color: COLORS.goldBright, speed: 60, grav: -40, life: 0.2 });
     }
@@ -193,7 +396,7 @@ export function updateDuelist(e, dt) {
       });
     }
   } else if (e.state === 'attack') {
-    e.vx *= 0.9;
+    e.vx *= damp(0.9, dt);
     if (!e.didHit) {
       const isRed = e.attackKind === 'redDash';
       const reach = isRed ? 96 : (e.comboIdx === 2 ? 92 : 76);
@@ -222,7 +425,7 @@ export function updateDuelist(e, dt) {
       }
     }
   } else if (e.state === 'recover') {
-    e.vx *= 0.84;
+    e.vx *= damp(0.84, dt);
     if (e.stateTimer <= 0) {
       e.state = 'chase';
       e.stateTimer = 0.3;
@@ -250,7 +453,7 @@ export function updateLeech(e, dt) {
   const dy = py - cy;
 
   if (e.state === 'stagger') {
-    e.vx *= 0.82;
+    e.vx *= damp(0.82, dt);
     e.vy += GRAVITY * dt;
     moveAndCollide(e, dt, false);
     if (e.stateTimer <= 0) {
@@ -264,7 +467,7 @@ export function updateLeech(e, dt) {
     e.vx = 0;
     e.vy = 0;
     e.facing = dx >= 0 ? 1 : -1;
-    if (Math.random() < 0.04) {
+    if (Math.random() < 2.4 * dt) {
       spawnParticles(cx, e.y + e.h, 1, { color: COLORS.ink, speed: 20, grav: 240, life: 0.5 });
     }
     if (Math.abs(dx) < 175 && dy > -10 && dy < 340 && e.stateTimer <= 0) {
@@ -337,7 +540,7 @@ export function updateWraith(e, dt) {
   e.stateTimer -= dt;
 
   if (e.state === 'stagger') {
-    e.vx *= 0.85;
+    e.vx *= damp(0.85, dt);
     const groundBelow = getGroundSurfaceY(e.x + e.w / 2, e.y + e.h);
     e.vy = Math.min(180, (groundBelow - e.h - 16 - e.y) * 3.5);
     e.x += e.vx * dt;
@@ -362,7 +565,7 @@ export function updateWraith(e, dt) {
         e.stateTimer = 0.68;
       }
     } else if (e.state === 'windup') {
-      if (Math.random() < 0.4) {
+      if (Math.random() < 24.0 * dt) {
         spawnParticles(e.x + e.w / 2 + e.facing * 14, e.y + 22, 1, { color: COLORS.goldBright, speed: 60, grav: 0, life: 0.24 });
       }
       if (e.stateTimer <= 0) {
@@ -409,7 +612,7 @@ export function updateSentinel(e, dt) {
   e.stateTimer -= dt;
 
   if (e.state === 'stagger') {
-    e.vx *= 0.85;
+    e.vx *= damp(0.85, dt);
     if (e.stateTimer <= 0) {
       e.state = 'chase';
       e.posture = e.maxPosture * 0.3;
@@ -422,7 +625,7 @@ export function updateSentinel(e, dt) {
   } else if (e.state === 'chase') {
     e.facing = dx >= 0 ? 1 : -1;
     if (absDx > 95) e.vx = e.facing * 125;
-    else e.vx *= 0.8;
+    else e.vx *= damp(0.8, dt);
 
     if (absDx < 125 && Math.abs(dy) < 80 && e.stateTimer <= 0) {
       e.state = 'windup';
@@ -435,7 +638,7 @@ export function updateSentinel(e, dt) {
       e.state = 'patrol';
     }
   } else if (e.state === 'windup') {
-    e.vx *= 0.82;
+    e.vx *= damp(0.82, dt);
     if (e.stateTimer <= 0) {
       e.state = 'attack';
       e.stateTimer = 0.2;
@@ -451,7 +654,7 @@ export function updateSentinel(e, dt) {
       });
     }
   } else if (e.state === 'attack') {
-    e.vx *= 0.9;
+    e.vx *= damp(0.9, dt);
     if (!e.didHit) {
       const reach = e.attackKind === 'redLunge' ? 88 : 74;
       const hitBox = {
@@ -470,7 +673,7 @@ export function updateSentinel(e, dt) {
       e.stateTimer = 0.85;
     }
   } else if (e.state === 'recover') {
-    e.vx *= 0.84;
+    e.vx *= damp(0.84, dt);
     if (e.stateTimer <= 0) {
       e.state = 'chase';
       e.stateTimer = 0.35;
@@ -495,7 +698,7 @@ export function updateGolem(e, dt) {
   e.stateTimer -= dt;
 
   if (e.state === 'stagger') {
-    e.vx *= 0.85;
+    e.vx *= damp(0.85, dt);
     if (e.stateTimer <= 0) {
       e.state = 'chase';
       e.posture = e.maxPosture * 0.28;
@@ -508,7 +711,7 @@ export function updateGolem(e, dt) {
   } else if (e.state === 'chase') {
     e.facing = dx >= 0 ? 1 : -1;
     if (absDx > 92) e.vx = e.facing * 82;
-    else e.vx *= 0.8;
+    else e.vx *= damp(0.8, dt);
 
     if (absDx < 128 && Math.abs(dy) < 88 && e.stateTimer <= 0) {
       e.state = 'windup';
@@ -522,7 +725,7 @@ export function updateGolem(e, dt) {
     }
   } else if (e.state === 'windup') {
     if (e.stateTimer > 0.22) e.facing = dx >= 0 ? 1 : -1;
-    e.vx *= 0.82;
+    e.vx *= damp(0.82, dt);
     if (e.stateTimer <= 0) {
       e.state = 'attack';
       e.stateTimer = e.attackKind === 'redBash' ? 0.26 : 0.22;
@@ -538,7 +741,7 @@ export function updateGolem(e, dt) {
       });
     }
   } else if (e.state === 'attack') {
-    e.vx *= 0.9;
+    e.vx *= damp(0.9, dt);
     if (!e.didHit) {
       const reach = e.attackKind === 'redBash' ? 86 : 94;
       const hitBox = {
@@ -561,7 +764,7 @@ export function updateGolem(e, dt) {
       e.stateTimer = 0.92;
     }
   } else if (e.state === 'recover') {
-    e.vx *= 0.84;
+    e.vx *= damp(0.84, dt);
     if (e.stateTimer <= 0) {
       e.state = 'chase';
       e.stateTimer = 0.4;
@@ -605,7 +808,7 @@ function applyClashSpacingWindup(b, px, dt) {
   } else if (gap < 64 && gap > -20) {
     b.vx = -b.facing * 95;
   } else {
-    b.vx *= 0.80;
+    b.vx *= damp(0.80, dt);
   }
 }
 
@@ -645,8 +848,8 @@ export function updateBoss(b, dt) {
     G.screenFlash = { alpha: 0.32, color: COLORS.crimson };
     spawnShockwave(b.x + b.w / 2, b.y + 40, 260, COLORS.crimsonBright, 5, 0.5);
     triggerHaptic('bossPhase');
-    triggerBossBanner('第二幕 · 墨钟长鸣', '「既欲续钟，便先承下这断索墨潮！」', COLORS.crimsonBright, 2.5);
-    spawnFloatText(b.x + b.w / 2, b.y - 44, '第二幕 · 墨钟长鸣', COLORS.crimsonBright, 24, 1.8);
+    triggerBossBanner(t('boss.hui.p2Title'), t('boss.hui.p2Quote'), COLORS.crimsonBright, 2.5);
+    spawnFloatText(b.x + b.w / 2, b.y - 44, t('boss.hui.p2Title'), COLORS.crimsonBright, 24, 1.8);
     G.groundWaves.push({ x: b.x + b.w / 2, y: FLOOR_Y, minX: 2620, maxX: 3760, vx: -420, w: 36, h: 48, life: 2.2, hit: false });
     G.groundWaves.push({ x: b.x + b.w / 2, y: FLOOR_Y, minX: 2620, maxX: 3760, vx: 420, w: 36, h: 48, life: 2.2, hit: false });
   }
@@ -654,12 +857,13 @@ export function updateBoss(b, dt) {
   const px = G.player.x + G.player.w / 2;
   const dx = px - (b.x + b.w / 2);
   const absDx = Math.abs(dx);
-  b.stateTimer -= dt;
-  if (b.phase === 2 && b.inkTideCd > 0) b.inkTideCd -= dt;
+  const b1Aggro = (b.state === 'recover' || b.state === 'stalk' || b.state === 'idle') ? getCombatScaling().aggroMult : 1;
+  b.stateTimer -= dt * b1Aggro;
+  if (b.phase === 2 && b.inkTideCd > 0) b.inkTideCd -= dt * b1Aggro;
 
   if (b.state === 'phaseShift') {
-    b.vx *= 0.8;
-    if (Math.random() < 0.5) {
+    b.vx *= damp(0.8, dt);
+    if (Math.random() < 30.0 * dt) {
       spawnParticles(b.x + b.w / 2, b.y + 30, 2, { color: COLORS.crimsonBright, speed: 180, spark: true });
     }
     if (b.stateTimer <= 0) {
@@ -667,7 +871,7 @@ export function updateBoss(b, dt) {
       b.stateTimer = 0.5;
     }
   } else if (b.state === 'stagger') {
-    b.vx *= 0.85;
+    b.vx *= damp(0.85, dt);
     if (b.stateTimer <= 0) {
       b.state = 'stalk';
       b.posture = b.maxPosture * 0.25;
@@ -696,7 +900,7 @@ export function updateBoss(b, dt) {
       audio.playDangerAlert();
       audio.playBellToll();
       addShake(9);
-      spawnFloatText(b.x + b.w / 2, b.y - 54, '危 · 猩红墨潮！钩索上天或击鸣悬灯', COLORS.crimsonBright, 21, 1.45);
+      spawnFloatText(b.x + b.w / 2, b.y - 54, t('boss.hui.tideWarn'), COLORS.crimsonBright, 21, 1.45);
     } else if (b.stateTimer <= 0 && absDx < 440) {
       const pool = b.phase === 2
         ? [
@@ -744,7 +948,7 @@ export function updateBoss(b, dt) {
     if (b.moveKind === 'flurry4' || b.moveKind === 'combo2') {
       applyClashSpacingWindup(b, px, dt);
     } else {
-      b.vx *= 0.82;
+      b.vx *= damp(0.82, dt);
     }
     if (!isRedMove && !b.glintPlayed && b.stateTimer <= 0.23) {
       b.glintPlayed = true;
@@ -808,7 +1012,7 @@ export function updateBoss(b, dt) {
       }
     }
   } else if (b.state === 'strike') {
-    b.vx *= 0.90;
+    b.vx *= damp(0.90, dt);
     if (b.moveKind === 'flurry4' || b.moveKind === 'combo2') {
       applyClashSpacingStrike(b, px);
     }
@@ -867,7 +1071,7 @@ export function updateBoss(b, dt) {
       }
     }
   } else if (b.state === 'recover') {
-    b.vx *= 0.84;
+    b.vx *= damp(0.84, dt);
     if (b.stateTimer <= 0) {
       b.state = 'stalk';
       b.stateTimer = b.phase === 2 ? 0.35 : 0.55;
@@ -910,8 +1114,8 @@ export function updateBoss2(b, dt) {
     G.screenFlash = { alpha: 0.30, color: COLORS.goldBright };
     spawnShockwave(b.x + b.w / 2, b.y + 42, 260, COLORS.goldBright, 5.2, 0.52);
     triggerHaptic('bossPhase');
-    triggerBossBanner('第二幕 · 万钟齐喑', '「炉火重燃，听这沉渊万钟共振！」', COLORS.goldBright, 2.5);
-    spawnFloatText(b.x + b.w / 2, b.y - 46, '第二幕 · 万钟齐喑', COLORS.goldBright, 24, 1.85);
+    triggerBossBanner(t('boss.ji.p2Title'), t('boss.ji.p2Quote'), COLORS.goldBright, 2.5);
+    spawnFloatText(b.x + b.w / 2, b.y - 46, t('boss.ji.p2Title'), COLORS.goldBright, 24, 1.85);
     G.groundWaves.push({ x: b.x + b.w / 2, y: WELL_BOTTOM_Y, minX: 5584, maxX: 6716, vx: -420, w: 38, h: 50, life: 2.3, hit: false, gold: true });
     G.groundWaves.push({ x: b.x + b.w / 2, y: WELL_BOTTOM_Y, minX: 5584, maxX: 6716, vx: 420, w: 38, h: 50, life: 2.3, hit: false, gold: true });
   }
@@ -921,13 +1125,14 @@ export function updateBoss2(b, dt) {
   const bx = b.x + b.w / 2;
   const dx = px - bx;
   const absDx = Math.abs(dx);
-  b.stateTimer -= dt;
-  if (b.phase === 2 && b.novaCd > 0) b.novaCd -= dt;
+  const b2Aggro = (b.state === 'recover' || b.state === 'stalk' || b.state === 'idle') ? getCombatScaling().aggroMult : 1;
+  b.stateTimer -= dt * b2Aggro;
+  if (b.phase === 2 && b.novaCd > 0) b.novaCd -= dt * b2Aggro;
 
   if (b.state === 'phaseShift') {
     b.x += (6140 - b.w / 2 - b.x) * Math.min(1, dt * 3.5);
     b.y += (WELL_BOTTOM_Y - 210 - b.y) * Math.min(1, dt * 3.5);
-    if (Math.random() < 0.65) {
+    if (Math.random() < 39.0 * dt) {
       spawnParticles(bx, b.y + 38, 2, { color: COLORS.goldBright, speed: 200, spark: true });
     }
     if (b.stateTimer <= 0) {
@@ -936,7 +1141,7 @@ export function updateBoss2(b, dt) {
     }
   } else if (b.state === 'stagger') {
     b.shieldUp = false;
-    b.vx *= 0.85;
+    b.vx *= damp(0.85, dt);
     b.vy = Math.min(820, b.vy + GRAVITY * dt);
     b.x = Math.max(b.arenaMinX, Math.min(b.arenaMaxX - b.w, b.x + b.vx * dt));
     b.y = Math.min(floorTop, b.y + b.vy * dt);
@@ -974,7 +1179,7 @@ export function updateBoss2(b, dt) {
         audio.playDangerAlert();
         audio.playBellToll();
         addShake(9);
-        spawnFloatText(bx, b.y - 54, '危 · 铸炉共振！振翼上台或击鸣悬灯', COLORS.goldBright, 21, 1.5);
+        spawnFloatText(bx, b.y - 54, t('boss.ji.novaWarn'), COLORS.goldBright, 21, 1.5);
       } else {
         const chosen = pickWeightedBossMove(b.lastMoveKind, [
           { kind: 'chainDropSlam', w: 28 },
@@ -1023,7 +1228,7 @@ export function updateBoss2(b, dt) {
     if (b.moveKind === 'resonanceNova') {
       b.x += (6140 - b.w / 2 - b.x) * Math.min(1, dt * 6);
       b.y += (WELL_BOTTOM_Y - 260 - b.y) * Math.min(1, dt * 6);
-      if (Math.random() < 0.7) {
+      if (Math.random() < 42.0 * dt) {
         spawnParticles(bx + (Math.random() - 0.5) * 90, WELL_BOTTOM_Y - 8, 1, { color: COLORS.goldBright, speed: 110, grav: -200, life: 0.36 });
       }
     } else if (b.moveKind === 'chainDropSlam') {
@@ -1137,7 +1342,7 @@ export function updateBoss2(b, dt) {
       }
     } else if (b.moveKind === 'redSweepHook') {
       b.x = Math.max(b.arenaMinX, Math.min(b.arenaMaxX - b.w, b.x + b.vx * dt));
-      b.vx *= 0.86;
+      b.vx *= damp(0.86, dt);
       if (!b.didHit) {
         const reach = 185;
         const sweepBox = {
@@ -1163,7 +1368,7 @@ export function updateBoss2(b, dt) {
     }
   } else if (b.state === 'recover') {
     b.shieldUp = false;
-    b.vx *= 0.84;
+    b.vx *= damp(0.84, dt);
     b.x = Math.max(b.arenaMinX, Math.min(b.arenaMaxX - b.w, b.x + b.vx * dt));
     if (b.stateTimer <= 0) {
       b.state = 'stalk';
@@ -1208,7 +1413,7 @@ export function updateBoss3(b, dt) {
     addShake(15);
     G.screenFlash = { alpha: 0.30, color: COLORS.violetBright };
     spawnShockwave(bxCenter, b.y + 46, 280, COLORS.violetBright, 5.2, 0.52);
-    triggerBossBanner('第二幕 · 碎钟双影', '「双影分鸣，旧誓难逃！」', COLORS.violetBright, 2.6);
+    triggerBossBanner(t('boss.yuan.p2Title'), t('boss.yuan.p2Quote'), COLORS.violetBright, 2.6);
     G.groundWaves.push({ x: bxCenter - 42, y: FLOOR_Y, minX: b.arenaMinX, maxX: b.arenaMaxX, vx: -420, w: 36, h: 48, life: 2.3, hit: false });
     G.groundWaves.push({ x: bxCenter + 42, y: FLOOR_Y, minX: b.arenaMinX, maxX: b.arenaMaxX, vx: 420, w: 36, h: 48, life: 2.3, hit: false });
   }
@@ -1225,17 +1430,18 @@ export function updateBoss3(b, dt) {
     addShake(18);
     G.screenFlash = { alpha: 0.36, color: COLORS.goldBright };
     spawnShockwave(bxCenter, b.y + 46, 320, COLORS.goldBright, 5.8, 0.58);
-    triggerBossBanner('终幕 · 寂灭初鸣', '「听罢这最后一声初钟——万物归寂！」', COLORS.goldBright, 2.8);
+    triggerBossBanner(t('boss.yuan.p3Title'), t('boss.yuan.p3Quote'), COLORS.goldBright, 2.8);
     G.groundWaves.push({ x: bxCenter - 46, y: FLOOR_Y, minX: b.arenaMinX, maxX: b.arenaMaxX, vx: -450, w: 40, h: 52, life: 2.4, hit: false, gold: true });
     G.groundWaves.push({ x: bxCenter + 46, y: FLOOR_Y, minX: b.arenaMinX, maxX: b.arenaMaxX, vx: 450, w: 40, h: 52, life: 2.4, hit: false, gold: true });
   }
 
-  b.stateTimer -= dt;
-  if (b.phase >= 2 && b.tideCd > 0) b.tideCd -= dt;
+  const b3Aggro = (b.state === 'recover' || b.state === 'stalk' || b.state === 'idle') ? getCombatScaling().aggroMult : 1;
+  b.stateTimer -= dt * b3Aggro;
+  if (b.phase >= 2 && b.tideCd > 0) b.tideCd -= dt * b3Aggro;
 
   if (b.state === 'phaseShift') {
-    b.vx *= 0.8;
-    if (Math.random() < 0.6) {
+    b.vx *= damp(0.8, dt);
+    if (Math.random() < 36.0 * dt) {
       spawnParticles(bxCenter, b.y + 38, 2, { color: b.phase === 3 ? COLORS.goldBright : COLORS.violetBright, speed: 210, spark: true });
     }
     if (b.stateTimer <= 0) {
@@ -1243,7 +1449,7 @@ export function updateBoss3(b, dt) {
       b.stateTimer = 0.42;
     }
   } else if (b.state === 'stagger') {
-    b.vx *= 0.85;
+    b.vx *= damp(0.85, dt);
     if (b.stateTimer <= 0) {
       b.state = 'stalk';
       b.posture = b.maxPosture * 0.24;
@@ -1276,7 +1482,7 @@ export function updateBoss3(b, dt) {
       audio.playDangerAlert();
       audio.playBellToll();
       addShake(10);
-      spawnFloatText(bxCenter, b.y - 54, '危 · 终末钟潮！钩索登台或击鸣悬灯破潮', COLORS.goldBright, 21, 1.55);
+      spawnFloatText(bxCenter, b.y - 54, t('boss.yuan.tideWarn'), COLORS.goldBright, 21, 1.55);
     } else if (b.stateTimer <= 0 && absDx < 540) {
       let pool;
       if (b.phase === 3) {
@@ -1354,7 +1560,7 @@ export function updateBoss3(b, dt) {
     if (b.moveKind === 'tripleChime' || b.moveKind === 'judgementFlurry') {
       applyClashSpacingWindup(b, px, dt);
     } else {
-      b.vx *= 0.82;
+      b.vx *= damp(0.82, dt);
     }
     if (!isRedMove && !b.glintPlayed && b.stateTimer <= 0.23) {
       b.glintPlayed = true;
@@ -1440,7 +1646,7 @@ export function updateBoss3(b, dt) {
       }
     }
   } else if (b.state === 'strike') {
-    b.vx *= 0.90;
+    b.vx *= damp(0.90, dt);
     if (b.moveKind === 'tripleChime' || b.moveKind === 'judgementFlurry') {
       applyClashSpacingStrike(b, px);
     }
@@ -1448,7 +1654,7 @@ export function updateBoss3(b, dt) {
     let skipGravity = false;
     if (b.moveKind === 'skyShatter' && b.leapAirborne && b.vy >= -40 && b.apexHangTimer > 0) {
       b.apexHangTimer -= dt;
-      b.vx *= 0.65;
+      b.vx *= damp(0.65, dt);
       b.vy = 0;
       skipGravity = true;
       if (b.apexHangTimer <= 0) {
@@ -1516,7 +1722,7 @@ export function updateBoss3(b, dt) {
     updateCloak(b.cloak, b.x + b.w / 2 - b.facing * 12, b.y + 30, b.facing, -b.vx * 0.45, dt);
     return;
   } else if (b.state === 'recover') {
-    b.vx *= 0.84;
+    b.vx *= damp(0.84, dt);
     if (b.stateTimer <= 0) {
       b.state = 'stalk';
       b.stateTimer = b.phase === 3 ? 0.30 : b.phase === 2 ? 0.38 : 0.50;

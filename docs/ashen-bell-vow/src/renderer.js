@@ -1,31 +1,35 @@
 // Art-directed dark hand-drawn Canvas 2D rendering pipeline
 import {
-  COLORS, SOLIDS, ALTARS, NPCS, ALTAR_POS, LORE_TABLETS,
+  COLORS, ALTARS, NPCS, ALTAR_POS, LORE_TABLETS,
   SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, FIRST_BELL_CORE_POS,
-  PENDULUMS, VOID_BARRIERS, ABYSSAL_RIVERS, WALL_INSCRIPTIONS, GRAPPLE_ANCHORS,
-  PUDDLES, BANNERS, CANDLE_CLUSTERS, BONE_CAIRNS, WORLD_W, FLOOR_Y, WELL_BOTTOM_Y
+  PENDULUMS, VOID_BARRIERS, WALL_INSCRIPTIONS, GRAPPLE_ANCHORS,
+  BANNERS, CANDLE_CLUSTERS, BONE_CAIRNS, FLOOR_Y, WELL_BOTTOM_Y, DUMMY_MODES
 } from './config.js';
-import { G, getAwakeBoss, getRelicStats } from './state.js';
+import { G, getAwakeBoss, getRelicStats, hasKeeperBlessing, getExplorationPercent } from './state.js';
+import { prof } from './profiler.js';
 import { getControlLabels, getActionKeyLabel } from './input.js';
 import {
-  drawGlowSprite, boilLine, boilLinePath, boilCircle, boilRectOutline, drawTaperedCrescent, drawCloakMesh, solve2BoneIK
+  drawGlowSprite, boilLine, boilCircle, boilRectOutline, drawTaperedCrescent, drawCloakMesh, solve2BoneIK
 } from './vfx.js';
 
 import { drawLanternCastShadows, drawVolumetricLanternLights } from './renderLighting.js';
+import { rgbStr, drawParallaxBackground, drawForegroundSilhouettes } from './renderParallax.js';
+import { drawStampsLayer } from './stampAtlas.js';
+import { drawWorldArchitecture } from './renderTerrain.js';
 import { getGroundSurfaceY } from './physics.js';
 import { isPickupUnlocked } from './combat.js';
-
-function rgbStr(arr, alpha = 1) {
-  const r = Math.round(arr[0]);
-  const g = Math.round(arr[1]);
-  const b = Math.round(arr[2]);
-  return alpha >= 0.999 ? `rgb(${r},${g},${b})` : `rgba(${r},${g},${b},${alpha.toFixed(3)})`;
-}
+import { drawAchievementBanner } from './codex.js';
+import {
+  t, isEn, getCanvasFont, locInscription, locNpcName, locAltar, locTablet, locPickup, locDummyMode
+} from './i18n.js';
 
 function isInView(x, y, w, h, pad = 100) {
   return x + w >= G.cam.x - pad && x <= G.cam.x + G.canvasW + pad &&
          y + h >= G.cam.y - pad && y <= G.cam.y + G.canvasH + pad;
 }
+
+const BACKDROP_LANCETS = [1080, 1460, 1840, 2220, 2790, 3610];
+const BACKDROP_GRAVES = [460, 960, 1180, 1410, 2090, 2290, 2490];
 
 // Pre-baked screen-space Vignette + Paper Grain cache (avoids full-screen radial gradient + tiled pattern overdraw every frame)
 let _vigNormalCanvas = null;
@@ -65,6 +69,7 @@ export function render() {
   const activeBoss = getAwakeBoss();
   const isPhase2 = !!(activeBoss && activeBoss.phase >= 2);
 
+  let _t0 = performance.now();
   // 1. Background Sky & 3-Layer Gothic Parallax Ruins
   drawParallaxBackground(isPhase2);
 
@@ -77,13 +82,21 @@ export function render() {
     G.ctx.scale(G.cam.zoom, G.cam.zoom);
     G.ctx.translate(-G.canvasW * 0.5, -G.canvasH * 0.5);
   }
-  const camOriginX = Math.round(G.cam.x + sx + G.cam.kickX);
-  const camOriginY = Math.round(G.cam.y + sy + G.cam.kickY);
+  // Sub-pixel smooth translation eliminates 2px/3px stair-step judder on 144Hz monitors!
+  const camOriginX = G.cam.x + sx + G.cam.kickX;
+  const camOriginY = G.cam.y + sy + G.cam.kickY;
   G.ctx.translate(-camOriginX, -camOriginY);
 
-  // 3. World Backdrop + Real-Time 2D Lantern Hard Shadows + Collidable Architecture
+  // 3. World Backdrop + Procedural Background Ink Stamps + Lantern Hard Shadows + Architecture
   drawWorldBackdrop();
+  drawStampsLayer('bg');
+  let _t1 = performance.now();
+  prof.addModuleTime('world', _t1 - _t0);
+
   drawLanternCastShadows(camOriginX, camOriginY);
+  let _t2 = performance.now();
+  prof.addModuleTime('lighting', _t2 - _t1);
+
   drawWorldArchitecture();
   drawWeatherRipples();
 
@@ -111,6 +124,8 @@ export function render() {
 
   // 6. Boss Ink Mist Barrier
   if (activeBoss) drawMistBarrier(activeBoss);
+  let _t3 = performance.now();
+  prof.addModuleTime('world', _t3 - _t2);
 
   // 7. Afterimages
   for (const a of G.afterimages) {
@@ -146,6 +161,8 @@ export function render() {
     if (G.player.hp > 0) drawGrappleThread();
     drawPuppet(G.player.x, G.player.y, G.player.facing, false);
   }
+  let _t4 = performance.now();
+  prof.addModuleTime('entities', _t4 - _t3);
 
   // 10. Projectiles, Talismans, Chapel Ink Tide, Ground Waves, Slashes, Shockwaves, Particles
   drawProjectiles();
@@ -158,9 +175,14 @@ export function render() {
   drawShockwaves();
   drawImpactBursts();
   drawParticles();
+  drawStampsLayer('fg');
+  let _t5 = performance.now();
+  prof.addModuleTime('vfx', _t5 - _t4);
 
   // 10.5 Real-Time Volumetric Lantern Light Shafts (blocked by stone geometry)
   drawVolumetricLanternLights(camOriginX, camOriginY);
+  let _t6 = performance.now();
+  prof.addModuleTime('lighting', _t6 - _t5);
 
   // 11. Grapple Reticle, World Prompts & Floating Calligraphy
   drawGrappleReticle();
@@ -194,96 +216,9 @@ export function render() {
   }
 
   drawBossBanner();
+  drawAchievementBanner();
+  prof.addModuleTime('vfx', performance.now() - _t6);
 
-  G.ctx.restore();
-}
-
-function drawParallaxBackground(isPhase2) {
-  const tb = G.themeBlend;
-  const depthPct = Math.max(0, Math.min(1, (G.cam.y - 140) / 560));
-  const bg = G.ctx.createLinearGradient(0, 0, 0, G.canvasH);
-  bg.addColorStop(0, rgbStr(tb.skyTop));
-  bg.addColorStop(0.55, rgbStr(tb.skyMid));
-  bg.addColorStop(1, rgbStr(tb.skyBot));
-  G.ctx.fillStyle = bg;
-  G.ctx.fillRect(0, 0, G.canvasW, G.canvasH);
-
-  // Theme-tinted atmospheric upper wash
-  const wash = G.ctx.createRadialGradient(G.canvasW * 0.5, G.canvasH * 0.18, 20, G.canvasW * 0.5, G.canvasH * 0.4, G.canvasW * 0.65);
-  wash.addColorStop(0, rgbStr(tb.accent, isPhase2 ? 0.14 : 0.08));
-  wash.addColorStop(1, 'transparent');
-  G.ctx.fillStyle = wash;
-  G.ctx.fillRect(0, 0, G.canvasW, G.canvasH);
-
-  // Pale Cold Moon (fades smoothly as player descends deep into the Sunken Bell Well)
-  const moonX = G.canvasW * 0.72 - G.cam.x * 0.04;
-  const moonY = G.canvasH * 0.22 - G.cam.y * 0.18;
-  if (depthPct < 0.9) {
-    G.ctx.save();
-    G.ctx.globalAlpha = 1 - depthPct;
-    const mg = G.ctx.createRadialGradient(moonX, moonY, 10, moonX, moonY, 155);
-    mg.addColorStop(0, isPhase2 ? 'rgba(220, 38, 38, 0.28)' : rgbStr(tb.accent, 0.20));
-    mg.addColorStop(1, 'transparent');
-    G.ctx.fillStyle = mg;
-    G.ctx.beginPath(); G.ctx.arc(moonX, moonY, 155, 0, Math.PI * 2); G.ctx.fill();
-
-    G.ctx.fillStyle = isPhase2 ? 'rgba(248, 113, 113, 0.48)' : 'rgba(226, 220, 202, 0.42)';
-    boilCircle(G.ctx, moonX, moonY, 34, 90, 0.8, 18);
-    G.ctx.fill();
-    G.ctx.restore();
-  }
-
-  // Far Layer (0.14x): Giant Broken Bronze Bell Silhouette & Distant Spires
-  G.ctx.save();
-  const farX = -G.cam.x * 0.14;
-  G.ctx.fillStyle = '#0c121e';
-  for (let i = 0; i < 8; i++) {
-    const bx = i * 320 + farX;
-    G.ctx.beginPath();
-    G.ctx.moveTo(bx, G.canvasH);
-    G.ctx.lineTo(bx + 28, 170 + (i % 3) * 45);
-    G.ctx.lineTo(bx + 56, G.canvasH);
-    G.ctx.closePath();
-    G.ctx.fill();
-  }
-  // Colossal cracked bell hanging in the far abyss
-  const bellX = 560 + farX;
-  G.ctx.fillStyle = '#0a0e16';
-  G.ctx.strokeStyle = 'rgba(216, 207, 184, 0.12)';
-  G.ctx.lineWidth = 2;
-  G.ctx.beginPath();
-  G.ctx.moveTo(bellX - 45, 0);
-  G.ctx.lineTo(bellX + 45, 0);
-  G.ctx.quadraticCurveTo(bellX + 115, 220, bellX + 150, 340);
-  G.ctx.lineTo(bellX - 150, 340);
-  G.ctx.quadraticCurveTo(bellX - 115, 220, bellX - 45, 0);
-  G.ctx.closePath();
-  G.ctx.fill();
-  G.ctx.stroke();
-  // Glowing crack inside giant bell
-  G.ctx.strokeStyle = isPhase2 ? 'rgba(248, 113, 113, 0.45)' : 'rgba(245, 158, 11, 0.25)';
-  G.ctx.beginPath();
-  G.ctx.moveTo(bellX + 12, 95);
-  G.ctx.lineTo(bellX - 16, 175);
-  G.ctx.lineTo(bellX + 8, 250);
-  G.ctx.lineTo(bellX - 12, 336);
-  G.ctx.stroke();
-  G.ctx.restore();
-
-  // Mid Layer (0.36x): Gothic Ruined Arches
-  G.ctx.save();
-  const midX = -G.cam.x * 0.36;
-  G.ctx.fillStyle = '#0d1320';
-  for (let i = 0; i < 12; i++) {
-    const ax = i * 240 + midX;
-    G.ctx.fillRect(ax, 120, 26, G.canvasH);
-    G.ctx.strokeStyle = 'rgba(216, 207, 184, 0.08)';
-    G.ctx.lineWidth = 1.5;
-    G.ctx.beginPath();
-    G.ctx.moveTo(ax + 26, 210);
-    G.ctx.quadraticCurveTo(ax + 120, 85, ax + 240, 210);
-    G.ctx.stroke();
-  }
   G.ctx.restore();
 }
 
@@ -315,14 +250,11 @@ function drawWorldBackdrop() {
     G.ctx.stroke();
   }
 
-  // B. Gothic Lancet Windows & Angled Moonbeams
-  const lancets = [1080, 1460, 1840, 2220, 2790, 3610];
-  for (const wx of lancets) {
+  // B. Gothic Lancet Windows & Angled Moonbeams (zero per-frame gradient/array allocations)
+  for (let li = 0; li < BACKDROP_LANCETS.length; li++) {
+    const wx = BACKDROP_LANCETS[li];
     if (wx < G.cam.x - 160 || wx > G.cam.x + G.canvasW + 160) continue;
-    const wGrad = G.ctx.createLinearGradient(wx, 140, wx, FLOOR_Y - 90);
-    wGrad.addColorStop(0, 'rgba(34, 48, 72, 0.45)');
-    wGrad.addColorStop(1, 'rgba(13, 18, 28, 0.12)');
-    G.ctx.fillStyle = wGrad;
+    G.ctx.fillStyle = 'rgba(26, 38, 58, 0.34)';
     G.ctx.strokeStyle = 'rgba(216, 207, 184, 0.20)';
     G.ctx.lineWidth = 1.6;
     G.ctx.beginPath();
@@ -342,10 +274,7 @@ function drawWorldBackdrop() {
     G.ctx.moveTo(wx - 44, 405); G.ctx.lineTo(wx + 44, 405);
     G.ctx.stroke();
 
-    const beam = G.ctx.createLinearGradient(wx, 210, wx - 70, FLOOR_Y);
-    beam.addColorStop(0, 'rgba(180, 215, 240, 0.05)');
-    beam.addColorStop(1, 'transparent');
-    G.ctx.fillStyle = beam;
+    G.ctx.fillStyle = 'rgba(180, 215, 240, 0.032)';
     G.ctx.beginPath();
     G.ctx.moveTo(wx - 36, 230);
     G.ctx.lineTo(wx + 36, 230);
@@ -359,11 +288,7 @@ function drawWorldBackdrop() {
   if (G.cam.x + G.canvasW > 2920) {
     const rx = 3200, ry = 255;
     const isP2 = G.boss && G.boss.awake && G.boss.phase === 2;
-    const rg = G.ctx.createRadialGradient(rx, ry, 18, rx, ry, 145);
-    rg.addColorStop(0, isP2 ? 'rgba(239, 68, 68, 0.24)' : 'rgba(180, 210, 240, 0.18)');
-    rg.addColorStop(1, 'transparent');
-    G.ctx.fillStyle = rg;
-    G.ctx.beginPath(); G.ctx.arc(rx, ry, 145, 0, Math.PI * 2); G.ctx.fill();
+    drawGlowSprite(isP2 ? 'crimson' : 'cyan', rx, ry, 145, isP2 ? 0.28 : 0.20);
 
     G.ctx.strokeStyle = isP2 ? 'rgba(239, 68, 68, 0.34)' : 'rgba(216, 207, 184, 0.24)';
     G.ctx.lineWidth = 2.4;
@@ -397,12 +322,7 @@ function drawWorldBackdrop() {
     const fx = 6140;
     const fy = 1125;
     const isJiP2 = G.boss2 && G.boss2.awake && G.boss2.phase === 2;
-    const fg = G.ctx.createRadialGradient(fx, fy, 20, fx, fy, 240);
-    fg.addColorStop(0, isJiP2 ? 'rgba(245, 158, 11, 0.34)' : 'rgba(245, 158, 11, 0.20)');
-    fg.addColorStop(0.55, isJiP2 ? 'rgba(220, 38, 38, 0.16)' : 'rgba(56, 189, 248, 0.08)');
-    fg.addColorStop(1, 'transparent');
-    G.ctx.fillStyle = fg;
-    G.ctx.beginPath(); G.ctx.arc(fx, fy, 240, 0, Math.PI * 2); G.ctx.fill();
+    drawGlowSprite('gold', fx, fy, 235, isJiP2 ? 0.36 : 0.22);
 
     // Towering Bronze Casting Archway
     G.ctx.fillStyle = '#0f131d';
@@ -441,11 +361,8 @@ function drawWorldBackdrop() {
     G.ctx.moveTo(fx - 10, 995); G.ctx.lineTo(fx + 14, 1065); G.ctx.lineTo(fx - 8, 1125); G.ctx.lineTo(fx + 12, 1185);
     G.ctx.stroke();
     // Molten bronze crucible trough
-    const meltG = G.ctx.createLinearGradient(0, WELL_BOTTOM_Y - 14, 0, WELL_BOTTOM_Y);
-    meltG.addColorStop(0, isJiP2 ? 'rgba(253, 224, 71, 0.55)' : 'rgba(245, 158, 11, 0.32)');
-    meltG.addColorStop(1, 'transparent');
-    G.ctx.fillStyle = meltG;
-    G.ctx.fillRect(fx - 120, WELL_BOTTOM_Y - 14, 240, 14);
+    G.ctx.fillStyle = isJiP2 ? 'rgba(253, 224, 71, 0.34)' : 'rgba(245, 158, 11, 0.22)';
+    G.ctx.fillRect(fx - 120, WELL_BOTTOM_Y - 10, 240, 10);
   }
 
   // Grand Primeval First Bell Monument inside Room 8 (初钟圣心)
@@ -454,13 +371,7 @@ function drawWorldBackdrop() {
     const hy = 250;
     const b3Phase = (G.boss3 && G.boss3.awake && G.boss3.alive) ? G.boss3.phase : 0;
     const defeated = !!(G.worldState && G.worldState.boss3Defeated);
-    const haloCol = b3Phase === 3 || defeated ? 'rgba(254, 240, 138, 0.36)' : b3Phase === 2 ? 'rgba(192, 132, 252, 0.28)' : 'rgba(245, 158, 11, 0.22)';
-    const hg = G.ctx.createRadialGradient(hx, hy, 24, hx, hy, 290);
-    hg.addColorStop(0, haloCol);
-    hg.addColorStop(0.55, b3Phase === 3 ? 'rgba(220, 38, 38, 0.16)' : 'rgba(15, 23, 42, 0.08)');
-    hg.addColorStop(1, 'transparent');
-    G.ctx.fillStyle = hg;
-    G.ctx.beginPath(); G.ctx.arc(hx, hy, 290, 0, Math.PI * 2); G.ctx.fill();
+    drawGlowSprite(b3Phase === 2 ? 'violet' : 'gold', hx, hy, 280, (b3Phase === 3 || defeated) ? 0.38 : 0.25);
 
     // Concentric Astral Bell Rings behind Primeval Bell
     G.ctx.strokeStyle = b3Phase >= 3 || defeated ? 'rgba(253, 224, 71, 0.42)' : 'rgba(216, 207, 184, 0.22)';
@@ -496,9 +407,10 @@ function drawWorldBackdrop() {
     G.ctx.restore();
   }
 
-  // C. Swaying Tattered Cathedral Banners
-  BANNERS.forEach((bn, idx) => {
-    if (!isInView(bn.x - 24, bn.y, 48, bn.len + 12, 80)) return;
+  // C. Swaying Tattered Cathedral Banners (zero-allocation loops)
+  for (let idx = 0; idx < BANNERS.length; idx++) {
+    const bn = BANNERS[idx];
+    if (!isInView(bn.x - 24, bn.y, 48, bn.len + 12, 80)) continue;
     const sway = Math.sin(G.globalTime * 1.9 + idx * 1.3) * 9;
     G.ctx.fillStyle = bn.color;
     G.ctx.strokeStyle = 'rgba(216, 207, 184, 0.28)';
@@ -518,12 +430,12 @@ function drawWorldBackdrop() {
     G.ctx.moveTo(bn.x - 21, bn.y);
     G.ctx.lineTo(bn.x + 21, bn.y);
     G.ctx.stroke();
-  });
+  }
 
   // D. Weathered Tombstones
-  const graves = [460, 960, 1180, 1410, 2090, 2290, 2490];
-  graves.forEach((gx, idx) => {
-    if (gx < G.cam.x - 60 || gx > G.cam.x + G.canvasW + 60) return;
+  for (let idx = 0; idx < BACKDROP_GRAVES.length; idx++) {
+    const gx = BACKDROP_GRAVES[idx];
+    if (gx < G.cam.x - 60 || gx > G.cam.x + G.canvasW + 60) continue;
     const h = 38 + (idx % 3) * 16;
     G.ctx.save();
     G.ctx.translate(gx, FLOOR_Y);
@@ -546,11 +458,12 @@ function drawWorldBackdrop() {
       G.ctx.stroke();
     }
     G.ctx.restore();
-  });
+  }
 
   // E. Bone Cairns
-  BONE_CAIRNS.forEach(bx => {
-    if (bx < G.cam.x - 60 || bx > G.cam.x + G.canvasW + 60) return;
+  for (let idx = 0; idx < BONE_CAIRNS.length; idx++) {
+    const bx = BONE_CAIRNS[idx];
+    if (bx < G.cam.x - 60 || bx > G.cam.x + G.canvasW + 60) continue;
     G.ctx.fillStyle = '#202634';
     G.ctx.strokeStyle = 'rgba(216, 207, 184, 0.38)';
     G.ctx.lineWidth = 1.2;
@@ -563,11 +476,12 @@ function drawWorldBackdrop() {
     G.ctx.fillStyle = '#090c12';
     G.ctx.fillRect(bx - 2.5, FLOOR_Y - 10, 2, 2);
     G.ctx.fillRect(bx + 1, FLOOR_Y - 10, 2, 2);
-  });
+  }
 
   // F. Flickering Wax Candle Clusters
-  CANDLE_CLUSTERS.forEach((cl, idx) => {
-    if (!isInView(cl.x - 48, cl.y - 64, 96, 70, 80)) return;
+  for (let idx = 0; idx < CANDLE_CLUSTERS.length; idx++) {
+    const cl = CANDLE_CLUSTERS[idx];
+    if (!isInView(cl.x - 48, cl.y - 64, 96, 70, 80)) continue;
     drawGlowSprite('gold', cl.x, cl.y - 16, 46, 0.24);
     for (let i = 0; i < cl.count; i++) {
       const cx = cl.x + (i - (cl.count - 1) / 2) * 8;
@@ -580,204 +494,8 @@ function drawWorldBackdrop() {
       G.ctx.ellipse(cx + fl * 0.3, cl.y - ch - 4, 2, 4 + fl * 0.4, 0, 0, Math.PI * 2);
       G.ctx.fill();
     }
-  });
-
-  G.ctx.restore();
-}
-
-function drawWorldArchitecture() {
-  G.ctx.save();
-  // G. Collidable Stone Architecture (2D Frustum Culled + Batched Stroke Paths)
-  SOLIDS.forEach((s, idx) => {
-    if (!isInView(s.x, s.y, s.w, s.h, 90)) return;
-    if (s.type === 'ground') {
-      const g = G.ctx.createLinearGradient(0, s.y, 0, s.y + Math.min(220, s.h));
-      g.addColorStop(0, s.y > 900 ? '#162130' : '#1c2434');
-      g.addColorStop(0.18, '#131926');
-      g.addColorStop(0.55, '#0b0f17');
-      g.addColorStop(1, '#06080d');
-      G.ctx.fillStyle = g;
-      G.ctx.fillRect(s.x, s.y, s.w, s.h);
-
-      // Exposed vertical shaft walls on carved ground edges
-      if ((s.x > 0 && !s.seamLeft) || (s.x + s.w < WORLD_W && !s.seamRight)) {
-        G.ctx.strokeStyle = 'rgba(216, 207, 184, 0.34)';
-        G.ctx.lineWidth = 1.8;
-        G.ctx.beginPath();
-        if (s.x > 0 && !s.seamLeft) boilLinePath(G.ctx, s.x, s.y, s.x, s.y + s.h, 600 + idx * 17, 1.2, 5);
-        if (s.x + s.w < WORLD_W && !s.seamRight) boilLinePath(G.ctx, s.x + s.w, s.y, s.x + s.w, s.y + s.h, 650 + idx * 17, 1.2, 5);
-        G.ctx.stroke();
-      }
-
-      const startX = Math.max(s.x, Math.floor(G.cam.x / 64) * 64 - 64);
-      const endX = Math.min(s.x + s.w, G.cam.x + G.canvasW + 128);
-      // Pass 1: Alternating stone slabs
-      for (let bx = startX; bx < endX; bx += 64) {
-        const segW = Math.min(64, s.x + s.w - bx);
-        if (segW < 4) break;
-        G.ctx.fillStyle = (Math.floor(bx / 64)) % 2 === 0 ? 'rgba(216, 207, 184, 0.045)' : 'rgba(10, 14, 22, 0.14)';
-        G.ctx.fillRect(bx + 2, s.y + 2, Math.max(2, segW - 4), 18);
-      }
-      // Pass 2: Batched top-edge hand-drawn boil line (1 stroke total!)
-      G.ctx.strokeStyle = s.y > 900 ? 'rgba(125, 211, 252, 0.38)' : 'rgba(216, 207, 184, 0.52)';
-      G.ctx.lineWidth = 2.2;
-      G.ctx.beginPath();
-      for (let bx = startX; bx < endX; bx += 64) {
-        const segW = Math.min(64, s.x + s.w - bx);
-        if (segW < 4) break;
-        boilLinePath(G.ctx, bx, s.y + 1, bx + segW, s.y + 1, 500 + bx + s.y, 1.25, 2);
-      }
-      G.ctx.stroke();
-      // Pass 3: Batched stone seams & joints (1 stroke total!)
-      G.ctx.strokeStyle = 'rgba(216, 207, 184, 0.14)';
-      G.ctx.lineWidth = 1.1;
-      G.ctx.beginPath();
-      for (let bx = startX; bx < endX; bx += 64) {
-        const segW = Math.min(64, s.x + s.w - bx);
-        if (segW < 4) break;
-        G.ctx.moveTo(bx, s.y + 21); G.ctx.lineTo(bx + segW, s.y + 21);
-        G.ctx.moveTo(bx, s.y + 2); G.ctx.lineTo(bx, s.y + 21);
-      }
-      G.ctx.stroke();
-      // Pass 4: Batched swaying grass blades (1 stroke total!)
-      if (s.y === FLOOR_Y) {
-        G.ctx.strokeStyle = 'rgba(130, 150, 138, 0.42)';
-        G.ctx.lineWidth = 1.3;
-        G.ctx.beginPath();
-        for (let bx = startX; bx < endX; bx += 64) {
-          const segW = Math.min(64, s.x + s.w - bx);
-          if (segW >= 32 && (Math.floor(bx / 64)) % 3 === 1) {
-            const sway = Math.sin(G.globalTime * 2.5 + bx) * 2.5;
-            G.ctx.moveTo(bx + 12, s.y);
-            G.ctx.quadraticCurveTo(bx + 9 + sway, s.y - 8, bx + 6 + sway, s.y - 13);
-            G.ctx.moveTo(bx + 14, s.y);
-            G.ctx.quadraticCurveTo(bx + 17 + sway, s.y - 6, bx + 20 + sway, s.y - 10);
-          }
-        }
-        G.ctx.stroke();
-      }
-
-      // Moonlit Puddles (upper corridor floor only)
-      if (s.y === FLOOR_Y) for (const p of PUDDLES) {
-        if (p.x < s.x || p.x + p.w > s.x + s.w) continue;
-        if (p.x + p.w < G.cam.x - 40 || p.x > G.cam.x + G.canvasW + 40) continue;
-        const pg = G.ctx.createLinearGradient(p.x, s.y, p.x + p.w, s.y);
-        pg.addColorStop(0, 'transparent');
-        pg.addColorStop(0.5, 'rgba(125, 211, 252, 0.28)');
-        pg.addColorStop(1, 'transparent');
-        G.ctx.fillStyle = pg;
-        G.ctx.fillRect(p.x, s.y - 1, p.w, 4.5);
-        G.ctx.strokeStyle = 'rgba(224, 242, 254, 0.35)';
-        G.ctx.lineWidth = 1;
-        const rip = Math.sin(G.globalTime * 3 + p.x) * 6;
-        G.ctx.beginPath();
-        G.ctx.moveTo(p.x + p.w * 0.25 + rip, s.y + 1);
-        G.ctx.lineTo(p.x + p.w * 0.55 + rip, s.y + 1);
-        G.ctx.stroke();
-      }
-    } else if (s.type === 'pillar') {
-      G.ctx.fillStyle = '#171f2e';
-      G.ctx.fillRect(s.x, s.y, s.w, s.h);
-      G.ctx.fillStyle = '#202a3d';
-      G.ctx.fillRect(s.x - 5, s.y, s.w + 10, 14);
-      G.ctx.fillRect(s.x - 5, s.y + s.h - 14, s.w + 10, 14);
-
-      G.ctx.strokeStyle = 'rgba(9, 12, 18, 0.65)';
-      G.ctx.lineWidth = 1.6;
-      G.ctx.beginPath();
-      for (let fx = s.x + 10; fx < s.x + s.w - 6; fx += 12) {
-        G.ctx.moveTo(fx, s.y + 16);
-        G.ctx.lineTo(fx, s.y + s.h - 16);
-      }
-      G.ctx.stroke();
-      G.ctx.strokeStyle = 'rgba(216, 207, 184, 0.44)';
-      G.ctx.lineWidth = 1.9;
-      boilRectOutline(G.ctx, s.x, s.y, s.w, s.h, 1200 + idx * 97, 1.3);
-      boilRectOutline(G.ctx, s.x - 5, s.y, s.w + 10, 14, 1240 + idx * 31, 1.0);
-    } else {
-      // Floating Stone Ledge with Jagged Strata, Batched Hatch Shading & Batched Vines
-      G.ctx.fillStyle = '#1d2638';
-      G.ctx.beginPath();
-      G.ctx.moveTo(s.x, s.y);
-      G.ctx.lineTo(s.x + s.w, s.y);
-      G.ctx.lineTo(s.x + s.w - 4, s.y + s.h);
-      const steps = Math.max(3, Math.floor(s.w / 32));
-      for (let k = steps - 1; k >= 1; k--) {
-        const jx = s.x + (s.w * k) / steps;
-        const jy = s.y + s.h + (k % 2 === 0 ? 7 : 1);
-        G.ctx.lineTo(jx, jy);
-      }
-      G.ctx.lineTo(s.x + 4, s.y + s.h);
-      G.ctx.closePath();
-      G.ctx.fill();
-
-      G.ctx.fillStyle = 'rgba(216, 207, 184, 0.1)';
-      G.ctx.fillRect(s.x + 2, s.y + 1, s.w - 4, 5);
-
-      G.ctx.strokeStyle = 'rgba(9, 12, 18, 0.58)';
-      G.ctx.lineWidth = 1.2;
-      G.ctx.beginPath();
-      for (let hx = s.x + 10; hx < s.x + s.w - 6; hx += 13) {
-        G.ctx.moveTo(hx, s.y + 6);
-        G.ctx.lineTo(hx - 6, s.y + s.h - 1);
-      }
-      G.ctx.stroke();
-
-      G.ctx.strokeStyle = 'rgba(120, 145, 138, 0.46)';
-      G.ctx.lineWidth = 1.3;
-      G.ctx.beginPath();
-      for (let vx = s.x + 18; vx < s.x + s.w - 14; vx += 46) {
-        const vLen = 18 + ((vx + idx * 17) % 24);
-        const vSway = Math.sin(G.globalTime * 2.2 + vx * 0.05) * 5;
-        G.ctx.moveTo(vx, s.y + s.h + 2);
-        G.ctx.quadraticCurveTo(vx + vSway * 0.5, s.y + s.h + vLen * 0.5, vx + vSway, s.y + s.h + vLen);
-      }
-      G.ctx.stroke();
-
-      G.ctx.strokeStyle = 'rgba(216, 207, 184, 0.58)';
-      G.ctx.lineWidth = 2;
-      G.ctx.beginPath();
-      boilLinePath(G.ctx, s.x, s.y, s.x + s.w, s.y, 1200 + idx * 97, 1.3, Math.max(3, Math.round(s.w / 42)));
-      boilLinePath(G.ctx, s.x, s.y, s.x + 4, s.y + s.h, 1220 + idx * 97, 1.1, 2);
-      boilLinePath(G.ctx, s.x + s.w, s.y, s.x + s.w - 4, s.y + s.h, 1240 + idx * 97, 1.1, 2);
-      G.ctx.stroke();
-    }
-  });
-
-  // Abyssal Ink Rivers Shimmer (data-driven across all rooms)
-  for (const rv of ABYSSAL_RIVERS) {
-    if (rv.w <= 0 || !isInView(rv.x, rv.y - 20, rv.w, 60, 40)) continue;
-    const rg = G.ctx.createLinearGradient(0, rv.y - 10, 0, rv.y + 26);
-    rg.addColorStop(0, 'rgba(56, 189, 248, 0.34)');
-    rg.addColorStop(0.5, 'rgba(12, 74, 110, 0.55)');
-    rg.addColorStop(1, 'rgba(5, 8, 14, 0.85)');
-    G.ctx.fillStyle = rg;
-    G.ctx.fillRect(rv.x, rv.y, rv.w, 16);
-    G.ctx.strokeStyle = 'rgba(186, 230, 253, 0.58)';
-    G.ctx.lineWidth = 1.6;
-    for (let rx = rv.x + 12; rx < rv.x + rv.w - 30; rx += 84) {
-      const wave = Math.sin(G.globalTime * 3.2 + rx * 0.03) * 8;
-      G.ctx.beginPath();
-      G.ctx.moveTo(rx + wave, rv.y + 3);
-      G.ctx.lineTo(rx + 42 + wave, rv.y + 3);
-      G.ctx.stroke();
-      // Subtle rising corrosive ink bubbles
-      const bubP = ((G.globalTime * 0.9 + rx * 0.017) % 1);
-      const bx = rx + 20 + Math.sin(G.globalTime * 4 + rx) * 6;
-      const by = rv.y + 2 - bubP * 20;
-      G.ctx.fillStyle = `rgba(125, 211, 252, ${((1 - bubP) * 0.55).toFixed(2)})`;
-      G.ctx.beginPath();
-      G.ctx.arc(bx, by, 2.4 * (1 - bubP * 0.5), 0, Math.PI * 2);
-      G.ctx.fill();
-    }
   }
 
-  // Low Creeping Theme-Tinted Ink Mist
-  const mistG = G.ctx.createLinearGradient(0, FLOOR_Y - 52, 0, FLOOR_Y + 8);
-  mistG.addColorStop(0, 'transparent');
-  mistG.addColorStop(1, rgbStr(G.themeBlend.mist, 0.62));
-  G.ctx.fillStyle = mistG;
-  G.ctx.fillRect(G.cam.x - 20, FLOOR_Y - 52, Math.min(G.canvasW + 40, Math.max(0, 4140 - (G.cam.x - 20))), 60);
   G.ctx.restore();
 }
 
@@ -807,7 +525,7 @@ function drawWeatherRipples() {
 
 function drawWallInscriptions() {
   G.ctx.save();
-  G.ctx.font = '12.5px "Noto Serif SC", serif';
+  G.ctx.font = getCanvasFont(12.5, false);
   G.ctx.textAlign = 'center';
   for (const ins of WALL_INSCRIPTIONS) {
     if (ins.hideWhenShortcutOpen && G.worldState && G.worldState.shortcutOpen) continue;
@@ -815,23 +533,23 @@ function drawWallInscriptions() {
     if (ins.hideWhenShadeDash && G.worldState && G.worldState.abilities.shadeDash) continue;
     if (ins.hideWhenBoss2Defeated && G.worldState && G.worldState.boss2Defeated) continue;
     if (ins.hideWhenPuzzleSolved && G.worldState && G.worldState.solvedPuzzles && G.worldState.solvedPuzzles.has(ins.hideWhenPuzzleSolved)) continue;
-    if (!isInView(ins.x - 120, ins.y - 24, 240, 48, 120)) continue;
+    if (!isInView(ins.x - 160, ins.y - 24, 320, 48, 120)) continue;
     const dist = G.player ? Math.abs((G.player.x + G.player.w / 2) - ins.x) : 999;
     const proximity = Math.max(0, 1 - dist / 340);
     const alpha = 0.24 + proximity * 0.56;
-    let label = ins.text;
+    let label = locInscription(ins.text);
     if (ins.dynamicKey) {
       const k = getControlLabels();
-      if (ins.dynamicKey === 'grapple') label = `「幽丝攀环 · ${k.grapple}」`;
-      else if (ins.dynamicKey === 'pogoSpell') label = `「下劈悬灯 S+斩 · 或以灵刃 ${k.spell} 击鸣」`;
-      else if (ins.dynamicKey === 'parry') label = `「金芒借刃弹反 ${k.parry}→斩 · 猩红危兆须闪」`;
-      else if (ins.dynamicKey === 'bellPuzzle') label = `「限时齐鸣三口青铜悬钟 · 可用 W+${k.spell} 镇魂钟鸣」`;
+      if (ins.dynamicKey === 'grapple') label = t('ins.grapple', k.grapple);
+      else if (ins.dynamicKey === 'pogoSpell') label = t('ins.pogoSpell', k.spell);
+      else if (ins.dynamicKey === 'parry') label = t('ins.parry', k.parry);
+      else if (ins.dynamicKey === 'bellPuzzle') label = t('ins.bellPuzzle', k.spell);
     }
     G.ctx.fillStyle = `rgba(216, 207, 184, ${alpha.toFixed(2)})`;
     G.ctx.fillText(label, ins.x, ins.y);
     G.ctx.strokeStyle = `rgba(216, 207, 184, ${(alpha * 0.32).toFixed(2)})`;
     G.ctx.lineWidth = 1;
-    const halfW = Math.min(130, label.length * 5.8);
+    const halfW = Math.min(185, Math.max(48, G.ctx.measureText(label).width * 0.52));
     boilLine(G.ctx, ins.x - halfW, ins.y + 6, ins.x + halfW, ins.y + 6, 4100 + ins.x, 0.7, 3);
   }
   G.ctx.restore();
@@ -899,77 +617,204 @@ function drawAltars() {
   }
 }
 
+function hasNpcClaimableReward(npc) {
+  if (!G.worldState) return false;
+  const nq = G.worldState.npcQuests || {};
+  const codex = G.worldState.codex || {};
+  if (npc.kind === 'chronicler') {
+    const claims = Array.isArray(nq.chroniclerClaims) ? nq.chroniclerClaims : [];
+    const readCnt = Array.isArray(codex.readTablets) ? codex.readTablets.length : 0;
+    const seenCnt = codex.bestiary ? Object.keys(codex.bestiary).filter(k => codex.bestiary[k] && codex.bestiary[k].seen).length : 0;
+    const expPct = getExplorationPercent();
+    if (!claims.includes('vol1') && (readCnt >= 2 || expPct >= 35)) return true;
+    if (!claims.includes('vol2') && (seenCnt >= 7 || G.worldState.boss2Defeated)) return true;
+    if (!claims.includes('vol3') && readCnt >= LORE_TABLETS.length && expPct >= 80) return true;
+  } else if (npc.kind === 'keeper') {
+    if (!nq.keeperWickGifted && G.worldState.keyItems && G.worldState.keyItems.dawnSigil) return true;
+  }
+  return false;
+}
+
 function drawNpcs() {
   for (const npc of NPCS) {
     const { x, y } = npc;
-    if (x < G.cam.x - 160 || x > G.cam.x + G.canvasW + 160) continue;
+    if (!isInView(x - 80, y - 110, 160, 120, 100)) continue;
     G.ctx.save();
+    const pulse = 0.88 + Math.sin(G.globalTime * 6.0 + x) * 0.12;
+    const hasQuestPin = hasNpcClaimableReward(npc);
 
-    // Warm molten forge glow around Blind Bellsmith
-    const pulse = 0.88 + Math.sin(G.globalTime * 6.5) * 0.12;
-    const fg = G.ctx.createRadialGradient(x + 22, y - 22, 4, x + 12, y - 26, 118 * pulse);
-    fg.addColorStop(0, 'rgba(245, 158, 11, 0.34)');
-    fg.addColorStop(0.55, 'rgba(220, 38, 38, 0.10)');
-    fg.addColorStop(1, 'transparent');
-    G.ctx.fillStyle = fg;
-    G.ctx.beginPath(); G.ctx.arc(x + 12, y - 26, 118 * pulse, 0, Math.PI * 2); G.ctx.fill();
+    if (npc.kind === 'chronicler') {
+      // Wandering Ink-Scholar · 墨尘 (Wide bamboo rain hat, scroll quiver, amber lantern staff)
+      drawGlowSprite('gold', x + 16, y - 42, 92 * pulse, 0.30);
+      drawGlowSprite('cyan', x - 8, y - 34, 48 * pulse, 0.18);
 
-    // Stone Forge Brazier & Heavy Bronze Anvil (x + 28)
-    const ax = x + 28;
-    G.ctx.fillStyle = '#191d28';
-    G.ctx.strokeStyle = 'rgba(216, 207, 184, 0.65)';
-    G.ctx.lineWidth = 1.6;
-    G.ctx.beginPath();
-    G.ctx.moveTo(ax - 18, y); G.ctx.lineTo(ax - 12, y - 18);
-    G.ctx.lineTo(ax - 22, y - 24); G.ctx.lineTo(ax + 24, y - 24);
-    G.ctx.lineTo(ax + 15, y - 16); G.ctx.lineTo(ax + 18, y);
-    G.ctx.closePath();
-    G.ctx.fill(); G.ctx.stroke();
-    // Glowing ember ingot on anvil
-    drawGlowSprite('gold', ax, y - 27, 22 * pulse, 0.72);
-    G.ctx.fillStyle = COLORS.goldBright;
-    G.ctx.fillRect(ax - 7, y - 28, 14, 4);
+      // Lantern Staff planted in stone beside him
+      const stX = x + 19;
+      G.ctx.strokeStyle = '#9b8359';
+      G.ctx.lineWidth = 2.6;
+      G.ctx.beginPath(); G.ctx.moveTo(stX, y); G.ctx.lineTo(stX, y - 64); G.ctx.stroke();
+      const lanSway = Math.sin(G.globalTime * 2.4) * 3.5;
+      G.ctx.strokeStyle = COLORS.parchment;
+      G.ctx.lineWidth = 1.4;
+      G.ctx.beginPath(); G.ctx.moveTo(stX, y - 64); G.ctx.lineTo(stX + 10 + lanSway, y - 50); G.ctx.stroke();
+      drawGlowSprite('gold', stX + 10 + lanSway, y - 46, 26 * pulse, 0.72);
+      G.ctx.fillStyle = '#241c14';
+      G.ctx.strokeStyle = COLORS.goldBright;
+      G.ctx.fillRect(stX + 6 + lanSway, y - 51, 8, 10);
+      G.ctx.strokeRect(stX + 6 + lanSway, y - 51, 8, 10);
+      G.ctx.fillStyle = COLORS.goldBright;
+      G.ctx.beginPath(); G.ctx.arc(stX + 10 + lanSway, y - 46, 2.5, 0, Math.PI * 2); G.ctx.fill();
 
-    // Blind Old Bellsmith Silhouette (Hunched Hooded Artisan)
-    const tapCycle = Math.sin(G.globalTime * 3.4);
-    const hammerLift = tapCycle > 0.3 ? (tapCycle - 0.3) * 1.1 : 0;
-    G.ctx.translate(x - 6, y);
-    // Heavy Leather Apron & Coat
-    G.ctx.fillStyle = '#151924';
-    G.ctx.strokeStyle = COLORS.parchment;
-    G.ctx.lineWidth = 1.8;
-    G.ctx.beginPath();
-    G.ctx.moveTo(-16, 0); G.ctx.lineTo(-14, -44); G.ctx.quadraticCurveTo(0, -54, 14, -42);
-    G.ctx.lineTo(17, 0); G.ctx.closePath();
-    G.ctx.fill(); G.ctx.stroke();
-    // Broad Hooded Head & Blindfold Bandage
-    G.ctx.fillStyle = '#1e2433';
-    G.ctx.beginPath(); G.ctx.arc(2, -52, 11, 0, Math.PI * 2); G.ctx.fill(); G.ctx.stroke();
-    G.ctx.strokeStyle = '#d8cfb8';
-    G.ctx.lineWidth = 3;
-    G.ctx.beginPath(); G.ctx.moveTo(-5, -53); G.ctx.lineTo(12, -51); G.ctx.stroke();
-    // Long Ash Beard
-    G.ctx.fillStyle = '#b7afa0';
-    G.ctx.beginPath(); G.ctx.moveTo(2, -45); G.ctx.lineTo(11, -44); G.ctx.lineTo(6, -31); G.ctx.closePath(); G.ctx.fill();
+      // Scroll Quiver strapped across back
+      G.ctx.save();
+      G.ctx.translate(x - 10, y - 38);
+      G.ctx.rotate(-0.34);
+      G.ctx.fillStyle = '#2c2218';
+      G.ctx.strokeStyle = COLORS.parchment;
+      G.ctx.lineWidth = 1.4;
+      G.ctx.fillRect(-5, -14, 10, 28);
+      G.ctx.strokeRect(-5, -14, 10, 28);
+      G.ctx.fillStyle = '#e7dec8';
+      G.ctx.fillRect(-4, -17, 8, 4);
+      G.ctx.restore();
 
-    // Forging Hammer Arm
-    G.ctx.save();
-    G.ctx.translate(10, -34);
-    G.ctx.rotate(-0.45 - hammerLift);
-    G.ctx.strokeStyle = COLORS.parchment;
-    G.ctx.lineWidth = 2.6;
-    G.ctx.beginPath(); G.ctx.moveTo(0, 0); G.ctx.lineTo(24, 6); G.ctx.stroke();
-    G.ctx.fillStyle = '#3b2c1a';
-    G.ctx.strokeStyle = COLORS.gold;
-    G.ctx.lineWidth = 1.5;
-    G.ctx.fillRect(20, 0, 9, 13); G.ctx.strokeRect(20, 0, 9, 13);
-    G.ctx.restore();
+      // Scholar Robe & Wide Bamboo Rain-Hat (蓑笠)
+      G.ctx.translate(x, y);
+      G.ctx.fillStyle = '#131b29';
+      G.ctx.strokeStyle = COLORS.parchment;
+      G.ctx.lineWidth = 1.7;
+      G.ctx.beginPath();
+      G.ctx.moveTo(-14, 0); G.ctx.lineTo(-10, -48); G.ctx.lineTo(10, -48); G.ctx.lineTo(14, 0);
+      G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
+      // Teal scholar sash
+      G.ctx.strokeStyle = COLORS.cyan;
+      G.ctx.lineWidth = 2.0;
+      G.ctx.beginPath(); G.ctx.moveTo(-9, -36); G.ctx.lineTo(9, -28); G.ctx.stroke();
+      // Wide conical hat
+      G.ctx.fillStyle = '#252019';
+      G.ctx.strokeStyle = COLORS.gold;
+      G.ctx.lineWidth = 1.7;
+      G.ctx.beginPath();
+      G.ctx.moveTo(-24, -52); G.ctx.quadraticCurveTo(0, -70, 24, -52); G.ctx.closePath();
+      G.ctx.fill(); G.ctx.stroke();
+      // Open parchment scroll in hands
+      G.ctx.fillStyle = '#e8dfc9';
+      G.ctx.fillRect(3, -34, 11, 8);
+      G.ctx.fillStyle = COLORS.cyanBright;
+      G.ctx.beginPath(); G.ctx.arc(8 + Math.sin(G.globalTime * 5) * 3, -31, 1.8, 0, Math.PI * 2); G.ctx.fill();
 
-    // Subtle Nameplate above NPC
-    G.ctx.font = '11.5px "Noto Serif SC", serif';
-    G.ctx.textAlign = 'center';
-    G.ctx.fillStyle = 'rgba(253, 224, 71, 0.72)';
-    G.ctx.fillText(npc.name || '老铸钟匠 · 砺', 10, -72);
+      G.ctx.font = getCanvasFont(11.5, false);
+      G.ctx.textAlign = 'center';
+      G.ctx.fillStyle = 'rgba(186, 230, 253, 0.85)';
+      G.ctx.fillText(locNpcName(npc, 'chronicler'), 2, -76);
+    } else if (npc.kind === 'keeper') {
+      // Former Bell-Keeper · 汐 (Seated silver-veiled guardian with twin-wick cyan-gold sanctuary lantern)
+      const gifted = !!(G.worldState && G.worldState.npcQuests && G.worldState.npcQuests.keeperWickGifted);
+      drawGlowSprite(gifted ? 'gold' : 'cyan', x, y - 34, (gifted ? 112 : 92) * pulse, gifted ? 0.40 : 0.30);
+
+      // Cracked miniature bronze bell resting on stone beside her
+      G.ctx.fillStyle = '#241d17';
+      G.ctx.strokeStyle = gifted ? COLORS.goldBright : 'rgba(216, 207, 184, 0.55)';
+      G.ctx.lineWidth = 1.5;
+      G.ctx.beginPath();
+      G.ctx.moveTo(x - 26, y); G.ctx.lineTo(x - 22, y - 16); G.ctx.quadraticCurveTo(x - 16, y - 22, x - 11, y - 16); G.ctx.lineTo(x - 7, y);
+      G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
+
+      G.ctx.translate(x, y);
+      // Flowing kneeling silver-ink cloak
+      const veilSway = Math.sin(G.globalTime * 2.6) * 4;
+      G.ctx.fillStyle = '#151c2c';
+      G.ctx.strokeStyle = gifted ? COLORS.goldBright : COLORS.cyanBright;
+      G.ctx.lineWidth = 1.7;
+      G.ctx.beginPath();
+      G.ctx.moveTo(-18, 0); G.ctx.quadraticCurveTo(-16, -34, -8, -44);
+      G.ctx.lineTo(8, -44); G.ctx.quadraticCurveTo(16, -32, 19 + veilSway * 0.4, 0);
+      G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
+      // Hooded head & fluttering silver veil
+      G.ctx.fillStyle = '#1f283b';
+      G.ctx.beginPath(); G.ctx.arc(0, -50, 9.5, 0, Math.PI * 2); G.ctx.fill(); G.ctx.stroke();
+      G.ctx.strokeStyle = 'rgba(224, 242, 254, 0.72)';
+      G.ctx.lineWidth = 2;
+      G.ctx.beginPath();
+      G.ctx.moveTo(6, -54); G.ctx.quadraticCurveTo(16 + veilSway, -42, 20 + veilSway * 1.4, -22);
+      G.ctx.stroke();
+      // Twin-wick lantern cradled in front
+      drawGlowSprite('cyan', 13, -22, 24 * pulse, 0.75);
+      drawGlowSprite('gold', 13, -22, 15 * pulse, 0.68);
+      G.ctx.fillStyle = '#121826';
+      G.ctx.strokeStyle = COLORS.goldBright;
+      G.ctx.lineWidth = 1.4;
+      G.ctx.fillRect(8, -28, 10, 12);
+      G.ctx.strokeRect(8, -28, 10, 12);
+      G.ctx.fillStyle = '#fef9c3';
+      G.ctx.beginPath(); G.ctx.arc(13, -22, 3.2, 0, Math.PI * 2); G.ctx.fill();
+
+      G.ctx.font = getCanvasFont(11.5, false);
+      G.ctx.textAlign = 'center';
+      G.ctx.fillStyle = gifted ? 'rgba(253, 224, 71, 0.90)' : 'rgba(186, 230, 253, 0.88)';
+      G.ctx.fillText(locNpcName(npc, 'keeper'), 2, -70);
+    } else {
+      // Blind Old Bellsmith · 砺 (Default smith)
+      drawGlowSprite('gold', x + 16, y - 24, 115 * pulse, 0.34);
+
+      const ax = x + 28;
+      G.ctx.fillStyle = '#191d28';
+      G.ctx.strokeStyle = 'rgba(216, 207, 184, 0.65)';
+      G.ctx.lineWidth = 1.6;
+      G.ctx.beginPath();
+      G.ctx.moveTo(ax - 18, y); G.ctx.lineTo(ax - 12, y - 18);
+      G.ctx.lineTo(ax - 22, y - 24); G.ctx.lineTo(ax + 24, y - 24);
+      G.ctx.lineTo(ax + 15, y - 16); G.ctx.lineTo(ax + 18, y);
+      G.ctx.closePath();
+      G.ctx.fill(); G.ctx.stroke();
+      drawGlowSprite('gold', ax, y - 27, 22 * pulse, 0.72);
+      G.ctx.fillStyle = COLORS.goldBright;
+      G.ctx.fillRect(ax - 7, y - 28, 14, 4);
+
+      const tapCycle = Math.sin(G.globalTime * 3.4);
+      const hammerLift = tapCycle > 0.3 ? (tapCycle - 0.3) * 1.1 : 0;
+      G.ctx.translate(x - 6, y);
+      G.ctx.fillStyle = '#151924';
+      G.ctx.strokeStyle = COLORS.parchment;
+      G.ctx.lineWidth = 1.8;
+      G.ctx.beginPath();
+      G.ctx.moveTo(-16, 0); G.ctx.lineTo(-14, -44); G.ctx.quadraticCurveTo(0, -54, 14, -42);
+      G.ctx.lineTo(17, 0); G.ctx.closePath();
+      G.ctx.fill(); G.ctx.stroke();
+      G.ctx.fillStyle = '#1e2433';
+      G.ctx.beginPath(); G.ctx.arc(2, -52, 11, 0, Math.PI * 2); G.ctx.fill(); G.ctx.stroke();
+      G.ctx.strokeStyle = '#d8cfb8';
+      G.ctx.lineWidth = 3;
+      G.ctx.beginPath(); G.ctx.moveTo(-5, -53); G.ctx.lineTo(12, -51); G.ctx.stroke();
+      G.ctx.fillStyle = '#b7afa0';
+      G.ctx.beginPath(); G.ctx.moveTo(2, -45); G.ctx.lineTo(11, -44); G.ctx.lineTo(6, -31); G.ctx.closePath(); G.ctx.fill();
+
+      G.ctx.save();
+      G.ctx.translate(10, -34);
+      G.ctx.rotate(-0.45 - hammerLift);
+      G.ctx.strokeStyle = COLORS.parchment;
+      G.ctx.lineWidth = 2.6;
+      G.ctx.beginPath(); G.ctx.moveTo(0, 0); G.ctx.lineTo(24, 6); G.ctx.stroke();
+      G.ctx.fillStyle = '#3b2c1a';
+      G.ctx.strokeStyle = COLORS.gold;
+      G.ctx.lineWidth = 1.5;
+      G.ctx.fillRect(20, 0, 9, 13); G.ctx.strokeRect(20, 0, 9, 13);
+      G.ctx.restore();
+
+      G.ctx.font = getCanvasFont(11.5, false);
+      G.ctx.textAlign = 'center';
+      G.ctx.fillStyle = 'rgba(253, 224, 71, 0.72)';
+      G.ctx.fillText(locNpcName(npc, 'smith'), 10, -72);
+    }
+
+    if (hasQuestPin) {
+      const bob = Math.sin(G.globalTime * 5.2) * 3.5;
+      drawGlowSprite('gold', 2, -92 + bob, 16, 0.78);
+      G.ctx.fillStyle = COLORS.goldBright;
+      G.ctx.font = 'bold 14px "Noto Serif SC", serif';
+      G.ctx.textAlign = 'center';
+      G.ctx.fillText('✦', 2, -88 + bob);
+    }
     G.ctx.restore();
   }
 }
@@ -1102,13 +947,11 @@ function drawFirstBellCore() {
   G.ctx.save();
   drawGlowSprite('gold', x, cy, 86, 0.78);
   if (hasDawn) drawGlowSprite('cyan', x, cy, 52, 0.56);
-  // Radiant Astral Pillar descending onto First Bell Core
-  const pil = G.ctx.createLinearGradient(x, 0, x, y);
-  pil.addColorStop(0, 'transparent');
-  pil.addColorStop(0.55, hasDawn ? 'rgba(254, 240, 138, 0.20)' : 'rgba(245, 158, 11, 0.14)');
-  pil.addColorStop(1, 'transparent');
-  G.ctx.fillStyle = pil;
-  G.ctx.fillRect(x - 38, 0, 76, y);
+  // Radiant Astral Pillar descending onto First Bell Core (zero per-frame gradient)
+  G.ctx.fillStyle = hasDawn ? 'rgba(254, 240, 138, 0.10)' : 'rgba(245, 158, 11, 0.07)';
+  G.ctx.fillRect(x - 38, y * 0.12, 76, y * 0.84);
+  G.ctx.fillStyle = hasDawn ? 'rgba(254, 240, 138, 0.12)' : 'rgba(245, 158, 11, 0.08)';
+  G.ctx.fillRect(x - 18, y * 0.25, 36, y * 0.68);
   // Rotating golden halo
   G.ctx.strokeStyle = COLORS.goldBright;
   G.ctx.lineWidth = 2;
@@ -1125,8 +968,9 @@ function drawFirstBellCore() {
 }
 
 function drawPendulums() {
-  PENDULUMS.forEach((pd, idx) => {
-    if (!isInView(pd.x - pd.len, pd.anchorY, pd.len * 2, pd.len + 40, 80)) return;
+  for (let idx = 0; idx < PENDULUMS.length; idx++) {
+    const pd = PENDULUMS[idx];
+    if (!isInView(pd.x - pd.len, pd.anchorY, pd.len * 2, pd.len + 40, 80)) continue;
     const ang = Math.sin(G.globalTime * pd.speed + pd.phase) * pd.amp;
     const bx = pd.x + Math.sin(ang) * pd.len;
     const by = pd.anchorY + Math.cos(ang) * pd.len;
@@ -1158,7 +1002,7 @@ function drawPendulums() {
     G.ctx.fillStyle = COLORS.goldBright;
     G.ctx.beginPath(); G.ctx.arc(0, 2, 5.5, 0, Math.PI * 2); G.ctx.fill();
     G.ctx.restore();
-  });
+  }
 }
 
 function drawSecretWalls() {
@@ -1202,12 +1046,8 @@ function drawVoidBarriers() {
     const cy = vb.y + vb.h * 0.5;
     G.ctx.save();
     drawGlowSprite('violet', cx, cy, Math.max(44, vb.h * 0.52), unlocked ? 0.44 : 0.62);
-    // Obsidian-violet ink curtain body
-    const grad = G.ctx.createLinearGradient(vb.x, vb.y, vb.x + vb.w, vb.y);
-    grad.addColorStop(0, 'rgba(30, 12, 48, 0.35)');
-    grad.addColorStop(0.5, 'rgba(10, 5, 18, 0.94)');
-    grad.addColorStop(1, 'rgba(30, 12, 48, 0.35)');
-    G.ctx.fillStyle = grad;
+    // Obsidian-violet ink curtain body (zero per-frame gradient)
+    G.ctx.fillStyle = 'rgba(16, 8, 28, 0.86)';
     G.ctx.fillRect(vb.x, vb.y, vb.w, vb.h);
     // Shimmering vertical void-ink streams
     G.ctx.strokeStyle = unlocked ? 'rgba(216, 180, 254, 0.72)' : 'rgba(168, 85, 247, 0.88)';
@@ -1270,12 +1110,13 @@ function drawLostEchoes() {
   G.ctx.fillStyle = COLORS.goldBright;
   G.ctx.beginPath(); G.ctx.arc(x, y - 2, 4.8, 0, Math.PI * 2); G.ctx.fill();
   // Amount Label
-  G.ctx.font = 'bold 12px "Noto Serif SC", serif';
+  const leLbl = t('ren.lostEcho', le.amount);
+  G.ctx.font = getCanvasFont(12, true);
   G.ctx.textAlign = 'center';
   G.ctx.fillStyle = '#06080d';
-  G.ctx.fillText(`✦ 残响灯影 · ${le.amount}`, x + 1, y - 28);
+  G.ctx.fillText(leLbl, x + 1, y - 28);
   G.ctx.fillStyle = COLORS.cyanBright;
-  G.ctx.fillText(`✦ 残响灯影 · ${le.amount}`, x, y - 29);
+  G.ctx.fillText(leLbl, x, y - 29);
   G.ctx.restore();
 }
 
@@ -1350,18 +1191,20 @@ function drawPickups() {
 
 function drawCrumblePlatforms() {
   if (!G.crumblePlatforms) return;
-  G.crumblePlatforms.forEach((cp, idx) => {
-    if (!isInView(cp.x, cp.y, cp.w, cp.h, 80)) return;
+  for (let idx = 0; idx < G.crumblePlatforms.length; idx++) {
+    const cp = G.crumblePlatforms[idx];
+    if (!isInView(cp.x, cp.y, cp.w, cp.h, 80)) continue;
     G.ctx.save();
     if (cp.state === 'broken') {
       const regenP = 1 - Math.max(0, cp.timer / 3.2);
       G.ctx.setLineDash([5, 5]);
-      G.ctx.strokeStyle = `rgba(125, 211, 252, ${(0.18 + regenP * 0.38).toFixed(2)})`;
+      G.ctx.strokeStyle = '#7dd3fc';
+      G.ctx.globalAlpha = 0.18 + regenP * 0.38;
       G.ctx.lineWidth = 1.4;
       G.ctx.strokeRect(cp.x, cp.y, cp.w, cp.h);
       G.ctx.setLineDash([]);
       G.ctx.restore();
-      return;
+      continue;
     }
     const jx = cp.state === 'shaking' ? (Math.random() - 0.5) * 6 : 0;
     const jy = cp.state === 'shaking' ? (Math.random() - 0.5) * 3 : 0;
@@ -1383,7 +1226,7 @@ function drawCrumblePlatforms() {
     G.ctx.lineWidth = 1.8;
     boilRectOutline(G.ctx, cp.x, cp.y, cp.w, cp.h, 8400 + idx * 31, 1.2);
     G.ctx.restore();
-  });
+  }
 }
 
 function drawResonancePuzzles() {
@@ -1511,9 +1354,10 @@ function drawLoreTablets() {
 }
 
 function drawLanterns() {
-  G.lanterns.forEach((l, idx) => {
+  for (let idx = 0; idx < G.lanterns.length; idx++) {
+    const l = G.lanterns[idx];
     const topY0 = l.topY !== undefined ? l.topY : 0;
-    if (!isInView(l.x - 60, topY0, 120, (l.anchorY + l.len) - topY0 + 60, 100)) return;
+    if (!isInView(l.x - 60, topY0, 120, (l.anchorY + l.len) - topY0 + 60, 100)) continue;
     const lx = l.x + Math.sin(l.angle) * l.len;
     const ly = l.anchorY + Math.cos(l.angle) * l.len;
     G.ctx.save();
@@ -1539,13 +1383,14 @@ function drawLanterns() {
     G.ctx.fillStyle = COLORS.goldBright;
     G.ctx.beginPath(); G.ctx.arc(0, -1, 4.5, 0, Math.PI * 2); G.ctx.fill();
     G.ctx.restore();
-  });
+  }
 }
 
 function drawGrappleAnchors() {
-  GRAPPLE_ANCHORS.forEach((a, idx) => {
+  for (let idx = 0; idx < GRAPPLE_ANCHORS.length; idx++) {
+    const a = GRAPPLE_ANCHORS[idx];
     const topY0 = a.topY !== undefined ? a.topY : 0;
-    if (!isInView(a.x - 40, topY0, 80, a.y - topY0 + 40, 80)) return;
+    if (!isInView(a.x - 40, topY0, 80, a.y - topY0 + 40, 80)) continue;
     G.ctx.save();
     G.ctx.strokeStyle = 'rgba(216, 207, 184, 0.30)';
     G.ctx.lineWidth = 1.5;
@@ -1563,16 +1408,27 @@ function drawGrappleAnchors() {
     G.ctx.fillStyle = COLORS.goldBright;
     G.ctx.beginPath(); G.ctx.arc(a.x, a.y, 3.2, 0, Math.PI * 2); G.ctx.fill();
     G.ctx.restore();
-  });
+  }
 }
 
 function drawGrappleReticle() {
   if (!G.player || G.player.hp <= 0 || !G.grapplePreviewTarget || G.player.grappleState !== 'none' || G.gameState !== 'playing') return;
-  const t = G.grapplePreviewTarget;
+  const tgt = G.grapplePreviewTarget;
+  const ready = G.player.grappleCd <= 0;
+  // Subtle sightline tether so player always sees which hook is locked before pressing Grapple
+  const px = G.player.x + G.player.w * 0.5;
+  const py = G.player.y + 22;
+  G.ctx.save();
+  G.ctx.strokeStyle = ready ? 'rgba(125, 211, 252, 0.22)' : 'rgba(148, 163, 184, 0.10)';
+  G.ctx.lineWidth = 1.4;
+  G.ctx.beginPath();
+  G.ctx.moveTo(px, py);
+  G.ctx.lineTo(tgt.x, tgt.y);
+  G.ctx.stroke();
+
   const pulse = 1 + Math.sin(G.globalTime * 11) * 0.1;
   const rot = G.globalTime * 1.9;
-  G.ctx.save();
-  G.ctx.translate(t.x, t.y);
+  G.ctx.translate(tgt.x, tgt.y);
   G.ctx.scale(pulse, pulse);
 
   G.ctx.save();
@@ -1590,15 +1446,17 @@ function drawGrappleReticle() {
   G.ctx.restore();
 
   if (G.player.grappleCd <= 0) {
-    G.ctx.font = '11px "Noto Serif SC", monospace';
+    const gTxt = getControlLabels().shortGrapple;
+    G.ctx.font = '11px ui-monospace, "Noto Serif SC", monospace';
     G.ctx.textAlign = 'center';
+    const gw = Math.max(38, Math.ceil(G.ctx.measureText(gTxt).width) + 12);
     G.ctx.fillStyle = 'rgba(8, 12, 18, 0.78)';
-    G.ctx.fillRect(-19, 25, 38, 16);
+    G.ctx.fillRect(-gw * 0.5, 25, gw, 16);
     G.ctx.strokeStyle = 'rgba(125, 211, 252, 0.55)';
     G.ctx.lineWidth = 1;
-    G.ctx.strokeRect(-19, 25, 38, 16);
+    G.ctx.strokeRect(-gw * 0.5, 25, gw, 16);
     G.ctx.fillStyle = COLORS.cyanBright;
-    G.ctx.fillText(getControlLabels().shortGrapple, 0, 37);
+    G.ctx.fillText(gTxt, 0, 37);
   }
   G.ctx.restore();
 }
@@ -1610,7 +1468,7 @@ function drawGrappleThread() {
   let ex = G.player.grappleTx;
   let ey = G.player.grappleTy;
   if (G.player.grappleState === 'extending') {
-    const p = 1 - Math.max(0, G.player.grappleTimer / 0.065);
+    const p = 1 - Math.max(0, G.player.grappleTimer / 0.032);
     ex = sx + (G.player.grappleTx - sx) * p;
     ey = sy + (G.player.grappleTy - sy) * p;
   }
@@ -1635,12 +1493,10 @@ function drawMistBarrier(activeBoss) {
   const y0 = activeBoss ? activeBoss.arenaTopY : 0;
   const h = activeBoss ? (activeBoss.arenaFloorY - y0) : FLOOR_Y;
   G.ctx.save();
-  const g = G.ctx.createLinearGradient(x - 16, 0, x + 20, 0);
-  g.addColorStop(0, 'transparent');
-  g.addColorStop(0.5, activeBoss && activeBoss.id === 'boss_ji' ? 'rgba(245, 158, 11, 0.34)' : 'rgba(180, 200, 230, 0.34)');
-  g.addColorStop(1, 'transparent');
-  G.ctx.fillStyle = g;
-  G.ctx.fillRect(x - 16, y0, 36, h);
+  G.ctx.fillStyle = activeBoss && activeBoss.id === 'boss_ji' ? 'rgba(245, 158, 11, 0.18)' : 'rgba(180, 200, 230, 0.18)';
+  G.ctx.fillRect(x - 12, y0, 24, h);
+  G.ctx.fillStyle = activeBoss && activeBoss.id === 'boss_ji' ? 'rgba(245, 158, 11, 0.32)' : 'rgba(180, 200, 230, 0.32)';
+  G.ctx.fillRect(x - 4, y0, 8, h);
   G.ctx.restore();
 }
 
@@ -1650,12 +1506,14 @@ function drawContactShadow(cx, footY, baseRadius) {
   if (height > 260) return;
   const scale = Math.max(0.32, 1 - height / 280);
   const alpha = Math.max(0.08, 0.48 * scale);
-  G.ctx.save();
-  G.ctx.fillStyle = `rgba(3, 5, 9, ${alpha.toFixed(2)})`;
-  G.ctx.beginPath();
-  G.ctx.ellipse(cx, surfY + 1, baseRadius * scale, Math.max(2.5, 5.2 * scale), 0, 0, Math.PI * 2);
-  G.ctx.fill();
-  G.ctx.restore();
+  const ctx = G.ctx;
+  const prevA = ctx.globalAlpha;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#030509';
+  ctx.beginPath();
+  ctx.ellipse(cx, surfY + 1, baseRadius * scale, Math.max(2.5, 5.2 * scale), 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = prevA;
 }
 
 /* ---------- UPGRADED PROTAGONIST: 暗黑提灯剑客 ---------- */
@@ -1686,6 +1544,13 @@ function drawPuppet(x, y, facing, isGhost = false, ghostColor = null) {
     // Soft ambient soul lantern glow around protagonist
     drawGlowSprite(G.player.chargeReadyPlayed ? 'gold' : 'cyan', cx - facing * 4, y + 28, 92, G.player.chargeReadyPlayed ? 0.24 : 0.16);
 
+    if (hasKeeperBlessing()) {
+      drawGlowSprite('gold', cx, y + 26, 44, 0.24 + Math.sin(G.globalTime * 5) * 0.06);
+      G.ctx.strokeStyle = 'rgba(186, 230, 253, 0.45)';
+      G.ctx.lineWidth = 1.3;
+      boilCircle(G.ctx, cx, y + 26, 27 + Math.sin(G.globalTime * 4) * 2, 9120, 1.0, 14);
+      G.ctx.stroke();
+    }
     // Dual Spring-Physics Cloak + Torn Crimson-Ash Scarf (violet-lit rim when Shade Cloak burst is ready!)
     const shadeReady = !!(G.worldState && G.worldState.abilities.shadeDash && G.player.shadeDashCd <= 0);
     if (shadeReady) {
@@ -1717,38 +1582,42 @@ function drawPuppet(x, y, facing, isGhost = false, ghostColor = null) {
   const hipY = -19 + crouchDrop;
   const isRunning = G.player.grounded && Math.abs(G.player.vx) > 25;
   const isDashing = G.player.dashTimer > 0 || G.player.iaiLungeTimer > 0 || G.player.detonateLungeTimer > 0;
-  const snapFootY = localX => {
-    if (isGhost || !G.player.grounded) return 0;
-    const sy = getGroundSurfaceY(cx + localX, footY - 12);
-    return Math.max(-5, Math.min(9, sy - footY));
-  };
-
-  const calcFootTarget = (isFront) => {
+  // Zero-allocation inline 2-bone IK leg solver (eliminates 3 per-frame closures & 2 objects at 144Hz)
+  for (let legIdx = 0; legIdx < 2; legIdx++) {
+    const isFront = legIdx === 1;
+    let tx, ty;
     if (isDashing) {
-      return isFront ? { x: facing * 12, y: -3 } : { x: -facing * 12, y: -5 };
-    }
-    if (!G.player.grounded) {
+      tx = isFront ? facing * 12 : -facing * 12;
+      ty = isFront ? -3 : -5;
+    } else if (!G.player.grounded) {
       if (G.player.wallDir !== 0) {
-        return isFront ? { x: G.player.wallDir * 9, y: -8 } : { x: G.player.wallDir * 5, y: -1 };
+        tx = isFront ? G.player.wallDir * 9 : G.player.wallDir * 5;
+        ty = isFront ? -8 : -1;
+      } else if (G.player.vy < 0) {
+        tx = isFront ? facing * 7.5 : -facing * 7;
+        ty = isFront ? -9 : -1;
+      } else {
+        tx = isFront ? facing * 6.5 : -facing * 8;
+        ty = isFront ? -2 : -7;
       }
-      if (G.player.vy < 0) {
-        return isFront ? { x: facing * 7.5, y: -9 } : { x: -facing * 7, y: -1 };
-      }
-      return isFront ? { x: facing * 6.5, y: -2 } : { x: -facing * 8, y: -7 };
-    }
-    if (isRunning) {
+    } else if (isRunning) {
       const ph = G.player.runCycle + (isFront ? 0 : Math.PI);
-      const sx = Math.sin(ph) * 11.5;
+      tx = Math.sin(ph) * 11.5;
       const lift = Math.max(0, Math.cos(ph)) * 7.5;
-      return { x: sx, y: lift > 0.5 ? -lift : snapFootY(sx) };
+      if (lift > 0.5) {
+        ty = -lift;
+      } else {
+        const sy = getGroundSurfaceY(cx + tx, footY - 12);
+        ty = Math.max(-5, Math.min(9, sy - footY));
+      }
+    } else {
+      tx = isFront ? facing * 6.5 : -facing * 5.5;
+      const sy = getGroundSurfaceY(cx + tx, footY - 12);
+      ty = Math.max(-5, Math.min(9, sy - footY));
     }
-    const idleX = isFront ? facing * 6.5 : -facing * 5.5;
-    return { x: idleX, y: snapFootY(idleX) };
-  };
-
-  const drawIKLeg = (hipX, target, col) => {
-    const ik = solve2BoneIK(hipX, hipY, target.x, target.y, 10.6, 10.6, facing);
-    G.ctx.strokeStyle = col;
+    const hipX = isFront ? facing * 2.5 : -facing * 2.5;
+    const ik = solve2BoneIK(hipX, hipY, tx, ty, 10.6, 10.6, facing);
+    G.ctx.strokeStyle = isFront ? lineCol : backLegCol;
     G.ctx.lineWidth = 3.1;
     G.ctx.lineCap = 'round';
     G.ctx.lineJoin = 'round';
@@ -1756,13 +1625,9 @@ function drawPuppet(x, y, facing, isGhost = false, ghostColor = null) {
     G.ctx.moveTo(hipX, hipY);
     G.ctx.lineTo(ik.kx, ik.ky);
     G.ctx.lineTo(ik.ex, ik.ey);
-    // Boot tip toe
     G.ctx.lineTo(ik.ex + facing * 3.5, ik.ey);
     G.ctx.stroke();
-  };
-
-  drawIKLeg(-facing * 2.5, calcFootTarget(false), backLegCol);
-  drawIKLeg(facing * 2.5, calcFootTarget(true), lineCol);
+  }
 
   // Pivot Upper Body around Pelvis with Dynamic Sprint / Brake / Parry Lean
   G.ctx.save();
@@ -2030,9 +1895,9 @@ function drawExecutionSigil(cx, cy) {
   boilCircle(G.ctx, 0, 0, 14, 9900, 1.2, 12);
   G.ctx.stroke();
   G.ctx.fillStyle = '#fff';
-  G.ctx.font = 'bold 13px "Noto Serif SC", serif';
+  G.ctx.font = getCanvasFont(isEn() ? 9.5 : 13, true);
   G.ctx.textAlign = 'center';
-  G.ctx.fillText('斩', 0, 5);
+  G.ctx.fillText(t('ren.execGlyph'), 0, isEn() ? 3.5 : 5);
   G.ctx.restore();
 }
 
@@ -2054,6 +1919,10 @@ function drawEnemyOverheadBars(e) {
 /* ---------- ENEMIES: SENTINEL, WRAITH, GOLEM, PRIEST, DUELIST, LEECH ---------- */
 function drawEnemy(e) {
   if (!e.alive) return;
+  if (e.kind === 'dummy') {
+    drawDummy(e);
+    return;
+  }
   if (e.kind === 'wraith') drawWraith(e);
   else if (e.kind === 'golem') drawGolem(e);
   else if (e.kind === 'priest') drawPriest(e);
@@ -2061,6 +1930,145 @@ function drawEnemy(e) {
   else if (e.kind === 'leech') drawLeech(e);
   else drawSentinel(e);
   if (e.wardShield > 0) drawWardShieldOverlay(e);
+}
+
+function drawDummy(e) {
+  const cx = e.x + e.w * 0.5;
+  const fy = e.y + e.h;
+  const isStagger = e.state === 'stagger';
+  const isRed = e.attackKind === 'redThrust' && (e.state === 'windup' || e.state === 'attack');
+  const isShield = !!e.shieldUp && !isStagger;
+  const modeObj = DUMMY_MODES[e.modeIdx] || DUMMY_MODES[0];
+
+  G.ctx.save();
+  // Riveted bronze sparring rail on Sanctuary stone floor
+  G.ctx.strokeStyle = 'rgba(245, 158, 11, 0.32)';
+  G.ctx.lineWidth = 2.4;
+  G.ctx.beginPath();
+  G.ctx.moveTo(e.minX + 10, fy - 1);
+  G.ctx.lineTo(e.maxX + e.w - 10, fy - 1);
+  G.ctx.stroke();
+  G.ctx.fillStyle = '#2a2218';
+  G.ctx.fillRect(e.homeX + e.w * 0.5 - 12, fy - 4, 24, 4);
+
+  const shakeX = e.hurtFlash > 0 ? (Math.random() - 0.5) * 6 : (e.bellShake > 0 ? Math.sin(G.globalTime * 48) * 3.5 * e.bellShake : 0);
+  G.ctx.translate(cx + shakeX, fy);
+  if (isStagger) G.ctx.translate(0, 9);
+
+  // Subtle ambient resonance glow when active
+  drawGlowSprite(isRed ? 'crimson' : (e.active ? 'gold' : 'cyan'), 0, -40, e.active ? 44 : 26, e.active ? 0.34 : 0.16);
+
+  // Mechanical Bronze Tripod / Striding Rail Legs
+  const stride = Math.abs(e.vx) > 12 ? Math.sin(e.walkCycle || 0) * 9 : 0;
+  G.ctx.strokeStyle = '#9b8359';
+  G.ctx.lineWidth = 4.2;
+  G.ctx.lineCap = 'round';
+  G.ctx.beginPath();
+  G.ctx.moveTo(-5, -18); G.ctx.lineTo(-9 - stride, 0);
+  G.ctx.moveTo(5, -18); G.ctx.lineTo(9 + stride, 0);
+  G.ctx.stroke();
+  // Wheel/foot joints
+  G.ctx.fillStyle = COLORS.gold;
+  G.ctx.beginPath();
+  G.ctx.arc(-9 - stride, -2, 3, 0, Math.PI * 2);
+  G.ctx.arc(9 + stride, -2, 3, 0, Math.PI * 2);
+  G.ctx.fill();
+
+  // Bronze Bell-Resonator Torso
+  G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#261e16';
+  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : (e.active ? COLORS.goldBright : 'rgba(216, 207, 184, 0.72)');
+  G.ctx.lineWidth = 2.0;
+  G.ctx.beginPath();
+  G.ctx.moveTo(-14, -17);
+  G.ctx.lineTo(-10, -48);
+  G.ctx.lineTo(10, -48);
+  G.ctx.lineTo(14, -17);
+  G.ctx.closePath();
+  G.ctx.fill();
+  G.ctx.stroke();
+
+  // Glowing resonance rune line on chest bell
+  G.ctx.strokeStyle = e.active ? (isRed ? COLORS.crimsonBright : COLORS.goldBright) : COLORS.cyan;
+  G.ctx.lineWidth = 1.6;
+  G.ctx.beginPath();
+  G.ctx.moveTo(0, -44); G.ctx.lineTo(-3, -34); G.ctx.lineTo(3, -25);
+  G.ctx.stroke();
+
+  // Cracked Bronze Automaton Bell-Head
+  G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#33271a';
+  G.ctx.strokeStyle = e.active ? COLORS.goldBright : COLORS.parchment;
+  G.ctx.lineWidth = 1.8;
+  G.ctx.beginPath();
+  G.ctx.moveTo(-10, -49);
+  G.ctx.quadraticCurveTo(-11, -67, 0, -70);
+  G.ctx.quadraticCurveTo(11, -67, 10, -49);
+  G.ctx.closePath();
+  G.ctx.fill();
+  G.ctx.stroke();
+  // Automaton Visor Eye
+  G.ctx.fillStyle = isRed ? COLORS.crimsonBright : (e.active ? COLORS.goldBright : COLORS.cyanBright);
+  G.ctx.fillRect(e.facing > 0 ? 1 : -8, -59, 7, 2.8);
+
+  // Hinged Bronze Practice Blade
+  G.ctx.save();
+  G.ctx.translate(e.facing * 8, -36);
+  let bladeAng = e.facing > 0 ? -0.35 : Math.PI + 0.35;
+  if (e.state === 'windup') {
+    bladeAng = isRed
+      ? (e.facing > 0 ? 0.0 : Math.PI)
+      : (e.comboIdx === 1 ? (e.facing > 0 ? -2.4 : Math.PI + 2.4) : (e.facing > 0 ? -1.9 : Math.PI + 1.9));
+  } else if (e.state === 'attack') {
+    bladeAng = e.facing > 0 ? 0.22 : Math.PI - 0.22;
+  } else if (isStagger) {
+    bladeAng = Math.PI * 0.5;
+  }
+  G.ctx.rotate(bladeAng);
+  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : (e.active ? COLORS.goldBright : '#cfc5ae');
+  G.ctx.lineWidth = 3.0;
+  G.ctx.beginPath(); G.ctx.moveTo(-6, 0); G.ctx.lineTo(44, 0); G.ctx.stroke();
+  G.ctx.restore();
+
+  // Raised Bronze Practice Buckler during shieldGuard
+  if (isShield) {
+    G.ctx.save();
+    G.ctx.translate(e.facing * 18, -34);
+    drawGlowSprite('gold', 0, 0, 26, 0.52);
+    G.ctx.fillStyle = '#3b2b18';
+    G.ctx.strokeStyle = COLORS.goldBright;
+    G.ctx.lineWidth = 2.4;
+    G.ctx.beginPath();
+    G.ctx.moveTo(-6, -24); G.ctx.lineTo(6, -24); G.ctx.lineTo(9, 18); G.ctx.lineTo(0, 26); G.ctx.lineTo(-9, 18);
+    G.ctx.closePath();
+    G.ctx.fill();
+    G.ctx.stroke();
+    G.ctx.restore();
+  }
+
+  // Crisp Practice Telegraphs (Parry Star Glint, Slow-Blade Ring, Crimson 危)
+  if (e.state === 'windup') {
+    if (isRed) {
+      drawGlowSprite('crimson', 0, -86, 22, 0.8);
+      G.ctx.fillStyle = COLORS.crimsonBright;
+      G.ctx.font = getCanvasFont(isEn() ? 15 : 23, true);
+      G.ctx.textAlign = 'center';
+      G.ctx.fillText(t('ren.dangerGlyph'), 0, -78);
+    } else {
+      if (e.isDelayedHit) drawSlowBladeRing(e.facing * 20, -56, e.stateTimer, e.windupDuration, COLORS.goldBright);
+      if (e.stateTimer < 0.25) drawParryStarGlint(e.facing * 20, -56, e.isDelayedHit ? 24 : 20, COLORS.goldBright);
+    }
+  }
+
+  // Mode Nameplate above Automaton
+  G.ctx.font = getCanvasFont(11, false);
+  G.ctx.textAlign = 'center';
+  G.ctx.fillStyle = e.active ? 'rgba(253, 224, 71, 0.86)' : 'rgba(186, 230, 253, 0.72)';
+  G.ctx.fillText(e.active ? t('ren.dummyActive', locDummyMode(modeObj, 'label')) : t('ren.dummyIdle'), 0, -90);
+  G.ctx.restore();
+
+  if (e.active || e.hp < e.maxHp || e.posture > 0) {
+    drawEnemyOverheadBars(e);
+  }
+  if (isStagger) drawExecutionSigil(cx, e.y + 32);
 }
 
 function drawWardShieldOverlay(e) {
@@ -2219,9 +2227,9 @@ function drawDuelist(e) {
     if (isRed) {
       drawGlowSprite('crimson', 0, -76, 20, 0.78);
       G.ctx.fillStyle = COLORS.crimsonBright;
-      G.ctx.font = 'bold 22px "Noto Serif SC", serif';
+      G.ctx.font = getCanvasFont(isEn() ? 14 : 22, true);
       G.ctx.textAlign = 'center';
-      G.ctx.fillText('危', 0, -70);
+      G.ctx.fillText(t('ren.dangerGlyph'), 0, -70);
     } else if (e.stateTimer < 0.23) {
       drawParryStarGlint(e.facing * 18, -34, e.comboIdx === 2 ? 22 : 16, COLORS.goldBright);
     }
@@ -2364,9 +2372,9 @@ function drawGolem(e) {
     if (isRed) {
       drawGlowSprite('crimson', 0, -96, 22, 0.75);
       G.ctx.fillStyle = COLORS.crimsonBright;
-      G.ctx.font = 'bold 24px "Noto Serif SC", serif';
+      G.ctx.font = getCanvasFont(isEn() ? 15 : 24, true);
       G.ctx.textAlign = 'center';
-      G.ctx.fillText('危', 0, -88);
+      G.ctx.fillText(t('ren.dangerGlyph'), 0, -88);
     } else if (e.stateTimer < 0.25) {
       drawParryStarGlint(e.facing * 16, -72, 20, COLORS.goldBright);
     }
@@ -2504,9 +2512,9 @@ function drawSentinel(e) {
   if (e.state === 'windup') {
     if (isRed) {
       G.ctx.fillStyle = COLORS.crimsonBright;
-      G.ctx.font = 'bold 22px "Noto Serif SC", serif';
+      G.ctx.font = getCanvasFont(isEn() ? 14 : 22, true);
       G.ctx.textAlign = 'center';
-      G.ctx.fillText('危', 0, -76);
+      G.ctx.fillText(t('ren.dangerGlyph'), 0, -76);
     } else if (e.stateTimer < 0.25) {
       drawParryStarGlint(ex + e.facing * 10, -28, 19, COLORS.goldBright);
     }
@@ -2722,12 +2730,13 @@ function drawBoss(b) {
   if (b.state === 'windup') {
     if (isRed) {
       drawGlowSprite('crimson', 0, -138, b.moveKind === 'inkTide' ? 48 : 30, 0.85);
-      G.ctx.font = 'bold 30px "Noto Serif SC", serif';
+      const pTxt = b.moveKind === 'inkTide' ? t('ren.dangerTide') : t('ren.dangerGlyph');
+      G.ctx.font = getCanvasFont(isEn() ? 19 : 30, true);
       G.ctx.textAlign = 'center';
       G.ctx.fillStyle = '#06080d';
-      G.ctx.fillText(b.moveKind === 'inkTide' ? '危 · 墨潮' : '危', 2, -126);
+      G.ctx.fillText(pTxt, 2, -126);
       G.ctx.fillStyle = COLORS.crimsonBright;
-      G.ctx.fillText(b.moveKind === 'inkTide' ? '危 · 墨潮' : '危', 0, -128);
+      G.ctx.fillText(pTxt, 0, -128);
     } else {
       if (b.isDelayedHit) drawSlowBladeRing(b.facing * 26, -92, b.stateTimer, b.windupDuration, COLORS.goldBright);
       if (b.stateTimer < 0.24) drawParryStarGlint(b.facing * 26, -92, b.isDelayedHit ? 28 : 24, COLORS.goldBright);
@@ -2860,12 +2869,13 @@ function drawBoss2(b) {
   if (b.state === 'windup') {
     if (isRed) {
       drawGlowSprite('crimson', 0, -138, b.moveKind === 'resonanceNova' ? 48 : 30, 0.85);
-      G.ctx.font = 'bold 28px "Noto Serif SC", serif';
+      const pTxt = b.moveKind === 'resonanceNova' ? t('ren.dangerNova') : t('ren.dangerGlyph');
+      G.ctx.font = getCanvasFont(isEn() ? 19 : 28, true);
       G.ctx.textAlign = 'center';
       G.ctx.fillStyle = '#06080d';
-      G.ctx.fillText(b.moveKind === 'resonanceNova' ? '危 · 共振' : '危', 2, -126);
+      G.ctx.fillText(pTxt, 2, -126);
       G.ctx.fillStyle = COLORS.crimsonBright;
-      G.ctx.fillText(b.moveKind === 'resonanceNova' ? '危 · 共振' : '危', 0, -128);
+      G.ctx.fillText(pTxt, 0, -128);
     } else if (b.stateTimer < 0.25) {
       drawParryStarGlint(b.facing * 26, -88, 24, COLORS.goldBright);
     }
@@ -2980,12 +2990,13 @@ function drawBoss3(b) {
   if (b.state === 'windup') {
     if (isRed) {
       drawGlowSprite('crimson', 0, -148, b.moveKind === 'eclipseTide' ? 52 : 34, 0.88);
-      G.ctx.font = 'bold 30px "Noto Serif SC", serif';
+      const pTxt = b.moveKind === 'eclipseTide' ? t('ren.dangerEclipse') : t('ren.dangerGlyph');
+      G.ctx.font = getCanvasFont(isEn() ? 19 : 30, true);
       G.ctx.textAlign = 'center';
       G.ctx.fillStyle = '#06080d';
-      G.ctx.fillText(b.moveKind === 'eclipseTide' ? '危 · 终末钟潮' : '危', 2, -138);
+      G.ctx.fillText(pTxt, 2, -138);
       G.ctx.fillStyle = COLORS.crimsonBright;
-      G.ctx.fillText(b.moveKind === 'eclipseTide' ? '危 · 终末钟潮' : '危', 0, -140);
+      G.ctx.fillText(pTxt, 0, -140);
     } else {
       if (b.isDelayedHit) drawSlowBladeRing(b.facing * 28, -96, b.stateTimer, b.windupDuration, b.phase >= 2 ? COLORS.goldBright : COLORS.parchment);
       if (b.stateTimer < 0.25) drawParryStarGlint(b.facing * 28, -96, b.isDelayedHit ? 30 : 26, COLORS.goldBright);
@@ -3006,27 +3017,28 @@ function drawBossBanner() {
   const cy = Math.min(132, G.canvasH * 0.20);
   G.ctx.save();
   G.ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-  const grad = G.ctx.createLinearGradient(cx - 280, cy, cx + 280, cy);
-  grad.addColorStop(0, 'transparent');
-  grad.addColorStop(0.22, 'rgba(7, 10, 16, 0.84)');
-  grad.addColorStop(0.78, 'rgba(7, 10, 16, 0.84)');
-  grad.addColorStop(1, 'transparent');
-  G.ctx.fillStyle = grad;
-  G.ctx.fillRect(cx - 280, cy - 34, 560, b.quote ? 74 : 52);
+  const en = isEn();
+  const innerHalf = en ? Math.min(G.canvasW * 0.42, 265) : 195;
+  const outerHalf = innerHalf + 75;
+  const bh = b.quote ? 74 : 52;
+  G.ctx.fillStyle = 'rgba(7, 10, 16, 0.34)';
+  G.ctx.fillRect(cx - outerHalf, cy - 34, outerHalf * 2, bh);
+  G.ctx.fillStyle = 'rgba(7, 10, 16, 0.72)';
+  G.ctx.fillRect(cx - innerHalf, cy - 34, innerHalf * 2, bh);
   G.ctx.strokeStyle = b.color || COLORS.goldBright;
   G.ctx.lineWidth = 1.2;
   G.ctx.beginPath();
-  G.ctx.moveTo(cx - 190, cy - 32); G.ctx.lineTo(cx + 190, cy - 32);
-  G.ctx.moveTo(cx - 190, cy + (b.quote ? 38 : 18)); G.ctx.lineTo(cx + 190, cy + (b.quote ? 38 : 18));
+  G.ctx.moveTo(cx - innerHalf + 5, cy - 32); G.ctx.lineTo(cx + innerHalf - 5, cy - 32);
+  G.ctx.moveTo(cx - innerHalf + 5, cy + (b.quote ? 38 : 18)); G.ctx.lineTo(cx + innerHalf - 5, cy + (b.quote ? 38 : 18));
   G.ctx.stroke();
   G.ctx.textAlign = 'center';
-  G.ctx.font = 'bold 24px "Noto Serif SC", serif';
+  G.ctx.font = getCanvasFont(en ? 21 : 24, true);
   G.ctx.fillStyle = '#05070c';
   G.ctx.fillText(b.title, cx + 1.5, cy + 2.5);
   G.ctx.fillStyle = b.color || COLORS.goldBright;
   G.ctx.fillText(b.title, cx, cy + 1);
   if (b.quote) {
-    G.ctx.font = '13.5px "Noto Serif SC", serif';
+    G.ctx.font = getCanvasFont(en ? 12.5 : 13.5, false);
     G.ctx.fillStyle = COLORS.parchment;
     G.ctx.fillText(b.quote, cx, cy + 25);
   }
@@ -3076,9 +3088,9 @@ function drawTalismans() {
     G.ctx.fillRect(-7, -14, 14, 28);
     G.ctx.strokeRect(-7, -14, 14, 28);
     G.ctx.fillStyle = COLORS.goldBright;
-    G.ctx.font = 'bold 12px serif';
+    G.ctx.font = getCanvasFont(isEn() ? 7.5 : 12, true);
     G.ctx.textAlign = 'center';
-    G.ctx.fillText('封', 0, 4);
+    G.ctx.fillText(t('ren.sealGlyph'), 0, isEn() ? 3 : 4);
     G.ctx.restore();
   }
 }
@@ -3092,30 +3104,22 @@ function drawChapelTide() {
   G.ctx.save();
   if (G.chapelTide.phase === 'warn') {
     const p = 1 - Math.max(0, G.chapelTide.timer / G.chapelTide.maxTimer);
-    const pulse = 0.35 + Math.sin(G.globalTime * 24) * 0.25 + p * 0.3;
-    const g = G.ctx.createLinearGradient(0, fy - 38, 0, fy);
-    g.addColorStop(0, 'transparent');
-    g.addColorStop(1, isGold ? `rgba(245, 158, 11, ${(pulse * 0.62).toFixed(2)})` : `rgba(220, 38, 38, ${(pulse * 0.58).toFixed(2)})`);
-    G.ctx.fillStyle = g;
-    G.ctx.fillRect(x0, fy - 38, w, 38);
+    const pulse = Math.min(1, 0.35 + Math.sin(G.globalTime * 24) * 0.25 + p * 0.3);
+    G.ctx.fillStyle = isGold ? '#f59e0b' : '#dc2626';
+    G.ctx.globalAlpha = pulse * 0.22;
+    G.ctx.fillRect(x0, fy - 38, w, 19);
+    G.ctx.globalAlpha = pulse * 0.46;
+    G.ctx.fillRect(x0, fy - 19, w, 19);
 
-    G.ctx.strokeStyle = isGold ? `rgba(253, 224, 71, ${Math.min(1, pulse).toFixed(2)})` : `rgba(248, 113, 113, ${Math.min(1, pulse).toFixed(2)})`;
+    G.ctx.globalAlpha = pulse;
+    G.ctx.strokeStyle = isGold ? '#fde047' : '#f87171';
     G.ctx.lineWidth = 2.4;
     boilLine(G.ctx, x0, fy - 3, x0 + w, fy - 3, 8800, 2.2, 16);
+    G.ctx.globalAlpha = 1;
   } else if (G.chapelTide.phase === 'surge') {
     const fade = Math.min(1, G.chapelTide.timer * 3.5);
     const surgeH = 86 * fade;
-    const g = G.ctx.createLinearGradient(0, fy - surgeH, 0, fy);
-    if (isGold) {
-      g.addColorStop(0, 'rgba(253, 224, 71, 0.88)');
-      g.addColorStop(0.35, 'rgba(180, 83, 9, 0.9)');
-      g.addColorStop(1, 'rgba(28, 12, 8, 0.96)');
-    } else {
-      g.addColorStop(0, 'rgba(248, 113, 113, 0.82)');
-      g.addColorStop(0.35, 'rgba(153, 27, 27, 0.9)');
-      g.addColorStop(1, 'rgba(18, 6, 12, 0.96)');
-    }
-    G.ctx.fillStyle = g;
+    G.ctx.fillStyle = isGold ? 'rgba(146, 64, 14, 0.92)' : 'rgba(127, 29, 29, 0.92)';
     G.ctx.beginPath();
     G.ctx.moveTo(x0, fy);
     const segs = 26;
@@ -3162,15 +3166,13 @@ function drawBellQuakes() {
     G.ctx.translate(bq.x, bq.y - 24 - p * 36);
     G.ctx.globalAlpha = Math.min(1, a * 1.25);
 
-    // Rising cyan-gold sonic pillar behind spectral bell
+    // Rising cyan-gold sonic pillar behind spectral bell (zero per-frame gradient)
     const pilW = bq.radius * 0.92 * (1 - p * 0.22);
     const pilH = bq.radius * 1.38;
-    const pg = G.ctx.createLinearGradient(0, 30, 0, -pilH);
-    pg.addColorStop(0, `rgba(56, 189, 248, ${(0.42 * a).toFixed(2)})`);
-    pg.addColorStop(0.55, `rgba(186, 230, 253, ${(0.28 * a).toFixed(2)})`);
-    pg.addColorStop(1, 'transparent');
-    G.ctx.fillStyle = pg;
-    G.ctx.fillRect(-pilW * 0.5, -pilH, pilW, pilH + 30);
+    G.ctx.fillStyle = 'rgba(186, 230, 253, 0.20)';
+    G.ctx.fillRect(-pilW * 0.5, -pilH * 0.85, pilW, pilH * 0.85 + 30);
+    G.ctx.fillStyle = 'rgba(56, 189, 248, 0.26)';
+    G.ctx.fillRect(-pilW * 0.32, -pilH * 0.52, pilW * 0.64, pilH * 0.52 + 30);
 
     drawGlowSprite('cyan', 0, -18, bq.radius * 0.72, 0.75 * a);
 
@@ -3524,37 +3526,44 @@ function drawWorldPrompts() {
   const px = G.player.x + G.player.w / 2;
   const py = G.player.y + G.player.h;
   G.ctx.save();
-  G.ctx.font = '13px "Noto Serif SC", serif';
+  G.ctx.font = getCanvasFont(13, false);
   G.ctx.textAlign = 'center';
 
   const ek = getActionKeyLabel('interact');
   if (G.worldState && G.worldState.boss3Defeated && !G.echoSession &&
       Math.hypot(px - FIRST_BELL_CORE_POS.x, py - FIRST_BELL_CORE_POS.y) < 105) {
-    drawPromptBadge(FIRST_BELL_CORE_POS.x, FIRST_BELL_CORE_POS.y - 118, `[${ek}] 触碰 · 初钟之心（终誓抉择）`);
+    drawPromptBadge(FIRST_BELL_CORE_POS.x, FIRST_BELL_CORE_POS.y - 118, t('prompt.core', ek));
   }
   for (const altar of ALTARS) {
     if (Math.hypot(px - altar.x, py - altar.y) < 86) {
       const isLit = !G.worldState || G.worldState.litAltars.has(altar.id);
-      drawPromptBadge(altar.x, altar.y - 96, isLit ? `[${ek}] 歇息 · 圣物与跃迁` : `[${ek}] 点燃${altar.shortName}`);
+      drawPromptBadge(altar.x, altar.y - 96, isLit ? t('prompt.altarRest', ek) : t('prompt.altarLight', ek, locAltar(altar, 'shortName')));
     }
   }
   for (const npc of NPCS) {
     if (Math.hypot(px - npc.x, py - npc.y) < 88) {
-      drawPromptBadge(npc.x + 8, npc.y - 92, `[${ek}] 淬炼断刃 · ${npc.name || '老铸钟匠'}`);
+      const verb = npc.kind === 'chronicler' ? t('prompt.npcChron') : npc.kind === 'keeper' ? t('prompt.npcKeeper') : t('prompt.npcSmith');
+      drawPromptBadge(npc.x + 8, npc.y - 94, t('prompt.npcFull', ek, verb, locNpcName(npc)));
+    }
+  }
+  for (const e of G.enemies) {
+    if (e && e.alive && e.isDummy && Math.hypot(px - (e.x + e.w * 0.5), py - (e.y + e.h)) < 94) {
+      const m = DUMMY_MODES[e.modeIdx] || DUMMY_MODES[0];
+      drawPromptBadge(e.x + e.w * 0.5, e.y - 44, t('prompt.dummyMode', ek, locDummyMode(m, 'label')));
     }
   }
   if (G.worldState && !G.worldState.shortcutOpen && Math.hypot(px - SHORTCUT_GATE_DEF.leverX, py - SHORTCUT_GATE_DEF.leverY) < 76) {
-    drawPromptBadge(SHORTCUT_GATE_DEF.leverX, SHORTCUT_GATE_DEF.leverY - 68, `[${ek} / 斩] 拉动青铜锁链`);
+    drawPromptBadge(SHORTCUT_GATE_DEF.leverX, SHORTCUT_GATE_DEF.leverY - 68, t('prompt.lever', ek));
   }
   for (const lt of LORE_TABLETS) {
     if (Math.hypot(px - lt.x, py - lt.y) < 78) {
-      drawPromptBadge(lt.x, lt.y - 80, `[${ek}] 研读 · ${lt.title}`);
+      drawPromptBadge(lt.x, lt.y - 80, t('prompt.lore', ek, locTablet(lt, 'title')));
     }
   }
   if (G.worldState) {
     for (const p of G.worldState.pickups) {
       if (!p.collected && isPickupUnlocked(p) && Math.hypot(px - p.x, py - p.y) < 72) {
-        drawPromptBadge(p.x, p.y - 66, `[${ek}] 拾取 · ${p.name}`);
+        drawPromptBadge(p.x, p.y - 66, t('prompt.pickup', ek, locPickup(p, 'name')));
       }
     }
   }
@@ -3562,7 +3571,7 @@ function drawWorldPrompts() {
 }
 
 function drawPromptBadge(x, y, label) {
-  const w = label.length * 11 + 24;
+  const w = Math.max(88, Math.ceil(G.ctx.measureText(label).width) + 26);
   G.ctx.fillStyle = 'rgba(8, 12, 20, 0.85)';
   G.ctx.strokeStyle = 'rgba(245, 158, 11, 0.65)';
   G.ctx.lineWidth = 1.2;
@@ -3576,13 +3585,14 @@ function drawFloatingTexts() {
   if (G.floatTexts.length === 0) return;
   const ctx = G.ctx;
   ctx.textAlign = 'center';
-  let lastSize = -1;
+  let lastBucket = -1;
   for (let i = 0; i < G.floatTexts.length; i++) {
     const ft = G.floatTexts[i];
     ctx.globalAlpha = Math.max(0, Math.min(1, (ft.life / ft.maxLife) * 1.4));
-    if (ft.size !== lastSize) {
-      lastSize = ft.size;
-      ctx.font = `bold ${ft.size}px "Noto Serif SC", serif`;
+    const bucket = ft.size >= 22 ? 23 : (ft.size >= 17 ? 18 : 15);
+    if (bucket !== lastBucket) {
+      lastBucket = bucket;
+      ctx.font = getCanvasFont(bucket, true);
     }
     ctx.fillStyle = '#06080d';
     ctx.fillText(ft.text, ft.x + 1.5, ft.y + 1.5);
@@ -3592,30 +3602,11 @@ function drawFloatingTexts() {
   ctx.globalAlpha = 1;
 }
 
-function drawForegroundSilhouettes() {
-  const fx = -G.cam.x * 1.28;
-  G.ctx.save();
-  G.ctx.fillStyle = 'rgba(5, 7, 11, 0.78)';
-  for (let i = 0; i < 6; i++) {
-    const x = (((i * 760 + 240) + fx) % (G.canvasW + 760) + (G.canvasW + 760)) % (G.canvasW + 760) - 220;
-    G.ctx.beginPath();
-    G.ctx.moveTo(x - 42, 0); G.ctx.lineTo(x + 42, 0);
-    G.ctx.lineTo(x + 22, 115); G.ctx.lineTo(x - 8, 92); G.ctx.lineTo(x - 26, 128);
-    G.ctx.closePath(); G.ctx.fill();
-
-    G.ctx.beginPath();
-    G.ctx.moveTo(x - 65, G.canvasH); G.ctx.lineTo(x - 18, G.canvasH - 54);
-    G.ctx.lineTo(x + 28, G.canvasH - 36); G.ctx.lineTo(x + 78, G.canvasH);
-    G.ctx.closePath(); G.ctx.fill();
-  }
-  G.ctx.restore();
-}
-
 function drawWeatherLayer(isPhase2) {
   if (!G.weatherParticles || G.weatherParticles.length === 0) return;
   const wType = G.themeBlend ? G.themeBlend.weather : 'ash';
   const accent = G.themeBlend ? G.themeBlend.accent : [216, 207, 184];
-  const step = G.isMobile ? 2 : 1;
+  const step = (G.isMobile || (G.settings && G.settings.dynamicLighting === false)) ? 2 : 1;
   const list = G.weatherParticles;
   G.ctx.save();
   if (wType === 'rain') {
@@ -3700,7 +3691,7 @@ function drawWeatherLayer(isPhase2) {
 function drawForegroundMotes(isPhase2) {
   G.ctx.save();
   const acc = G.themeBlend ? G.themeBlend.accent : [216, 207, 184];
-  const step = G.isMobile ? 2 : 1;
+  const step = (G.isMobile || (G.settings && G.settings.dynamicLighting === false)) ? 2 : 1;
   G.ctx.fillStyle = isPhase2 ? 'rgba(248, 113, 113, 0.45)' : rgbStr(acc, 0.28);
   G.ctx.beginPath();
   for (let i = 0; i < G.ambientMotes.length; i += step) {

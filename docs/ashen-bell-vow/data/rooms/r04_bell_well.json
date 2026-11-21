@@ -571,6 +571,108 @@
     "boneCairns": [
       980,
       1430
+    ],
+    "stamps": [
+      {
+        "type": "hanging_chains",
+        "x": 520,
+        "y": 0,
+        "scale": 1.15,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.5,
+        "seed": 1
+      },
+      {
+        "type": "hanging_chains",
+        "x": 745,
+        "y": 260,
+        "scale": 1.2,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.46,
+        "seed": 2
+      },
+      {
+        "type": "broken_arch",
+        "x": 1100,
+        "y": 580,
+        "scale": 1.15,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.66,
+        "seed": 0
+      },
+      {
+        "type": "fallen_bell",
+        "x": 1415,
+        "y": 580,
+        "scale": 0.9,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.8,
+        "seed": 1
+      },
+      {
+        "type": "glow_spores",
+        "x": 86,
+        "y": 1020,
+        "scale": 0.85,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.88,
+        "seed": 0
+      },
+      {
+        "type": "glow_spores",
+        "x": 1260,
+        "y": 1020,
+        "scale": 0.95,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.84,
+        "seed": 1
+      },
+      {
+        "type": "glow_spores",
+        "x": 302,
+        "y": 1380,
+        "scale": 0.78,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.84,
+        "seed": 0
+      },
+      {
+        "type": "glow_spores",
+        "x": 1275,
+        "y": 1380,
+        "scale": 1.0,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.86,
+        "seed": 2
+      },
+      {
+        "type": "stone_statue",
+        "x": 1515,
+        "y": 1380,
+        "scale": 0.92,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.74,
+        "seed": 2
+      },
+      {
+        "type": "bronze_gear",
+        "x": 1695,
+        "y": 1210,
+        "scale": 0.85,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.62,
+        "seed": 0
+      }
     ]
   },
   "voidBarriers": [
@@ -580,6 +682,15 @@
       "y": 1220,
       "w": 22,
       "h": 160
+    }
+  ],
+  "npcs": [
+    {
+      "id": "npc_chronicler",
+      "kind": "chronicler",
+      "name": "游方拾碑客 · 墨尘",
+      "x": 292,
+      "y": 1020
     }
   ]
 }

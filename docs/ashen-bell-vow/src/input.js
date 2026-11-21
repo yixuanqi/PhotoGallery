@@ -3,6 +3,7 @@ import { COLORS, DEFAULT_KEYBINDS, ACTION_META } from './config.js';
 import { G, hooks } from './state.js';
 import { audio } from './audio.js';
 import { spawnFloatText } from './vfx.js';
+import { t } from './i18n.js';
 import { ensureOverlayFocus, navigateOverlay, confirmOverlayFocus, clearGamepadFocus } from './uiNav.js';
 
 export const keysHeld = {};
@@ -53,8 +54,37 @@ export function cancelKeyCapture() {
   captureCallback = null;
 }
 
+const _actionCodesCache = {};
+let _actionCacheBuilt = false;
+
+export function rebuildActionCodesCache() {
+  const kb = G.settings && G.settings.keybinds ? G.settings.keybinds : DEFAULT_KEYBINDS;
+  const kbKeys = Object.keys(kb);
+  for (let m = 0; m < ACTION_META.length; m++) {
+    const action = ACTION_META[m].id;
+    const primary = kb[action] || DEFAULT_KEYBINDS[action];
+    const codes = primary ? [primary] : [];
+    const alts = ACTION_ALTS[action] || [];
+    for (let i = 0; i < alts.length; i++) {
+      const alt = alts[i];
+      let claimedByOther = false;
+      for (let j = 0; j < kbKeys.length; j++) {
+        const k = kbKeys[j];
+        if (k !== action && kb[k] === alt) {
+          claimedByOther = true;
+          break;
+        }
+      }
+      if (!claimedByOther && codes.indexOf(alt) === -1) codes.push(alt);
+    }
+    _actionCodesCache[action] = codes;
+  }
+  _actionCacheBuilt = true;
+}
+
 export function resetDefaultKeybinds() {
   G.settings.keybinds = { ...DEFAULT_KEYBINDS };
+  rebuildActionCodesCache();
   syncControlModeUI();
 }
 
@@ -110,27 +140,15 @@ function setActiveInputDevice(dev) {
 }
 
 export function getActionKeyLabel(action) {
-  if (G.inputDevice === 'gamepad' && GAMEPAD_LABELS[action]) return GAMEPAD_LABELS[action];
+  if (G.inputDevice === 'gamepad' && GAMEPAD_LABELS[action]) {
+    return action === 'heal' ? t('input.gpHeal') : GAMEPAD_LABELS[action];
+  }
   return formatKeyCode(getActionKeyCode(action));
 }
 
 function getActionCodes(action) {
-  const kb = G.settings && G.settings.keybinds ? G.settings.keybinds : DEFAULT_KEYBINDS;
-  const primary = kb[action] || DEFAULT_KEYBINDS[action];
-  const codes = primary ? [primary] : [];
-  const alts = ACTION_ALTS[action] || [];
-  for (let i = 0; i < alts.length; i++) {
-    const alt = alts[i];
-    let claimedByOther = false;
-    for (const k of Object.keys(kb)) {
-      if (k !== action && kb[k] === alt) {
-        claimedByOther = true;
-        break;
-      }
-    }
-    if (!claimedByOther && !codes.includes(alt)) codes.push(alt);
-  }
-  return codes;
+  if (!_actionCacheBuilt) rebuildActionCodesCache();
+  return _actionCodesCache[action] || [];
 }
 
 function setVirtualAction(action, down) {
@@ -166,6 +184,7 @@ export function onKeyDown(e) {
       }
     }
     kb[act] = e.code;
+    rebuildActionCodesCache();
     syncControlModeUI();
     if (done) done(true, e.code);
     return;
@@ -186,11 +205,16 @@ export function onKeyUp(e) {
 }
 
 export function isHeld(codes) {
-  return codes.some(c => keysHeld[c] || gpHeld[c]);
+  for (let i = 0; i < codes.length; i++) {
+    const c = codes[i];
+    if (keysHeld[c] || gpHeld[c]) return true;
+  }
+  return false;
 }
 
 export function consumePress(codes) {
-  for (const c of codes) {
+  for (let i = 0; i < codes.length; i++) {
+    const c = codes[i];
     if (keysPressed[c]) {
       keysPressed[c] = false;
       return true;
@@ -200,7 +224,8 @@ export function consumePress(codes) {
 }
 
 export function consumeRelease(codes) {
-  for (const c of codes) {
+  for (let i = 0; i < codes.length; i++) {
+    const c = codes[i];
     if (keysReleased[c]) {
       keysReleased[c] = false;
       return true;
@@ -212,7 +237,11 @@ export function consumeRelease(codes) {
 export function isActionHeld(action) {
   if (actionHeld[action]) return true;
   const codes = getActionCodes(action);
-  return codes.some(c => keysHeld[c] || gpHeld[c]);
+  for (let i = 0; i < codes.length; i++) {
+    const c = codes[i];
+    if (keysHeld[c] || gpHeld[c]) return true;
+  }
+  return false;
 }
 
 export function consumeActionPress(action) {
@@ -232,10 +261,10 @@ export function consumeActionRelease(action) {
 }
 
 export function clearFrameInputs() {
-  for (const code of Object.keys(keysPressed)) keysPressed[code] = false;
-  for (const code of Object.keys(keysReleased)) keysReleased[code] = false;
-  for (const act of Object.keys(actionPressed)) actionPressed[act] = false;
-  for (const act of Object.keys(actionReleased)) actionReleased[act] = false;
+  for (const code in keysPressed) keysPressed[code] = false;
+  for (const code in keysReleased) keysReleased[code] = false;
+  for (const act in actionPressed) actionPressed[act] = false;
+  for (const act in actionReleased) actionReleased[act] = false;
 }
 
 // ==================== GAMEPAD DUAL-RUMBLE HAPTIC FEEDBACK ====================
@@ -330,14 +359,14 @@ export function requestMobileLandscapeFullscreen() {
 export function getControlLabels() {
   if (document.body.classList.contains('is-mobile')) {
     return {
-      slash: '普攻',
-      parry: '弹反',
-      grapple: '钩锁',
-      spell: '法术',
-      seal: '墨印',
-      heal: '灯油',
-      interact: '交互',
-      shortGrapple: '索'
+      slash: t('mob.attack'),
+      parry: t('mob.parry'),
+      grapple: t('mob.grapple'),
+      spell: t('mob.spell'),
+      seal: t('hud.seals'),
+      heal: t('hud.flasks'),
+      interact: t('mob.interact'),
+      shortGrapple: t('mob.grapple')
     };
   }
   if (G.inputDevice === 'gamepad') {
@@ -347,7 +376,7 @@ export function getControlLabels() {
       grapple: 'LT',
       spell: 'Y',
       seal: 'RT',
-      heal: '十字↑',
+      heal: t('input.gpHeal'),
       interact: 'R3 / ↓',
       shortGrapple: 'LT'
     };
@@ -359,27 +388,30 @@ export function getControlLabels() {
   const sel = getActionKeyLabel('seal');
   const hea = getActionKeyLabel('heal');
   const inter = getActionKeyLabel('interact');
+  const lmb = t('input.lmb');
+  const rmb = t('input.rmb');
+  const mmb = t('input.mmb');
   if (G.controlMode === 'kbmouse') {
     return {
-      slash: `左键 / ${atk}`,
-      parry: `右键 / ${par}`,
-      grapple: `F / 中键 / ${grp}`,
+      slash: `${lmb} / ${atk}`,
+      parry: `${rmb} / ${par}`,
+      grapple: `F / ${mmb} / ${grp}`,
       spell: `R / ${spl}`,
       seal: `C / ${sel}`,
       heal: `Q / ${hea}`,
       interact: inter,
-      shortGrapple: `${grp} / 索`
+      shortGrapple: t('input.shortGrapple', grp)
     };
   }
   return {
     slash: atk,
     parry: par,
-    grapple: `${grp} / F / 右键`,
+    grapple: `${grp} / F / ${rmb}`,
     spell: `${spl} / R`,
     seal: `${sel} / C`,
     heal: `${hea} / Q`,
     interact: inter,
-    shortGrapple: `${grp} / 索`
+    shortGrapple: t('input.shortGrapple', grp)
   };
 }
 
@@ -389,12 +421,7 @@ export function syncHelpModalText() {
   const k = getControlLabels();
   const upK = getActionKeyLabel('up');
   const dnK = getActionKeyLabel('down');
-  el.innerHTML =
-    `<strong>1. 立体断刃剑技 [${k.slash}]</strong>：轻按三连（上挑 → 横扫 → 踏步重劈）；<strong>长按 [${k.slash}]</strong> 沉身收刀蓄力释放<strong>「居合 · 一闪」</strong>；配合 <strong>[${upK}+斩]</strong> 上挑斩、空中 <strong>[${dnK}+斩]</strong> 踩头与悬灯/钟摆/共鸣钟下劈弹跳。<br>` +
-    `<strong>2. 双魂火法术 [${k.spell}] / [${upK}+${k.spell}] &amp; 幽丝钩索 [${k.grapple}]</strong>：平按 <strong>[${k.spell}]</strong> 发射水平穿透「幽鸣灵刃」(耗30)；按住 <strong>[${upK}+${k.spell}]</strong> 施放对空与 360° 范围爆发<strong>「镇魂钟鸣」</strong>(耗40)，可直接破重盾、震散法球并一次敲响周围多口悬灯与共鸣钟！<br>` +
-    `<strong>3. 精准弹反 [${k.parry}] &amp; 识破反击 [${k.parry} → 斩]</strong>：完美弹反零伤打铁（可反弹怨灵火球与青铜钟摆！）并攒墨印；弹反后 0.56 秒内接斩派生<strong>「断钟返 · 十字反击斩」</strong>，双倍吸血狂削架势。<br>` +
-    `<strong>4. 双圣物槽 &amp; 隐藏羁绊</strong>：祭坛可同时铭刻<strong>主印 + 副印</strong>，特定组合会激活机制质变羁绊（如幽丝断钟+回响钟舌、碎镜之眼+孤灯余烬、噬痛荆棘+裂钟铁心、古钟心核+碎镜之眼）！<br>` +
-    `<strong>5. 墨印引爆 [${k.seal}]、灯油回血 [${k.heal}] 与处决 [斩]</strong>：攒墨印后按 <strong>[${k.seal}]</strong> 突刺贴符引爆；敌方架势崩溃跪地时，近身按斩触发黑白反色处决！可在右上角「设置」中自定义键位、开关手柄震动或微调辅助难度。`;
+  el.innerHTML = t('help.body', k.slash, upK, dnK, k.spell, k.grapple, k.parry, k.seal, k.heal);
 }
 
 export function syncControlModeUI() {
@@ -408,15 +435,15 @@ export function syncControlModeUI() {
   const d = getActionKeyLabel('dash');
   const e = getActionKeyLabel('interact');
   const m = getActionKeyLabel('map');
-  if (btn) btn.textContent = G.controlMode === 'kbmouse' ? '操控: 键鼠' : '操控: 纯键';
+  if (btn) btn.textContent = G.controlMode === 'kbmouse' ? t('hud.ctrlKb') : t('hud.ctrlKey');
   if (bar) {
-    bar.textContent =
-      `${l}/${r} 移 · ${j} 跳 · ${k.slash} 斩/居合 · ${k.parry} 弹反 · ${k.grapple} 钩索 · ${k.spell} 灵刃 · ${u}+法 钟鸣 · ${d} 闪 · ${k.seal} 墨印 · ${k.heal} 回血 · ${e} 交互 · ${m} 舆图`;
+    bar.textContent = t('quick.bar', l, r, j, k.slash, k.parry, k.grapple, k.spell, u, d, k.seal, k.heal, e, m);
   }
   syncHelpModalText();
 }
 
 let gpConnectedNotified = false;
+let gpHadActive = false;
 const gpPrev = {};
 
 function setGpAction(action, down) {
@@ -424,6 +451,7 @@ function setGpAction(action, down) {
   if (down !== prev) {
     setVirtualAction(action, down);
     gpPrev[action] = down;
+    if (down) gpHadActive = true;
   }
 }
 
@@ -438,8 +466,11 @@ export function pollGamepad() {
     }
   }
   if (!pad) {
-    for (const act of Object.keys(gpPrev)) {
-      if (gpPrev[act] && !act.startsWith('_')) setGpAction(act, false);
+    if (gpHadActive) {
+      for (const act in gpPrev) {
+        if (gpPrev[act] && act.charCodeAt(0) !== 95) setGpAction(act, false);
+      }
+      gpHadActive = false;
     }
     return;
   }
@@ -545,7 +576,7 @@ export function initInputListeners() {
     if (!gpConnectedNotified && G.player) {
       gpConnectedNotified = true;
       triggerHaptic('test', 0.65);
-      spawnFloatText(G.player.x + G.player.w / 2, G.player.y - 42, '手柄已接入 · 震动反馈已就绪', COLORS.cyanBright, 18, 1.4);
+      spawnFloatText(G.player.x + G.player.w / 2, G.player.y - 42, t('input.gpConnected'), COLORS.cyanBright, 18, 1.4);
     }
   });
 
@@ -628,19 +659,19 @@ export function initInputListeners() {
       e.preventDefault();
       audio.init();
       if (joyTouchId === null && e.changedTouches.length > 0) {
-        const t = e.changedTouches[0];
-        joyTouchId = t.identifier;
+        const tch = e.changedTouches[0];
+        joyTouchId = tch.identifier;
         joyBase.classList.add('active');
-        updateStickFromClient(t.clientX, t.clientY);
+        updateStickFromClient(tch.clientX, tch.clientY);
       }
     }, { passive: false });
     joyZone.addEventListener('touchmove', e => {
       if (joyTouchId === null) return;
       e.preventDefault();
       for (let i = 0; i < e.changedTouches.length; i++) {
-        const t = e.changedTouches[i];
-        if (t.identifier === joyTouchId) {
-          updateStickFromClient(t.clientX, t.clientY);
+        const tch = e.changedTouches[i];
+        if (tch.identifier === joyTouchId) {
+          updateStickFromClient(tch.clientX, tch.clientY);
           break;
         }
       }
@@ -745,17 +776,17 @@ export function initInputListeners() {
     let moved = false;
     card.addEventListener('touchstart', e => {
       if (!isForceLandscape() || e.touches.length !== 1) return;
-      const t = e.touches[0];
-      dragId = t.identifier;
-      lastX = t.clientX;
+      const tch = e.touches[0];
+      dragId = tch.identifier;
+      lastX = tch.clientX;
       moved = false;
     }, { passive: true });
     card.addEventListener('touchmove', e => {
       if (!isForceLandscape() || dragId === null) return;
       for (let i = 0; i < e.touches.length; i++) {
-        const t = e.touches[i];
-        if (t.identifier === dragId) {
-          const dx = t.clientX - lastX;
+        const tch = e.touches[i];
+        if (tch.identifier === dragId) {
+          const dx = tch.clientX - lastX;
           if (Math.abs(dx) > 4) moved = true;
           if (moved && card.scrollHeight > card.clientHeight) {
             card.scrollTop += dx;

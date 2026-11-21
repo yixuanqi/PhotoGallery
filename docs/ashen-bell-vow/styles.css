@@ -223,6 +223,18 @@
     gap: 8px;
   }
 
+  .perf-hud {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px;
+    color: var(--cyan-bright);
+    background: rgba(8, 12, 20, 0.78);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-radius: 5px;
+    padding: 3px 8px;
+    letter-spacing: 0.4px;
+  }
+  .perf-hud.hidden { display: none; }
+
   .zone-banner {
     font-size: 13px;
     letter-spacing: 3px;
@@ -675,6 +687,7 @@
   }
 
   .overlay-screen.hidden {
+    display: none;
     opacity: 0;
     pointer-events: none;
   }
@@ -2128,4 +2141,799 @@
   body.is-mobile .modal-top-close {
     padding: 6px 16px;
     font-size: 13px;
+  }
+
+  /* ==================== v17.7 Per-Module Live Profiler & 4-Group A/B Benchmark UI ==================== */
+  button.perf-hud {
+    pointer-events: auto;
+    cursor: pointer;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  button.perf-hud:hover {
+    border-color: var(--gold-bright);
+    color: var(--gold-bright);
+  }
+  .profiler-drawer {
+    pointer-events: auto;
+    width: 256px;
+    background: rgba(8, 12, 20, 0.90);
+    border: 1px solid rgba(56, 189, 248, 0.42);
+    border-radius: 7px;
+    padding: 8px 9px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.72);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--parchment);
+  }
+  .profiler-drawer.hidden { display: none; }
+  .prof-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--cyan-bright);
+    margin-bottom: 5px;
+  }
+  .prof-mini-btn {
+    background: rgba(245, 158, 11, 0.2);
+    border: 1px solid var(--gold);
+    color: var(--gold-bright);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .prof-mini-btn:hover { background: rgba(245, 158, 11, 0.36); }
+  #prof-sparkline {
+    display: block;
+    width: 100%;
+    height: 42px;
+    border-radius: 3px;
+    border: 1px solid rgba(216, 207, 184, 0.16);
+    margin-bottom: 6px;
+  }
+  .prof-meta {
+    font-size: 10px;
+    color: var(--parchment-dim);
+    margin-bottom: 5px;
+    line-height: 1.45;
+  }
+  .prof-bar-row {
+    display: grid;
+    grid-template-columns: 56px 1fr 78px;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    margin-bottom: 3px;
+  }
+  .prof-lbl { color: var(--parchment); }
+  .prof-track {
+    height: 5px;
+    background: rgba(30, 41, 59, 0.85);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .prof-fill {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, #38bdf8, #fde047);
+  }
+  .prof-val { text-align: right; color: var(--cyan-bright); }
+
+  .bench-banner {
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 28;
+    min-width: 390px;
+    max-width: 90%;
+    background: rgba(8, 12, 22, 0.94);
+    border: 1.5px solid var(--gold-bright);
+    border-radius: 8px;
+    padding: 8px 14px;
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.78);
+    pointer-events: none;
+  }
+  .bench-banner.hidden { display: none; }
+  .bench-banner-text {
+    font-size: 12.5px;
+    color: var(--gold-bright);
+    text-align: center;
+    margin-bottom: 6px;
+    letter-spacing: 0.6px;
+  }
+  .bench-banner-track {
+    height: 6px;
+    background: rgba(30, 41, 59, 0.9);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .bench-banner-fill {
+    height: 100%;
+    width: 100%;
+    transform-origin: left center;
+    transform: scaleX(0);
+    background: linear-gradient(90deg, #38bdf8, #fde047);
+  }
+
+  .bench-report-body {
+    text-align: left;
+    font-size: 12px;
+  }
+  .bench-empty {
+    padding: 18px;
+    text-align: center;
+    color: var(--parchment-dim);
+    background: rgba(7, 10, 16, 0.55);
+    border-radius: 8px;
+    border: 1px dashed rgba(216, 207, 184, 0.24);
+  }
+  .bench-sec-label {
+    font-size: 11.5px;
+    letter-spacing: 1px;
+    color: var(--gold-bright);
+    margin: 10px 0 6px;
+    font-weight: 700;
+  }
+  .bench-table-wrap {
+    overflow-x: auto;
+    border-radius: 6px;
+    border: 1px solid rgba(216, 207, 184, 0.20);
+    background: rgba(7, 10, 16, 0.72);
+  }
+  .bench-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11.5px;
+  }
+  .bench-table.compact { font-size: 11px; }
+  .bench-table th, .bench-table td {
+    padding: 6px 7px;
+    border-bottom: 1px solid rgba(216, 207, 184, 0.10);
+    text-align: right;
+    white-space: nowrap;
+  }
+  .bench-table th:first-child, .bench-table td:first-child { text-align: left; font-family: "Noto Serif SC", serif; }
+  .bench-table th {
+    background: rgba(18, 25, 39, 0.92);
+    color: var(--parchment-dim);
+    font-weight: 600;
+  }
+  .bench-table tr.bench-best td { background: rgba(14, 116, 144, 0.20); color: #e0f2fe; }
+  .bench-table tr.bench-worst td { background: rgba(127, 29, 29, 0.22); }
+  .bench-res { font-size: 10px; color: var(--parchment-dim); font-family: ui-monospace, monospace; }
+  .bench-diag-box {
+    background: rgba(7, 10, 16, 0.65);
+    border-left: 3px solid var(--cyan);
+    border-radius: 6px;
+    padding: 10px 12px;
+    line-height: 1.65;
+    color: var(--parchment);
+  }
+  .bench-diag-line { margin-bottom: 5px; }
+  .bench-diag-line:last-child { margin-bottom: 0; }
+
+  /* ==================== v18.0 NG+ Cycle, Vow Constraints & Sparring Automaton UI ==================== */
+  .ability-badge.vow-cycle {
+    color: #fecaca;
+    background: rgba(153, 27, 27, 0.34);
+    border-color: rgba(248, 113, 113, 0.72);
+    box-shadow: 0 0 8px rgba(220, 38, 38, 0.28);
+  }
+
+  .vow-section {
+    margin: 4px 0 12px;
+    padding: 11px 14px;
+    border-radius: 8px;
+    background: rgba(14, 10, 16, 0.76);
+    border: 1px solid rgba(248, 113, 113, 0.32);
+    text-align: left;
+  }
+
+  .vow-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .vow-chip {
+    text-align: left;
+    padding: 8px 10px;
+    border-radius: 7px;
+    background: rgba(15, 19, 30, 0.86);
+    border: 1px solid rgba(216, 207, 184, 0.22);
+    color: var(--parchment);
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, transform 0.12s;
+  }
+
+  .vow-chip:hover {
+    border-color: rgba(248, 113, 113, 0.65);
+    transform: translateY(-1px);
+  }
+
+  .vow-chip.active {
+    background: linear-gradient(145deg, rgba(84, 20, 26, 0.85), rgba(24, 12, 18, 0.94));
+    border-color: var(--crimson-bright);
+    box-shadow: 0 0 14px rgba(220, 38, 38, 0.28);
+  }
+
+  .vow-chip-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--parchment);
+    margin-bottom: 3px;
+  }
+
+  .vow-chip.active .vow-chip-head {
+    color: #fecaca;
+  }
+
+  .vow-bonus {
+    font-size: 10.5px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(245, 158, 11, 0.16);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    color: var(--gold-bright);
+  }
+
+  .vow-chip-desc {
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--parchment-dim);
+  }
+
+  .ngplus-bar {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, rgba(56, 34, 12, 0.62), rgba(18, 14, 22, 0.90));
+    border: 1px solid rgba(253, 224, 71, 0.52);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .ngplus-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 11px;
+    color: var(--parchment-dim);
+    line-height: 1.4;
+  }
+
+  .ngplus-info strong {
+    font-size: 13px;
+    color: var(--gold-bright);
+    letter-spacing: 1px;
+  }
+
+  .ngplus-btn {
+    padding: 7px 14px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, rgba(120, 53, 15, 0.85), rgba(38, 22, 12, 0.95));
+    border: 1px solid var(--gold-bright);
+    color: var(--gold-bright);
+    font-size: 12px;
+    font-weight: 700;
+    font-family: inherit;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: transform 0.14s, box-shadow 0.14s;
+  }
+
+  .ngplus-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0 14px rgba(253, 224, 71, 0.36);
+  }
+
+  @media (max-width: 580px) {
+    .vow-grid { grid-template-columns: 1fr; }
+    .ngplus-bar { flex-direction: column; align-items: stretch; }
+  }
+
+  /* ==================== v18.1 Codex (晦渊残卷) & Parchment Map Pins / Room Stats ==================== */
+  .modal-top-bar.modal-top-split {
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .modal-top-link {
+    pointer-events: auto;
+    background: rgba(14, 21, 34, 0.92);
+    color: var(--cyan-bright);
+    border: 1px solid rgba(56, 189, 248, 0.55);
+    border-radius: 999px;
+    padding: 4px 13px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.14s, color 0.14s, transform 0.12s;
+  }
+  .modal-top-link:hover {
+    border-color: var(--gold-bright);
+    color: var(--gold-bright);
+    transform: translateY(-1px);
+  }
+
+  .map-pin-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    margin: -4px 0 8px;
+  }
+
+  .pin-tool-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(14, 19, 30, 0.88);
+    border: 1px solid rgba(216, 207, 184, 0.28);
+    color: var(--parchment);
+    font-size: 11.5px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.14s, background 0.14s, transform 0.12s;
+  }
+  .pin-tool-btn:hover:not(:disabled) {
+    border-color: var(--gold);
+    color: var(--gold-bright);
+    transform: translateY(-1px);
+  }
+  .pin-tool-btn.active {
+    background: rgba(245, 158, 11, 0.20);
+    border-color: var(--gold-bright);
+    color: var(--gold-bright);
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+  }
+  .pin-tool-btn.pin-wall.active { border-color: var(--cyan-bright); color: var(--cyan-bright); background: rgba(56, 189, 248, 0.18); }
+  .pin-tool-btn.pin-barrier.active { border-color: #d8b4fe; color: #e9d5ff; background: rgba(168, 85, 247, 0.22); }
+  .pin-tool-btn.pin-foe.active { border-color: var(--crimson-bright); color: #fecaca; background: rgba(220, 38, 38, 0.22); }
+  .pin-tool-btn.pin-clear {
+    margin-left: 6px;
+    color: var(--parchment-dim);
+    border-style: dashed;
+  }
+  .pin-tool-btn:disabled { opacity: 0.42; cursor: default; }
+
+  .pin-swatch {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    transform: rotate(45deg);
+    display: inline-block;
+  }
+
+  #fullMapCanvas {
+    cursor: crosshair;
+  }
+
+  .map-room-detail {
+    margin: -4px 0 10px;
+    padding: 8px 12px;
+    border-radius: 7px;
+    background: rgba(11, 15, 24, 0.78);
+    border: 1px solid rgba(216, 207, 184, 0.22);
+    text-align: center;
+  }
+  .mrd-stats {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--parchment);
+  }
+  .mrd-name { color: var(--gold-bright); letter-spacing: 1px; }
+  .mrd-sep { color: rgba(216, 207, 184, 0.35); }
+  .mrd-done { color: var(--gold-bright); font-weight: 700; }
+  .mrd-todo { color: var(--cyan-bright); font-weight: 700; }
+  .mrd-wall { color: #7dd3fc; }
+  .mrd-barrier { color: #d8b4fe; }
+  .mrd-hint {
+    margin-top: 3px;
+    font-size: 10.5px;
+    color: var(--parchment-dim);
+  }
+
+  /* Codex Modal */
+  .codex-modal-card {
+    width: min(760px, 95%);
+  }
+
+  .codex-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin: 0 0 14px;
+  }
+
+  .codex-tab-btn {
+    padding: 6px 15px;
+    border-radius: 999px;
+    background: rgba(14, 19, 30, 0.85);
+    border: 1px solid rgba(216, 207, 184, 0.28);
+    color: var(--parchment);
+    font-size: 12.5px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .codex-tab-btn:hover { border-color: var(--gold); color: var(--gold-bright); }
+  .codex-tab-btn.active {
+    background: linear-gradient(135deg, rgba(64, 38, 12, 0.72), rgba(24, 18, 22, 0.92));
+    border-color: var(--gold-bright);
+    color: var(--gold-bright);
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.24);
+  }
+
+  .codex-body {
+    text-align: left;
+  }
+
+  .codex-sec-head {
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: var(--gold-bright);
+    margin: 2px 0 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(245, 158, 11, 0.24);
+  }
+
+  .codex-lore-list {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  .codex-lore-card {
+    padding: 11px 14px;
+    border-radius: 8px;
+    background: rgba(10, 14, 22, 0.84);
+    border: 1px solid rgba(216, 207, 184, 0.24);
+    border-left: 3px solid var(--cyan);
+  }
+  .codex-lore-card.locked {
+    opacity: 0.62;
+    border-left-color: rgba(148, 163, 184, 0.45);
+    border-style: dashed;
+    border-left-style: solid;
+  }
+  .codex-lore-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--gold-bright);
+    margin-bottom: 5px;
+  }
+  .codex-lore-loc {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--cyan-bright);
+  }
+  .codex-lore-body {
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: #d6cebc;
+  }
+  .codex-lore-hint {
+    font-size: 11.5px;
+    color: var(--parchment-dim);
+  }
+
+  .codex-end-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .codex-end-card {
+    padding: 11px 13px;
+    border-radius: 8px;
+    background: rgba(14, 18, 28, 0.88);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+  }
+  .codex-end-card.locked {
+    opacity: 0.56;
+    border-color: rgba(148, 163, 184, 0.28);
+    border-style: dashed;
+  }
+  .codex-end-title { font-size: 13px; font-weight: 700; color: var(--gold-bright); margin-bottom: 4px; }
+  .codex-end-desc { font-size: 11.5px; line-height: 1.55; color: var(--parchment-dim); }
+
+  /* Bestiary Grid */
+  .codex-bestiary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+  .codex-foe-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: linear-gradient(155deg, rgba(16, 21, 34, 0.90), rgba(10, 13, 21, 0.94));
+    border: 1px solid rgba(216, 207, 184, 0.24);
+  }
+  .codex-foe-card.boss {
+    border-color: rgba(245, 158, 11, 0.48);
+    background: linear-gradient(155deg, rgba(32, 18, 22, 0.88), rgba(12, 13, 22, 0.94));
+  }
+  .codex-foe-card.locked {
+    opacity: 0.56;
+    border-style: dashed;
+  }
+  .codex-foe-head {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+  .codex-foe-icon { width: 38px; height: 38px; flex-shrink: 0; }
+  .codex-svg { width: 38px; height: 38px; display: block; }
+  .codex-foe-titles { min-width: 0; flex: 1; }
+  .codex-foe-name {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--gold-bright);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .codex-boss-pill {
+    font-size: 9.5px;
+    padding: 0 5px;
+    border-radius: 4px;
+    background: rgba(220, 38, 38, 0.28);
+    border: 1px solid var(--crimson-bright);
+    color: #fecaca;
+  }
+  .codex-foe-sub { font-size: 10.5px; color: var(--parchment-dim); margin-top: 1px; }
+  .codex-foe-lore { font-size: 11.5px; line-height: 1.48; color: #cfc6b2; }
+  .codex-foe-tactic {
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--cyan-bright);
+    padding-top: 4px;
+    border-top: 1px solid rgba(216, 207, 184, 0.10);
+  }
+  .codex-foe-tactic span {
+    display: inline-block;
+    margin-right: 5px;
+    padding: 0 4px;
+    border-radius: 3px;
+    font-size: 9.5px;
+    background: rgba(56, 189, 248, 0.16);
+    border: 1px solid rgba(56, 189, 248, 0.42);
+  }
+  .codex-foe-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--parchment-dim);
+    padding-top: 4px;
+    border-top: 1px solid rgba(216, 207, 184, 0.10);
+  }
+  .codex-foe-stats strong { color: var(--gold-bright); font-family: ui-monospace, Menlo, monospace; }
+
+  /* Achievements & Synergies */
+  .codex-ach-prog {
+    margin-bottom: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    background: rgba(12, 16, 26, 0.85);
+    border: 1px solid rgba(245, 158, 11, 0.34);
+  }
+  .codex-ach-prog-top {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--gold-bright);
+    margin-bottom: 6px;
+  }
+  .codex-ach-track {
+    height: 7px;
+    border-radius: 999px;
+    background: rgba(30, 41, 59, 0.9);
+    overflow: hidden;
+  }
+  .codex-ach-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #38bdf8, #fde047);
+    transition: width 0.25s;
+  }
+
+  .codex-ach-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .codex-ach-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 11px;
+    border-radius: 8px;
+    background: rgba(11, 15, 24, 0.78);
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    opacity: 0.62;
+  }
+  .codex-ach-card.done {
+    opacity: 1;
+    border-color: rgba(253, 224, 71, 0.62);
+    background: linear-gradient(145deg, rgba(56, 36, 14, 0.52), rgba(14, 17, 26, 0.94));
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.16);
+  }
+  .codex-ach-seal {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12.5px;
+    font-weight: 700;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    color: var(--parchment-dim);
+  }
+  .codex-ach-card.done .codex-ach-seal {
+    background: rgba(245, 158, 11, 0.24);
+    border-color: var(--gold-bright);
+    color: var(--gold-bright);
+  }
+  .codex-ach-name { font-size: 12.5px; font-weight: 700; color: var(--parchment); }
+  .codex-ach-card.done .codex-ach-name { color: var(--gold-bright); }
+  .codex-ach-desc { font-size: 10.8px; line-height: 1.4; color: var(--parchment-dim); }
+
+  .codex-syn-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .codex-syn-card {
+    padding: 9px 11px;
+    border-radius: 7px;
+    background: rgba(11, 15, 24, 0.72);
+    border: 1px dashed rgba(148, 163, 184, 0.28);
+    opacity: 0.65;
+  }
+  .codex-syn-card.done {
+    opacity: 1;
+    border-style: solid;
+    border-color: rgba(253, 224, 71, 0.58);
+    background: linear-gradient(145deg, rgba(52, 30, 12, 0.60), rgba(16, 15, 24, 0.92));
+  }
+  .codex-syn-title { font-size: 12.5px; font-weight: 700; color: var(--gold-bright); margin-bottom: 3px; }
+  .codex-syn-title span { font-size: 10.5px; font-weight: 400; color: var(--cyan-bright); }
+  .codex-syn-desc { font-size: 11px; line-height: 1.45; color: var(--parchment-dim); }
+
+  @media (max-width: 620px) {
+    .codex-bestiary-grid, .codex-ach-grid, .codex-syn-grid, .codex-end-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* ==================== v18.2 Side-Quest NPCs & Biome Ambience UI ==================== */
+  .ability-badge.blessing {
+    color: #e0f2fe;
+    background: linear-gradient(135deg, rgba(14, 116, 144, 0.42), rgba(180, 83, 9, 0.34));
+    border-color: rgba(253, 224, 71, 0.78);
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
+  }
+
+  .npc-quest-card.ready {
+    border-color: rgba(253, 224, 71, 0.72);
+    background: linear-gradient(145deg, rgba(58, 38, 12, 0.56), rgba(14, 18, 28, 0.94));
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.22);
+  }
+
+  .npc-quest-card.done {
+    border-color: rgba(56, 189, 248, 0.38);
+    background: rgba(10, 18, 28, 0.74);
+  }
+
+  .npc-service-card {
+    border-color: rgba(56, 189, 248, 0.42);
+    background: linear-gradient(145deg, rgba(12, 30, 48, 0.72), rgba(10, 14, 22, 0.92));
+  }
+
+  .npc-service-card.done {
+    border-color: rgba(253, 224, 71, 0.55);
+  }
+
+  .biome-audio-pill {
+    font-size: 11.5px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(14, 28, 44, 0.85);
+    border: 1px solid rgba(56, 189, 248, 0.48);
+    color: var(--cyan-bright);
+    letter-spacing: 0.8px;
+  }
+
+  /* ==================== v18.3 Bilingual Polish & Title Language Switcher ==================== */
+  .title-top-bar {
+    display: flex;
+    justify-content: flex-end;
+    margin: -10px -8px 4px;
+  }
+
+  .title-lang-btn {
+    background: rgba(14, 21, 34, 0.85);
+    color: var(--parchment);
+    border: 1px solid rgba(216, 207, 184, 0.34);
+    border-radius: 999px;
+    padding: 3px 11px;
+    font-size: 11px;
+    letter-spacing: 0.6px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, transform 0.12s;
+  }
+
+  .title-lang-btn:hover {
+    border-color: var(--gold-bright);
+    color: var(--gold-bright);
+    transform: translateY(-1px);
+  }
+
+  body.lang-en {
+    font-family: Georgia, "Palatino Linotype", "Book Antiqua", "Noto Serif SC", serif;
+  }
+  body.lang-en .game-title {
+    letter-spacing: 4px;
+  }
+  body.lang-en .modal-title {
+    letter-spacing: 2px !important;
+    font-size: 21px;
+  }
+  body.lang-en .modal-sub {
+    letter-spacing: 0.6px;
+  }
+  body.lang-en .primary-btn {
+    letter-spacing: 1px;
+    font-size: 14px;
+    padding: 10px 22px;
+  }
+  body.lang-en .zone-banner {
+    letter-spacing: 1px;
+    font-size: 12.5px;
+  }
+  body.lang-en .boss-title-row {
+    letter-spacing: 1px;
+    font-size: 14px;
+  }
+  body.lang-en .ending-card-title {
+    letter-spacing: 1.5px;
+    font-size: 17px;
+  }
+  body.lang-en .fan-label {
+    font-size: 11.5px;
+    letter-spacing: 0;
+  }
+  body.lang-en .aux-btn {
+    font-size: 10px;
   }

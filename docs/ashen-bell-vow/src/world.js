@@ -1,13 +1,13 @@
 // World hazards, pendulums, Abyssal River, projectiles, talismans, tides & camera
 import { COLORS, ROOM_THEMES, SOLIDS, VOID_BARRIERS, WORLD_W, WORLD_H, FLOOR_Y, PENDULUMS, ABYSSAL_RIVERS, PUDDLES } from './config.js';
 import {
-  G, hooks, getLivingFoes, getAwakeBoss, getRelicStats, scheduleOutcome, addShake, punchZoom
+  G, hooks, getLivingFoes, getAwakeBoss, getRelicStats, scheduleOutcome, addShake, punchZoom, triggerHitstop, damp
 } from './state.js';
 import { getRoomAt } from './levelLoader.js';
 import { audio } from './audio.js';
 import { triggerHaptic } from './input.js';
 import {
-  spawnParticles, spawnShockwave, spawnImpactBurst, spawnFloatText, spawnWeatherRipple
+  spawnParticles, recycleParticle, spawnShockwave, spawnImpactBurst, spawnFloatText, spawnWeatherRipple
 } from './vfx.js';
 import { aabbOverlap, getGroundSurfaceY } from './physics.js';
 import {
@@ -15,6 +15,8 @@ import {
   rallyPlayerGrayHp, damageSecretWall, tryQuellChapelTideByLantern, ringResonanceBell,
   dropPlayerEchoesOnDeath, reclaimLostEchoes
 } from './combat.js';
+import { recordBestiaryEvent, checkAchievements, updateAchievementBanner } from './codex.js';
+import { t } from './i18n.js';
 
 export function updateWorldEffects(dt) {
   // Shortcut Gate & Boss Chapel Exit Gate Animations + Breakable Wall Shake
@@ -53,7 +55,7 @@ export function updateWorldEffects(dt) {
         if (b.hitCd > 0) b.hitCd = Math.max(0, b.hitCd - dt);
         if (b.flash > 0) b.flash = Math.max(0, b.flash - dt);
         const acc = -22 * Math.sin(b.swing);
-        b.swingVel = (b.swingVel + acc * dt) * 0.94;
+        b.swingVel = (b.swingVel + acc * dt) * damp(0.94, dt);
         b.swing += b.swingVel * dt;
       }
     }
@@ -64,7 +66,7 @@ export function updateWorldEffects(dt) {
     for (const cp of G.crumblePlatforms) {
       if (cp.state === 'shaking') {
         cp.timer -= dt;
-        if (Math.random() < 0.45) {
+        if (Math.random() < 26 * dt) {
           spawnParticles(cp.x + Math.random() * cp.w, cp.y + cp.h, 1, { color: COLORS.parchment, speed: 60, grav: 320, life: 0.35 });
         }
         if (cp.timer <= 0) {
@@ -121,7 +123,7 @@ export function updateWorldEffects(dt) {
       G.player.isCharging = false;
       G.player.chargeTime = 0;
       G.stats.damageTaken += dmg;
-      spawnFloatText(px, G.player.y - 22, `墨河侵蚀 -${dmg}`, COLORS.cyanBright, 19, 0.95);
+      spawnFloatText(px, G.player.y - 22, t('combat.riverDmg', dmg), COLORS.cyanBright, 19, 0.95);
       if (G.player.hp <= 0) {
         G.player.hp = 0;
         G.player.deathTimer = 0.65;
@@ -147,7 +149,7 @@ export function updateWorldEffects(dt) {
     if (l.ringFlash > 0) l.ringFlash = Math.max(0, l.ringFlash - dt);
     const wind = Math.sin(G.globalTime * 1.4 + l.x * 0.01) * 0.35;
     const angAcc = -14.5 * Math.sin(l.angle) + wind;
-    l.angVel = (l.angVel + angAcc * dt) * 0.986;
+    l.angVel = (l.angVel + angAcc * dt) * damp(0.986, dt);
     l.angle += l.angVel * dt;
   }
 
@@ -161,31 +163,31 @@ export function updateWorldEffects(dt) {
     if (pr.kind === 'soulWave' || pr.kind === 'crimsonWave') {
       const isCrimson = pr.kind === 'crimsonWave';
       const pCol = isCrimson ? COLORS.crimsonBright : COLORS.cyanBright;
-      if (Math.random() < 0.7) {
+      if (Math.random() < 38 * dt) {
         spawnParticles(pr.x - pr.facing * 10, pr.y + (Math.random() - 0.5) * 26, 1, { color: pCol, speed: 60, grav: 0, life: 0.24 });
       }
       const pBox = { x: pr.x - pr.r, y: pr.y - pr.r * 1.15, w: pr.r * 2, h: pr.r * 2.3 };
       const targets = getLivingFoes();
-      for (const t of targets) {
-        if (pr.hitIds.has(t.id)) continue;
-        if (aabbOverlap(pBox, t)) {
-          pr.hitIds.add(t.id);
+      for (const foe of targets) {
+        if (pr.hitIds.has(foe.id)) continue;
+        if (aabbOverlap(pBox, foe)) {
+          pr.hitIds.add(foe.id);
           audio.playHit(true);
           triggerHaptic(isCrimson ? 'heavyHit' : 'lightHit');
-          G.hitstopTimer = Math.max(G.hitstopTimer, 0.032);
+          triggerHitstop(0.032, true);
           addShake(isCrimson ? 7 : 5);
-          if ((t.kind === 'golem' || (t.kind === 'boss2' && t.shieldUp)) && t.shieldBrokenTimer <= 0) {
-            t.shieldBrokenTimer = 2.4;
-            if (t.kind === 'boss2') t.shieldUp = false;
+          if ((foe.kind === 'golem' || ((foe.kind === 'boss2' || foe.kind === 'dummy') && foe.shieldUp)) && foe.shieldBrokenTimer <= 0) {
+            foe.shieldBrokenTimer = 2.4;
+            if (foe.kind === 'boss2' || foe.kind === 'dummy') foe.shieldUp = false;
             audio.playShieldBreak();
             triggerHaptic('shieldBreak');
-            spawnFloatText(t.x + t.w / 2, t.y - 26, isCrimson ? '血刃破盾！' : '灵刃破盾！', pCol, 19, 0.95);
+            spawnFloatText(foe.x + foe.w / 2, foe.y - 26, isCrimson ? t('combat.crimsonBreak') : t('combat.bladeBreak'), pCol, 19, 0.95);
           }
-          damageEnemyHP(t, pr.dmg, true);
-          addPostureToEnemy(t, pr.posture);
+          damageEnemyHP(foe, pr.dmg, true);
+          addPostureToEnemy(foe, pr.posture);
           rallyPlayerGrayHp(isCrimson ? 18 : 10);
-          spawnParticles(t.x + t.w / 2, t.y + t.h * 0.45, 16, { color: pCol, speed: 240, spark: true, life: 0.34 });
-          spawnShockwave(t.x + t.w / 2, t.y + t.h * 0.45, isCrimson ? 70 : 58, pCol, 2.8, 0.22);
+          spawnParticles(foe.x + foe.w / 2, foe.y + foe.h * 0.45, 16, { color: pCol, speed: 240, spark: true, life: 0.34 });
+          spawnShockwave(foe.x + foe.w / 2, foe.y + foe.h * 0.45, isCrimson ? 70 : 58, pCol, 2.8, 0.22);
         }
       }
 
@@ -241,12 +243,12 @@ export function updateWorldEffects(dt) {
           addShake(6);
           spawnShockwave(lx, ly, 165, COLORS.goldBright, 4.2, 0.34);
           spawnParticles(lx, ly, 24, { color: COLORS.goldBright, speed: 280, spark: true, life: 0.4 });
-          spawnFloatText(lx, ly - 24, '灯鸣震荡!', COLORS.goldBright, 18, 0.72);
+          spawnFloatText(lx, ly - 24, t('combat.lanternBurst'), COLORS.goldBright, 18, 0.72);
           tryQuellChapelTideByLantern(l, lx, ly);
-          for (const t of targets) {
-            if (Math.hypot((t.x + t.w / 2) - lx, (t.y + t.h / 2) - ly) < 175) {
-              damageEnemyHP(t, 28, true);
-              addPostureToEnemy(t, 34);
+          for (const foe of targets) {
+            if (Math.hypot((foe.x + foe.w / 2) - lx, (foe.y + foe.h / 2) - ly) < 175) {
+              damageEnemyHP(foe, 28, true);
+              addPostureToEnemy(foe, 34);
             }
           }
         }
@@ -260,7 +262,7 @@ export function updateWorldEffects(dt) {
         }
       }
     } else if (pr.kind === 'wraithOrb') {
-      if (Math.random() < 0.5) {
+      if (Math.random() < 28 * dt) {
         spawnParticles(pr.x, pr.y, 1, { color: pr.reflected ? COLORS.goldBright : COLORS.crimson, speed: 45, grav: 0, life: 0.22 });
       }
       const oBox = { x: pr.x - pr.r, y: pr.y - pr.r, w: pr.r * 2, h: pr.r * 2 };
@@ -273,13 +275,15 @@ export function updateWorldEffects(dt) {
             G.stats.parries++;
             G.player.parryStreak = G.player.parryStreakTimer > 0 ? Math.min(9, G.player.parryStreak + 1) : 1;
             G.player.parryStreakTimer = 2.6;
+            if (pr.source && pr.source.kind) recordBestiaryEvent(pr.source.kind, 'parry');
+            checkAchievements({ parryStreak: G.player.parryStreak });
             audio.playParry(true, G.player.parryStreak);
             triggerHaptic('parry', 0.95 + Math.min(0.4, (G.player.parryStreak - 1) * 0.12));
             if (rsOrb.synMirrorEmber && G.player.parryStreak >= 3 && !G.player.freeSealProc) {
               G.player.freeSealProc = true;
-              spawnFloatText(G.player.x + G.player.w / 2, G.player.y - 46, '羁绊 · 镜烬蓄印！下击附符', COLORS.crimsonBright, 17, 1.1);
+              spawnFloatText(G.player.x + G.player.w / 2, G.player.y - 46, t('combat.synMirrorEmber'), COLORS.crimsonBright, 17, 1.1);
             }
-            G.hitstopTimer = 0.058;
+            triggerHitstop(0.058);
             addShake(9);
             punchZoom(1.04);
             G.screenFlash = { alpha: 0.2, color: COLORS.goldBright };
@@ -305,7 +309,7 @@ export function updateWorldEffects(dt) {
             spawnImpactBurst(pr.x, pr.y, 'parry', 1.05);
             spawnShockwave(pr.x, pr.y, 76, COLORS.goldBright, 4.2, 0.26);
             spawnParticles(pr.x, pr.y, 22, { color: COLORS.goldBright, speed: 320, spark: true, bounce: true, grav: 560 });
-            spawnFloatText(pr.x, pr.y - 22, '弹反归元!', COLORS.goldBright, 21, 0.85);
+            spawnFloatText(pr.x, pr.y - 22, t('combat.orbReflect'), COLORS.goldBright, 21, 0.85);
           } else {
             applyIncomingAttackToPlayer(pr.source || { x: pr.x, w: 0, isBoss: false }, pr.dmg, false, 180);
             pr.life = 0;
@@ -313,13 +317,13 @@ export function updateWorldEffects(dt) {
         }
       } else {
         const targets = getLivingFoes();
-        for (const t of targets) {
-          if (aabbOverlap(oBox, t)) {
+        for (const foe of targets) {
+          if (aabbOverlap(oBox, foe)) {
             audio.playDetonate();
-            G.hitstopTimer = 0.05;
+            triggerHitstop(0.05);
             addShake(9);
-            damageEnemyHP(t, t.isBoss ? 32 : 48, true);
-            addPostureToEnemy(t, t.isBoss ? 28 : 55);
+            damageEnemyHP(foe, foe.isBoss ? 32 : 48, true);
+            addPostureToEnemy(foe, foe.isBoss ? 28 : 55);
             spawnShockwave(pr.x, pr.y, 75, COLORS.goldBright, 4, 0.25);
             spawnParticles(pr.x, pr.y, 22, { color: COLORS.goldBright, speed: 300, spark: true });
             pr.life = 0;
@@ -353,13 +357,13 @@ export function updateWorldEffects(dt) {
     if (tm.timer <= 0) {
       audio.playDetonate();
       triggerHaptic('heavyHit', 1.1);
-      G.hitstopTimer = 0.055;
+      triggerHitstop(0.055);
       addShake(12);
       G.screenFlash = { alpha: 0.2, color: COLORS.goldBright };
       const radius = 115 + tm.seals * 25;
       spawnShockwave(tm.x, tm.y, radius, COLORS.goldBright, 5, 0.34);
       spawnParticles(tm.x, tm.y, 32, { color: COLORS.goldBright, speed: 320, spark: true, life: 0.48 });
-      spawnFloatText(tm.x, tm.y - 30, '墨印爆破!', COLORS.goldBright, 22, 0.9);
+      spawnFloatText(tm.x, tm.y - 30, t('combat.sealDetonate'), COLORS.goldBright, 22, 0.9);
       const foes = getLivingFoes();
       for (const f of foes) {
         if (Math.hypot((f.x + f.w / 2) - tm.x, (f.y + f.h / 2) - tm.y) < radius) {
@@ -383,7 +387,7 @@ export function updateWorldEffects(dt) {
     if (!owner || !owner.alive) {
       G.chapelTide = null;
     } else if (G.chapelTide.phase === 'surge') {
-      if (Math.random() < 0.85) {
+      if (Math.random() < 42 * dt) {
         const rx = x0 + 12 + Math.random() * (aw - 24);
         spawnParticles(rx, fy - 20 - Math.random() * 55, 1, { color: pCol, speed: 120, grav: -180, life: 0.34 });
       }
@@ -409,7 +413,7 @@ export function updateWorldEffects(dt) {
     const maxX = gw.maxX !== undefined ? gw.maxX : 3760;
     gw.x += gw.vx * dt;
     gw.life -= dt;
-    if (Math.random() < 0.6) {
+    if (Math.random() < 32 * dt) {
       spawnParticles(gw.x, fy - 8, 1, { color: gw.gold ? COLORS.goldBright : COLORS.crimsonBright, speed: 90, grav: -160, life: 0.3 });
     }
     if (!gw.hit && aabbOverlap({ x: gw.x - gw.w / 2, y: fy - gw.h, w: gw.w, h: gw.h }, G.player)) {
@@ -471,13 +475,17 @@ export function updateWorldEffects(dt) {
       }
     }
 
-    if (p.life <= 0) G.particles.splice(i, 1);
+    if (p.life <= 0) {
+      recycleParticle(p);
+      const last = G.particles.pop();
+      if (i < G.particles.length) G.particles[i] = last;
+    }
   }
   for (let i = G.floatTexts.length - 1; i >= 0; i--) {
     const ft = G.floatTexts[i];
     ft.life -= dt;
     ft.y += ft.vy * dt;
-    ft.vy *= 0.94;
+    ft.vy *= damp(0.94, dt);
     if (ft.life <= 0) G.floatTexts.splice(i, 1);
   }
   for (const m of G.ambientMotes) {
@@ -492,14 +500,15 @@ export function updateWorldEffects(dt) {
     G.bossBanner.life -= dt;
     if (G.bossBanner.life <= 0) G.bossBanner = null;
   }
+  updateAchievementBanner(dt);
   updateThemeAndWeather(dt);
   if (G.screenFlash.alpha > 0) G.screenFlash.alpha = Math.max(0, G.screenFlash.alpha - dt * 1.2);
 }
 
-function lerpRgb(cur, dst, t) {
-  cur[0] += (dst[0] - cur[0]) * t;
-  cur[1] += (dst[1] - cur[1]) * t;
-  cur[2] += (dst[2] - cur[2]) * t;
+function lerpRgb(cur, dst, alpha) {
+  cur[0] += (dst[0] - cur[0]) * alpha;
+  cur[1] += (dst[1] - cur[1]) * alpha;
+  cur[2] += (dst[2] - cur[2]) * alpha;
 }
 
 export function updateThemeAndWeather(dt) {

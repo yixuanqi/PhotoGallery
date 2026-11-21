@@ -119,6 +119,11 @@
     border-color: var(--cyan-b); color: var(--cyan-b);
   }
   .tool-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+  .stamp-cat-tag {
+    font-size: 9.5px; padding: 0 4px; border-radius: 3px;
+    background: rgba(245, 158, 11, 0.16); border: 1px solid rgba(245, 158, 11, 0.42);
+    color: var(--gold-b); flex-shrink: 0;
+  }
 
   /* Center Canvas Viewport */
   .ed-viewport {

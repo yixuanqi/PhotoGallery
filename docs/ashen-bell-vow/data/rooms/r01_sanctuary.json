@@ -165,7 +165,16 @@
       "angle": 0.08
     }
   ],
-  "enemies": [],
+  "enemies": [
+    {
+      "id": "dummy_sanctuary",
+      "kind": "dummy",
+      "x": 545,
+      "y": 512,
+      "minX": 435,
+      "maxX": 675
+    }
+  ],
   "bosses": [],
   "inscriptions": [
     {
@@ -236,6 +245,58 @@
     ],
     "boneCairns": [
       840
+    ],
+    "stamps": [
+      {
+        "type": "stone_statue",
+        "x": 155,
+        "y": 280,
+        "scale": 0.72,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.68,
+        "seed": 2
+      },
+      {
+        "type": "hanging_chains",
+        "x": 455,
+        "y": 0,
+        "scale": 0.95,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.54,
+        "seed": 1
+      },
+      {
+        "type": "tattered_pennant",
+        "x": 660,
+        "y": 580,
+        "scale": 0.78,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.76,
+        "seed": 2
+      },
+      {
+        "type": "broken_arch",
+        "x": 765,
+        "y": 580,
+        "scale": 1.15,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.7,
+        "seed": 1
+      },
+      {
+        "type": "fallen_bell",
+        "x": 860,
+        "y": 580,
+        "scale": 0.85,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.82,
+        "seed": 0
+      }
     ]
   },
   "npcs": [

@@ -166,6 +166,78 @@
     "boneCairns": [
       95,
       1015
+    ],
+    "stamps": [
+      {
+        "type": "sword_mound",
+        "x": 98,
+        "y": 580,
+        "scale": 0.82,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.78,
+        "seed": 1
+      },
+      {
+        "type": "hanging_chains",
+        "x": 112,
+        "y": 0,
+        "scale": 1.05,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.48,
+        "seed": 2
+      },
+      {
+        "type": "broken_arch",
+        "x": 190,
+        "y": 580,
+        "scale": 1.24,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.64,
+        "seed": 1
+      },
+      {
+        "type": "stone_statue",
+        "x": 345,
+        "y": 580,
+        "scale": 1.04,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.68,
+        "seed": 0
+      },
+      {
+        "type": "stone_statue",
+        "x": 765,
+        "y": 580,
+        "scale": 1.04,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.68,
+        "seed": 1
+      },
+      {
+        "type": "broken_arch",
+        "x": 920,
+        "y": 580,
+        "scale": 1.24,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.64,
+        "seed": 2
+      },
+      {
+        "type": "hanging_chains",
+        "x": 998,
+        "y": 0,
+        "scale": 1.05,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.48,
+        "seed": 0
+      }
     ]
   },
   "voidBarriers": []

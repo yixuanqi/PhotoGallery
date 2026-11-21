@@ -439,6 +439,88 @@
       850,
       1170,
       1495
+    ],
+    "stamps": [
+      {
+        "type": "tattered_pennant",
+        "x": 92,
+        "y": 410,
+        "scale": 0.72,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.7,
+        "seed": 1
+      },
+      {
+        "type": "broken_arch",
+        "x": 215,
+        "y": 580,
+        "scale": 1.2,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.68,
+        "seed": 0
+      },
+      {
+        "type": "stone_statue",
+        "x": 560,
+        "y": 580,
+        "scale": 0.95,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.72,
+        "seed": 1
+      },
+      {
+        "type": "hanging_chains",
+        "x": 695,
+        "y": 0,
+        "scale": 1.0,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.5,
+        "seed": 0
+      },
+      {
+        "type": "fallen_bell",
+        "x": 790,
+        "y": 580,
+        "scale": 0.92,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.82,
+        "seed": 2
+      },
+      {
+        "type": "broken_arch",
+        "x": 1165,
+        "y": 580,
+        "scale": 1.18,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.66,
+        "seed": 2
+      },
+      {
+        "type": "hanging_chains",
+        "x": 1265,
+        "y": 0,
+        "scale": 0.9,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.48,
+        "seed": 2
+      },
+      {
+        "type": "stone_statue",
+        "x": 1465,
+        "y": 580,
+        "scale": 0.88,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.74,
+        "seed": 0
+      }
     ]
   },
   "voidBarriers": [

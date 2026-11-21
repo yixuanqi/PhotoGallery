@@ -129,7 +129,7 @@ def main():
         raise SystemExit('端口 8080-8099 均被占用，请关闭部分本地服务后重试。')
 
     url = f'http://localhost:{port}/'
-    print(f'>>> 灰钟残誓 v14 本地服务已就绪: {url}')
+    print(f'>>> 灰钟残誓 v19.0 本地服务已就绪: {url}')
     print(f'>>> 房间关卡编辑器地址:        {url}editor.html')
     print('>>> 已启用 .js MIME 强制修正与编辑器本地保存 API (/api/save-bundle)')
     print('>>> 关闭此窗口或按 Ctrl+C 即可停止服务。\n')

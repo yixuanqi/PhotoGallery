@@ -1,6 +1,6 @@
 // Procedural hand-drawn ink primitives, glow sprites, spring cloaks & VFX spawners
 import { COLORS } from './config.js';
-import { G } from './state.js';
+import { G, damp } from './state.js';
 
 const paperCanvas = document.createElement('canvas');
 paperCanvas.width = 180;
@@ -36,11 +36,11 @@ export const GLOW_SPRITES = {};
 
 export function buildGlowSprites() {
   const defs = {
-    cyan: ['rgba(224, 242, 254, 0.95)', 'rgba(56, 189, 248, 0.45)', 'rgba(56, 189, 248, 0)'],
-    gold: ['rgba(254, 249, 195, 0.95)', 'rgba(245, 158, 11, 0.48)', 'rgba(245, 158, 11, 0)'],
-    crimson: ['rgba(254, 202, 202, 0.92)', 'rgba(220, 38, 38, 0.5)', 'rgba(220, 38, 38, 0)'],
-    parchment: ['rgba(255, 252, 240, 0.85)', 'rgba(216, 207, 184, 0.38)', 'rgba(216, 207, 184, 0)'],
-    violet: ['rgba(243, 232, 255, 0.95)', 'rgba(168, 85, 247, 0.52)', 'rgba(88, 28, 135, 0)']
+    cyan: ['rgba(240, 249, 255, 0.96)', 'rgba(56, 189, 248, 0.52)', 'rgba(56, 189, 248, 0)'],
+    gold: ['rgba(255, 252, 224, 0.96)', 'rgba(245, 158, 11, 0.54)', 'rgba(245, 158, 11, 0)'],
+    crimson: ['rgba(255, 224, 224, 0.94)', 'rgba(220, 38, 38, 0.54)', 'rgba(220, 38, 38, 0)'],
+    parchment: ['rgba(255, 253, 245, 0.88)', 'rgba(216, 207, 184, 0.42)', 'rgba(216, 207, 184, 0)'],
+    violet: ['rgba(248, 240, 255, 0.96)', 'rgba(168, 85, 247, 0.56)', 'rgba(88, 28, 135, 0)']
   };
   const size = 64;
   const half = size / 2;
@@ -51,7 +51,7 @@ export function buildGlowSprites() {
     const gctx = c.getContext('2d');
     const g = gctx.createRadialGradient(half, half, 1, half, half, half);
     g.addColorStop(0, stops[0]);
-    g.addColorStop(0.38, stops[1]);
+    g.addColorStop(0.36, stops[1]);
     g.addColorStop(1, stops[2]);
     gctx.fillStyle = g;
     gctx.fillRect(0, 0, size, size);
@@ -59,17 +59,15 @@ export function buildGlowSprites() {
   }
 }
 
+// Pure source-over blit: eliminates 50-90 per-frame Skia/ANGLE GPU blend-mode flushes
 export function drawGlowSprite(key, x, y, radius, alpha = 0.85) {
   const spr = GLOW_SPRITES[key];
   if (!spr) return;
   const ctx = G.ctx;
-  const prevComp = ctx.globalCompositeOperation;
   const prevAlpha = ctx.globalAlpha;
-  ctx.globalCompositeOperation = 'lighter';
   ctx.globalAlpha = alpha < 0 ? 0 : (alpha > 1 ? 1 : alpha);
   ctx.drawImage(spr, x - radius, y - radius, radius * 2, radius * 2);
   ctx.globalAlpha = prevAlpha;
-  ctx.globalCompositeOperation = prevComp;
 }
 
 export function hash2(seed, frame) {
@@ -173,8 +171,9 @@ export function updateCloak(cloak, anchorX, anchorY, facing, windX, dt) {
     const flutter = Math.sin(G.globalTime * 7.5 + i * 1.1) * 42;
     p.vx += (windX - facing * 85 + flutter) * dt * 2.2;
     p.vy += 320 * dt;
-    p.vx *= 0.88;
-    p.vy *= 0.88;
+    const dmp = damp(0.88, dt);
+    p.vx *= dmp;
+    p.vy *= dmp;
     p.x += p.vx * dt;
     p.y += p.vy * dt;
     const dx = p.x - prev.x;
@@ -210,7 +209,8 @@ export function drawCloakMesh(cloak, fillCol, strokeCol, baseWidth, seed) {
   G.ctx.restore();
 }
 
-// Analytical 2-Bone Inverse Kinematics solver (bendDir: +1 bends knee right, -1 bends left)
+// Analytical 2-Bone Inverse Kinematics solver (zero-allocation reusable output)
+const _ikOut = { kx: 0, ky: 0, ex: 0, ey: 0 };
 export function solve2BoneIK(hx, hy, tx, ty, l1, l2, bendDir = 1) {
   const dx = tx - hx;
   const dy = ty - hy;
@@ -222,12 +222,12 @@ export function solve2BoneIK(hx, hy, tx, ty, l1, l2, bendDir = 1) {
   const cosA = Math.max(-1, Math.min(1, (l1 * l1 + d * d - l2 * l2) / (2 * l1 * d)));
   const angA = Math.acos(cosA);
   const kneeAng = baseAng - bendDir * angA;
-  const kx = hx + Math.cos(kneeAng) * l1;
-  const ky = hy + Math.sin(kneeAng) * l1;
+  _ikOut.kx = hx + Math.cos(kneeAng) * l1;
+  _ikOut.ky = hy + Math.sin(kneeAng) * l1;
   const inv = rawDist > 0.001 ? 1 / rawDist : 0;
-  const ex = rawDist > maxD ? hx + dx * inv * maxD : tx;
-  const ey = rawDist > maxD ? hy + dy * inv * maxD : ty;
-  return { kx, ky, ex, ey };
+  _ikOut.ex = rawDist > maxD ? hx + dx * inv * maxD : tx;
+  _ikOut.ey = rawDist > maxD ? hy + dy * inv * maxD : ty;
+  return _ikOut;
 }
 
 export function initAmbientMotes() {
@@ -267,31 +267,48 @@ export function spawnWeatherRipple(x, y, maxR = 26, color = 'rgba(186, 230, 253,
 }
 
 const MAX_PARTICLES = 150;
+const _particleFreePool = [];
+
+export function recycleParticle(p) {
+  if (p && _particleFreePool.length < MAX_PARTICLES * 2) {
+    _particleFreePool.push(p);
+  }
+}
+
 export function spawnParticles(x, y, count, opts = {}) {
   const col = opts.color || COLORS.parchment;
   const spd = opts.speed || 200;
   const grav = opts.grav !== undefined ? opts.grav : 420;
   const life = opts.life || 0.42;
   const spark = !!opts.spark;
+  const bounce = !!opts.bounce;
+  const hasAng = opts.angle !== undefined;
+  const baseAng = opts.angle || 0;
+  const spread = opts.spread || 1.2;
+  const hasSize = opts.size !== undefined;
+  const baseSize = opts.size || 0;
   const overflow = G.particles.length + count - MAX_PARTICLES;
-  if (overflow > 0) G.particles.splice(0, Math.min(G.particles.length, overflow));
+  if (overflow > 0) {
+    const drop = Math.min(G.particles.length, overflow);
+    for (let d = 0; d < drop; d++) recycleParticle(G.particles[d]);
+    G.particles.splice(0, drop);
+  }
   for (let i = 0; i < count; i++) {
-    const ang = opts.angle !== undefined
-      ? opts.angle + (Math.random() - 0.5) * (opts.spread || 1.2)
-      : Math.random() * Math.PI * 2;
+    const ang = hasAng ? baseAng + (Math.random() - 0.5) * spread : Math.random() * Math.PI * 2;
     const s = spd * (0.35 + Math.random() * 0.85);
-    G.particles.push({
-      x, y,
-      vx: Math.cos(ang) * s,
-      vy: Math.sin(ang) * s,
-      grav,
-      life: life * (0.65 + Math.random() * 0.5),
-      maxLife: life,
-      size: opts.size !== undefined ? opts.size * (0.7 + Math.random() * 0.6) : (spark ? 2 + Math.random() * 2.5 : 2.5 + Math.random() * 3.5),
-      color: col,
-      spark,
-      bounce: !!opts.bounce
-    });
+    let p = _particleFreePool.pop();
+    if (!p) p = {};
+    p.x = x; p.y = y;
+    p.vx = Math.cos(ang) * s;
+    p.vy = Math.sin(ang) * s;
+    p.grav = grav;
+    p.life = life * (0.65 + Math.random() * 0.5);
+    p.maxLife = life;
+    p.size = hasSize ? baseSize * (0.7 + Math.random() * 0.6) : (spark ? 2 + Math.random() * 2.5 : 2.5 + Math.random() * 3.5);
+    p.color = col;
+    p.spark = spark;
+    p.bounce = bounce;
+    G.particles.push(p);
   }
 }
 

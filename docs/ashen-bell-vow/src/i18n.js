@@ -1,148 +1,63 @@
-// Lightweight zero-dependency i18n module (zh-CN / en-US) for Steam-ready localization
+// Zero-dependency complete bilingual i18n runtime (zh-CN / en-US) for Ashen Bell Vow v18.3
 import { G } from './state.js';
 import { storage } from './storage.js';
+import { UI_DICT } from './locales/ui.js';
+import { WORLD_EN } from './locales/world.js';
+import { ENTITIES_EN } from './locales/entities.js';
 
 const LOCALE_KEY = 'ashen_bell_vow_locale_v15';
-
-const DICT = {
-  'zh-CN': {
-    'game.title': '灰钟残誓',
-    'game.subtitle': 'ASHEN BELL VOW · 暗黑手绘魂系类银河恶魔城原型',
-    'btn.continue': '继续残誓',
-    'btn.startNew': '唤醒人偶',
-    'btn.startOverwrite': '覆写档案 {0} 重开',
-    'btn.startSlot': '于档案 {0} 唤醒人偶',
-    'slot.label': '档案 {0}',
-    'slot.empty': '空档',
-    'slot.emptyDesc': '尚未铭刻残誓 · 点击选中后唤醒人偶',
-    'slot.summary': '{0} · 探索 {1}% · 首领 {2}/3',
-    'slot.erase': '抹除',
-    'slot.confirmErase': '确定抹除「档案 {0}」的所有进度吗？此操作不可撤销。',
-    'slot.selectedInfo': '当前选中档案 {0}：{1} · 探索 {2}% · 圣物 {3}/{4}{5}{6}',
-    'pause.title': '残 誓 暂 歇',
-    'pause.sub': '档案 {0} · 探索 {1}% · 游玩 {2}',
-    'pause.resume': '继续前行',
-    'pause.settings': '设置与音频',
-    'pause.respawn': '返回最近祭坛',
-    'pause.titleBtn': '保存并返回标题',
-    'hud.soul': '魂火 {0}',
-    'hud.flasks': '灯油',
-    'hud.seals': '墨印',
-    'hud.explore': '探索 {0}%',
-    'hud.map': '地图 [M]',
-    'hud.help': '心法',
-    'hud.settings': '设置',
-    'hud.respawn': '回祭坛',
-    'hud.muteOn': '音效: 开',
-    'hud.muteOff': '音效: 关',
-    'hud.ctrlKb': '操控: 键鼠',
-    'hud.ctrlKey': '操控: 纯键',
-    'settings.title': '设置与护道辅助',
-    'settings.sub': '界面语言 · 辅助难度微调 · 手柄双马达震动 · 键盘自定义改键',
-    'settings.secAudio': '语言、护道辅助 & 外设反馈',
-    'settings.lang': '界面语言 (Language)',
-    'settings.parryWin': '弹反判定窗口',
-    'settings.dmgMult': '承受伤害倍率',
-    'settings.masterVol': '主音量 (Master)',
-    'settings.musicVol': '背景配乐 (D 弗里吉亚)',
-    'settings.sfxVol': '战斗与环境音效 (SFX)',
-    'settings.haptics': '手柄双马达震动',
-    'settings.testHaptic': '测试震动',
-    'settings.secKeys': '自定义键盘按键（点击键帽后按新键录入，Esc 取消）',
-    'settings.resetKeys': '恢复默认',
-    'settings.saveClose': '保存并返回',
-    'altar.sub': '灯油与魂火已回满 · 提灯可同时铭刻「主印 + 副印」两枚圣物',
-    'altar.close': '起身前行',
-    'smith.sub': '熄灯铁砧 · 以击杀强敌所得「残响」淬炼断刃与魂炉',
-    'smith.echoHold': '✦ 当前持有残响：{0}',
-    'smith.close': '收刃告辞',
-    'death.title': '灯 火 熄 灭',
-    'death.sub': '残破人偶坠入墨蚀深渊',
-    'death.retry': '于祭坛重燃',
-    'death.retryEcho': '再战回响',
-    'victory.closeMap': '收起舆图 [M]',
-    'victory.closeLore': '收起残碑',
-    'victory.closeHelp': '继续战斗'
-  },
-  'en-US': {
-    'game.title': 'ASHEN BELL VOW',
-    'game.subtitle': 'Dark Hand-Drawn Soulslike Metroidvania Prototype',
-    'btn.continue': 'Continue Vow',
-    'btn.startNew': 'Awaken Puppet',
-    'btn.startOverwrite': 'Overwrite Slot {0} & Start',
-    'btn.startSlot': 'Awaken in Slot {0}',
-    'slot.label': 'Slot {0}',
-    'slot.empty': 'Empty',
-    'slot.emptyDesc': 'No vow inscribed · Select slot to begin',
-    'slot.summary': '{0} · Explored {1}% · Bosses {2}/3',
-    'slot.erase': 'Erase',
-    'slot.confirmErase': 'Erase all save data in Slot {0}? This cannot be undone.',
-    'slot.selectedInfo': 'Slot {0}: {1} · Explored {2}% · Relics {3}/{4}{5}{6}',
-    'pause.title': 'VOW PAUSED',
-    'pause.sub': 'Slot {0} · Explored {1}% · Time {2}',
-    'pause.resume': 'Resume',
-    'pause.settings': 'Settings & Audio',
-    'pause.respawn': 'Return to Altar',
-    'pause.titleBtn': 'Save & Title',
-    'hud.soul': 'Soul {0}',
-    'hud.flasks': 'Oil',
-    'hud.seals': 'Seals',
-    'hud.explore': 'Explored {0}%',
-    'hud.map': 'Map [M]',
-    'hud.help': 'Arts',
-    'hud.settings': 'Settings',
-    'hud.respawn': 'Altar',
-    'hud.muteOn': 'Audio: On',
-    'hud.muteOff': 'Audio: Off',
-    'hud.ctrlKb': 'Input: K+M',
-    'hud.ctrlKey': 'Input: Keys',
-    'settings.title': 'Settings & Assist',
-    'settings.sub': 'Language · Assist Tuning · Dual Rumble · Custom Keybinds',
-    'settings.secAudio': 'Language, Assist & Feedback',
-    'settings.lang': 'Language',
-    'settings.parryWin': 'Parry Window',
-    'settings.dmgMult': 'Damage Taken',
-    'settings.masterVol': 'Master Volume',
-    'settings.musicVol': 'Music (D Phrygian)',
-    'settings.sfxVol': 'Combat & Ambience SFX',
-    'settings.haptics': 'Gamepad Rumble',
-    'settings.testHaptic': 'Test Rumble',
-    'settings.secKeys': 'Keybinds (Click key & press new key, Esc to cancel)',
-    'settings.resetKeys': 'Reset Default',
-    'settings.saveClose': 'Save & Return',
-    'altar.sub': 'Oil & Soul restored · Equip Primary + Secondary relics',
-    'altar.close': 'Rise & Venture',
-    'smith.sub': 'Extinguished Anvil · Temper blade & furnace with Echoes',
-    'smith.echoHold': '✦ Echoes Held: {0}',
-    'smith.close': 'Take Leave',
-    'death.title': 'LANTERN EXTINGUISHED',
-    'death.sub': 'The broken puppet falls into the ink abyss',
-    'death.retry': 'Reignite at Altar',
-    'death.retryEcho': 'Retry Echo',
-    'victory.closeMap': 'Close Map [M]',
-    'victory.closeLore': 'Close Tablet',
-    'victory.closeHelp': 'Resume Fight'
-  }
-};
+let localeVersion = 0;
+const localeListeners = new Set();
 
 export function getLocale() {
   return (G && G.locale === 'en-US') ? 'en-US' : 'zh-CN';
 }
 
+export function isEn() {
+  return getLocale() === 'en-US';
+}
+
+export function getLocaleVersion() {
+  return localeVersion;
+}
+
+export function onLocaleChange(fn) {
+  if (typeof fn === 'function') localeListeners.add(fn);
+  return () => localeListeners.delete(fn);
+}
+
 export function t(key, ...args) {
   const loc = getLocale();
-  let str = (DICT[loc] && DICT[loc][key]) || DICT['zh-CN'][key] || key;
+  let str = (UI_DICT[loc] && UI_DICT[loc][key] !== undefined)
+    ? UI_DICT[loc][key]
+    : (UI_DICT['zh-CN'][key] !== undefined ? UI_DICT['zh-CN'][key] : key);
+  if (args.length === 1 && args[0] && typeof args[0] === 'object' && !Array.isArray(args[0])) {
+    const map = args[0];
+    return String(str).replace(/\{(\w+)\}/g, (_, k) => (map[k] !== undefined ? String(map[k]) : `{${k}}`));
+  }
   for (let i = 0; i < args.length; i++) {
-    str = str.replace(`{${i}}`, String(args[i]));
+    const val = String(args[i]);
+    str = str.split(`{${i}}`).join(val);
   }
   return str;
 }
 
 export function setLocale(loc, persist = true) {
   const next = loc === 'en-US' ? 'en-US' : 'zh-CN';
+  const changed = !G || G.locale !== next;
   if (G) G.locale = next;
   if (persist) storage.set(LOCALE_KEY, next);
+  if (changed) localeVersion++;
   applyStaticI18n();
+  for (const fn of localeListeners) {
+    try { fn(next, localeVersion); } catch (err) { console.error('[i18n] listener error:', err); }
+  }
+}
+
+export function toggleLocale(persist = true) {
+  const next = isEn() ? 'zh-CN' : 'en-US';
+  setLocale(next, persist);
+  return next;
 }
 
 export function loadSavedLocale() {
@@ -150,25 +65,200 @@ export function loadSavedLocale() {
   setLocale(saved === 'en-US' ? 'en-US' : 'zh-CN', false);
 }
 
-export function applyStaticI18n() {
-  const mapText = (id, key) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = t(key);
+/* ---------- Domain-Specific Entity & World Localizers (Stable ID -> Bilingual) ---------- */
+
+export function locZoneName(zoneOrRoom) {
+  const raw = typeof zoneOrRoom === 'string' ? zoneOrRoom : (zoneOrRoom && zoneOrRoom.zoneName);
+  if (!isEn()) return raw || '晦渊';
+  if (zoneOrRoom && typeof zoneOrRoom === 'object' && zoneOrRoom.id && WORLD_EN.rooms[zoneOrRoom.id]) {
+    return WORLD_EN.rooms[zoneOrRoom.id].zoneName;
+  }
+  return (raw && WORLD_EN.zones[raw]) || raw || WORLD_EN.defaultZone;
+}
+
+export function locRoomName(room) {
+  if (!room) return isEn() ? WORLD_EN.defaultZone : '晦渊';
+  if (!isEn()) return room.name || room.zoneName || '晦渊';
+  const entry = room.id && WORLD_EN.rooms[room.id];
+  return (entry && entry.name) || room.name || WORLD_EN.defaultZone;
+}
+
+export function locSubZone(name) {
+  if (!isEn()) return name || '晦渊';
+  return (name && WORLD_EN.subZones[name]) || name || WORLD_EN.defaultZone;
+}
+
+export function locAltar(altar, field = 'shortName') {
+  if (!altar) return isEn() ? 'Sanctuary' : '熄灯祭坛';
+  if (!isEn()) return altar[field] || altar.shortName || altar.name || '';
+  const entry = altar.id && WORLD_EN.altars[altar.id];
+  return (entry && entry[field]) || altar[field] || altar.shortName || altar.name || '';
+}
+
+export function locTablet(tablet, field = 'title') {
+  if (!tablet) return '';
+  if (!isEn()) return tablet[field] || '';
+  const entry = tablet.id && WORLD_EN.tablets[tablet.id];
+  return (entry && entry[field]) || tablet[field] || '';
+}
+
+export function locPickup(pickup, field = 'name') {
+  if (!pickup) return '';
+  if (!isEn()) return pickup[field] || '';
+  const entry = pickup.id && WORLD_EN.pickups[pickup.id];
+  return (entry && entry[field]) || pickup[field] || '';
+}
+
+export function locPuzzleName(puzzle) {
+  if (!puzzle) return '';
+  if (!isEn()) return puzzle.name || '';
+  return (puzzle.id && WORLD_EN.puzzles[puzzle.id]) || puzzle.name || '';
+}
+
+export function locInscription(text) {
+  if (!text || !isEn()) return text || '';
+  return WORLD_EN.inscriptions[text] || text;
+}
+
+export function locBiomeAmbience(themeKey, fallback = '') {
+  if (!isEn()) return fallback;
+  return WORLD_EN.biomes[themeKey] || WORLD_EN.biomes.sanctuary || fallback;
+}
+
+export function locNpcName(npc, fallbackKind = 'smith') {
+  const kind = (npc && npc.kind) || fallbackKind;
+  if (!isEn()) {
+    if (npc && npc.name) return npc.name;
+    return kind === 'chronicler' ? '游方拾碑客 · 墨尘' : kind === 'keeper' ? '旧誓守灯人 · 汐' : '盲眼老铸钟匠 · 砺';
+  }
+  const byId = npc && npc.id && WORLD_EN.npcs[npc.id];
+  if (byId) return byId.name;
+  if (kind === 'chronicler') return WORLD_EN.npcs.npc_chronicler.name;
+  if (kind === 'keeper') return WORLD_EN.npcs.npc_keeper.name;
+  return WORLD_EN.npcs.npc_smith.name;
+}
+
+export function locRelic(relic, field = 'name') {
+  if (!relic) return '';
+  const id = typeof relic === 'string' ? relic : relic.id;
+  if (!isEn()) return (typeof relic === 'object' && relic[field]) || '';
+  const entry = id && ENTITIES_EN.relics[id];
+  return (entry && entry[field]) || (typeof relic === 'object' && relic[field]) || '';
+}
+
+export function locSynergy(syn, field = 'name') {
+  if (!syn) return '';
+  if (!isEn()) return syn[field] || '';
+  const entry = syn.id && ENTITIES_EN.synergies[syn.id];
+  return (entry && entry[field]) || syn[field] || '';
+}
+
+export function locSmithUpgrade(upg, field = 'name', lv = 0) {
+  if (!upg) return '';
+  if (!isEn()) {
+    if (field === 'bonus') return typeof upg.bonusLabel === 'function' ? upg.bonusLabel(lv) : '';
+    return upg[field] || '';
+  }
+  const entry = upg.id && ENTITIES_EN.smithUpgrades[upg.id];
+  if (field === 'bonus') {
+    return (entry && typeof entry.bonus === 'function') ? entry.bonus(lv) : (typeof upg.bonusLabel === 'function' ? upg.bonusLabel(lv) : '');
+  }
+  return (entry && entry[field]) || upg[field] || '';
+}
+
+export function locVow(vow, field = 'name') {
+  if (!vow) return '';
+  if (!isEn()) return vow[field] || '';
+  const entry = vow.id && ENTITIES_EN.vows[vow.id];
+  return (entry && entry[field]) || vow[field] || '';
+}
+
+export function locDummyMode(mode, field = 'label') {
+  if (!mode) return '';
+  if (!isEn()) return mode[field] || '';
+  const entry = mode.id && ENTITIES_EN.dummyModes[mode.id];
+  return (entry && entry[field]) || mode[field] || '';
+}
+
+export function locBestiary(entry, field = 'name') {
+  if (!entry) return '';
+  if (!isEn()) return entry[field] || '';
+  const en = entry.kind && ENTITIES_EN.bestiary[entry.kind];
+  return (en && en[field]) || entry[field] || '';
+}
+
+export function locAchievement(ach, field = 'name') {
+  if (!ach) return '';
+  if (!isEn()) return ach[field] || '';
+  const en = ach.id && ENTITIES_EN.achievements[ach.id];
+  return (en && en[field]) || ach[field] || '';
+}
+
+export function locPin(pin, field = 'label') {
+  if (!pin) return '';
+  if (!isEn()) return pin[field] || '';
+  const en = pin.id && ENTITIES_EN.mapPins[pin.id];
+  return (en && en[field]) || pin[field] || '';
+}
+
+export function locBoss(boss, field = 'name') {
+  if (!boss) return '';
+  const id = typeof boss === 'string' ? boss : boss.id;
+  if (!isEn()) return (typeof boss === 'object' && boss[field]) || '';
+  const en = id && ENTITIES_EN.bosses[id];
+  return (en && en[field]) || (typeof boss === 'object' && boss[field]) || '';
+}
+
+export function locActionLabel(actionId, fallback = '') {
+  const key = `action.${actionId}`;
+  const res = t(key);
+  return res === key ? fallback : res;
+}
+
+export function getEndingScript(type = 'vow') {
+  const k = type === 'dawn' ? 'dawn' : 'vow';
+  return {
+    title: t(`ending.${k}.title`),
+    acts: [0, 1, 2, 3].map(i => ({
+      sub: t(`ending.${k}.act${i}.sub`),
+      text: t(`ending.${k}.act${i}.text`)
+    }))
   };
-  mapText('btn-map', 'hud.map');
-  mapText('btn-help', 'hud.help');
-  mapText('btn-settings', 'hud.settings');
-  mapText('btn-respawn', 'hud.respawn');
-  mapText('btn-close-settings', 'settings.saveClose');
-  mapText('btn-test-haptic', 'settings.testHaptic');
-  mapText('btn-reset-keys', 'settings.resetKeys');
-  mapText('btn-close-altar', 'altar.close');
-  mapText('btn-close-smith', 'smith.close');
-  mapText('btn-close-map', 'victory.closeMap');
-  mapText('btn-close-lore', 'victory.closeLore');
-  mapText('btn-close-help', 'victory.closeHelp');
-  mapText('btn-pause-resume', 'pause.resume');
-  mapText('btn-pause-settings', 'pause.settings');
-  mapText('btn-pause-respawn', 'pause.respawn');
-  mapText('btn-pause-title', 'pause.titleBtn');
+}
+
+export function getCanvasFont(size, bold = false) {
+  const en = isEn();
+  const effSize = en ? Math.max(10, Math.round(size * 0.92)) : size;
+  const family = en
+    ? 'Georgia, "Times New Roman", serif'
+    : '"Noto Serif SC", "Microsoft YaHei", serif';
+  return `${bold ? 'bold ' : ''}${effSize}px ${family}`;
+}
+
+export function applyStaticI18n() {
+  const loc = getLocale();
+  if (typeof document === 'undefined') return;
+  document.documentElement.lang = loc;
+  document.body.classList.toggle('lang-en', loc === 'en-US');
+  document.title = t('doc.title');
+
+  // Declarative DOM localization via data-i18n / data-i18n-title / data-i18n-aria
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (key) el.textContent = t(key);
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const key = el.getAttribute('data-i18n-title');
+    if (key) el.setAttribute('title', t(key));
+  });
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+    const key = el.getAttribute('data-i18n-aria');
+    if (key) el.setAttribute('aria-label', t(key));
+  });
+
+  // Sync quick language toggle button on Title Screen if present
+  const titleLangBtn = document.getElementById('btn-title-lang');
+  if (titleLangBtn) {
+    titleLangBtn.textContent = loc === 'en-US' ? '语言: EN / 中文' : 'Lang: 中文 / EN';
+  }
 }

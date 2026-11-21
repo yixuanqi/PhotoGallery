@@ -1,7 +1,7 @@
 // Entry point: wires cross-module hooks, canvas lifecycle, UI listeners & main gameLoop
 window.__ABV_MODULE_LOADED__ = true;
-import { ALTARS, WORLD_W, WORLD_H, FLOOR_Y } from './config.js';
-import { G, hooks, createFreshWorldState, markMapExplored, createLanterns, createResonancePuzzles, createCrumblePlatforms, getAwakeBoss } from './state.js';
+import { ALTARS, STAMPS, WORLD_W, WORLD_H, FLOOR_Y } from './config.js';
+import { G, hooks, createFreshWorldState, markMapExplored, createLanterns, createResonancePuzzles, createCrumblePlatforms, getAwakeBoss, setTextFast, damp } from './state.js';
 import { loadWorldData, getPreviewSpawnRoomId } from './levelLoader.js';
 import { audio } from './audio.js';
 import { buildParchmentPattern, buildGlowSprites, initAmbientMotes } from './vfx.js';
@@ -14,13 +14,17 @@ import { capturePlayerInputBuffers, updatePlayer } from './player.js';
 import { updateEnemy, updateBoss, updateBoss2, updateBoss3 } from './ai.js';
 import { updateWorldEffects, updateCamera, updateAmbientOnly } from './world.js';
 import { render } from './renderer.js';
+import { prewarmStampsForList } from './stampAtlas.js';
+import { prewarmTerrainChunks } from './renderTerrain.js';
+import { prof } from './profiler.js';
+import { isBenchmarkActive, startCombatBenchmark, cancelCombatBenchmark, tickCombatBenchmark, openBenchmarkReportModal, copyBenchmarkReport } from './benchmark.js';
 import { readSaveData, saveProgress, loadUserSettings, saveUserSettings } from './save.js';
-import { t, setLocale, loadSavedLocale } from './i18n.js';
+import { t, setLocale, toggleLocale, loadSavedLocale, onLocaleChange } from './i18n.js';
 import {
-  HUD_DOM, refreshTitleSaveUI, syncHUD, openModal, closeModal, renderParchmentMap, renderSettingsModal,
-  openSmithModal, openLoreModal, openMapModal, openPauseModal, returnToTitle, interactWithAltar, respawnAtActiveAltar,
+  HUD_DOM, refreshTitleSaveUI, refreshActiveModalI18n, syncHUD, openModal, closeModal, renderParchmentMap, renderSettingsModal,
+  openSmithModal, openNpcModal, openLoreModal, openMapModal, openCodexModal, openPauseModal, returnToTitle, interactWithAltar, respawnAtActiveAltar,
   startEchoChallenge, advanceEchoRushStage2, advanceEchoRushStage3, showDeath, showVictory,
-  startGame, continueSavedGame, continueIntoBellWell,
+  startGame, startNewGamePlus, continueSavedGame, continueIntoBellWell,
   openEndingChoice, startEndingCinematic, advanceEndingCinematic, updateAndRenderEndingCinematic
 } from './ui.js';
 
@@ -37,27 +41,34 @@ Object.assign(hooks, {
   openEndingChoice,
   interactWithAltar,
   openSmithModal,
+  openNpcModal,
   openLoreModal,
   openMapModal,
+  openCodexModal,
   openPauseModal,
   returnToTitle,
+  openModal,
   closeModal,
   startGame,
+  startNewGamePlus,
   continueSavedGame,
   respawnAtActiveAltar,
   startEchoChallenge,
-  continueIntoBellWell
+  continueIntoBellWell,
+  resizeCanvas
 });
 
 // Initialize Canvas context on central state
 G.canvas = document.getElementById('gameCanvas');
-G.ctx = G.canvas.getContext('2d', { alpha: false }) || G.canvas.getContext('2d');
+// Standard 2D context without alpha:false prevents Windows DWM/MPO opaque overlay freeze on 144Hz monitors
+G.ctx = G.canvas.getContext('2d');
 
 function resizeCanvas() {
   const { mobile } = updateMobileOrientationLayout();
   G.isMobile = !!mobile;
   const root = document.getElementById('game-root');
-  const maxDpr = mobile ? 1.25 : (window.innerWidth >= 1440 ? 1.5 : 1.75);
+  const lightMode = !!(G.settings && G.settings.dynamicLighting === false);
+  const maxDpr = lightMode ? 1.0 : (mobile ? 1.25 : (window.innerWidth >= 1440 ? 1.5 : 1.75));
   const dpr = Math.min(maxDpr, Math.max(1, window.devicePixelRatio || 1));
   const cssW = Math.max(320, (root && root.clientWidth) || window.innerWidth || 1280);
   const cssH = Math.max(240, (root && root.clientHeight) || window.innerHeight || 720);
@@ -89,9 +100,137 @@ if (window.visualViewport) window.visualViewport.addEventListener('resize', sche
 let lastFrameTime = 0;
 let boilAccumulator = 0;
 let lastStaticRenderKey = '';
+let perfUiAccumMs = 0;
+const perfEl = document.getElementById('perf-hud');
+const profDrawerEl = document.getElementById('profiler-drawer');
+const profStatsEl = document.getElementById('prof-stats-grid');
+const profSparkCanvas = document.getElementById('prof-sparkline');
+const profSparkCtx = profSparkCanvas ? profSparkCanvas.getContext('2d') : null;
+
+// Build F8 profiler DOM rows ONCE (zero innerHTML / zero detached DOM node leak / zero C++ GC churn!)
+const PROF_MOD_META = [
+  ['update', '逻辑/AI'],
+  ['audio', '音频'],
+  ['lighting', '动态光影'],
+  ['world', '地形/背景'],
+  ['entities', '角色/怪物'],
+  ['vfx', '特效/字形'],
+  ['hud', 'HUD DOM']
+];
+let _profDomInit = false;
+let _profMetaNode = null;
+const _profFills = [];
+const _profValNodes = [];
+
+function ensureProfilerDom() {
+  if (_profDomInit || !profStatsEl) return;
+  _profDomInit = true;
+  profStatsEl.textContent = '';
+  const metaEl = document.createElement('div');
+  metaEl.className = 'prof-meta';
+  _profMetaNode = document.createTextNode('');
+  metaEl.appendChild(_profMetaNode);
+  profStatsEl.appendChild(metaEl);
+  for (let i = 0; i < PROF_MOD_META.length; i++) {
+    const row = document.createElement('div');
+    row.className = 'prof-bar-row';
+    const lbl = document.createElement('span');
+    lbl.className = 'prof-lbl';
+    lbl.appendChild(document.createTextNode(PROF_MOD_META[i][1]));
+    const track = document.createElement('span');
+    track.className = 'prof-track';
+    const fill = document.createElement('span');
+    fill.className = 'prof-fill';
+    fill.style.width = '100%';
+    fill.style.transformOrigin = 'left center';
+    fill.style.transform = 'scaleX(0)';
+    track.appendChild(fill);
+    const val = document.createElement('span');
+    val.className = 'prof-val';
+    const valNode = document.createTextNode('');
+    val.appendChild(valNode);
+    row.append(lbl, track, val);
+    profStatsEl.appendChild(row);
+    _profFills.push(fill);
+    _profValNodes.push(valNode);
+  }
+}
+
+function renderLiveProfilerUI(stats, divisor) {
+  if (!perfEl || !stats) return;
+  setTextFast(perfEl, `${Math.round(stats.avgFps)} FPS · 1%低 ${Math.round(stats.onePctLowFps)} · P99 ${stats.p99.toFixed(1)}ms · JS ${stats.jsP99.toFixed(1)}ms`);
+
+  const showDetail = !!(G.settings && G.settings.showPerf && G.settings.showProfilerDetail && !isBenchmarkActive());
+  if (profDrawerEl) profDrawerEl.classList.toggle('hidden', !showDetail);
+  if (!showDetail) return;
+
+  if (profStatsEl) {
+    ensureProfilerDom();
+    const m = stats.modules;
+    const stallTxt = stats.longStalls > 0 ? ` · 长顿 ${stats.longStalls}(${Math.round(stats.maxStallMs)}ms)` : '';
+    _profMetaNode.nodeValue = `刷频 ${prof.getRefreshHz()}Hz (1/${divisor}) · P50 ${stats.p50.toFixed(1)}ms · P95 ${stats.p95.toFixed(1)}ms · 掉帧 ${stats.dropPct.toFixed(1)}% · GC ${stats.gcDrops}${stallTxt}${stats.heapMB > 0 ? ` · ${stats.heapMB.toFixed(0)}MB` : ''}`;
+    const denom = Math.max(2.0, stats.budgetMs * 0.5);
+    for (let i = 0; i < PROF_MOD_META.length; i++) {
+      const mv = m[PROF_MOD_META[i][0]];
+      const ratio = Math.min(1, mv.p99 / denom);
+      _profFills[i].style.transform = `scaleX(${ratio.toFixed(3)})`;
+      _profValNodes[i].nodeValue = `${mv.avg.toFixed(2)} / ${mv.p99.toFixed(2)}ms`;
+    }
+  }
+
+  if (profSparkCanvas && profSparkCtx) {
+    const sctx = profSparkCtx;
+    const w = profSparkCanvas.width;
+    const h = profSparkCanvas.height;
+    sctx.clearRect(0, 0, w, h);
+    sctx.fillStyle = 'rgba(6, 9, 16, 0.85)';
+    sctx.fillRect(0, 0, w, h);
+    const budget = stats.budgetMs;
+    const maxScale = Math.max(18, budget * 2.6);
+    const y1x = h - (budget / maxScale) * h;
+    const y2x = h - ((budget * 2) / maxScale) * h;
+    sctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+    sctx.setLineDash([3, 3]);
+    sctx.beginPath(); sctx.moveTo(0, y1x); sctx.lineTo(w, y1x); sctx.stroke();
+    sctx.strokeStyle = 'rgba(248, 113, 113, 0.45)';
+    sctx.beginPath(); sctx.moveTo(0, y2x); sctx.lineTo(w, y2x); sctx.stroke();
+    sctx.setLineDash([]);
+
+    const samples = prof.getRecentFrameTimes(w);
+    const n = samples.length;
+    const offX = w - n;
+    for (let i = 0; i < n; i++) {
+      const v = samples[i];
+      const bh = Math.min(h, (v / maxScale) * h);
+      sctx.fillStyle = v > stats.dropThreshMs ? '#f87171' : (v > budget * 1.12 ? '#fde047' : '#38bdf8');
+      sctx.fillRect(offX + i, h - bh, 1, bh);
+    }
+  }
+}
 
 function gameLoop(timestamp) {
-  const elapsed = lastFrameTime ? (timestamp - lastFrameTime) / 1000 : 0;
+  // Schedule next frame up front so a single unexpected exception can never permanently deadlock rAF
+  requestAnimationFrame(gameLoop);
+  try {
+    runGameFrame(timestamp);
+  } catch (err) {
+    console.error('[AshenBellVow] Frame error recovered:', err);
+  }
+}
+
+function runGameFrame(timestamp) {
+  // 1. Feed raw rAF timestamp BEFORE skipping so refresh rate detection is 100% accurate
+  prof.onRawRaf(timestamp);
+
+  // 2. Exact integer VSync divisor skipping (eliminates 144Hz -> 120FPS pulldown judder!)
+  const benchOn = isBenchmarkActive();
+  const divisor = benchOn ? 1 : Math.max(1, Number(G.settings && G.settings.fpsDivisor) || 1);
+  if (prof.shouldSkipFrame(divisor)) return;
+
+  const jsStart = performance.now();
+  prof.beginFrame();
+  const rawMs = lastFrameTime ? (timestamp - lastFrameTime) : (1000 / prof.getRefreshHz());
+  const elapsed = rawMs / 1000;
   const dt = Math.min(0.033, Math.max(0, elapsed));
   lastFrameTime = timestamp;
 
@@ -108,7 +247,12 @@ function gameLoop(timestamp) {
 
   if (G.gameState === 'playing') {
     G.playTimeSec += dt;
-    capturePlayerInputBuffers();
+    if (benchOn) {
+      tickCombatBenchmark(dt);
+    } else {
+      capturePlayerInputBuffers();
+    }
+    const updT0 = performance.now();
     const curBoss = getAwakeBoss();
     let inCombat = false;
     if (!curBoss && G.player && G.player.hp > 0) {
@@ -116,14 +260,20 @@ function gameLoop(timestamp) {
       const py = G.player.y + G.player.h * 0.5;
       for (let i = 0; i < G.enemies.length; i++) {
         const e = G.enemies[i];
-        if (e && e.alive && e.state !== 'patrol' && e.state !== 'cling' && Math.hypot(e.x - px, e.y - py) < 520) {
+        if (e && e.alive && !e.isDummy && e.state !== 'patrol' && e.state !== 'cling' && Math.hypot(e.x - px, e.y - py) < 520) {
           inCombat = true; break;
         }
       }
     }
-    audio.updateAmbience(dt, !!curBoss, curBoss ? (curBoss.phase || 1) : 0, inCombat, G.player ? G.player.parryStreak : 0);
+    const curBiome = G.themeBlend ? G.themeBlend.activeTheme : 'sanctuary';
+    audio.updateAmbience(dt, !!curBoss, curBoss ? (curBoss.phase || 1) : 0, inCombat, G.player ? G.player.parryStreak : 0, curBiome);
     if (G.hitstopTimer > 0) {
       G.hitstopTimer = Math.max(0, G.hitstopTimer - dt);
+      // Keep camera & hit/weather VFX smoothly alive during hitstop so impacts feel crisp instead of frozen!
+      if (G.player) {
+        updateWorldEffects(dt * 0.35);
+        updateCamera(dt);
+      }
     } else if (G.player) {
       updatePlayer(dt);
       const px = G.player.x;
@@ -140,7 +290,8 @@ function gameLoop(timestamp) {
       updateWorldEffects(dt);
       updateCamera(dt);
     }
-    if (G.saveDirtyTimer > 0) {
+    prof.addModuleTime('update', Math.max(0, (performance.now() - updT0) - prof._cur.audio));
+    if (G.saveDirtyTimer > 0 && !benchOn) {
       G.saveDirtyTimer -= dt;
       if (G.saveDirtyTimer <= 0) {
         const busyAction = G.player && (G.player.grappleState !== 'none' || G.player.dashTimer > 0 || G.player.iaiLungeTimer > 0 || G.player.attackTimer > 0);
@@ -148,12 +299,15 @@ function gameLoop(timestamp) {
         else saveProgress(false);
       }
     }
+    const hudT0 = performance.now();
     syncHUD();
+    prof.addModuleTime('hud', performance.now() - hudT0);
   } else if (G.gameState === 'title') {
     updateAmbientOnly(dt);
+    const lDmp = damp(0.986, dt);
     for (const lantern of G.lanterns) {
       const wind = Math.sin(G.globalTime * 1.4 + lantern.x * 0.01) * 0.35;
-      lantern.angVel = (lantern.angVel - 14.5 * Math.sin(lantern.angle) * dt + wind * dt) * 0.986;
+      lantern.angVel = (lantern.angVel - 14.5 * Math.sin(lantern.angle) * dt + wind * dt) * lDmp;
       lantern.angle += lantern.angVel * dt;
     }
   }
@@ -171,8 +325,24 @@ function gameLoop(timestamp) {
     lastStaticRenderKey = '';
     render();
   }
+
+  const jsMs = performance.now() - jsStart;
+  prof.endFrame(rawMs, jsMs);
+
+  if (perfEl) {
+    const show = !!(G.settings && G.settings.showPerf && !benchOn);
+    perfEl.classList.toggle('hidden', !show);
+    if (!show && profDrawerEl) profDrawerEl.classList.add('hidden');
+    if (show && rawMs > 0) {
+      perfUiAccumMs += Math.min(500, rawMs);
+      if (perfUiAccumMs >= 300) {
+        perfUiAccumMs = 0;
+        const stats = prof.computeRollingStats(divisor);
+        if (stats) renderLiveProfilerUI(stats, divisor);
+      }
+    }
+  }
   window.__ABV_BOOTED__ = true;
-  requestAnimationFrame(gameLoop);
 }
 
 // Wire DOM UI actions
@@ -195,7 +365,7 @@ const auxWrap = document.getElementById('mobile-aux-controls');
 if (auxBtn && auxWrap) {
   auxBtn.addEventListener('click', () => {
     const isHidden = auxWrap.classList.toggle('hidden');
-    auxBtn.textContent = isHidden ? '辅键: 关' : '辅键: 开';
+    auxBtn.textContent = isHidden ? t('hud.auxOff') : t('hud.auxOn');
   });
 }
 const fsBtn = document.getElementById('btn-fullscreen');
@@ -219,6 +389,8 @@ document.getElementById('btn-close-settings').addEventListener('click', () => {
   closeModal('settings');
 });
 document.getElementById('btn-close-smith').addEventListener('click', () => closeModal('smith'));
+const closeNpcBtn = document.getElementById('btn-close-npc');
+if (closeNpcBtn) closeNpcBtn.addEventListener('click', () => closeModal('npc'));
 document.getElementById('btn-music-toggle').addEventListener('click', () => {
   const next = G.settings.musicEnabled === false;
   G.settings.musicEnabled = next;
@@ -242,31 +414,82 @@ wireVolSlider('vol-master', 'masterVol');
 wireVolSlider('vol-music', 'musicVol');
 wireVolSlider('vol-sfx', 'sfxVol');
 document.getElementById('btn-pause-resume').addEventListener('click', () => closeModal('pause'));
+const pauseCodexBtn = document.getElementById('btn-pause-codex');
+if (pauseCodexBtn) pauseCodexBtn.addEventListener('click', () => openCodexModal());
 document.getElementById('btn-pause-settings').addEventListener('click', () => openModal('settings'));
+const mapToCodex = document.getElementById('btn-map-to-codex');
+if (mapToCodex) mapToCodex.addEventListener('click', () => openCodexModal());
+const altarToCodex = document.getElementById('btn-altar-to-codex');
+if (altarToCodex) altarToCodex.addEventListener('click', () => openCodexModal());
+const codexToMap = document.getElementById('btn-codex-to-map');
+if (codexToMap) codexToMap.addEventListener('click', () => openMapModal());
+const closeCodexBtn = document.getElementById('btn-close-codex');
+if (closeCodexBtn) closeCodexBtn.addEventListener('click', () => closeModal('codex'));
 document.getElementById('btn-pause-respawn').addEventListener('click', respawnAtActiveAltar);
 document.getElementById('btn-pause-title').addEventListener('click', returnToTitle);
+function refreshAllDynamicLocaleUI() {
+  syncControlModeUI();
+  const muteEl = document.getElementById('btn-mute');
+  if (muteEl) muteEl.textContent = audio.muted ? t('hud.muteOff') : t('hud.muteOn');
+  if (auxBtn && auxWrap) {
+    auxBtn.textContent = auxWrap.classList.contains('hidden') ? t('hud.auxOff') : t('hud.auxOn');
+  }
+  refreshTitleSaveUI();
+  refreshActiveModalI18n();
+  if (G.player) syncHUD(true);
+}
+onLocaleChange(refreshAllDynamicLocaleUI);
+
+const titleLangBtn = document.getElementById('btn-title-lang');
+if (titleLangBtn) titleLangBtn.addEventListener('click', () => toggleLocale(true));
+
 const langZh = document.getElementById('btn-lang-zh');
 const langEn = document.getElementById('btn-lang-en');
-if (langZh) langZh.addEventListener('click', () => {
-  setLocale('zh-CN', true);
-  renderSettingsModal();
-  refreshTitleSaveUI();
-  syncHUD(true);
-});
-if (langEn) langEn.addEventListener('click', () => {
-  setLocale('en-US', true);
-  renderSettingsModal();
-  refreshTitleSaveUI();
-  syncHUD(true);
-});
+if (langZh) langZh.addEventListener('click', () => setLocale('zh-CN', true));
+if (langEn) langEn.addEventListener('click', () => setLocale('en-US', true));
 const lightBtn = document.getElementById('btn-lighting-toggle');
 if (lightBtn) {
   lightBtn.addEventListener('click', () => {
     G.settings.dynamicLighting = G.settings.dynamicLighting === false;
     saveUserSettings();
+    resizeCanvas();
     renderSettingsModal();
   });
 }
+const perfBtn = document.getElementById('btn-perf-toggle');
+if (perfBtn) {
+  perfBtn.addEventListener('click', () => {
+    G.settings.showPerf = !G.settings.showPerf;
+    saveUserSettings();
+    renderSettingsModal();
+  });
+}
+if (perfEl) {
+  perfEl.addEventListener('click', () => {
+    G.settings.showProfilerDetail = !G.settings.showProfilerDetail;
+    const stats = prof.computeRollingStats(G.settings.fpsDivisor || 1);
+    if (stats) renderLiveProfilerUI(stats, G.settings.fpsDivisor || 1);
+  });
+}
+const wireBenchStart = id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('click', () => startCombatBenchmark());
+};
+wireBenchStart('btn-run-bench');
+wireBenchStart('btn-prof-bench');
+wireBenchStart('btn-bench-rerun');
+const benchLastBtn = document.getElementById('btn-view-bench-report');
+if (benchLastBtn) benchLastBtn.addEventListener('click', () => openBenchmarkReportModal());
+const benchCopyBtn = document.getElementById('btn-bench-copy');
+if (benchCopyBtn) {
+  benchCopyBtn.addEventListener('click', async () => {
+    const ok = await copyBenchmarkReport();
+    benchCopyBtn.textContent = ok ? t('bench.copied') : t('bench.copyFail');
+    setTimeout(() => { benchCopyBtn.textContent = t('bench.copy'); }, 1800);
+  });
+}
+const benchCloseBtn = document.getElementById('btn-close-bench');
+if (benchCloseBtn) benchCloseBtn.addEventListener('click', () => closeModal('bench'));
 document.getElementById('btn-haptics-toggle').addEventListener('click', () => {
   G.settings.haptics = !G.settings.haptics;
   saveUserSettings();
@@ -277,8 +500,8 @@ document.getElementById('btn-test-haptic').addEventListener('click', () => {
   const ok = triggerHaptic('test', 1.0);
   const b = document.getElementById('btn-test-haptic');
   if (b) {
-    b.textContent = ok ? '已发送震动!' : '未检测到手柄';
-    setTimeout(() => { b.textContent = '测试震动'; }, 1200);
+    b.textContent = ok ? t('settings.hapticSent') : t('settings.hapticNone');
+    setTimeout(() => { b.textContent = t('settings.testHaptic'); }, 1200);
   }
 });
 document.getElementById('btn-reset-keys').addEventListener('click', () => {
@@ -288,7 +511,7 @@ document.getElementById('btn-reset-keys').addEventListener('click', () => {
 });
 document.getElementById('btn-mute').addEventListener('click', () => {
   audio.setMuted(!audio.muted);
-  document.getElementById('btn-mute').textContent = audio.muted ? '音效: 关' : '音效: 开';
+  document.getElementById('btn-mute').textContent = audio.muted ? t('hud.muteOff') : t('hud.muteOn');
   if (G.gameState !== 'title') saveProgress(false);
 });
 const mobilePauseBtn = document.getElementById('btn-pause');
@@ -300,7 +523,7 @@ document.querySelectorAll('[data-close-modal]').forEach(btn => {
     closeModal(m);
   });
 });
-['altar', 'map', 'lore', 'help', 'smith', 'settings', 'pause', 'ending-choice'].forEach(m => {
+['altar', 'map', 'codex', 'lore', 'help', 'smith', 'npc', 'settings', 'pause', 'ending-choice', 'bench'].forEach(m => {
   const ov = document.getElementById(`${m}-modal`);
   if (!ov) return;
   ov.addEventListener('click', e => {
@@ -333,14 +556,38 @@ document.getElementById('btn-ending-next').addEventListener('click', () => advan
 document.getElementById('btn-ending-skip').addEventListener('click', () => advanceEndingCinematic(true));
 document.getElementById('btn-ending-to-altar').addEventListener('click', respawnAtActiveAltar);
 document.getElementById('btn-ending-keep-roam').addEventListener('click', () => closeModal('ending-cinematic'));
+const ngEndBtn = document.getElementById('btn-ending-ngplus');
+if (ngEndBtn) ngEndBtn.addEventListener('click', startNewGamePlus);
 document.getElementById('btn-ending-new-run').addEventListener('click', startGame);
 
 window.addEventListener('keydown', e => {
   if (isCapturingKey()) return;
+  if (e.code === 'F8' && !e.repeat) {
+    e.preventDefault();
+    G.settings.showPerf = true;
+    G.settings.showProfilerDetail = !G.settings.showProfilerDetail;
+    saveUserSettings();
+    const stats = prof.computeRollingStats(G.settings.fpsDivisor || 1);
+    if (stats) renderLiveProfilerUI(stats, G.settings.fpsDivisor || 1);
+    return;
+  }
+  if (e.code === 'F9' && !e.repeat) {
+    e.preventDefault();
+    if (isBenchmarkActive()) cancelCombatBenchmark();
+    else startCombatBenchmark();
+    return;
+  }
+  if (e.code === 'Escape' && isBenchmarkActive() && !e.repeat) {
+    cancelCombatBenchmark();
+    return;
+  }
   const mapCode = getActionKeyCode('map');
-  if ((e.code === 'Tab' || e.code === mapCode) && (G.gameState === 'playing' || G.activeModal === 'map')) {
+  if ((e.code === 'Tab' || e.code === mapCode) && (G.gameState === 'playing' || G.activeModal === 'map' || G.activeModal === 'codex')) {
     e.preventDefault();
     if (!e.repeat) openMapModal();
+  } else if (e.code === 'KeyB' && (G.gameState === 'playing' || G.activeModal === 'codex' || G.activeModal === 'map')) {
+    e.preventDefault();
+    if (!e.repeat) openCodexModal();
   } else if (e.code === 'Escape' && G.gameState === 'playing' && !e.repeat) {
     openPauseModal();
   } else if (e.code === 'Escape' && G.gameState === 'modal' && G.activeModal && !e.repeat) {
@@ -353,6 +600,10 @@ window.addEventListener('keydown', e => {
 
 document.addEventListener('visibilitychange', () => {
   audio.setBackgroundDuck(document.hidden);
+  if (document.hidden && G.saveDirtyTimer > 0 && G.worldState) saveProgress(false);
+});
+window.addEventListener('pagehide', () => {
+  if (G.saveDirtyTimer > 0 && G.worldState) saveProgress(false);
 });
 
 // Internal dev-only preview return button (only visible when launched from editor.html?preview=1)
@@ -370,6 +621,7 @@ async function bootstrapGame() {
   loadSavedLocale();
   buildGlowSprites();
   await loadWorldData();
+  prewarmStampsForList(STAMPS);
   const bootSave = readSaveData();
   if (bootSave && (bootSave.controlMode === 'kbmouse' || bootSave.controlMode === 'keyboard')) {
     G.controlMode = bootSave.controlMode;
@@ -386,6 +638,7 @@ async function bootstrapGame() {
   if (contBtnEl) { contBtnEl.disabled = false; contBtnEl.style.opacity = ''; }
   refreshTitleSaveUI();
   resizeCanvas();
+  prewarmTerrainChunks(G.cam.x, G.cam.y, G.canvasW, G.canvasH);
   G.lanterns = createLanterns();
   G.resonancePuzzles = createResonancePuzzles();
   G.crumblePlatforms = createCrumblePlatforms();

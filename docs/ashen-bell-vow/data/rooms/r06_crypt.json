@@ -316,6 +316,98 @@
     "boneCairns": [
       660,
       1495
+    ],
+    "stamps": [
+      {
+        "type": "glow_spores",
+        "x": 255,
+        "y": 640,
+        "scale": 0.82,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.84,
+        "seed": 0
+      },
+      {
+        "type": "stone_statue",
+        "x": 530,
+        "y": 640,
+        "scale": 1.0,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.72,
+        "seed": 1
+      },
+      {
+        "type": "hanging_chains",
+        "x": 700,
+        "y": 0,
+        "scale": 1.1,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.48,
+        "seed": 0
+      },
+      {
+        "type": "glow_spores",
+        "x": 790,
+        "y": 640,
+        "scale": 0.88,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.86,
+        "seed": 2
+      },
+      {
+        "type": "canopy_bough",
+        "x": 1030,
+        "y": 0,
+        "scale": 0.95,
+        "flip": false,
+        "layer": "fg",
+        "alpha": 0.52,
+        "seed": 1
+      },
+      {
+        "type": "hanging_chains",
+        "x": 1260,
+        "y": 0,
+        "scale": 1.0,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.46,
+        "seed": 2
+      },
+      {
+        "type": "glow_spores",
+        "x": 1340,
+        "y": 640,
+        "scale": 0.92,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.86,
+        "seed": 1
+      },
+      {
+        "type": "fallen_bell",
+        "x": 1460,
+        "y": 640,
+        "scale": 0.94,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.8,
+        "seed": 0
+      },
+      {
+        "type": "broken_arch",
+        "x": 1615,
+        "y": 280,
+        "scale": 1.05,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.68,
+        "seed": 2
+      }
     ]
   },
   "voidBarriers": [

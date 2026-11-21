@@ -1,6 +1,6 @@
 // Central mutable game state container (G) and cross-module hook registry (hooks)
 import {
-  RELICS, RELIC_SYNERGIES, DEFAULT_KEYBINDS, ROOMS, ALTARS, FLOOR_Y, MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H,
+  RELICS, RELIC_SYNERGIES, VOW_CONSTRAINTS, DEFAULT_KEYBINDS, ROOMS, ALTARS, FLOOR_Y, MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H,
   SECRET_WALLS_DEF, PICKUPS_DEF, RESONANCE_PUZZLES_DEF, CRUMBLE_PLATFORMS_DEF, LANTERNS_DEF
 } from './config.js';
 
@@ -42,6 +42,10 @@ export const G = {
     damageTakenMult: 1.0,
     haptics: true,
     dynamicLighting: true,
+    showPerf: false,
+    showProfilerDetail: false,
+    fpsDivisor: 1,
+    hitstopMode: 'standard', // 'standard' | 'light' | 'off'
     musicEnabled: true,
     masterVol: 0.85,
     musicVol: 0.75,
@@ -94,11 +98,14 @@ export const G = {
   boss2: null,
   boss3: null,
   bossBanner: null,
+  achievementBanner: null,
+  achievementQueue: [],
   endingState: null,
   echoSession: null,
   outcomeTimer: null,
 
-  // Modal state
+  // Runtime benchmark flag & modal state
+  benchActive: false,
   activeModal: null,
   modalReturnState: 'playing'
 };
@@ -116,22 +123,36 @@ export const hooks = {
   openEndingChoice: () => {},
   interactWithAltar: () => {},
   openSmithModal: () => {},
+  openNpcModal: () => {},
   openLoreModal: () => {},
   openMapModal: () => {},
+  openCodexModal: () => {},
   openPauseModal: () => {},
   returnToTitle: () => {},
+  openModal: () => {},
   closeModal: () => {},
   startGame: () => {},
+  startNewGamePlus: () => {},
   continueSavedGame: () => {},
   respawnAtActiveAltar: () => {},
   startEchoChallenge: () => {},
-  continueIntoBellWell: () => {}
+  continueIntoBellWell: () => {},
+  resizeCanvas: () => {}
 };
 
 export function createFreshWorldState() {
   G.exploreDirty = true;
   G.minimapDirty = true;
   return {
+    ngPlusCycle: 1,
+    activeVows: new Set(),
+    codex: {
+      readTablets: [],
+      bestiary: {},
+      achievements: [],
+      discoveredSynergies: []
+    },
+    mapPins: [],
     litAltars: new Set(['altar_start']),
     activeAltarId: 'altar_start',
     bossDefeated: false,
@@ -155,6 +176,13 @@ export function createFreshWorldState() {
     lostEchoes: null,
     lastDeathEchoMsg: '',
     smithUpgrades: { blade: 0, posture: 0, forge: 0 },
+    npcQuests: {
+      metChronicler: false,
+      chroniclerClaims: [],
+      metKeeper: false,
+      keeperWickGifted: false,
+      keeperBlessingActive: false
+    },
     abilities: { doubleJump: false, shadeDash: false },
     unlockedRelics: new Set(['thorn', 'mirror', 'ember']),
     explored: Array.from({ length: MAP_ROWS }, () => new Array(MAP_COLS).fill(false))
@@ -250,6 +278,37 @@ export function getEquippedRelicLabel() {
   return active.map(r => r.name).join(' · ');
 }
 
+export function ensureNpcQuests() {
+  if (!G.worldState) return null;
+  if (!G.worldState.npcQuests || typeof G.worldState.npcQuests !== 'object') {
+    G.worldState.npcQuests = {
+      metChronicler: false,
+      chroniclerClaims: [],
+      metKeeper: false,
+      keeperWickGifted: false,
+      keeperBlessingActive: false
+    };
+  }
+  const nq = G.worldState.npcQuests;
+  if (!Array.isArray(nq.chroniclerClaims)) nq.chroniclerClaims = [];
+  return nq;
+}
+
+export function getBossBonusDamageMult() {
+  const nq = G.worldState && G.worldState.npcQuests;
+  return (nq && Array.isArray(nq.chroniclerClaims) && nq.chroniclerClaims.includes('vol3')) ? 1.08 : 1.0;
+}
+
+export function getFlaskHealPct() {
+  const nq = G.worldState && G.worldState.npcQuests;
+  return (nq && nq.keeperWickGifted) ? 0.58 : 0.45;
+}
+
+export function hasKeeperBlessing() {
+  const nq = G.worldState && G.worldState.npcQuests;
+  return !!(nq && nq.keeperBlessingActive);
+}
+
 export function getBladeDamageMult() {
   const lv = (G.worldState && G.worldState.smithUpgrades) ? (G.worldState.smithUpgrades.blade || 0) : 0;
   return 1 + lv * 0.14;
@@ -270,8 +329,62 @@ export function getPlayerMaxSoul() {
   return 100 + (G.worldState ? (G.worldState.bonusMaxSoul || 0) : 0) + forgeLv * 15;
 }
 
+let _vowCacheKey = '';
+let _cachedVowStats = null;
+
+export function getActiveVowStats() {
+  const vs = G.worldState && G.worldState.activeVows ? G.worldState.activeVows : null;
+  const f1 = vs && vs.has('noFlasks') ? 1 : 0;
+  const f2 = vs && vs.has('doubleDmg') ? 1 : 0;
+  const f3 = vs && vs.has('noGrayBlock') ? 1 : 0;
+  const f4 = vs && vs.has('fierceFoes') ? 1 : 0;
+  const key = `${f1}${f2}${f3}${f4}`;
+  if (key === _vowCacheKey && _cachedVowStats) return _cachedVowStats;
+  _vowCacheKey = key;
+  let bonusPct = 0;
+  let count = 0;
+  const shorts = [];
+  for (let i = 0; i < VOW_CONSTRAINTS.length; i++) {
+    const vc = VOW_CONSTRAINTS[i];
+    if (vs && vs.has(vc.id)) {
+      count++;
+      bonusPct += vc.bonusPct;
+      shorts.push(vc.short);
+    }
+  }
+  _cachedVowStats = {
+    count,
+    noFlasks: !!f1,
+    doubleDmg: !!f2,
+    noGrayBlock: !!f3,
+    fierceFoes: !!f4,
+    dmgMult: f2 ? 1.8 : 1.0,
+    foePostureMult: f4 ? 1.30 : 1.0,
+    foeSpeedMult: f4 ? 1.18 : 1.0,
+    echoBonusMult: 1 + bonusPct / 100,
+    shortsLabel: shorts.join('·')
+  };
+  return _cachedVowStats;
+}
+
+export function getCombatScaling(isEcho = !!G.echoSession) {
+  const rawCycle = (G.worldState && Number(G.worldState.ngPlusCycle)) ? Math.max(1, Math.floor(G.worldState.ngPlusCycle)) : 1;
+  const cycle = isEcho ? 1 : rawCycle;
+  const n = Math.max(0, cycle - 1);
+  const vows = getActiveVowStats();
+  return {
+    cycle: rawCycle,
+    hpMult: 1 + n * 0.42,
+    postureMult: (1 + n * 0.25) * vows.foePostureMult,
+    dmgMult: (1 + n * 0.28) * vows.dmgMult,
+    aggroMult: Math.min(1.48, (1 + n * 0.14) * vows.foeSpeedMult),
+    echoMult: (1 + n * 0.50) * vows.echoBonusMult
+  };
+}
+
 export function getPlayerMaxFlasks() {
-  return getRelicStats().maxFlasks + (G.worldState ? G.worldState.bonusFlasks : 0);
+  if (getActiveVowStats().noFlasks) return 0;
+  return Math.min(6, getRelicStats().maxFlasks + (G.worldState ? G.worldState.bonusFlasks : 0));
 }
 
 export function getPlayerMaxSeals() {
@@ -329,7 +442,7 @@ export function markMapExplored(px, py = FLOOR_Y - 60) {
   if (changed) {
     G.exploreDirty = true;
     G.minimapDirty = true;
-    if (G.gameState === 'playing') G.saveDirtyTimer = 3.0;
+    if (G.gameState === 'playing' && G.saveDirtyTimer <= 0) G.saveDirtyTimer = 10.0;
   }
 }
 
@@ -429,4 +542,36 @@ export function kickCamera(kx, ky) {
 
 export function punchZoom(targetZoom) {
   G.cam.zoom = Math.min(1.065, Math.max(G.cam.zoom, targetZoom));
+}
+
+// Centralized Hitstop (打击顿帧) scaling: supports 'standard' (100%), 'light' (40%), and 'off' (0%)
+export function triggerHitstop(duration, useMax = false) {
+  const mode = (G.settings && G.settings.hitstopMode) || 'standard';
+  if (mode === 'off') return;
+  const scaled = mode === 'light' ? Math.min(0.024, duration * 0.4) : duration;
+  G.hitstopTimer = useMax ? Math.max(G.hitstopTimer, scaled) : scaled;
+}
+
+// Zero-DOM-Node-churn in-place TextNode updater (prevents Blink C++ #text node creation/destruction)
+export function setTextFast(el, str) {
+  if (!el) return;
+  let tn = el._txtNode;
+  if (!tn) {
+    if (el.childNodes.length === 1 && el.firstChild.nodeType === 3) {
+      tn = el.firstChild;
+    } else {
+      el.textContent = '';
+      tn = document.createTextNode(str);
+      el.appendChild(tn);
+      el._txtNode = tn;
+      return;
+    }
+    el._txtNode = tn;
+  }
+  if (tn.nodeValue !== str) tn.nodeValue = str;
+}
+
+// Frame-rate-independent exponential damping (f60 = per-frame decay factor tuned at 60 FPS)
+export function damp(f60, dt) {
+  return Math.pow(f60, dt * 60);
 }

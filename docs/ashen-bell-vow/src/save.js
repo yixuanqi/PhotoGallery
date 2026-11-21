@@ -6,8 +6,9 @@ import {
 import { G, hooks, createFreshWorldState, getExplorationPercent } from './state.js';
 import { storage } from './storage.js';
 import { audio } from './audio.js';
-import { syncControlModeUI } from './input.js';
+import { syncControlModeUI, rebuildActionCodesCache } from './input.js';
 import { spawnFloatText } from './vfx.js';
+import { t } from './i18n.js';
 
 export const SAVE_SLOT_COUNT = 3;
 const SLOT_KEY_PREFIX = 'ashen_bell_vow_slot_';
@@ -37,6 +38,9 @@ export function saveUserSettings() {
     damageTakenMult: G.settings.damageTakenMult,
     haptics: !!G.settings.haptics,
     dynamicLighting: G.settings.dynamicLighting !== false,
+    showPerf: !!G.settings.showPerf,
+    fpsDivisor: Math.max(1, Math.min(4, Number(G.settings.fpsDivisor) || 1)),
+    hitstopMode: ['standard', 'light', 'off'].includes(G.settings.hitstopMode) ? G.settings.hitstopMode : 'standard',
     musicEnabled: G.settings.musicEnabled !== false,
     masterVol: G.settings.masterVol,
     musicVol: G.settings.musicVol,
@@ -55,6 +59,10 @@ export function loadUserSettings() {
   if ([1.0, 0.7, 0.5].includes(Number(s.damageTakenMult))) G.settings.damageTakenMult = Number(s.damageTakenMult);
   if (typeof s.haptics === 'boolean') G.settings.haptics = s.haptics;
   if (typeof s.dynamicLighting === 'boolean') G.settings.dynamicLighting = s.dynamicLighting;
+  if (typeof s.showPerf === 'boolean') G.settings.showPerf = s.showPerf;
+  if ([1, 2, 3, 4].includes(Number(s.fpsDivisor))) G.settings.fpsDivisor = Number(s.fpsDivisor);
+  else G.settings.fpsDivisor = 1; // Migrate off legacy non-integer fpsCap cleanly
+  if (['standard', 'light', 'off'].includes(s.hitstopMode)) G.settings.hitstopMode = s.hitstopMode;
   if (typeof s.musicEnabled === 'boolean') {
     G.settings.musicEnabled = s.musicEnabled;
     audio.setMusicEnabled(s.musicEnabled);
@@ -72,12 +80,13 @@ export function loadUserSettings() {
       }
     }
   }
+  rebuildActionCodesCache();
 }
 
 export function readSaveSlot(slot = G.activeSaveSlot) {
   migrateLegacySaveIfNeeded();
   const data = storage.getJSON(slotKey(slot));
-  if (!data || ![8, 9, 10, 11, 12, 15, 17].includes(data.v)) return null;
+  if (!data || ![8, 9, 10, 11, 12, 15, 17, 18, 19, 20].includes(data.v)) return null;
   return data;
 }
 
@@ -103,14 +112,32 @@ export function deleteSaveSlot(slot) {
 }
 
 export function saveProgress(showToast = false) {
-  if (!G.worldState) return;
+  if (!G.worldState || G.benchActive) return;
   const exploredStr = G.worldState.explored
     .map(row => row.map(cell => (cell ? '1' : '0')).join(''))
     .join('|');
   const eqIds = (G.equippedRelics || [G.currentRelic, null]).map(r => (r ? r.id : null));
+  const rawCodex = G.worldState.codex || { readTablets: [], bestiary: {}, achievements: [], discoveredSynergies: [] };
+  const rawNq = G.worldState.npcQuests || { metChronicler: false, chroniclerClaims: [], metKeeper: false, keeperWickGifted: false, keeperBlessingActive: false };
   const payload = {
-    v: 17,
+    v: 20,
+    npcQuests: {
+      metChronicler: !!rawNq.metChronicler,
+      chroniclerClaims: Array.isArray(rawNq.chroniclerClaims) ? [...new Set(rawNq.chroniclerClaims)] : [],
+      metKeeper: !!rawNq.metKeeper,
+      keeperWickGifted: !!rawNq.keeperWickGifted,
+      keeperBlessingActive: !!rawNq.keeperBlessingActive
+    },
     slot: G.activeSaveSlot,
+    ngPlusCycle: Math.max(1, Math.floor(Number(G.worldState.ngPlusCycle) || 1)),
+    activeVows: G.worldState.activeVows ? [...G.worldState.activeVows] : [],
+    codex: {
+      readTablets: Array.isArray(rawCodex.readTablets) ? [...new Set(rawCodex.readTablets)] : [],
+      bestiary: rawCodex.bestiary && typeof rawCodex.bestiary === 'object' ? JSON.parse(JSON.stringify(rawCodex.bestiary)) : {},
+      achievements: Array.isArray(rawCodex.achievements) ? [...new Set(rawCodex.achievements)] : [],
+      discoveredSynergies: Array.isArray(rawCodex.discoveredSynergies) ? [...new Set(rawCodex.discoveredSynergies)] : []
+    },
+    mapPins: Array.isArray(G.worldState.mapPins) ? G.worldState.mapPins.slice(0, 36).map(p => ({ id: p.id, x: Math.round(p.x), y: Math.round(p.y), type: p.type })) : [],
     savedAt: Date.now(),
     playTimeSec: Math.floor(G.playTimeSec || 0),
     controlMode: G.controlMode,
@@ -154,12 +181,28 @@ export function saveProgress(showToast = false) {
   }
   if (G.gameState === 'title') hooks.refreshTitleSaveUI();
   if (showToast && G.player && G.gameState === 'playing') {
-    spawnFloatText(G.player.x + G.player.w * 0.5, G.player.y - 68, `档案 ${G.activeSaveSlot + 1} · 灯火已铭刻`, COLORS.cyanBright, 14, 1.0);
+    spawnFloatText(G.player.x + G.player.w * 0.5, G.player.y - 68, t('save.toast', G.activeSaveSlot + 1), COLORS.cyanBright, 14, 1.0);
   }
 }
 
 export function applySaveData(data) {
   G.worldState = createFreshWorldState();
+  G.worldState.ngPlusCycle = Math.max(1, Math.floor(Number(data.ngPlusCycle) || 1));
+  G.worldState.activeVows = new Set(Array.isArray(data.activeVows) ? data.activeVows.filter(v => ['noFlasks', 'doubleDmg', 'noGrayBlock', 'fierceFoes'].includes(v)) : []);
+  if (data.codex && typeof data.codex === 'object') {
+    G.worldState.codex = {
+      readTablets: Array.isArray(data.codex.readTablets) ? [...new Set(data.codex.readTablets)] : [],
+      bestiary: data.codex.bestiary && typeof data.codex.bestiary === 'object' ? JSON.parse(JSON.stringify(data.codex.bestiary)) : {},
+      achievements: Array.isArray(data.codex.achievements) ? [...new Set(data.codex.achievements)] : [],
+      discoveredSynergies: Array.isArray(data.codex.discoveredSynergies) ? [...new Set(data.codex.discoveredSynergies)] : []
+    };
+  }
+  G.worldState.mapPins = Array.isArray(data.mapPins)
+    ? data.mapPins
+        .filter(p => p && typeof p.x === 'number' && typeof p.y === 'number' && ['wall', 'barrier', 'foe'].includes(p.type))
+        .slice(0, 36)
+        .map((p, idx) => ({ id: p.id || `pin_${idx}`, x: Math.round(p.x), y: Math.round(p.y), type: p.type }))
+    : [];
   G.playTimeSec = Math.max(0, Number(data.playTimeSec) || 0);
   G.worldState.litAltars = new Set(Array.isArray(data.litAltars) && data.litAltars.length ? data.litAltars : ['altar_start']);
   G.worldState.activeAltarId = ALTARS.some(a => a.id === data.activeAltarId) ? data.activeAltarId : 'altar_start';
@@ -197,6 +240,15 @@ export function applySaveData(data) {
     posture: Math.max(0, Math.min(3, Number(data.smithUpgrades && data.smithUpgrades.posture) || 0)),
     forge: Math.max(0, Math.min(3, Number(data.smithUpgrades && data.smithUpgrades.forge) || 0))
   };
+  if (data.npcQuests && typeof data.npcQuests === 'object') {
+    G.worldState.npcQuests = {
+      metChronicler: !!data.npcQuests.metChronicler,
+      chroniclerClaims: Array.isArray(data.npcQuests.chroniclerClaims) ? [...new Set(data.npcQuests.chroniclerClaims)] : [],
+      metKeeper: !!data.npcQuests.metKeeper,
+      keeperWickGifted: !!data.npcQuests.keeperWickGifted,
+      keeperBlessingActive: !!data.npcQuests.keeperBlessingActive
+    };
+  }
   G.worldState.abilities = {
     doubleJump: !!(data.abilities && data.abilities.doubleJump),
     shadeDash: !!(data.abilities && data.abilities.shadeDash)
@@ -235,7 +287,7 @@ export function applySaveData(data) {
   if (typeof data.muted === 'boolean') {
     audio.setMuted(data.muted);
     const muteBtn = document.getElementById('btn-mute');
-    if (muteBtn) muteBtn.textContent = audio.muted ? '音效: 关' : '音效: 开';
+    if (muteBtn) muteBtn.textContent = audio.muted ? t('hud.muteOff') : t('hud.muteOn');
   }
   G.exploreDirty = true;
   G.minimapDirty = true;

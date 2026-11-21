@@ -162,7 +162,99 @@
         "count": 4
       }
     ],
-    "boneCairns": []
+    "boneCairns": [],
+    "stamps": [
+      {
+        "type": "fallen_bell",
+        "x": 115,
+        "y": 600,
+        "scale": 0.8,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.78,
+        "seed": 2
+      },
+      {
+        "type": "crucible_vat",
+        "x": 165,
+        "y": 40,
+        "scale": 0.92,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.82,
+        "seed": 0
+      },
+      {
+        "type": "bronze_gear",
+        "x": 225,
+        "y": 295,
+        "scale": 1.18,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.66,
+        "seed": 0
+      },
+      {
+        "type": "bronze_gear",
+        "x": 360,
+        "y": 425,
+        "scale": 0.78,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.58,
+        "seed": 1
+      },
+      {
+        "type": "hanging_chains",
+        "x": 475,
+        "y": 40,
+        "scale": 0.95,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.48,
+        "seed": 1
+      },
+      {
+        "type": "hanging_chains",
+        "x": 685,
+        "y": 40,
+        "scale": 0.95,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.48,
+        "seed": 0
+      },
+      {
+        "type": "bronze_gear",
+        "x": 800,
+        "y": 425,
+        "scale": 0.78,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.58,
+        "seed": 2
+      },
+      {
+        "type": "bronze_gear",
+        "x": 935,
+        "y": 295,
+        "scale": 1.18,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.66,
+        "seed": 1
+      },
+      {
+        "type": "crucible_vat",
+        "x": 995,
+        "y": 40,
+        "scale": 0.92,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.82,
+        "seed": 2
+      }
+    ]
   },
   "voidBarriers": []
 }

@@ -1,8 +1,8 @@
 // Player movement, buffering, combo/iai/parry/grapple/spell state machine
 import {
-  COLORS, GRAVITY, FLOOR_Y, ALTARS, NPCS, LORE_TABLETS, SHORTCUT_GATE_DEF, VOID_BARRIERS, FIRST_BELL_CORE_POS, ABYSSAL_RIVERS, PUDDLES
+  COLORS, GRAVITY, FLOOR_Y, ALTARS, NPCS, LORE_TABLETS, SHORTCUT_GATE_DEF, VOID_BARRIERS, FIRST_BELL_CORE_POS, ABYSSAL_RIVERS, PUDDLES, DUMMY_MODES
 } from './config.js';
-import { G, hooks, getLivingFoes, getRelicStats, markMapExplored, addShake, punchZoom, triggerBossBanner } from './state.js';
+import { G, hooks, getLivingFoes, getRelicStats, getFlaskHealPct, hasKeeperBlessing, markMapExplored, addShake, punchZoom, triggerBossBanner, triggerHitstop, damp } from './state.js';
 import { audio } from './audio.js';
 import { isActionHeld, consumeActionPress, consumeActionRelease } from './input.js';
 import {
@@ -16,6 +16,8 @@ import {
   collectPickup, isPickupUnlocked, ringResonanceBell, castBellQuake, triggerMiniBellQuake,
   damageEnemyHP, addPostureToEnemy, reclaimLostEchoes
 } from './combat.js';
+import { recordBestiaryEvent } from './codex.js';
+import { t, locDummyMode, locBoss } from './i18n.js';
 
 export function capturePlayerInputBuffers() {
   if (!G.player || G.player.hp <= 0) return;
@@ -32,10 +34,10 @@ export function updatePlayer(dt) {
   if (G.player.hp <= 0) {
     if (G.player.deathTimer > 0) {
       G.player.deathTimer = Math.max(0, G.player.deathTimer - dt);
-      G.player.vx *= 0.88;
+      G.player.vx *= damp(0.88, dt);
       G.player.vy = Math.min(900, G.player.vy + GRAVITY * dt);
       moveAndCollide(G.player, dt, true);
-      if (Math.random() < 0.75) {
+      if (Math.random() < 45 * dt) {
         spawnParticles(G.player.x + G.player.w / 2 + (Math.random() - 0.5) * 16, G.player.y + 18 + Math.random() * 26, 2, {
           color: Math.random() < 0.35 ? COLORS.cyanBright : COLORS.parchment,
           speed: 55,
@@ -70,6 +72,10 @@ export function updatePlayer(dt) {
   if (G.player.castTimer > 0) G.player.castTimer -= dt;
   if (G.player.castCd > 0) G.player.castCd -= dt;
   if (G.player.grappleCd > 0) G.player.grappleCd -= dt;
+  if (G.player.lastGrappleIgnoreTimer > 0) {
+    G.player.lastGrappleIgnoreTimer = Math.max(0, G.player.lastGrappleIgnoreTimer - dt);
+    if (G.player.grounded) G.player.lastGrappleIgnoreTimer = 0;
+  }
   if (G.player.comboResetTimer > 0) G.player.comboResetTimer -= dt;
   else G.player.comboStep = 0;
   if (G.player.riposteWindow > 0) G.player.riposteWindow -= dt;
@@ -91,7 +97,9 @@ export function updatePlayer(dt) {
     G.player.chargeReadyPlayed = false;
   }
 
-  if (G.player.soul < 35) G.player.soul = Math.min(35, G.player.soul + 3.2 * dt);
+  const soulRegenCap = hasKeeperBlessing() ? 55 : 35;
+  const soulRegenRate = hasKeeperBlessing() ? 6.4 : 3.2;
+  if (G.player.soul < soulRegenCap) G.player.soul = Math.min(soulRegenCap, G.player.soul + soulRegenRate * dt);
 
   G.player.squashX += (1 - G.player.squashX) * Math.min(1, dt * 14);
   G.player.squashY += (1 - G.player.squashY) * Math.min(1, dt * 14);
@@ -138,7 +146,26 @@ export function updatePlayer(dt) {
 
     for (const npc of NPCS) {
       if (Math.hypot(px - npc.x, py - npc.y) < 88) {
-        hooks.openSmithModal(npc);
+        hooks.openNpcModal(npc);
+        return;
+      }
+    }
+
+    for (const e of G.enemies) {
+      if (e && e.alive && e.isDummy && Math.hypot(px - (e.x + e.w * 0.5), py - (e.y + e.h)) < 94) {
+        e.modeIdx = (e.modeIdx + 1) % DUMMY_MODES.length;
+        const m = DUMMY_MODES[e.modeIdx];
+        e.active = m.id !== 'dormant';
+        e.state = e.active ? 'stalk' : 'idle';
+        e.stateTimer = 0.65;
+        e.drillStep = 0;
+        e.shieldUp = false;
+        e.hp = e.maxHp;
+        e.posture = 0;
+        e.bellShake = 0.35;
+        audio.playResonanceBell(440 + e.modeIdx * 66, false);
+        spawnShockwave(e.x + e.w * 0.5, e.y + 28, 66, COLORS.goldBright, 2.8, 0.25);
+        spawnFloatText(e.x + e.w * 0.5, e.y - 36, t('combat.dummyModeSwitch', locDummyMode(m, 'label')), COLORS.goldBright, 18, 1.35);
         return;
       }
     }
@@ -168,11 +195,11 @@ export function updatePlayer(dt) {
   // Heal [H]
   if (G.player.healTimer > 0) {
     G.player.healTimer -= dt;
-    G.player.vx *= 0.78;
+    G.player.vx *= damp(0.78, dt);
     if (!G.player.healDone && G.player.healTimer <= 0.24) {
       G.player.healDone = true;
       G.player.flasks--;
-      const healAmt = Math.round(G.player.maxHp * 0.45);
+      const healAmt = Math.round(G.player.maxHp * getFlaskHealPct());
       G.player.hp = Math.min(G.player.maxHp, G.player.hp + healAmt);
       G.player.grayHp = 0;
       spawnParticles(G.player.x + G.player.w / 2, G.player.y + 24, 20, { color: COLORS.cyanBright, speed: 150, grav: -200, life: 0.55 });
@@ -196,7 +223,7 @@ export function updatePlayer(dt) {
     if (target) {
       G.player.grappleBufTimer = 0;
       G.player.grappleState = 'extending';
-      G.player.grappleTimer = 0.065;
+      G.player.grappleTimer = 0.032;
       G.player.grappleStuckTimer = 0;
       G.player.grapplePrevX = G.player.x;
       G.player.grapplePrevY = G.player.y;
@@ -212,8 +239,8 @@ export function updatePlayer(dt) {
       G.player.chargeTime = 0;
       G.player.chargeReadyPlayed = false;
       G.player.dashTimer = 0;
-      G.player.vx *= 0.25;
-      G.player.vy *= 0.25;
+      G.player.vx *= 0.65;
+      G.player.vy *= 0.65;
       audio.playGrappleLaunch();
       spawnParticles(G.player.x + G.player.w / 2 + G.player.facing * 12, G.player.y + 22, 10, { color: COLORS.cyanBright, speed: 170, spark: true, life: 0.24, grav: 0 });
     }
@@ -406,11 +433,9 @@ export function updatePlayer(dt) {
     }
     if (G.player.grappleState === 'extending') {
       G.player.grappleTimer -= dt;
-      G.player.vx *= 0.8;
-      G.player.vy *= 0.8;
       if (G.player.grappleTimer <= 0) {
         G.player.grappleState = 'pulling';
-        G.player.grappleTimer = 0.42;
+        G.player.grappleTimer = 0.38;
         G.player.iframeTimer = Math.max(G.player.iframeTimer, 0.20);
         audio.playGrappleLatch();
         spawnShockwave(G.player.grappleTx, G.player.grappleTy, 46, COLORS.cyanBright, 2.8, 0.22);
@@ -432,32 +457,39 @@ export function updatePlayer(dt) {
         G.afterimages.push({ x: G.player.x, y: G.player.y, facing: G.player.facing, life: 0.18, maxLife: 0.18, color: COLORS.cyanBright });
       }
 
-      // Detect wall/ledge snag during pull so player never hangs stalled against a corner
+      // Detect wall/ledge snag using true speed (px/s), 100% independent of 60Hz/144Hz/240Hz refresh rate!
       const movedSq = (G.player.x - (G.player.grapplePrevX || G.player.x)) ** 2 + (G.player.y - (G.player.grapplePrevY || G.player.y)) ** 2;
       G.player.grapplePrevX = G.player.x;
       G.player.grapplePrevY = G.player.y;
-      if (G.player.grappleTimer < 0.37 && movedSq < 9) {
+      const minMove = 145 * dt;
+      if (G.player.grappleTimer < 0.34 && movedSq < minMove * minMove) {
         G.player.grappleStuckTimer = (G.player.grappleStuckTimer || 0) + dt;
       } else {
         G.player.grappleStuckTimer = 0;
       }
 
-      const arriveDist = (gt && gt.type === 'enemy') ? 54 : 34;
-      if (dist <= arriveDist || G.player.grappleTimer <= 0 || G.player.grappleStuckTimer >= 0.075 || G.player.jumpBufTimer > 0) {
+      const arriveDist = (gt && gt.type === 'enemy') ? 54 : 36;
+      if (dist <= arriveDist || G.player.grappleTimer <= 0 || G.player.grappleStuckTimer >= 0.065 || G.player.jumpBufTimer > 0) {
         G.player.grappleState = 'none';
+        if (gt && gt.type !== 'enemy') {
+          G.player.lastGrappleRef = gt.ref;
+          G.player.lastGrappleIgnoreTimer = 0.90;
+        }
         G.player.jumpBufTimer = 0;
         G.player.dashCd = 0;
         G.player.airJumpsLeft = 1;
         G.player.coyoteTimer = 0.08;
         G.player.squashX = 0.78;
         G.player.squashY = 1.28;
-        G.player.vx = (dx / Math.max(1, dist)) * 280;
-        G.player.vy = -465;
+        const naturalVx = (dx / Math.max(1, dist)) * 280;
+        // Steering vault: holding Left/Right cleanly carries you past the anchor toward the next hook!
+        G.player.vx = moveDir !== 0 ? (moveDir * 315) : (Math.abs(naturalVx) < 90 ? G.player.facing * 165 : naturalVx);
+        G.player.vy = -470;
 
         if (gt && gt.type === 'enemy' && gt.ref.alive) {
           const foe = gt.ref;
           audio.playHit(false);
-          G.hitstopTimer = 0.035;
+          triggerHitstop(0.018);
           addShake(5.5);
           const boosted = G.player.shadeGrappleBoostTimer > 0;
           G.player.shadeGrappleBoostTimer = 0;
@@ -466,7 +498,7 @@ export function updatePlayer(dt) {
           G.player.soul = Math.min(G.player.maxSoul, G.player.soul + (boosted ? 26 : 14));
           if (boosted) {
             spawnShockwave(foe.x + foe.w / 2, foe.y + foe.h * 0.45, 76, COLORS.violetBright, 3.6, 0.26);
-            spawnFloatText(foe.x + foe.w / 2, foe.y - 36, '羁绊 · 墨影断鸣！', COLORS.violetBright, 18, 0.9);
+            spawnFloatText(foe.x + foe.w / 2, foe.y - 36, t('combat.synShadeThread'), COLORS.violetBright, 18, 0.9);
           }
           if (foe.kind === 'wraith' && foe.state === 'windup') {
             foe.state = 'recover';
@@ -475,7 +507,7 @@ export function updatePlayer(dt) {
           if (getRelicStats().synGrappleQuake) {
             triggerMiniBellQuake(foe.x + foe.w / 2, foe.y + foe.h * 0.45);
           } else {
-            spawnFloatText(foe.x + foe.w / 2, foe.y - 18, '幽丝破势!', COLORS.cyanBright, 17, 0.65);
+            spawnFloatText(foe.x + foe.w / 2, foe.y - 18, t('combat.grappleBreak'), COLORS.cyanBright, 17, 0.65);
           }
         } else if (gt && gt.type === 'lantern') {
           audio.playPogoLantern();
@@ -539,7 +571,7 @@ export function updatePlayer(dt) {
     G.player.vy += GRAVITY * dt;
     if (!G.player.grounded && G.player.wallDir !== 0 && G.player.vy > 115 && moveDir === G.player.wallDir) {
       G.player.vy = 115;
-      if (Math.random() < 0.25) {
+      if (Math.random() < 15 * dt) {
         spawnParticles(G.player.x + (G.player.wallDir > 0 ? G.player.w : 0), G.player.y + 20, 1, { color: COLORS.parchment, speed: 40, grav: 80, life: 0.25 });
       }
     }
@@ -682,7 +714,7 @@ export function updatePlayer(dt) {
       }
     }
   } else {
-    G.player.runCycle *= 0.9;
+    G.player.runCycle *= damp(0.9, dt);
     G.player.stepSfxAccum = 0;
   }
 
@@ -703,7 +735,7 @@ export function updatePlayer(dt) {
         const fy = foe.y + foe.h * 0.45;
         audio.playShadeBurst();
         triggerHaptic('heavyHit', 0.85);
-        G.hitstopTimer = Math.max(G.hitstopTimer, 0.036);
+        triggerHitstop(0.036, true);
         addShake(7.5);
         damageEnemyHP(foe, Math.round(24 * rsShade.shadeBurstMult), true);
         addPostureToEnemy(foe, Math.round(26 * rsShade.shadeBurstMult));
@@ -719,7 +751,7 @@ export function updatePlayer(dt) {
         spawnShockwave(fx, fy, 86, COLORS.violetBright, 3.8, 0.28);
         spawnParticles(fx, fy, 20, { color: COLORS.violetBright, speed: 280, spark: true, life: 0.4 });
         spawnParticles(fx, fy, 12, { color: COLORS.ink, speed: 200, grav: 240, life: 0.38 });
-        spawnFloatText(fx, foe.y - 24, '幽影残爆!', COLORS.violetBright, 19, 0.85);
+        spawnFloatText(fx, foe.y - 24, t('combat.shadeBurst'), COLORS.violetBright, 19, 0.85);
       }
     }
   }
@@ -728,7 +760,7 @@ export function updatePlayer(dt) {
     for (let i = 0; i < VOID_BARRIERS.length; i++) {
       if (aabbOverlap(probe, VOID_BARRIERS[i])) {
         G.player.barrierHintCd = 1.2;
-        spawnFloatText(VOID_BARRIERS[i].x + 11, G.player.y - 24, '暗蚀结界 · 需于残钟地窖习得「幽影穿身」', COLORS.violetBright, 16, 1.35);
+        spawnFloatText(VOID_BARRIERS[i].x + 11, G.player.y - 24, t('combat.barrierDashHint'), COLORS.violetBright, 16, 1.35);
         break;
       }
     }
@@ -757,22 +789,25 @@ export function updatePlayer(dt) {
   // Trigger Boss 1 Awakening upon entering Chapel of the Broken Bell
   if (G.boss && G.boss.alive && !G.boss.awake && G.player.x > 2740 && G.player.x < 3760 && G.player.y < 700) {
     G.boss.awake = true;
+    recordBestiaryEvent('boss', 'seen');
     audio.playBellToll();
     addShake(10);
-    triggerBossBanner('断钟骑士 · 晦', '「既已熄灯，何必再扰断钟之寂。」', COLORS.parchment, 2.6);
+    triggerBossBanner(locBoss(G.boss, 'name'), t('boss.hui.awakeQuote'), COLORS.parchment, 2.6);
   }
   // Trigger Boss 2 Awakening upon entering Abyssal Bell Foundry
   if (G.boss2 && G.boss2.alive && !G.boss2.awake && G.player.x > 5650 && G.player.x < 6720 && G.player.y > 880) {
     G.boss2.awake = true;
+    recordBestiaryEvent('boss2', 'seen');
     audio.playBellToll();
     addShake(12);
-    triggerBossBanner('沉渊铸钟师 · 寂', '「以汝残躯，重铸沉渊之声！」', COLORS.goldBright, 2.6);
+    triggerBossBanner(locBoss(G.boss2, 'name'), t('boss.ji.awakeQuote'), COLORS.goldBright, 2.6);
   }
   // Trigger Final Boss Awakening upon entering Heart of the First Bell
   if (G.boss3 && G.boss3.alive && !G.boss3.awake && G.player.x > 8450 && G.player.y < 700) {
     G.boss3.awake = true;
+    recordBestiaryEvent('boss3', 'seen');
     audio.playBellToll();
     addShake(14);
-    triggerBossBanner('初钟圣骸 · 渊', '「凡提灯踏阶者，皆为旧钟余烬。」', COLORS.goldBright, 2.9);
+    triggerBossBanner(locBoss(G.boss3, 'name'), t('boss.yuan.awakeQuote'), COLORS.goldBright, 2.9);
   }
 }

@@ -221,6 +221,7 @@ export const PUDDLES = [];
 export const BANNERS = [];
 export const CANDLE_CLUSTERS = [];
 export const BONE_CAIRNS = [];
+export const STAMPS = [];
 
 export const RELIC_SYNERGIES = [
   {
@@ -372,6 +373,33 @@ export const ROOM_THEMES = {
     mist: [52, 18, 18],
     accent: [253, 224, 71],
     weather: 'snow'
+  },
+  wind: {
+    label: '绝风断塔',
+    skyTop: [10, 18, 30],
+    skyMid: [20, 36, 52],
+    skyBot: [7, 12, 20],
+    mist: [22, 46, 66],
+    accent: [186, 230, 253],
+    weather: 'ash'
+  },
+  forest: {
+    label: '枯墨古林',
+    skyTop: [6, 16, 19],
+    skyMid: [12, 30, 34],
+    skyBot: [4, 10, 12],
+    mist: [14, 38, 42],
+    accent: [110, 231, 183],
+    weather: 'mist'
+  },
+  mountain: {
+    label: '霜骸圣脊',
+    skyTop: [12, 18, 32],
+    skyMid: [26, 36, 56],
+    skyBot: [8, 12, 22],
+    mist: [34, 48, 72],
+    accent: [224, 242, 254],
+    weather: 'snow'
   }
 };
 
@@ -399,7 +427,46 @@ export const SMITH_UPGRADES = [
   }
 ];
 
+export const VOW_CONSTRAINTS = [
+  {
+    id: 'noFlasks',
+    name: '断油之誓',
+    short: '断油',
+    bonusPct: 25,
+    desc: '封印全部灯油瓶（上限锁为 0），仅可借攻击吸血与处决续航 · 残响 +25%'
+  },
+  {
+    id: 'doubleDmg',
+    name: '脆骨之誓',
+    short: '脆骨',
+    bonusPct: 30,
+    desc: '承受的所有常规与首领伤害提升至 180% · 残响 +30%'
+  },
+  {
+    id: 'noGrayBlock',
+    name: '无暇之誓',
+    short: '无暇',
+    bonusPct: 30,
+    desc: '普通格挡不再化为可吸回灰血，失误格挡直接扣除 75% 实血（纯打铁苦难）· 残响 +30%'
+  },
+  {
+    id: 'fierceFoes',
+    name: '狂钟之誓',
+    short: '狂钟',
+    bonusPct: 25,
+    desc: '敌兵与首领架势 +30%，招式衔接与追击节奏加快 18% · 残响 +25%'
+  }
+];
+
+export const DUMMY_MODES = [
+  { id: 'cycle', label: '全招式循环', tip: '轮流演练：金芒斩 → 快慢二连 → 猩红危刺 → 青铜重盾' },
+  { id: 'parryOnly', label: '打铁弹反专练', tip: '循环金芒单斩与快慢二连，专注练习弹反与断钟返' },
+  { id: 'redOnly', label: '危技见切专练', tip: '循环猩红「危」突刺，专注练习 Shift 见切闪避' },
+  { id: 'dormant', label: '静立木桩', tip: '静立承受伤害与连招，测试圣物羁绊、居合与法术爆发' }
+];
+
 export const ENEMY_ECHO_REWARDS = {
+  dummy: 0,
   leech: 22,
   wraith: 28,
   sentinel: 32,

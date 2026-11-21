@@ -6,8 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="screen-orientation" content="landscape" />
 <meta name="x5-orientation" content="landscape" />
-<title>灰钟残誓 v17.4 — 圣物徽章 UI 精修与零卡顿渲染优化 · 终章完整闭环</title>
-<link rel="stylesheet" href="./styles.css?v=17.4" />
+<title>灰钟残誓 v19.0 — 纯程序化水墨画质升级版 · 暗黑手绘魂系类银河恶魔城</title>
+<link rel="stylesheet" href="./styles.css?v=19.0.1" />
 </head>
 <body>
 <div id="game-root">
@@ -20,9 +20,11 @@
         <div class="hp-header">
           <span id="hp-text">100 / 100</span>
           <div style="display:flex;gap:5px;align-items:center;">
-            <span id="ability-tag" class="ability-badge" title="已习得墨翼步：空中可再按 Space 二段跳">墨翼步</span>
-            <span id="ability-shade-tag" class="ability-badge shade" title="已习得幽影穿身：按 Shift 穿透暗蚀结界与敌人并触发残爆">幽影穿身</span>
-            <span id="key-dawn-tag" class="ability-badge dawn" title="持有真结局关键信物「破晓初印」：斩落初钟圣骸后可开启真结局「破晓熄钟」">破晓初印</span>
+            <span id="ability-tag" class="ability-badge" data-i18n="hud.abilityWings" data-i18n-title="hud.abilityWingsTip" title="已习得墨翼步：空中可再按 Space 二段跳">墨翼步</span>
+            <span id="ability-shade-tag" class="ability-badge shade" data-i18n="hud.abilityShade" data-i18n-title="hud.abilityShadeTip" title="已习得幽影穿身：按 Shift 穿透暗蚀结界与敌人并触发残爆">幽影穿身</span>
+            <span id="key-dawn-tag" class="ability-badge dawn" data-i18n="hud.keyDawn" data-i18n-title="hud.keyDawnTip" title="持有真结局关键信物「破晓初印」：斩落初钟圣骸后可开启真结局「破晓熄钟」">破晓初印</span>
+            <span id="blessing-tag" class="ability-badge blessing" data-i18n="hud.blessing" data-i18n-title="hud.blessingTip" title="守灯祝福生效中：魂火自然回复翻倍，承受致命伤时保留 22% 气血并震退敌兵">守灯祝福</span>
+            <span id="vow-cycle-tag" class="ability-badge vow-cycle" data-i18n-title="hud.vowCycleTip" title="当前周目轮回与生效中的钟誓制约"></span>
             <span id="relic-tag" class="relic-badge">噬痛荆棘</span>
           </div>
         </div>
@@ -30,47 +32,55 @@
           <div id="hp-gray" class="hp-gray-fill" style="transform: scaleX(1)"></div>
           <div id="hp-real" class="hp-real-fill" style="transform: scaleX(1)"></div>
         </div>
-        <div class="soul-bar-wrap" title="魂火：平A与弹反回复，按 U 释放幽鸣灵刃(耗30)">
+        <div class="soul-bar-wrap" data-i18n-title="hud.soulTip" title="魂火：平A与弹反回复，按 U 释放幽鸣灵刃(耗30)">
           <div class="soul-bar-frame">
             <div id="soul-fill" class="soul-bar-fill" style="transform: scaleX(1)"></div>
           </div>
           <span id="soul-text" class="soul-text">魂火 100</span>
         </div>
         <div class="resource-row">
-          <div id="flasks-btn" class="flasks-wrap" title="点击饮用灯油回血 [Q/H]">
-            <span>灯油</span>
+          <div id="flasks-btn" class="flasks-wrap" data-i18n-title="hud.flasksTip" title="点击饮用灯油回血 [Q/H]">
+            <span data-i18n="hud.flasks">灯油</span>
             <div id="flask-pips" style="display:flex;gap:4px;"></div>
           </div>
-          <div id="seals-btn" class="seals-wrap" title="点击引爆墨印 [C/L]">
-            <span>墨印</span>
+          <div id="seals-btn" class="seals-wrap" data-i18n-title="hud.sealsTip" title="点击引爆墨印 [C/L]">
+            <span data-i18n="hud.seals">墨印</span>
             <div id="seal-pips" style="display:flex;gap:4px;"></div>
           </div>
-          <div class="echoes-wrap" title="击杀敌兵掉落的残响，可在起点老铸钟匠处淬炼断刃">
+          <div class="echoes-wrap" data-i18n-title="hud.echoesTip" title="击杀敌兵掉落的残响，可在起点老铸钟匠处淬炼断刃">
             <span class="echoes-dot">✦</span><span id="echoes-text">0</span>
           </div>
         </div>
       </div>
 
       <div class="hud-right">
-        <div id="zone-banner" class="zone-banner">沉钟回廊 · 熄灯祭坛</div>
+        <div style="display:flex;align-items:center;gap:8px;"><button id="perf-hud" type="button" class="perf-hud hidden" data-i18n-title="hud.perfTip" title="点击或按 F8 展开/收起分模块性能剖析器">60 FPS</button><div id="zone-banner" class="zone-banner">沉钟回廊 · 熄灯祭坛</div></div>
+        <div id="profiler-drawer" class="profiler-drawer hidden">
+          <div class="prof-head">
+            <span>分模块实时剖析 [F8]</span>
+            <button id="btn-prof-bench" type="button" class="prof-mini-btn">▶ 10秒 A/B 压测 [F9]</button>
+          </div>
+          <canvas id="prof-sparkline" width="236" height="42"></canvas>
+          <div id="prof-stats-grid" class="prof-stats-grid"></div>
+        </div>
         <div class="hud-btn-row">
-          <button id="btn-ctrl" class="hud-btn desktop-only-btn" title="切换键鼠一体 / 纯键盘预设（支持原生手柄即插即用）">操控: 键鼠</button>
-          <button id="btn-mobile-aux" class="hud-btn mobile-only-btn" title="展开/收起弹反与闪避辅键">辅键: 关</button>
-          <button id="btn-fullscreen" class="hud-btn mobile-only-btn" title="切换横屏全屏">全屏</button>
-          <button id="btn-map" class="hud-btn">地图 [M]</button>
-          <button id="btn-help" class="hud-btn">心法</button>
-          <button id="btn-settings" class="hud-btn">设置</button>
-          <button id="btn-mute" class="hud-btn">音效: 开</button>
-          <button id="btn-pause" class="hud-btn mobile-only-btn">暂停</button>
-          <button id="btn-respawn" class="hud-btn">回祭坛</button>
+          <button id="btn-ctrl" class="hud-btn desktop-only-btn" data-i18n-title="hud.ctrlTip" title="切换键鼠一体 / 纯键盘预设（支持原生手柄即插即用）">操控: 键鼠</button>
+          <button id="btn-mobile-aux" class="hud-btn mobile-only-btn" data-i18n-title="hud.auxTip" title="展开/收起弹反与闪避辅键">辅键: 关</button>
+          <button id="btn-fullscreen" class="hud-btn mobile-only-btn" data-i18n="hud.fullscreen" data-i18n-title="hud.fullscreenTip" title="切换横屏全屏">全屏</button>
+          <button id="btn-map" class="hud-btn" data-i18n="hud.map">地图 [M]</button>
+          <button id="btn-help" class="hud-btn" data-i18n="hud.help">心法</button>
+          <button id="btn-settings" class="hud-btn" data-i18n="hud.settings">设置</button>
+          <button id="btn-mute" class="hud-btn" data-i18n="hud.muteOn">音效: 开</button>
+          <button id="btn-pause" class="hud-btn mobile-only-btn" data-i18n="hud.pause">暂停</button>
+          <button id="btn-respawn" class="hud-btn" data-i18n="hud.respawn">回祭坛</button>
         </div>
         <div id="editor-preview-pill" class="editor-preview-pill hidden">
-          <span>编辑器实时试玩中</span>
-          <button id="btn-back-editor" class="hud-btn" style="padding:2px 8px;border-color:var(--gold-bright);color:var(--gold-bright);">返回编辑器</button>
+          <span data-i18n="hud.editorPreview">编辑器实时试玩中</span>
+          <button id="btn-back-editor" class="hud-btn" data-i18n="hud.backEditor" style="padding:2px 8px;border-color:var(--gold-bright);color:var(--gold-bright);">返回编辑器</button>
         </div>
-        <div id="minimap-strip" class="minimap-strip" title="点击或按 M / Tab 展开手绘羊皮纸详图">
+        <div id="minimap-strip" class="minimap-strip" data-i18n-title="hud.minimapTip" title="点击或按 M / Tab 展开手绘羊皮纸详图">
           <div class="minimap-meta">
-            <span>晦渊舆图</span>
+            <span data-i18n="hud.minimapTitle">晦渊舆图</span>
             <span id="explore-pct">探索 0%</span>
           </div>
           <canvas id="minimapCanvas" width="216" height="62"></canvas>
@@ -93,25 +103,33 @@
     </div>
   </div>
 
+  <div id="bench-banner" class="bench-banner hidden">
+    <div id="bench-banner-text" class="bench-banner-text">A/B 战斗压测准备中...</div>
+    <div class="bench-banner-track"><div id="bench-banner-fill" class="bench-banner-fill"></div></div>
+  </div>
+
   <div id="quick-bar" class="quick-bar">
     A/D 移 · Space 跳 · 左键/J 三连·长按居合 · 右键/K 弹反 · F/中键/I 钩索 · R/U 灵刃 · Shift 闪 · C/L 墨印 · Q/H 回血 · E 交互 · M 舆图 · 支持手柄
   </div>
 
   <!-- Title Overlay -->
   <div id="title-screen" class="overlay-screen">
-    <div class="modal-card">
-      <div class="game-title">灰钟残誓</div>
-      <div class="modal-sub">ASHEN BELL VOW · 暗黑手绘魂系类银河恶魔城原型</div>
+    <div class="modal-card title-modal-card">
+      <div class="title-top-bar">
+        <button id="btn-title-lang" type="button" class="title-lang-btn">Lang: 中文 / EN</button>
+      </div>
+      <div class="game-title" data-i18n="game.title">灰钟残誓</div>
+      <div class="modal-sub" data-i18n="game.subtitle">ASHEN BELL VOW · 暗黑手绘魂系类银河恶魔城</div>
       <div class="controls-grid">
-        <div class="ctrl-item"><span>移动 / 蹬墙跳</span><span><span class="keycap">A/D</span> <span class="keycap">Space</span></span></div>
-        <div class="ctrl-item"><span>三连斩 / 长按居合一闪</span><span><span class="keycap">左键 · J</span> / <span class="keycap gold">长按</span></span></div>
-        <div class="ctrl-item"><span>上挑斩 / 空中下劈</span><span><span class="keycap">W+斩</span> / <span class="keycap">S+斩</span></span></div>
-        <div class="ctrl-item"><span>三段弹反 → 派生反击斩</span><span><span class="keycap gold">右键 · K</span> → <span class="keycap gold">斩</span></span></div>
-        <div class="ctrl-item"><span>幽鸣灵刃 / 镇魂钟鸣</span><span><span class="keycap cyan">R · U</span> / <span class="keycap cyan">W+法</span></span></div>
-        <div class="ctrl-item"><span>幽丝钩索 / 双圣物槽</span><span><span class="keycap cyan">F · 中键 · I</span> / <span class="keycap gold">祭坛</span></span></div>
-        <div class="ctrl-item"><span>墨影闪避 / 墨印引爆斩</span><span><span class="keycap">Shift</span> / <span class="keycap gold">C · L</span></span></div>
-        <div class="ctrl-item"><span>灯油回血 / 交互 / 舆图</span><span><span class="keycap cyan">Q · H</span> <span class="keycap">E</span> <span class="keycap">M</span></span></div>
-        <div class="ctrl-item"><span>原生手柄支持</span><span><span class="keycap gold">Xbox / PS 即插即用</span></span></div>
+        <div class="ctrl-item"><span data-i18n="ctrl.moveJump">移动 / 蹬墙跳</span><span><span class="keycap">A/D</span> <span class="keycap">Space</span></span></div>
+        <div class="ctrl-item"><span data-i18n="ctrl.slashIai">三连斩 / 长按居合一闪</span><span><span class="keycap" data-i18n="ctrl.slashIaiKey">左键 · J</span> / <span class="keycap gold" data-i18n="ctrl.holdKey">长按</span></span></div>
+        <div class="ctrl-item"><span data-i18n="ctrl.upDown">上挑斩 / 空中下劈</span><span><span class="keycap" data-i18n="ctrl.upKey">W+斩</span> / <span class="keycap" data-i18n="ctrl.downKey">S+斩</span></span></div>
+        <div class="ctrl-item"><span data-i18n="ctrl.parryRiposte">三段弹反 → 派生反击斩</span><span><span class="keycap gold" data-i18n="ctrl.parryKey">右键 · K</span> → <span class="keycap gold" data-i18n="ctrl.slashShort">斩</span></span></div>
+        <div class="ctrl-item"><span data-i18n="ctrl.spells">幽鸣灵刃 / 镇魂钟鸣</span><span><span class="keycap cyan">R · U</span> / <span class="keycap cyan" data-i18n="ctrl.quakeKey">W+法</span></span></div>
+        <div class="ctrl-item"><span data-i18n="ctrl.grappleRelic">幽丝钩索 / 双圣物槽</span><span><span class="keycap cyan" data-i18n="ctrl.grappleKey">F · 中键 · I</span> / <span class="keycap gold" data-i18n="ctrl.altarKey">祭坛</span></span></div>
+        <div class="ctrl-item"><span data-i18n="ctrl.dashSeal">墨影闪避 / 墨印引爆斩</span><span><span class="keycap">Shift</span> / <span class="keycap gold">C · L</span></span></div>
+        <div class="ctrl-item"><span data-i18n="ctrl.healInteractMap">灯油回血 / 交互 / 舆图</span><span><span class="keycap cyan">Q · H</span> <span class="keycap">E</span> <span class="keycap">M</span></span></div>
+        <div class="ctrl-item"><span data-i18n="ctrl.gamepad">原生手柄支持</span><span><span class="keycap gold" data-i18n="ctrl.gamepadKey">Xbox / PS 即插即用</span></span></div>
       </div>
       <div id="file-protocol-warning" class="file-protocol-warning" style="display:none;">
         <div class="fpw-title">⚠ 检测到本地 file:// 协议直接打开</div>
@@ -124,8 +142,8 @@
       <div id="save-slots-grid" class="save-slots-grid"></div>
       <div id="title-save-info" class="modal-sub" style="margin-bottom:10px;color:var(--cyan-bright);display:none;"></div>
       <div class="modal-btn-row">
-        <button id="btn-continue" class="primary-btn" disabled style="display:none;border-color:var(--cyan-bright);color:var(--cyan-bright);">载入中...</button>
-        <button id="btn-start" class="primary-btn" disabled>正在载入晦渊地图...</button>
+        <button id="btn-continue" class="primary-btn" disabled data-i18n="title.loading" style="display:none;border-color:var(--cyan-bright);color:var(--cyan-bright);">载入中...</button>
+        <button id="btn-start" class="primary-btn" disabled data-i18n="title.loadingMap">正在载入晦渊地图...</button>
       </div>
     </div>
   </div>
@@ -133,152 +151,219 @@
   <!-- Altar / Relic Swap Modal -->
   <div id="altar-modal" class="overlay-screen hidden">
     <div class="modal-card altar-modal-card">
-      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="altar">✕ 返回游戏</button></div>
+      <div class="modal-top-bar modal-top-split">
+        <button id="btn-altar-to-codex" type="button" class="modal-top-link" data-i18n="modal.linkCodex">📜 晦渊残卷 [B]</button>
+        <button type="button" class="modal-top-close" data-close-modal="altar" data-i18n="modal.backGame">✕ 返回游戏</button>
+      </div>
       <div id="altar-modal-title" class="modal-title">熄灯祭坛</div>
-      <div class="modal-sub">灯油与魂火已回满 · 提灯可同时铭刻「主印 + 副印」两枚圣物</div>
+      <div class="modal-sub" data-i18n="altar.sub">灯油与魂火已回满 · 提灯可同时铭刻「主印 + 副印」两枚圣物</div>
       <div id="relic-slots-bar" class="relic-slots-bar"></div>
       <div id="relic-synergy-box" class="relic-synergy-box"></div>
       <div id="relic-list" class="relic-list"></div>
       <div id="altar-warp-row" class="warp-row"></div>
+      <div id="altar-vow-section" class="vow-section"></div>
       <div id="altar-echo-section" class="echo-section"></div>
-      <button id="btn-close-altar" class="primary-btn">起身前行</button>
+      <button id="btn-close-altar" class="primary-btn" data-i18n="altar.close">起身前行</button>
     </div>
   </div>
 
   <!-- Hand-Drawn Parchment Map Modal -->
   <div id="map-modal" class="overlay-screen hidden">
-    <div class="modal-card" style="width: min(680px, 94%);">
-      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="map">✕ 返回</button></div>
-      <div class="modal-title">晦渊舆图</div>
+    <div class="modal-card" style="width: min(740px, 95%);">
+      <div class="modal-top-bar modal-top-split">
+        <button id="btn-map-to-codex" type="button" class="modal-top-link" data-i18n="modal.linkCodex">📜 晦渊残卷 [B]</button>
+        <button type="button" class="modal-top-close" data-close-modal="map" data-i18n="modal.back">✕ 返回</button>
+      </div>
+      <div class="modal-title" data-i18n="map.title">晦渊舆图</div>
       <div id="map-modal-sub" class="modal-sub">沉钟回廊 · 已探索 0% · 已点燃祭坛 1 / 2</div>
+      <div id="map-pin-toolbar" class="map-pin-toolbar"></div>
       <div class="parchment-map-box">
-        <canvas id="fullMapCanvas" width="600" height="230"></canvas>
+        <canvas id="fullMapCanvas" width="640" height="248"></canvas>
       </div>
+      <div id="map-room-detail" class="map-room-detail"></div>
       <div class="map-legend">
-        <span class="legend-item"><span class="legend-dot" style="background:#38bdf8;box-shadow:0 0 6px #38bdf8;"></span>已点燃祭坛</span>
-        <span class="legend-item"><span class="legend-dot" style="background:#64748b;"></span>未点燃祭坛</span>
-        <span class="legend-item"><span class="legend-dot" style="background:#f59e0b;"></span>高空捷径 / 秘密奖励</span>
-        <span class="legend-item"><span class="legend-dot" style="background:#f87171;"></span>首领殿堂</span>
-        <span class="legend-item"><span class="legend-dot" style="background:#a855f7;box-shadow:0 0 6px #a855f7;"></span>暗蚀结界</span>
-        <span class="legend-item"><span class="legend-dot" style="background:#bae6fd;border:1px solid #fde047;"></span>遗落残响灯影</span>
-        <span class="legend-item"><span class="legend-dot" style="background:#ffffff;"></span>当前位置</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#38bdf8;box-shadow:0 0 6px #38bdf8;"></span><span data-i18n="map.legendLit">已点燃祭坛</span></span>
+        <span class="legend-item"><span class="legend-dot" style="background:#64748b;"></span><span data-i18n="map.legendUnlit">未点燃祭坛</span></span>
+        <span class="legend-item"><span class="legend-dot" style="background:#f59e0b;"></span><span data-i18n="map.legendSecret">秘宝 / 捷径</span></span>
+        <span class="legend-item"><span class="legend-dot" style="background:#f87171;"></span><span data-i18n="map.legendBoss">首领殿堂</span></span>
+        <span class="legend-item"><span class="legend-dot" style="background:#a855f7;box-shadow:0 0 6px #a855f7;"></span><span data-i18n="map.legendBarrier">暗蚀结界</span></span>
+        <span class="legend-item"><span class="legend-dot" style="background:#bae6fd;border:1px solid #fde047;"></span><span data-i18n="map.legendLostEcho">遗落残响</span></span>
+        <span class="legend-item"><span class="legend-dot" style="background:#ffffff;"></span><span data-i18n="map.legendPlayer">当前位置</span></span>
       </div>
-      <button id="btn-close-map" class="primary-btn">收起舆图 [M]</button>
+      <button id="btn-close-map" class="primary-btn" data-i18n="map.close">收起舆图 [M]</button>
+    </div>
+  </div>
+
+  <!-- Codex Modal: Lore Tablets, Bestiary & Achievements (晦渊残卷) -->
+  <div id="codex-modal" class="overlay-screen hidden">
+    <div class="modal-card codex-modal-card">
+      <div class="modal-top-bar modal-top-split">
+        <button id="btn-codex-to-map" type="button" class="modal-top-link" data-i18n="modal.linkMap">🗺 晦渊舆图 [M]</button>
+        <button type="button" class="modal-top-close" data-close-modal="codex" data-i18n="modal.back">✕ 返回</button>
+      </div>
+      <div class="modal-title" style="letter-spacing: 6px;" data-i18n="codex.title">晦 渊 残 卷</div>
+      <div id="codex-modal-sub" class="modal-sub">残碑 0/5 · 图鉴 0/10 · 成就 0/14 · 羁绊 0/5</div>
+      <div id="codex-tabs" class="codex-tabs"></div>
+      <div id="codex-body" class="codex-body"></div>
+      <button id="btn-close-codex" class="primary-btn" style="margin-top: 14px;" data-i18n="codex.close">合上残卷 [B]</button>
     </div>
   </div>
 
   <!-- Lore Tablet Modal -->
   <div id="lore-modal" class="overlay-screen hidden">
     <div class="modal-card">
-      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="lore">✕ 返回</button></div>
+      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="lore" data-i18n="modal.back">✕ 返回</button></div>
       <div id="lore-modal-title" class="modal-title">风化残碑</div>
       <div id="lore-modal-sub" class="modal-sub">枯骨长廊 · 高台铭文</div>
       <div id="lore-modal-body" class="lore-text"></div>
-      <button id="btn-close-lore" class="primary-btn">收起残碑</button>
+      <button id="btn-close-lore" class="primary-btn" data-i18n="lore.close">收起残碑</button>
     </div>
   </div>
 
   <!-- Controls Help Modal -->
   <div id="help-modal" class="overlay-screen hidden">
     <div class="modal-card">
-      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="help">✕ 返回</button></div>
-      <div class="modal-title">战斗心法</div>
-      <div class="modal-sub">三段弹反 · 居合一闪 · 幽鸣灵刃 · 幽丝钩索 · 墨印处决</div>
-      <div id="help-modal-body" class="lore-text" style="border-left-color: var(--gold); font-size: 13.5px;">
-        <strong>1. 立体断刃剑技 [J]</strong>：轻按三连（上挑 → 横扫 → 踏步重劈）；<strong>长按 [J]</strong> 沉身收刀蓄力，金芒闪现后松开释放贯穿<strong>「居合 · 一闪」</strong>；配合 <strong>[W+J]</strong> 上挑斩、空中 <strong>[S+J]</strong> 踩头与悬灯下劈弹跳。<br>
-        <strong>2. 幽鸣灵刃 [U] &amp; 幽丝钩索 [I / F / 右键]</strong>：挥刀与弹反回复魂火，按 <strong>[U]</strong> 耗 30 魂火发射穿透灵刃（命中悬灯可触发<strong>「灯鸣震荡」</strong>范围爆发）；对准带准星的悬灯、铜钩环或敌人按 <strong>[I / F / 右键]</strong> 高速钩跃，钩中悬灯可翻跃并刷新闪避！<br>
-        <strong>3. 精准弹反 [K] &amp; 识破反击 [K → J]</strong>：0–140ms 完美弹反零伤打铁（可反弹怨灵火球！）并攒墨印；弹反后 0.5 秒内按 <strong>[J]</strong> 派生<strong>「断钟返 · 十字反击斩」</strong>，双倍吸血狂削架势。<br>
-        <strong>4. 普通格挡与红光「危」</strong>：140–260ms 普通格挡化为内伤灰血，平 A 可吸回实血；猩红「危」技不可弹反，需按 <strong>[Shift]</strong> 闪避或钩索飞跃。<br>
-        <strong>5. 墨印引爆 [L] 与处决 [J]</strong>：攒墨印后按 <strong>[L]</strong> 突刺贴符引爆；敌方架势崩溃跪地时，近身按 <strong>[J]</strong> 触发黑白反色处决！
-      </div>
-      <button id="btn-close-help" class="primary-btn">继续战斗</button>
+      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="help" data-i18n="modal.back">✕ 返回</button></div>
+      <div class="modal-title" data-i18n="help.title">战斗心法</div>
+      <div class="modal-sub" data-i18n="help.sub">三段弹反 · 居合一闪 · 幽鸣灵刃 · 幽丝钩索 · 墨印处决</div>
+      <div id="help-modal-body" class="lore-text" style="border-left-color: var(--gold); font-size: 13.5px;"></div>
+      <button id="btn-close-help" class="primary-btn" data-i18n="help.close">继续战斗</button>
     </div>
   </div>
 
   <!-- Blind Old Bellsmith Forge Modal -->
   <div id="smith-modal" class="overlay-screen hidden">
     <div class="modal-card" style="width: min(620px, 94%);">
-      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="smith">✕ 返回</button></div>
+      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="smith" data-i18n="modal.back">✕ 返回</button></div>
       <div id="smith-modal-title" class="modal-title">盲眼老铸钟匠 · 砺</div>
-      <div class="modal-sub">熄灯铁砧 · 以击杀强敌所得「残响」淬炼断刃与魂炉</div>
+      <div class="modal-sub" data-i18n="smith.sub">熄灯铁砧 · 以击杀强敌所得「残响」淬炼断刃与魂炉</div>
       <div id="smith-dialogue" class="lore-text" style="border-left-color:var(--gold);margin-bottom:12px;"></div>
       <div id="smith-echo-bar" class="smith-echo-bar"></div>
       <div id="smith-upgrade-list" class="smith-upgrade-list"></div>
-      <button id="btn-close-smith" class="primary-btn">收刃告辞</button>
+      <button id="btn-close-smith" class="primary-btn" data-i18n="smith.close">收刃告辞</button>
+    </div>
+  </div>
+
+  <!-- Side-Quest NPC Modal (游方拾碑客 · 墨尘 / 旧誓守灯人 · 汐) -->
+  <div id="npc-modal" class="overlay-screen hidden">
+    <div class="modal-card" style="width: min(660px, 95%);">
+      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="npc" data-i18n="modal.farewell">✕ 告辞</button></div>
+      <div id="npc-modal-title" class="modal-title">游方拾碑客 · 墨尘</div>
+      <div id="npc-modal-sub" class="modal-sub">沉渊钟井 · 井中悬坛</div>
+      <div id="npc-dialogue" class="lore-text" style="border-left-color:var(--cyan);margin-bottom:12px;"></div>
+      <div id="npc-echo-bar" class="smith-echo-bar"></div>
+      <div id="npc-quest-list" class="smith-upgrade-list"></div>
+      <button id="btn-close-npc" class="primary-btn" data-i18n="npc.close">拱手告辞</button>
     </div>
   </div>
 
   <!-- Settings, Assist Mode & Custom Keybinds Modal -->
   <div id="settings-modal" class="overlay-screen hidden">
     <div class="modal-card" style="width: min(640px, 94%);">
-      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="settings">✕ 返回</button></div>
-      <div class="modal-title">设置与护道辅助</div>
-      <div class="modal-sub">辅助难度微调 · 手柄双马达震动 · 键盘自定义改键</div>
+      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="settings" data-i18n="modal.back">✕ 返回</button></div>
+      <div class="modal-title" data-i18n="settings.title">设置与护道辅助</div>
+      <div class="modal-sub" data-i18n="settings.sub">界面语言 · 辅助难度微调 · 手柄双马达震动 · 键盘自定义改键</div>
       <div class="settings-section">
-        <div class="settings-sec-title">语言、护道辅助 &amp; 外设反馈</div>
+        <div class="settings-sec-title" data-i18n="settings.secAudio">语言、护道辅助 &amp; 外设反馈</div>
         <div class="settings-row">
-          <span>界面语言 (Language)</span>
+          <span data-i18n="settings.lang">界面语言 (Language)</span>
           <div class="seg-group">
             <button id="btn-lang-zh" class="seg-btn active">简体中文</button>
             <button id="btn-lang-en" class="seg-btn">English</button>
           </div>
         </div>
         <div class="settings-row">
-          <span>弹反判定窗口</span>
+          <span data-i18n="settings.parryWin">弹反判定窗口</span>
           <div id="assist-parry-group" class="seg-group"></div>
         </div>
         <div class="settings-row">
-          <span>承受伤害倍率</span>
+          <span data-i18n="settings.dmgMult">承受伤害倍率</span>
           <div id="assist-dmg-group" class="seg-group"></div>
         </div>
         <div class="settings-row">
-          <span>主音量 (Master)</span>
+          <span data-i18n="settings.masterVol">主音量 (Master)</span>
           <div class="vol-slider-wrap"><input id="vol-master" class="vol-slider" type="range" min="0" max="100" step="5" value="85" /><span id="vol-master-val" class="vol-val">85%</span></div>
         </div>
         <div class="settings-row">
-          <span>背景配乐 (D 弗里吉亚)</span>
+          <span data-i18n="settings.musicVol">背景配乐 (D 弗里吉亚)</span>
           <div class="vol-slider-wrap"><input id="vol-music" class="vol-slider" type="range" min="0" max="100" step="5" value="75" /><span id="vol-music-val" class="vol-val">75%</span><button id="btn-music-toggle" class="seg-btn active">开</button></div>
         </div>
         <div class="settings-row">
-          <span>战斗与环境音效 (SFX)</span>
+          <span data-i18n="settings.sfxVol">战斗与环境音效 (SFX)</span>
           <div class="vol-slider-wrap"><input id="vol-sfx" class="vol-slider" type="range" min="0" max="100" step="5" value="90" /><span id="vol-sfx-val" class="vol-val">90%</span></div>
         </div>
         <div class="settings-row">
-          <span>提灯动态阴影与体积光</span>
+          <span data-i18n="settings.biomeAmbience">房间生态交叉音景</span>
+          <span id="settings-biome-ambience" class="biome-audio-pill">熄灯冷风 · 远钟余响</span>
+        </div>
+        <div class="settings-row">
+          <span data-i18n="settings.lightingRow">提灯动态阴影与体积光</span>
           <div class="seg-group">
             <button id="btn-lighting-toggle" class="seg-btn active">动态光影: 标准</button>
+            <button id="btn-perf-toggle" class="seg-btn">帧率监测: 关</button>
           </div>
         </div>
         <div class="settings-row">
-          <span>手柄双马达震动</span>
+          <span id="fps-hz-label">帧率整数分频 (高刷屏防抖)</span>
+          <div id="fps-cap-group" class="seg-group"></div>
+        </div>
+        <div class="settings-row">
+          <span data-i18n="settings.hitstopRow">打击顿帧强度 (Hitstop)</span>
+          <div id="hitstop-mode-group" class="seg-group"></div>
+        </div>
+        <div class="settings-row">
+          <span data-i18n="settings.benchRow">自动化性能诊断 (2×2 控制变量)</span>
+          <div class="seg-group">
+            <button id="btn-run-bench" class="seg-btn active" data-i18n="settings.benchRun">▶ 运行 10秒 A/B 战斗压测 [F9]</button>
+            <button id="btn-view-bench-report" class="seg-btn" data-i18n="settings.benchLast">上次报告</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span data-i18n="settings.haptics">手柄双马达震动</span>
           <div class="seg-group">
             <button id="btn-haptics-toggle" class="seg-btn active">震动: 开</button>
-            <button id="btn-test-haptic" class="seg-btn">测试震动</button>
+            <button id="btn-test-haptic" class="seg-btn" data-i18n="settings.testHaptic">测试震动</button>
           </div>
         </div>
       </div>
       <div class="settings-section desktop-only-sec">
         <div class="settings-sec-title">
-          <span>自定义键盘按键（点击键帽后按新键录入，Esc 取消）</span>
-          <button id="btn-reset-keys" class="seg-btn">恢复默认</button>
+          <span data-i18n="settings.secKeys">自定义键盘按键（点击键帽后按新键录入，Esc 取消）</span>
+          <button id="btn-reset-keys" class="seg-btn" data-i18n="settings.resetKeys">恢复默认</button>
         </div>
         <div id="keybind-grid" class="keybind-grid"></div>
       </div>
-      <button id="btn-close-settings" class="primary-btn">保存并返回</button>
+      <button id="btn-close-settings" class="primary-btn" data-i18n="settings.saveClose">保存并返回</button>
+    </div>
+  </div>
+
+  <!-- 10-Second 4-Group A/B Benchmark Report Modal -->
+  <div id="bench-modal" class="overlay-screen hidden">
+    <div class="modal-card" style="width: min(780px, 96%);">
+      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="bench" data-i18n="modal.close">✕ 关闭</button></div>
+      <div class="modal-title" style="color: var(--cyan-bright); letter-spacing: 4px;" data-i18n="bench.title">A/B 战斗压测报告</div>
+      <div id="bench-modal-sub" class="modal-sub" data-i18n="bench.sub">4 组控制变量对比（标准/轻量光影 × 音效开/关）</div>
+      <div id="bench-report-body" class="bench-report-body"></div>
+      <div class="modal-btn-row" style="margin-top: 14px;">
+        <button id="btn-bench-copy" type="button" class="primary-btn" data-i18n="bench.copy" style="border-color:var(--cyan-bright);color:var(--cyan-bright);">复制完整文本报告</button>
+        <button id="btn-bench-rerun" type="button" class="primary-btn" data-i18n="bench.rerun">重跑 10 秒压测</button>
+        <button id="btn-close-bench" type="button" class="hud-btn" data-i18n="bench.close" style="padding:10px 18px;">关闭并返回</button>
+      </div>
     </div>
   </div>
 
   <!-- Pause Modal (Esc / Gamepad Start) -->
   <div id="pause-modal" class="overlay-screen hidden">
     <div class="modal-card" style="width: min(420px, 92%);">
-      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="pause">✕ 继续</button></div>
-      <div class="modal-title" style="letter-spacing: 8px;">残 誓 暂 歇</div>
+      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="pause" data-i18n="modal.resumeShort">✕ 继续</button></div>
+      <div class="modal-title" style="letter-spacing: 8px;" data-i18n="pause.title">残 誓 暂 歇</div>
       <div id="pause-slot-sub" class="modal-sub">档案 1 · 探索 0%</div>
       <div class="pause-menu-list">
-        <button id="btn-pause-resume" class="primary-btn">继续前行</button>
-        <button id="btn-pause-settings" class="primary-btn" style="border-color:rgba(216,207,184,0.5);color:var(--parchment);">设置与音频</button>
-        <button id="btn-pause-respawn" class="primary-btn" style="border-color:rgba(56,189,248,0.55);color:var(--cyan-bright);">返回最近祭坛</button>
-        <button id="btn-pause-title" class="primary-btn" style="border-color:rgba(248,113,113,0.55);color:var(--crimson-bright);">保存并返回标题</button>
+        <button id="btn-pause-resume" class="primary-btn" data-i18n="pause.resume">继续前行</button>
+        <button id="btn-pause-codex" class="primary-btn" data-i18n="pause.codex" style="border-color:var(--gold);color:var(--gold-bright);">晦渊残卷 · 图鉴与成就</button>
+        <button id="btn-pause-settings" class="primary-btn" data-i18n="pause.settings" style="border-color:rgba(216,207,184,0.5);color:var(--parchment);">设置与音频</button>
+        <button id="btn-pause-respawn" class="primary-btn" data-i18n="pause.respawn" style="border-color:rgba(56,189,248,0.55);color:var(--cyan-bright);">返回最近祭坛</button>
+        <button id="btn-pause-title" class="primary-btn" data-i18n="pause.titleBtn" style="border-color:rgba(248,113,113,0.55);color:var(--crimson-bright);">保存并返回标题</button>
       </div>
     </div>
   </div>
@@ -286,11 +371,11 @@
   <!-- Death Modal -->
   <div id="death-modal" class="overlay-screen hidden">
     <div class="modal-card">
-      <div class="modal-title" style="color: var(--crimson-bright); letter-spacing: 8px;">灯 火 熄 灭</div>
-      <div id="death-sub" class="modal-sub">残破人偶坠入墨蚀深渊</div>
+      <div class="modal-title" style="color: var(--crimson-bright); letter-spacing: 8px;" data-i18n="death.title">灯 火 熄 灭</div>
+      <div id="death-sub" class="modal-sub" data-i18n="death.sub">残破人偶坠入墨蚀深渊</div>
       <div class="modal-btn-row">
-        <button id="btn-retry-echo" class="primary-btn" style="display:none;border-color:var(--gold-bright);color:var(--gold-bright);">再战回响</button>
-        <button id="btn-retry" class="primary-btn">于祭坛重燃</button>
+        <button id="btn-retry-echo" class="primary-btn" data-i18n="death.retryEcho" style="display:none;border-color:var(--gold-bright);color:var(--gold-bright);">再战回响</button>
+        <button id="btn-retry" class="primary-btn" data-i18n="death.retry">于祭坛重燃</button>
       </div>
     </div>
   </div>
@@ -302,9 +387,9 @@
       <div id="victory-sub" class="modal-sub">断钟骑士 · 晦 已被斩落 · 礼拜堂东侧青铜封门已开启</div>
       <div id="victory-stats" class="lore-text" style="border-left-color: var(--gold-bright); text-align:center; white-space: pre-line;"></div>
       <div class="modal-btn-row">
-        <button id="btn-echo-again" class="primary-btn" style="display:none;border-color:var(--gold-bright);color:var(--gold-bright);">再战回响</button>
+        <button id="btn-echo-again" class="primary-btn" data-i18n="victory.echoAgain" style="display:none;border-color:var(--gold-bright);color:var(--gold-bright);">再战回响</button>
         <button id="btn-enter-well" class="primary-btn" style="border-color: var(--cyan-bright); color: var(--cyan-bright);">踏入沉渊钟井 →</button>
-        <button id="btn-play-again" class="primary-btn">重开新周目</button>
+        <button id="btn-play-again" class="primary-btn" data-i18n="victory.playAgain">重开新周目</button>
       </div>
     </div>
   </div>
@@ -312,23 +397,23 @@
   <!-- Finale Choice Modal (Heart of the First Bell) -->
   <div id="ending-choice-modal" class="overlay-screen hidden">
     <div class="modal-card" style="width: min(660px, 94%);">
-      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="ending-choice">✕ 暂缓抉择</button></div>
-      <div class="modal-title" style="color: var(--gold-bright); letter-spacing: 6px;">初 钟 之 心 · 终 誓 抉 择</div>
-      <div class="modal-sub">初钟圣骸 · 渊 已被斩落 · 晦渊的永夜或晨曦悬于你的一念之间</div>
+      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="ending-choice" data-i18n="modal.deferShort">✕ 暂缓抉择</button></div>
+      <div class="modal-title" style="color: var(--gold-bright); letter-spacing: 6px;" data-i18n="endChoice.title">初 钟 之 心 · 终 誓 抉 择</div>
+      <div class="modal-sub" data-i18n="endChoice.sub">初钟圣骸 · 渊 已被斩落 · 晦渊的永夜或晨曦悬于你的一念之间</div>
       <div class="ending-choice-grid">
         <button id="btn-ending-vow" type="button" class="ending-card">
-          <div class="ending-card-tag">普通结局 A</div>
-          <div class="ending-card-title">续 鸣 残 誓</div>
-          <div class="ending-card-desc">拾起断钟杵，以己身提灯魂火续接永夜初钟。墨蚀暂退，而你将取代渊，成为下一代沉默的守誓者。</div>
+          <div class="ending-card-tag" data-i18n="endChoice.tagA">普通结局 A</div>
+          <div class="ending-card-title" data-i18n="endChoice.titleA">续 鸣 残 誓</div>
+          <div class="ending-card-desc" data-i18n="endChoice.descA">拾起断钟杵，以己身提灯魂火续接永夜初钟。墨蚀暂退，而你将取代渊，成为下一代沉默的守誓者。</div>
         </button>
         <button id="btn-ending-dawn" type="button" class="ending-card dawn">
           <div class="ending-card-tag" id="ending-dawn-tag">真结局 B · 需破晓初印</div>
-          <div class="ending-card-title">破 晓 熄 钟</div>
+          <div class="ending-card-title" data-i18n="endChoice.titleB">破 晓 熄 钟</div>
           <div class="ending-card-desc" id="ending-dawn-desc">以「破晓初印」共鸣断刃，一剑斩碎千年初钟本体，令漫天墨蚀化作晨雾消散，终结永夜轮回。</div>
         </button>
       </div>
       <div class="modal-btn-row">
-        <button id="btn-ending-defer" type="button" class="primary-btn" style="border-color:rgba(216,207,184,0.48);color:var(--parchment);">暂缓抉择 · 继续探索</button>
+        <button id="btn-ending-defer" type="button" class="primary-btn" data-i18n="endChoice.defer" style="border-color:rgba(216,207,184,0.48);color:var(--parchment);">暂缓抉择 · 继续探索</button>
       </div>
     </div>
   </div>
@@ -344,13 +429,14 @@
       <div id="ending-act-text" class="lore-text ending-caption"></div>
       <div id="ending-epilogue-stats" class="lore-text" style="display:none;border-left-color:var(--gold-bright);text-align:center;white-space:pre-line;"></div>
       <div id="ending-act-controls" class="modal-btn-row">
-        <button id="btn-ending-next" type="button" class="primary-btn">下一幕 →</button>
-        <button id="btn-ending-skip" type="button" class="hud-btn" style="padding:10px 16px;">跳过演出</button>
+        <button id="btn-ending-next" type="button" class="primary-btn" data-i18n="ending.nextAct">下一幕 →</button>
+        <button id="btn-ending-skip" type="button" class="hud-btn" data-i18n="ending.skip" style="padding:10px 16px;">跳过演出</button>
       </div>
       <div id="ending-epilogue-controls" class="modal-btn-row" style="display:none;">
-        <button id="btn-ending-to-altar" type="button" class="primary-btn" style="border-color:var(--cyan-bright);color:var(--cyan-bright);">返回祭坛 · 挑战三钟终试</button>
-        <button id="btn-ending-keep-roam" type="button" class="primary-btn">重返圣心 · 继续探索</button>
-        <button id="btn-ending-new-run" type="button" class="hud-btn" style="padding:10px 16px;">重开新周目</button>
+        <button id="btn-ending-ngplus" type="button" class="primary-btn" style="border-color:var(--gold-bright);color:var(--gold-bright);">踏入残誓轮回 · 第 2 周目 (NG+)</button>
+        <button id="btn-ending-to-altar" type="button" class="primary-btn" data-i18n="ending.toAltar" style="border-color:var(--cyan-bright);color:var(--cyan-bright);">返回祭坛 · 挑战三钟终试</button>
+        <button id="btn-ending-keep-roam" type="button" class="hud-btn" data-i18n="ending.keepRoam" style="padding:10px 16px;">重返圣心继续探索</button>
+        <button id="btn-ending-new-run" type="button" class="hud-btn" data-i18n="ending.newRun" style="padding:10px 14px;opacity:0.78;">清空重开一周目</button>
       </div>
     </div>
   </div>
@@ -358,7 +444,7 @@
   <!-- Mobile Landscape Touch Controls: Left 360° Joystick + Right 4-Button Fan -->
   <div id="touch-controls">
     <!-- Bottom-Left Virtual Joystick -->
-    <div id="joystick-zone" class="joystick-zone" aria-label="方向摇杆">
+    <div id="joystick-zone" class="joystick-zone" data-i18n-aria="mob.joyAria" aria-label="方向摇杆">
       <div id="joystick-base" class="joystick-base">
         <span class="joy-dir joy-up" data-dir="up">▲</span>
         <span class="joy-dir joy-down" data-dir="down">▼</span>
@@ -370,33 +456,33 @@
     </div>
 
     <!-- Contextual Interact Pill (appears only near Altar / Lore / Lever) -->
-    <button id="mobile-interact-btn" class="mobile-interact-btn t-btn hidden" data-key="KeyE">交互</button>
+    <button id="mobile-interact-btn" class="mobile-interact-btn t-btn hidden" data-key="KeyE" data-i18n="mob.interact">交互</button>
 
     <!-- Optional Auxiliary Parry/Dash Pills (toggled via top bar 辅键) -->
     <div id="mobile-aux-controls" class="mobile-aux-controls hidden">
-      <button class="t-btn aux-btn aux-parry" data-key="KeyK">弹反</button>
-      <button class="t-btn aux-btn aux-dash" data-key="ShiftLeft">闪避</button>
+      <button class="t-btn aux-btn aux-parry" data-key="KeyK" data-i18n="mob.parry">弹反</button>
+      <button class="t-btn aux-btn aux-dash" data-key="ShiftLeft" data-i18n="mob.dash">闪避</button>
     </div>
 
     <!-- Bottom-Right 4-Button Fan Arc: 跳跃 / 钩锁 / 普攻 / 法术 -->
-    <div id="action-fan" class="action-fan" aria-label="动作扇形按键">
+    <div id="action-fan" class="action-fan" data-i18n-aria="mob.fanAria" aria-label="动作扇形按键">
       <svg class="fan-arc-svg" viewBox="0 0 200 200" aria-hidden="true">
         <path d="M 52 166 A 110 110 0 0 1 164 52" fill="none" stroke="rgba(216, 207, 184, 0.22)" stroke-width="1.5" stroke-dasharray="4 5" />
         <path d="M 88 164 A 72 72 0 0 1 164 88" fill="none" stroke="rgba(245, 158, 11, 0.16)" stroke-width="1" />
       </svg>
       <button id="fan-jump" class="t-btn fan-btn fan-jump" data-key="Space">
-        <span class="fan-label">跳跃</span>
+        <span class="fan-label" data-i18n="mob.jump">跳跃</span>
       </button>
       <button id="fan-spell" class="t-btn fan-btn fan-spell" data-key="KeyU">
-        <span class="fan-label">法术</span>
-        <span id="fan-spell-sub" class="fan-sub">灵刃</span>
+        <span class="fan-label" data-i18n="mob.spell">法术</span>
+        <span id="fan-spell-sub" class="fan-sub" data-i18n="mob.spellBlade">灵刃</span>
       </button>
       <button id="fan-grapple" class="t-btn fan-btn fan-grapple" data-key="KeyI">
-        <span class="fan-label">钩锁</span>
+        <span class="fan-label" data-i18n="mob.grapple">钩锁</span>
       </button>
       <button id="fan-attack" class="t-btn fan-btn fan-attack" data-key="KeyJ">
-        <span class="fan-label">普攻</span>
-        <span class="fan-sub">长按居合</span>
+        <span class="fan-label" data-i18n="mob.attack">普攻</span>
+        <span class="fan-sub" data-i18n="mob.attackHold">长按居合</span>
       </button>
     </div>
   </div>
@@ -405,6 +491,8 @@
 (function () {
   var box = document.getElementById('file-protocol-warning');
   var btn = document.getElementById('btn-start');
+  var isEnBoot = false;
+  try { isEnBoot = window.localStorage.getItem('ashen_bell_vow_locale_v15') === 'en-US'; } catch (e) {}
   function showDiag(title, bodyHtml, btnText) {
     if (!box) return;
     box.innerHTML =
@@ -425,23 +513,24 @@
 
   if (window.location.protocol === 'file:') {
     showDiag(
-      '⚠ 检测到本地 file:// 协议直接打开',
-      '浏览器安全策略（CORS）会拦截 <code>file://</code> 下加载 ES Modules 脚本。<br>' +
-      '<strong>本地试玩：</strong>双击目录中的 <code>start_game.bat</code>（Windows）或运行 <code>./start_game.sh</code>（macOS / Linux），或运行 <code>python serve_local.py</code>。<br>' +
-      '<strong>线上部署：</strong>直接上传至 GitHub Pages（HTTPS）即可零配置游玩。',
-      '请通过本地服务启动'
+      isEnBoot ? '⚠ Opened directly via local file:// protocol' : '⚠ 检测到本地 file:// 协议直接打开',
+      isEnBoot
+        ? 'Browser CORS policy blocks ES Modules under <code>file://</code>.<br><strong>Local Play:</strong> Run <code>start_game.bat</code> (Windows), <code>./start_game.sh</code> (macOS/Linux), or <code>python serve_local.py</code>.<br><strong>Online:</strong> Host on GitHub Pages (HTTPS) with zero config.'
+        : '浏览器安全策略（CORS）会拦截 <code>file://</code> 下加载 ES Modules 脚本。<br><strong>本地试玩：</strong>双击目录中的 <code>start_game.bat</code>（Windows）或运行 <code>./start_game.sh</code>（macOS / Linux），或运行 <code>python serve_local.py</code>。<br><strong>线上部署：</strong>直接上传至 GitHub Pages（HTTPS）即可零配置游玩。',
+      isEnBoot ? 'Launch via local server' : '请通过本地服务启动'
     );
     return;
   }
 
   window.addEventListener('error', function (e) {
     if (window.__ABV_BOOTED__) return;
-    var msg = (e && e.message) ? e.message : '未知模块加载异常';
+    var msg = (e && e.message) ? e.message : (isEnBoot ? 'Unknown module error' : '未知模块加载异常');
     showDiag(
-      '⚠ 模块启动失败',
-      '脚本运行时报错：<code>' + String(msg).replace(/</g, '&lt;') + '</code><br>' +
-      '请按 <code>F12</code> 打开控制台查看详情，或确认使用本目录的 <code>start_game.bat</code> / <code>python serve_local.py</code> 启动。',
-      '查看上方错误提示'
+      isEnBoot ? '⚠ Module Startup Failed' : '⚠ 模块启动失败',
+      (isEnBoot
+        ? 'Runtime error: <code>' + String(msg).replace(/</g, '&lt;') + '</code><br>Press <code>F12</code> to inspect console, or launch via <code>start_game.bat</code> / <code>python serve_local.py</code>.'
+        : '脚本运行时报错：<code>' + String(msg).replace(/</g, '&lt;') + '</code><br>请按 <code>F12</code> 打开控制台查看详情，或确认使用本目录的 <code>start_game.bat</code> / <code>python serve_local.py</code> 启动。'),
+      isEnBoot ? 'See notice above' : '查看上方错误提示'
     );
   });
 
@@ -450,21 +539,24 @@
     var isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
     if (isLocal) {
       showDiag(
-        '⚠ 本地服务未正确返回 ES Modules 脚本',
-        '最常见原因是 Windows 注册表将 <code>.js</code> 的 MIME 类型设为了 <code>text/plain</code>，导致原生 <code>python -m http.server</code> 被浏览器拒载。<br>' +
-        '<strong>解决方法：</strong>请使用本目录内置的 <code>start_game.bat</code> 或执行 <code>python serve_local.py</code> 启动（已强制修正 <code>.js</code> 为 <code>text/javascript</code>），然后刷新页面。',
-        '请使用 serve_local.py 启动'
+        isEnBoot ? '⚠ Local server did not serve ES Modules correctly' : '⚠ 本地服务未正确返回 ES Modules 脚本',
+        isEnBoot
+          ? 'Most commonly, Windows Registry sets <code>.js</code> MIME type to <code>text/plain</code>.<br><strong>Fix:</strong> Launch with <code>start_game.bat</code> or <code>python serve_local.py</code> (which forces <code>text/javascript</code>) and refresh.'
+          : '最常见原因是 Windows 注册表将 <code>.js</code> 的 MIME 类型设为了 <code>text/plain</code>，导致原生 <code>python -m http.server</code> 被浏览器拒载。<br><strong>解决方法：</strong>请使用本目录内置的 <code>start_game.bat</code> 或执行 <code>python serve_local.py</code> 启动（已强制修正 <code>.js</code> 为 <code>text/javascript</code>），然后刷新页面。',
+        isEnBoot ? 'Use serve_local.py' : '请使用 serve_local.py 启动'
       );
     } else {
       showDiag(
-        '⚠ 移动端网络加载较慢，请稍候或刷新重试',
-        '当前网络环境下脚本仍在下载中；若长时间未响应，请点击右上角刷新页面或切换更稳定的网络后重试。',
+        isEnBoot ? '⚠ Slow network detected — please wait or refresh' : '⚠ 移动端网络加载较慢，请稍候或刷新重试',
+        isEnBoot
+          ? 'Scripts are still downloading. If this persists, refresh the page or switch to a steadier connection.'
+          : '当前网络环境下脚本仍在下载中；若长时间未响应，请点击右上角刷新页面或切换更稳定的网络后重试。',
         null
       );
     }
   }, 8000);
 })();
 </script>
-<script type="module" src="./src/main.js?v=17.4"></script>
+<script type="module" src="./src/main.js?v=19.0.1"></script>
 </body>
 </html>

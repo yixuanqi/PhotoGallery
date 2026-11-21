@@ -4,10 +4,12 @@ import {
   SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF,
   SECRET_WALLS_DEF, VOID_BARRIERS, PICKUPS_DEF, RESONANCE_PUZZLES_DEF, CRUMBLE_PLATFORMS_DEF,
   PENDULUMS, ABYSSAL_RIVERS, ABYSSAL_RIVER, WALL_INSCRIPTIONS, GRAPPLE_ANCHORS,
-  LANTERNS_DEF, ENEMIES_DEF, BOSSES_DEF, PUDDLES, BANNERS, CANDLE_CLUSTERS, BONE_CAIRNS,
+  LANTERNS_DEF, ENEMIES_DEF, BOSSES_DEF, PUDDLES, BANNERS, CANDLE_CLUSTERS, BONE_CAIRNS, STAMPS,
   PREVIEW_STORAGE_KEY, setWorldMetrics
 } from './config.js';
 import { G } from './state.js';
+import { t, locZoneName, locRoomName, locSubZone } from './i18n.js';
+import { invalidateTerrainCache } from './renderTerrain.js';
 
 function resetArray(arr) {
   arr.length = 0;
@@ -31,7 +33,7 @@ export function getPreviewSpawnRoomId() {
 
 export function hydrateWorldBundle(bundle) {
   if (!bundle || !bundle.world || !Array.isArray(bundle.rooms)) {
-    throw new Error('无效的世界/房间 JSON 数据结构');
+    throw new Error(t('err.invalidBundle'));
   }
   const { world, rooms } = bundle;
 
@@ -56,6 +58,7 @@ export function hydrateWorldBundle(bundle) {
   resetArray(BANNERS);
   resetArray(CANDLE_CLUSTERS);
   resetArray(BONE_CAIRNS);
+  resetArray(STAMPS);
 
   // Reset gate widths so removed gates do not leave phantom collisions
   SHORTCUT_GATE_DEF.w = 0;
@@ -287,6 +290,14 @@ export function hydrateWorldBundle(bundle) {
     for (const bx of (props.boneCairns || [])) {
       BONE_CAIRNS.push(ox + bx);
     }
+    for (const st of (props.stamps || [])) {
+      STAMPS.push({
+        ...st,
+        x: ox + (Number(st.x) || 0),
+        y: oy + (Number(st.y) || 0),
+        roomId: room.id
+      });
+    }
   }
 
   // Mark adjacent ground slabs so room boundaries render seamlessly with zero false cliff seams
@@ -313,6 +324,7 @@ export function hydrateWorldBundle(bundle) {
   }
 
   setWorldMetrics(maxW, maxH, world.floorY || 580, world.wellBottomY || 1380);
+  invalidateTerrainCache();
   G.levelBundle = bundle;
   G.exploreDirty = true;
   G.minimapDirty = true;
@@ -341,7 +353,7 @@ export async function loadWorldData() {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         const resp = await fetch(url, { cache: 'no-cache' });
-        if (!resp.ok) throw new Error(`加载 ${url} 失败 (HTTP ${resp.status})`);
+        if (!resp.ok) throw new Error(t('err.fetchFail', url, resp.status));
         return await resp.json();
       } catch (err) {
         lastErr = err;
@@ -354,7 +366,7 @@ export async function loadWorldData() {
   // 2. Fetch data/world.json and all room JSON files concurrently with mobile retry
   const world = await fetchJsonWithRetry('./data/world.json', 2);
   if (!world || !Array.isArray(world.rooms) || world.rooms.length === 0) {
-    throw new Error('data/world.json 缺少有效的 rooms 房间清单');
+    throw new Error(t('err.noRooms'));
   }
 
   const rooms = await Promise.all(
@@ -389,18 +401,18 @@ export function getRoomAt(x, y) {
 
 export function getZoneLabelAt(x, y) {
   const room = getRoomAt(x, y);
-  if (!room) return '晦渊';
+  if (!room) return locZoneName('晦渊');
   if (room.subZones && room.subZones.length > 0) {
     for (let i = 0; i < room.subZones.length; i++) {
       const sz = room.subZones[i];
       if (x >= sz.x && x <= sz.x + sz.w && y >= sz.y && y <= sz.y + sz.h) {
-        return sz.name;
+        return locSubZone(sz.name);
       }
     }
   }
-  return room.zoneName && room.name && room.zoneName !== room.name
-    ? `${room.zoneName} · ${room.name}`
-    : (room.name || room.zoneName || '晦渊');
+  const z = locZoneName(room);
+  const n = locRoomName(room);
+  return z && n && z !== n ? `${z} · ${n}` : (n || z || locZoneName('晦渊'));
 }
 
 export function getRoomSpawnPoint(roomId) {

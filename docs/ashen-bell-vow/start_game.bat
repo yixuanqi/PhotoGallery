@@ -1,9 +1,9 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title Ashen Bell Vow v17.4 Local Server
+title Ashen Bell Vow v19.0 Local Server
 echo ========================================================
-echo   Ashen Bell Vow v17.4 - Local Launcher
+echo   Ashen Bell Vow v19.0 - Local Launcher
 echo ========================================================
 echo.
 

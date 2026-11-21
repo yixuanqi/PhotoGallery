@@ -1,45 +1,108 @@
-// Procedural Web Audio synthesizer (zero external assets)
+// Procedural Web Audio synthesizer with OfflineAudioContext static pre-baking
+// Zero external assets · Zero per-sound onended listeners · Zero per-beat Oscillator/Filter/Gain churn
+import { prof } from './profiler.js';
+import { locBiomeAmbience } from './i18n.js';
+
+const PHRYGIAN_SCALE = [
+  146.83, 155.56, 174.61, 196.00, 220.00, 233.08, 261.63,
+  293.66, 311.13, 349.23, 392.00, 440.00, 466.16, 523.25
+];
+const EXPLORE_CHIME = { 0: 7, 6: 11, 10: 8, 16: 7, 22: 12, 26: 10 };
+const EXPLORE_PLUCK = { 4: 4, 12: 5, 14: 4, 20: 1, 28: 4, 30: 0 };
+const COMBAT_BASS   = [0, -1, 0, -1, 1, -1, 0, -1, 4, -1, 1, -1, 0, -1, 5, -1];
+const COMBAT_PLUCK  = [7, -1, 8, -1, 7, 11, -1, 8, 10, -1, 8, -1, 7, -1, 5, -1];
+const BOSS_BASS_0   = [0, 0, -1, 0, 1, -1, 0, -1, 4, -1, 5, -1, 4, -1, 1, -1];
+const BOSS_BASS_1   = [0, 0, -1, 1, 5, -1, 4, -1, 1, -1, 0, -1, 6, -1, 5, 1];
+const BOSS_LEAD_0   = [7, -1, 8, 7, 11, -1, 10, 8, 7, -1, 12, 11, 8, -1, 7, -1];
+const BOSS_LEAD_1   = [7, 8, 11, -1, 12, 11, 10, 8, 13, -1, 12, 11, 8, 7, 5, -1];
+
+const DAWN_CHORDS = [
+  [146.83, 220.00, 293.66, 369.99],
+  [196.00, 246.94, 369.99, 440.00],
+  [220.00, 277.18, 329.63, 554.37],
+  [146.83, 293.66, 369.99, 587.33, 739.99]
+];
+const VOW_CHORDS = [
+  [146.83, 174.61, 220.00, 293.66],
+  [130.81, 155.56, 233.08, 311.13],
+  [116.54, 174.61, 220.00, 349.23],
+  [146.83, 220.00, 293.66, 440.00]
+];
+
+// Per-Biome Crossfading Ambient Mix Profiles (zero per-frame node creation, smooth setTargetAtTime crossfade)
+const BIOME_AMBIENCE_PROFILES = {
+  sanctuary: { label: '熄灯冷风 · 远钟余响', wind: 0.24, rain: 0.0001, well: 0.0001, foundry: 0.0001, drone: 0.08, windHz: 235, droneHz: 155, accent: 'bell' },
+  corridor:  { label: '墨雨长廊 · 檐滴轻叩', wind: 0.16, rain: 0.28,   well: 0.0001, foundry: 0.0001, drone: 0.06, windHz: 260, droneHz: 145, accent: 'bell' },
+  chapel:    { label: '断钟圣殿 · 幽穹低吟', wind: 0.12, rain: 0.04,   well: 0.0001, foundry: 0.0001, drone: 0.15, windHz: 185, droneHz: 210, accent: 'choir' },
+  bell_well: { label: '沉渊钟井 · 暗河潮雾', wind: 0.07, rain: 0.0001, well: 0.30,   foundry: 0.0001, drone: 0.10, windHz: 155, droneHz: 140, accent: 'drip' },
+  foundry:   { label: '沉渊古炉 · 熔金炽鸣', wind: 0.11, rain: 0.0001, well: 0.04,   foundry: 0.31,   drone: 0.12, windHz: 175, droneHz: 190, accent: 'ember' },
+  crypt:     { label: '残钟地窖 · 阴窖滴墨', wind: 0.05, rain: 0.0001, well: 0.12,   foundry: 0.0001, drone: 0.17, windHz: 135, droneHz: 180, accent: 'drip' },
+  ascent:    { label: '初钟圣阶 · 罡风余烬', wind: 0.26, rain: 0.0001, well: 0.0001, foundry: 0.15,   drone: 0.11, windHz: 310, droneHz: 175, accent: 'ember' },
+  heart:     { label: '初钟圣心 · 圣钟共鸣', wind: 0.18, rain: 0.0001, well: 0.0001, foundry: 0.06,   drone: 0.21, windHz: 205, droneHz: 245, accent: 'choir' }
+};
 
 export class SoundEngine {
   constructor() {
     this.ctx = null;
     this.muted = false;
     this.noiseBuf = null;
+    this._noiseSamples = null;
     this.ambientStarted = false;
     this.masterGain = null;
     this.sfxGain = null;
     this.ambientGain = null;
     this.musicGain = null;
+    this.musicGainSoft = null;
+    this.musicGainLoud = null;
     this.musicEnabled = true;
     this.masterVol = 0.85;
     this.musicVol = 0.75;
     this.sfxVol = 0.90;
     this.bgDucked = false;
     this.windFilter = null;
-    this.distantBellTimer = 11;
+    this.droneFilter = null;
+    this._windFreqTarget = 220;
+    this._droneFreqTarget = 165;
+    this.biomeGains = null;
+    this.activeBiome = 'sanctuary';
+    this._appliedBiomeKey = '';
+    this.distantBellTimer = 9;
     this.heartbeatTimer = 0.6;
     this._lastSfxTime = {};
-    // D-Phrygian Dynamic Interactive Music Sequencer (0KB procedural score)
+
+    // Static OfflineAudioContext pre-baked AudioBuffers (1 node per playback, 0 listeners)
+    this._baked = Object.create(null);
+    this._bakeStarted = false;
+    this._bakeReady = false;
+
+    // D-Phrygian Dynamic Interactive Music Sequencer
     this.musicStep = 0;
     this.musicAccum = 0;
-    this.musicLayer = 'explore'; // explore | combat | boss1 | boss2
-    this.phrygianScale = [146.83, 155.56, 174.61, 196.00, 220.00, 233.08, 261.63, 293.66, 311.13, 349.23, 392.00, 440.00, 466.16, 523.25];
+    this.musicLayer = 'explore';
   }
 
   init() {
     if (this.ctx) {
       if (this.ctx.state === 'suspended') this.ctx.resume();
       this.startAmbience();
+      if (!this._bakeStarted) this._bakeAllBuffers();
       return;
     }
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     this.ctx = new AC();
-    const len = this.ctx.sampleRate * 0.5;
+    const len = Math.floor(this.ctx.sampleRate * 0.55);
     this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
     const data = this.noiseBuf.getChannelData(0);
-    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    // Deterministic seeded white noise for crisp reproducible offline baking
+    let seed = 0x1a2b3c4d;
+    for (let i = 0; i < len; i++) {
+      seed = (seed * 1664525 + 1013904223) | 0;
+      data[i] = ((seed >>> 8) / 8388608) - 1;
+    }
+    this._noiseSamples = data;
     this.startAmbience();
+    this._bakeAllBuffers();
   }
 
   startAmbience() {
@@ -63,58 +126,165 @@ export class SoundEngine {
     this.musicGain.gain.setValueAtTime(!this.musicEnabled ? 0.0001 : Math.max(0.0001, 0.28 * this.musicVol), t);
     this.musicGain.connect(this.masterGain);
 
-    // 2-second seamless filtered wind noise loop
-    const windLen = this.ctx.sampleRate * 2;
-    const windBuf = this.ctx.createBuffer(1, windLen, this.ctx.sampleRate);
-    const wd = windBuf.getChannelData(0);
-    let lastOut = 0;
-    for (let i = 0; i < windLen; i++) {
-      const white = Math.random() * 2 - 1;
-      lastOut = (lastOut + 0.03 * white) / 1.03;
-      wd[i] = lastOut * 2.8;
-    }
+    // Pre-allocated static sub-buses for BGM velocity tiers (zero per-note GainNode allocations!)
+    this.musicGainSoft = this.ctx.createGain();
+    this.musicGainSoft.gain.setValueAtTime(0.72, t);
+    this.musicGainSoft.connect(this.musicGain);
+
+    this.musicGainLoud = this.ctx.createGain();
+    this.musicGainLoud.gain.setValueAtTime(1.26, t);
+    this.musicGainLoud.connect(this.musicGain);
+
+    // Helper: make a seamless loopable procedural noise buffer (circular crossfade at seam, 0 clicks)
+    const makeSeamlessLoop = (sec, genFn) => {
+      const n = Math.floor(this.ctx.sampleRate * sec);
+      const fade = Math.min(2048, n >> 4);
+      const buf = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
+      const ch = buf.getChannelData(0);
+      genFn(ch, n, this.ctx.sampleRate);
+      for (let i = 0; i < fade; i++) {
+        const a = i / fade;
+        ch[i] = ch[i] * a + ch[n - fade + i] * (1 - a);
+      }
+      return buf;
+    };
+
+    // Stem 1: Cold Cathedral Wind (persistent loop + LFO)
+    const windBuf = makeSeamlessLoop(2.2, (wd, n) => {
+      let lastOut = 0;
+      for (let i = 0; i < n; i++) {
+        const white = Math.random() * 2 - 1;
+        lastOut = (lastOut + 0.03 * white) / 1.03;
+        wd[i] = lastOut * 2.8;
+      }
+    });
     const windSrc = this.ctx.createBufferSource();
     windSrc.buffer = windBuf;
     windSrc.loop = true;
 
     this.windFilter = this.ctx.createBiquadFilter();
     this.windFilter.type = 'bandpass';
-    this.windFilter.frequency.setValueAtTime(220, t);
+    this.windFilter.frequency.setValueAtTime(235, t);
     this.windFilter.Q.value = 1.6;
 
-    // Slow cathedral draft LFO
     const lfo = this.ctx.createOscillator();
     const lfoGain = this.ctx.createGain();
     lfo.type = 'sine';
     lfo.frequency.setValueAtTime(0.11, t);
-    lfoGain.gain.setValueAtTime(75, t);
+    lfoGain.gain.setValueAtTime(68, t);
     lfo.connect(lfoGain);
     lfoGain.connect(this.windFilter.frequency);
     lfo.start(t);
 
     const windMix = this.ctx.createGain();
-    windMix.gain.setValueAtTime(0.22, t);
+    windMix.gain.setValueAtTime(0.24, t);
     windSrc.connect(this.windFilter);
     this.windFilter.connect(windMix);
     windMix.connect(this.ambientGain);
     windSrc.start(t);
 
-    // Subterranean dark cathedral drone (D2 + detuned A2)
-    const droneLp = this.ctx.createBiquadFilter();
-    droneLp.type = 'lowpass';
-    droneLp.frequency.setValueAtTime(165, t);
+    // Stem 2: Ink Rain Patter (Corridor biome)
+    const rainBuf = makeSeamlessLoop(2.6, (rd, n) => {
+      let lp = 0;
+      for (let i = 0; i < n; i++) {
+        const w = Math.random() * 2 - 1;
+        lp = lp * 0.72 + w * 0.28;
+        const drop = (Math.random() < 0.0018) ? (Math.random() * 1.4 - 0.7) : 0;
+        rd[i] = (w - lp) * 0.55 + drop * 0.7;
+      }
+    });
+    const rainSrc = this.ctx.createBufferSource();
+    rainSrc.buffer = rainBuf;
+    rainSrc.loop = true;
+    const rainBp = this.ctx.createBiquadFilter();
+    rainBp.type = 'bandpass';
+    rainBp.frequency.setValueAtTime(1450, t);
+    rainBp.Q.value = 0.75;
+    const rainMix = this.ctx.createGain();
+    rainMix.gain.setValueAtTime(0.0001, t);
+    rainSrc.connect(rainBp);
+    rainBp.connect(rainMix);
+    rainMix.connect(this.ambientGain);
+    rainSrc.start(t);
+
+    // Stem 3: Subterranean Abyssal River & Cavern Rush (Bell Well & Crypt biomes)
+    const wellBuf = makeSeamlessLoop(2.8, (wd, n, sr) => {
+      let b0 = 0, b1 = 0;
+      for (let i = 0; i < n; i++) {
+        const w = Math.random() * 2 - 1;
+        b0 = b0 * 0.94 + w * 0.06;
+        b1 = b1 * 0.82 + w * 0.18;
+        const swell = 0.72 + 0.28 * Math.sin((i / n) * Math.PI * 4);
+        wd[i] = (b0 * 2.4 + b1 * 0.65) * swell;
+      }
+    });
+    const wellSrc = this.ctx.createBufferSource();
+    wellSrc.buffer = wellBuf;
+    wellSrc.loop = true;
+    const wellBp = this.ctx.createBiquadFilter();
+    wellBp.type = 'bandpass';
+    wellBp.frequency.setValueAtTime(340, t);
+    wellBp.Q.value = 1.1;
+    const wellMix = this.ctx.createGain();
+    wellMix.gain.setValueAtTime(0.0001, t);
+    wellSrc.connect(wellBp);
+    wellBp.connect(wellMix);
+    wellMix.connect(this.ambientGain);
+    wellSrc.start(t);
+
+    // Stem 4: Molten Furnace Roar & Ember Crackle (Foundry & Ascent biomes)
+    const foundryBuf = makeSeamlessLoop(2.6, (fd, n) => {
+      let rumble = 0;
+      let crack = 0;
+      for (let i = 0; i < n; i++) {
+        const w = Math.random() * 2 - 1;
+        rumble = rumble * 0.965 + w * 0.035;
+        if (Math.random() < 0.0012) crack = (Math.random() * 2 - 1) * 0.95;
+        else crack *= 0.86;
+        const throb = 0.8 + 0.2 * Math.sin((i / n) * Math.PI * 2);
+        fd[i] = rumble * 3.4 * throb + crack * 0.45;
+      }
+    });
+    const foundrySrc = this.ctx.createBufferSource();
+    foundrySrc.buffer = foundryBuf;
+    foundrySrc.loop = true;
+    const foundryLp = this.ctx.createBiquadFilter();
+    foundryLp.type = 'lowpass';
+    foundryLp.frequency.setValueAtTime(420, t);
+    const foundryMix = this.ctx.createGain();
+    foundryMix.gain.setValueAtTime(0.0001, t);
+    foundrySrc.connect(foundryLp);
+    foundryLp.connect(foundryMix);
+    foundryMix.connect(this.ambientGain);
+    foundrySrc.start(t);
+
+    // Stem 5: Subterranean Dark Cathedral / Crypt Resonant Drone (D2 + A2 + soft F3)
+    this.droneFilter = this.ctx.createBiquadFilter();
+    this.droneFilter.type = 'lowpass';
+    this.droneFilter.frequency.setValueAtTime(155, t);
     const droneMix = this.ctx.createGain();
     droneMix.gain.setValueAtTime(0.08, t);
-    droneLp.connect(droneMix);
+    this.droneFilter.connect(droneMix);
     droneMix.connect(this.ambientGain);
 
-    [73.42, 110.35].forEach((freq, i) => {
+    const droneFreqs = [73.42, 110.35, 174.61];
+    for (let i = 0; i < droneFreqs.length; i++) {
       const osc = this.ctx.createOscillator();
-      osc.type = i === 0 ? 'sine' : 'triangle';
-      osc.frequency.setValueAtTime(freq, t);
-      osc.connect(droneLp);
+      osc.type = i === 1 ? 'triangle' : 'sine';
+      osc.frequency.setValueAtTime(droneFreqs[i], t);
+      if (i === 2) {
+        const subG = this.ctx.createGain();
+        subG.gain.setValueAtTime(0.35, t);
+        osc.connect(subG);
+        subG.connect(this.droneFilter);
+      } else {
+        osc.connect(this.droneFilter);
+      }
       osc.start(t);
-    });
+    }
+
+    this.biomeGains = { wind: windMix, rain: rainMix, well: wellMix, foundry: foundryMix, drone: droneMix };
+    this._appliedBiomeKey = '';
   }
 
   _applyMixGains(tc = 0.06) {
@@ -164,126 +334,634 @@ export class SoundEngine {
     return this.sfxGain || (this.ctx && this.ctx.destination);
   }
 
+  // ==================== OFFLINE PRE-BAKING PIPELINE ====================
+  _makeOfflineNoise(octx) {
+    const srcLen = this._noiseSamples ? this._noiseSamples.length : Math.floor(octx.sampleRate * 0.55);
+    const nb = octx.createBuffer(1, srcLen, octx.sampleRate);
+    const ch = nb.getChannelData(0);
+    if (this._noiseSamples && this._noiseSamples.length === srcLen) {
+      ch.set(this._noiseSamples);
+    } else {
+      for (let i = 0; i < srcLen; i++) ch[i] = Math.random() * 2 - 1;
+    }
+    return nb;
+  }
+
+  async _bakeOne(key, durSec, buildFn) {
+    const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if (!OAC || !this.ctx) return;
+    try {
+      const sr = this.ctx.sampleRate || 44100;
+      const frames = Math.max(256, Math.ceil(durSec * sr));
+      const octx = new OAC(1, frames, sr);
+      buildFn(octx, octx.destination);
+      const rendered = await octx.startRendering();
+      this._baked[key] = rendered;
+    } catch {
+      // Silently ignore if offline context unavailable
+    }
+  }
+
+  async _bakeAllBuffers() {
+    if (this._bakeStarted || !this.ctx) return;
+    this._bakeStarted = true;
+    const tasks = [
+      // 1. Slashes
+      ['slash_light', 0.22, (c, out) => {
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const bp = c.createBiquadFilter(); bp.type = 'bandpass';
+        bp.frequency.setValueAtTime(1380, 0); bp.frequency.exponentialRampToValueAtTime(380, 0.13); bp.Q.value = 1.5;
+        const g = c.createGain(); g.gain.setValueAtTime(0.17, 0); g.gain.exponentialRampToValueAtTime(0.001, 0.14);
+        n.connect(bp); bp.connect(g); g.connect(out); n.start(0); n.stop(0.16);
+        const osc = c.createOscillator(); const og = c.createGain();
+        osc.type = 'sine'; osc.frequency.setValueAtTime(1120, 0); osc.frequency.exponentialRampToValueAtTime(520, 0.11);
+        og.gain.setValueAtTime(0.032, 0); og.gain.exponentialRampToValueAtTime(0.0008, 0.12);
+        osc.connect(og); og.connect(out); osc.start(0); osc.stop(0.14);
+      }],
+      ['slash_heavy', 0.24, (c, out) => {
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const bp = c.createBiquadFilter(); bp.type = 'bandpass';
+        bp.frequency.setValueAtTime(1050, 0); bp.frequency.exponentialRampToValueAtTime(240, 0.18); bp.Q.value = 1.15;
+        const g = c.createGain(); g.gain.setValueAtTime(0.24, 0); g.gain.exponentialRampToValueAtTime(0.001, 0.19);
+        n.connect(bp); bp.connect(g); g.connect(out); n.start(0); n.stop(0.21);
+        const osc = c.createOscillator(); const og = c.createGain();
+        osc.type = 'sine'; osc.frequency.setValueAtTime(760, 0); osc.frequency.exponentialRampToValueAtTime(290, 0.11);
+        og.gain.setValueAtTime(0.055, 0); og.gain.exponentialRampToValueAtTime(0.0008, 0.12);
+        osc.connect(og); og.connect(out); osc.start(0); osc.stop(0.14);
+      }],
+      // 2. Hits
+      ['hit_light', 0.16, (c, out) => {
+        const osc = c.createOscillator(); const g = c.createGain();
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(235, 0); osc.frequency.exponentialRampToValueAtTime(52, 0.11);
+        g.gain.setValueAtTime(0.24, 0); g.gain.exponentialRampToValueAtTime(0.001, 0.12);
+        osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.14);
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const hp = c.createBiquadFilter(); hp.type = 'bandpass'; hp.frequency.setValueAtTime(3200, 0); hp.Q.value = 1.2;
+        const ng = c.createGain(); ng.gain.setValueAtTime(0.15, 0); ng.gain.exponentialRampToValueAtTime(0.001, 0.06);
+        n.connect(hp); hp.connect(ng); ng.connect(out); n.start(0); n.stop(0.08);
+      }],
+      ['hit_heavy', 0.28, (c, out) => {
+        const osc = c.createOscillator(); const g = c.createGain();
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(195, 0); osc.frequency.exponentialRampToValueAtTime(38, 0.18);
+        g.gain.setValueAtTime(0.36, 0); g.gain.exponentialRampToValueAtTime(0.001, 0.19);
+        osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.21);
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const hp = c.createBiquadFilter(); hp.type = 'bandpass'; hp.frequency.setValueAtTime(2600, 0); hp.Q.value = 1.2;
+        const ng = c.createGain(); ng.gain.setValueAtTime(0.24, 0); ng.gain.exponentialRampToValueAtTime(0.001, 0.095);
+        n.connect(hp); hp.connect(ng); ng.connect(out); n.start(0); n.stop(0.11);
+        const ring = c.createOscillator(); const rg = c.createGain();
+        ring.type = 'sine'; ring.frequency.setValueAtTime(1180, 0); ring.frequency.exponentialRampToValueAtTime(920, 0.22);
+        rg.gain.setValueAtTime(0.075, 0); rg.gain.exponentialRampToValueAtTime(0.0008, 0.24);
+        ring.connect(rg); rg.connect(out); ring.start(0); ring.stop(0.26);
+      }],
+      // 3. Parries
+      ['parry_perfect', 0.48, (c, out) => {
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.setValueAtTime(3400, 0);
+        const ng = c.createGain(); ng.gain.setValueAtTime(0.28, 0); ng.gain.exponentialRampToValueAtTime(0.001, 0.055);
+        n.connect(hp); hp.connect(ng); ng.connect(out); n.start(0); n.stop(0.07);
+        const freqs = [1046, 1568, 2489, 3620, 4698];
+        for (let i = 0; i < freqs.length; i++) {
+          const f = freqs[i];
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = i % 2 === 0 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(f, 0); osc.frequency.exponentialRampToValueAtTime(f * 0.965, 0.42);
+          g.gain.setValueAtTime(0.24 / (i * 0.68 + 1), 0); g.gain.exponentialRampToValueAtTime(0.0007, 0.44);
+          osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.46);
+        }
+        const sub = c.createOscillator(); const sg = c.createGain();
+        sub.type = 'sine'; sub.frequency.setValueAtTime(293.6, 0); sub.frequency.exponentialRampToValueAtTime(260, 0.36);
+        sg.gain.setValueAtTime(0.14, 0); sg.gain.exponentialRampToValueAtTime(0.0008, 0.38);
+        sub.connect(sg); sg.connect(out); sub.start(0); sub.stop(0.40);
+      }],
+      ['parry_block', 0.20, (c, out) => {
+        const osc = c.createOscillator(); const g = c.createGain();
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, 0); osc.frequency.exponentialRampToValueAtTime(95, 0.14);
+        g.gain.setValueAtTime(0.19, 0); g.gain.exponentialRampToValueAtTime(0.001, 0.16);
+        osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.17);
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.setValueAtTime(1400, 0); bp.Q.value = 1.6;
+        const ng = c.createGain(); ng.gain.setValueAtTime(0.14, 0); ng.gain.exponentialRampToValueAtTime(0.001, 0.08);
+        n.connect(bp); bp.connect(ng); ng.connect(out); n.start(0); n.stop(0.09);
+      }],
+      // 4. Combat cues & bells
+      ['glint_fast', 0.16, (c, out) => {
+        const freqs = [1567.98, 2349.32];
+        for (let i = 0; i < freqs.length; i++) {
+          const f = freqs[i]; const t0 = i * 0.015;
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = i === 0 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(f, t0); osc.frequency.exponentialRampToValueAtTime(f * 0.94, 0.10);
+          g.gain.setValueAtTime(0.075 / (i + 1), t0); g.gain.exponentialRampToValueAtTime(0.0006, 0.11);
+          osc.connect(g); g.connect(out); osc.start(t0); osc.stop(0.13);
+        }
+      }],
+      ['glint_delayed', 0.24, (c, out) => {
+        const freqs = [1174.66, 1760.0, 2637.0];
+        for (let i = 0; i < freqs.length; i++) {
+          const f = freqs[i]; const t0 = i * 0.015;
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = i === 0 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(f, t0); osc.frequency.exponentialRampToValueAtTime(f * 1.06, 0.16);
+          g.gain.setValueAtTime(0.095 / (i + 1), t0); g.gain.exponentialRampToValueAtTime(0.0006, 0.18);
+          osc.connect(g); g.connect(out); osc.start(t0); osc.stop(0.20);
+        }
+      }],
+      ['finisher_deflect', 0.72, (c, out) => {
+        const freqs = [587.33, 880.0, 1318.5, 2093.0, 3135.96];
+        for (let i = 0; i < freqs.length; i++) {
+          const f = freqs[i];
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = i % 2 === 0 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(f, 0); osc.frequency.exponentialRampToValueAtTime(f * 0.985, 0.65);
+          g.gain.setValueAtTime(0.18 / (i * 0.55 + 1), 0); g.gain.exponentialRampToValueAtTime(0.0007, 0.68);
+          osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.70);
+        }
+      }],
+      ['danger_alert', 0.34, (c, out) => {
+        const freqs = [740, 1108];
+        for (let i = 0; i < freqs.length; i++) {
+          const f = freqs[i];
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = 'sawtooth'; osc.frequency.setValueAtTime(f, 0); osc.frequency.linearRampToValueAtTime(f * 0.86, 0.28);
+          g.gain.setValueAtTime(0.11 / (i + 1), 0); g.gain.exponentialRampToValueAtTime(0.001, 0.30);
+          osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.32);
+        }
+      }],
+      ['bell_toll', 1.78, (c, out) => {
+        const freqs = [146.8, 220, 349.2, 587.3];
+        for (let i = 0; i < freqs.length; i++) {
+          const f = freqs[i];
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = 'sine'; osc.frequency.setValueAtTime(f, 0); osc.frequency.exponentialRampToValueAtTime(f * 0.985, 1.6);
+          g.gain.setValueAtTime(0.2 / (i * 0.8 + 1), 0); g.gain.exponentialRampToValueAtTime(0.0008, 1.7);
+          osc.connect(g); g.connect(out); osc.start(0); osc.stop(1.75);
+        }
+      }],
+      ['distant_bell', 2.4, (c, out) => {
+        const freqs = [146.8, 293.6, 440.0];
+        for (let i = 0; i < freqs.length; i++) {
+          const f = freqs[i];
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = 'sine'; osc.frequency.setValueAtTime(f, 0); osc.frequency.exponentialRampToValueAtTime(f * 0.992, 2.2);
+          g.gain.setValueAtTime(0.032 / (i + 1), 0); g.gain.exponentialRampToValueAtTime(0.0005, 2.3);
+          osc.connect(g); g.connect(out); osc.start(0); osc.stop(2.35);
+        }
+      }],
+      ['amb_drip', 0.42, (c, out) => {
+        const osc = c.createOscillator(); const g = c.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, 0);
+        osc.frequency.exponentialRampToValueAtTime(1640, 0.055);
+        osc.frequency.exponentialRampToValueAtTime(1120, 0.36);
+        g.gain.setValueAtTime(0.0004, 0);
+        g.gain.linearRampToValueAtTime(0.058, 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0004, 0.38);
+        osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.40);
+      }],
+      ['amb_ember_crack', 0.24, (c, out) => {
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const bp = c.createBiquadFilter(); bp.type = 'bandpass';
+        bp.frequency.setValueAtTime(2400, 0); bp.frequency.exponentialRampToValueAtTime(980, 0.16); bp.Q.value = 2.6;
+        const g = c.createGain();
+        g.gain.setValueAtTime(0.075, 0); g.gain.exponentialRampToValueAtTime(0.0005, 0.19);
+        n.connect(bp); bp.connect(g); g.connect(out); n.start(0); n.stop(0.21);
+      }],
+      ['amb_chapel_choir', 2.6, (c, out) => {
+        const freqs = [146.83, 220.0, 293.66, 349.23];
+        for (let i = 0; i < freqs.length; i++) {
+          const osc = c.createOscillator(); const lp = c.createBiquadFilter(); const g = c.createGain();
+          osc.type = i % 2 === 0 ? 'sine' : 'triangle';
+          osc.frequency.setValueAtTime(freqs[i], 0);
+          lp.type = 'lowpass'; lp.frequency.setValueAtTime(520, 0);
+          g.gain.setValueAtTime(0.0004, 0);
+          g.gain.linearRampToValueAtTime(0.024 / (i * 0.5 + 1), 0.75);
+          g.gain.exponentialRampToValueAtTime(0.0004, 2.5);
+          osc.connect(lp); lp.connect(g); g.connect(out); osc.start(0); osc.stop(2.55);
+        }
+      }],
+      ['heartbeat', 0.44, (c, out) => {
+        const offs = [0, 0.22];
+        for (let i = 0; i < 2; i++) {
+          const off = offs[i];
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = 'sine'; osc.frequency.setValueAtTime(i === 0 ? 58 : 48, off);
+          osc.frequency.exponentialRampToValueAtTime(28, off + 0.14);
+          g.gain.setValueAtTime(i === 0 ? 0.18 : 0.12, off); g.gain.exponentialRampToValueAtTime(0.001, off + 0.16);
+          osc.connect(g); g.connect(out); osc.start(off); osc.stop(off + 0.18);
+        }
+      }],
+      ['pogo_lantern', 0.38, (c, out) => {
+        const freqs = [880, 1320];
+        for (let i = 0; i < 2; i++) {
+          const f = freqs[i];
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = 'sine'; osc.frequency.setValueAtTime(f, 0); osc.frequency.exponentialRampToValueAtTime(f * 0.96, 0.32);
+          g.gain.setValueAtTime(0.13 / (i + 1), 0); g.gain.exponentialRampToValueAtTime(0.001, 0.35);
+          osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.36);
+        }
+      }],
+      ['iai_ready', 0.20, (c, out) => {
+        const osc = c.createOscillator(); const g = c.createGain();
+        osc.type = 'sine'; osc.frequency.setValueAtTime(1320, 0); osc.frequency.exponentialRampToValueAtTime(2200, 0.12);
+        g.gain.setValueAtTime(0.12, 0); g.gain.exponentialRampToValueAtTime(0.001, 0.16);
+        osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.18);
+      }],
+      ['iai_slash', 0.30, (c, out) => {
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const bp = c.createBiquadFilter(); bp.type = 'bandpass';
+        bp.frequency.setValueAtTime(2000, 0); bp.frequency.exponentialRampToValueAtTime(550, 0.13); bp.Q.value = 1.5;
+        const ng = c.createGain(); ng.gain.setValueAtTime(0.17, 0); ng.gain.exponentialRampToValueAtTime(0.001, 0.14);
+        n.connect(bp); bp.connect(ng); ng.connect(out); n.start(0); n.stop(0.16);
+        const osc = c.createOscillator(); const g = c.createGain();
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(1480, 0); osc.frequency.exponentialRampToValueAtTime(420, 0.22);
+        g.gain.setValueAtTime(0.18, 0); g.gain.exponentialRampToValueAtTime(0.001, 0.25);
+        osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.27);
+      }],
+      ['counter_slash', 0.32, (c, out) => {
+        const osc1 = c.createOscillator(); const g1 = c.createGain();
+        osc1.type = 'triangle'; osc1.frequency.setValueAtTime(1480, 0); osc1.frequency.exponentialRampToValueAtTime(420, 0.22);
+        g1.gain.setValueAtTime(0.18, 0); g1.gain.exponentialRampToValueAtTime(0.001, 0.25);
+        osc1.connect(g1); g1.connect(out); osc1.start(0); osc1.stop(0.27);
+        const osc2 = c.createOscillator(); const g2 = c.createGain();
+        osc2.type = 'sine'; osc2.frequency.setValueAtTime(1760, 0); osc2.frequency.exponentialRampToValueAtTime(1180, 0.26);
+        g2.gain.setValueAtTime(0.15, 0); g2.gain.exponentialRampToValueAtTime(0.001, 0.28);
+        osc2.connect(g2); g2.connect(out); osc2.start(0); osc2.stop(0.30);
+      }],
+      ['detonate', 0.44, (c, out) => {
+        const osc = c.createOscillator(); const g = c.createGain();
+        osc.type = 'sine'; osc.frequency.setValueAtTime(160, 0); osc.frequency.exponentialRampToValueAtTime(32, 0.35);
+        g.gain.setValueAtTime(0.40, 0); g.gain.exponentialRampToValueAtTime(0.001, 0.38);
+        osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.40);
+        const freqs = [1046, 1568, 2489];
+        for (let i = 0; i < freqs.length; i++) {
+          const o = c.createOscillator(); const og = c.createGain();
+          o.type = 'triangle'; o.frequency.setValueAtTime(freqs[i], 0);
+          og.gain.setValueAtTime(0.18 / (i + 1), 0); og.gain.exponentialRampToValueAtTime(0.0008, 0.36);
+          o.connect(og); og.connect(out); o.start(0); o.stop(0.38);
+        }
+      }],
+      ['heal', 0.52, (c, out) => {
+        const freqs = [440, 554, 659];
+        for (let i = 0; i < 3; i++) {
+          const t0 = i * 0.06;
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = 'sine'; osc.frequency.setValueAtTime(freqs[i], t0);
+          g.gain.setValueAtTime(0.10, t0); g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.35);
+          osc.connect(g); g.connect(out); osc.start(t0); osc.stop(t0 + 0.36);
+        }
+      }],
+      ['soul_cast', 0.40, (c, out) => {
+        const freqs = [587, 880, 1318];
+        for (let i = 0; i < 3; i++) {
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = i === 0 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(freqs[i], 0); osc.frequency.exponentialRampToValueAtTime(freqs[i] * 0.78, 0.32);
+          g.gain.setValueAtTime(0.12 / (i + 1), 0); g.gain.exponentialRampToValueAtTime(0.001, 0.35);
+          osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.37);
+        }
+      }],
+      ['grapple_launch', 0.20, (c, out) => {
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const hp = c.createBiquadFilter(); hp.type = 'highpass';
+        hp.frequency.setValueAtTime(1600, 0); hp.frequency.exponentialRampToValueAtTime(4200, 0.14);
+        const g = c.createGain(); g.gain.setValueAtTime(0.18, 0); g.gain.exponentialRampToValueAtTime(0.001, 0.16);
+        n.connect(hp); hp.connect(g); g.connect(out); n.start(0); n.stop(0.17);
+      }],
+      ['grapple_latch', 0.20, (c, out) => {
+        const freqs = [1480, 2320];
+        for (let i = 0; i < 2; i++) {
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = 'triangle'; osc.frequency.setValueAtTime(freqs[i], 0);
+          osc.frequency.exponentialRampToValueAtTime(freqs[i] * 0.94, 0.14);
+          g.gain.setValueAtTime(0.14 / (i + 1), 0); g.gain.exponentialRampToValueAtTime(0.001, 0.16);
+          osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.17);
+        }
+      }],
+      ['wraith_shot', 0.30, (c, out) => {
+        const osc = c.createOscillator(); const g = c.createGain();
+        osc.type = 'sine'; osc.frequency.setValueAtTime(520, 0); osc.frequency.exponentialRampToValueAtTime(240, 0.24);
+        g.gain.setValueAtTime(0.09, 0); g.gain.exponentialRampToValueAtTime(0.001, 0.26);
+        osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.28);
+      }],
+      ['tide_roar', 0.52, (c, out) => {
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const lp = c.createBiquadFilter(); lp.type = 'lowpass';
+        lp.frequency.setValueAtTime(240, 0); lp.frequency.linearRampToValueAtTime(620, 0.22);
+        lp.frequency.exponentialRampToValueAtTime(140, 0.50);
+        const g = c.createGain(); g.gain.setValueAtTime(0.28, 0); g.gain.exponentialRampToValueAtTime(0.001, 0.50);
+        n.connect(lp); lp.connect(g); g.connect(out); n.start(0); n.stop(0.50);
+        const osc = c.createOscillator(); const og = c.createGain();
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(92, 0); osc.frequency.exponentialRampToValueAtTime(42, 0.45);
+        og.gain.setValueAtTime(0.16, 0); og.gain.exponentialRampToValueAtTime(0.001, 0.48);
+        osc.connect(og); og.connect(out); osc.start(0); osc.stop(0.50);
+      }],
+      ['footstep', 0.07, (c, out) => {
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.setValueAtTime(480, 0); bp.Q.value = 1.8;
+        const g = c.createGain(); g.gain.setValueAtTime(0.055, 0); g.gain.exponentialRampToValueAtTime(0.001, 0.045);
+        n.connect(bp); bp.connect(g); g.connect(out); n.start(0); n.stop(0.055);
+      }],
+      ['land', 0.12, (c, out) => {
+        const osc = c.createOscillator(); const g = c.createGain();
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(135, 0); osc.frequency.exponentialRampToValueAtTime(44, 0.08);
+        g.gain.setValueAtTime(0.13, 0); g.gain.exponentialRampToValueAtTime(0.001, 0.09);
+        osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.10);
+      }],
+      ['wing_jump', 0.26, (c, out) => {
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const bp = c.createBiquadFilter(); bp.type = 'bandpass';
+        bp.frequency.setValueAtTime(520, 0); bp.frequency.exponentialRampToValueAtTime(1450, 0.14); bp.Q.value = 1.3;
+        const g = c.createGain(); g.gain.setValueAtTime(0.16, 0); g.gain.exponentialRampToValueAtTime(0.001, 0.16);
+        n.connect(bp); bp.connect(g); g.connect(out); n.start(0); n.stop(0.18);
+        const freqs = [587.3, 880];
+        for (let i = 0; i < 2; i++) {
+          const osc = c.createOscillator(); const og = c.createGain();
+          osc.type = 'sine'; osc.frequency.setValueAtTime(freqs[i], i * 0.03);
+          osc.frequency.exponentialRampToValueAtTime(freqs[i] * 1.18, 0.20);
+          og.gain.setValueAtTime(0.075 / (i + 1), i * 0.03); og.gain.exponentialRampToValueAtTime(0.0008, 0.22);
+          osc.connect(og); og.connect(out); osc.start(i * 0.03); osc.stop(0.24);
+        }
+      }],
+      ['shield_break', 0.32, (c, out) => {
+        const osc = c.createOscillator(); const g = c.createGain();
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(220, 0); osc.frequency.exponentialRampToValueAtTime(55, 0.24);
+        g.gain.setValueAtTime(0.26, 0); g.gain.exponentialRampToValueAtTime(0.001, 0.26);
+        osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.28);
+      }],
+      ['gray_shatter', 0.24, (c, out) => {
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.setValueAtTime(2400, 0);
+        const ng = c.createGain(); ng.gain.setValueAtTime(0.16, 0); ng.gain.exponentialRampToValueAtTime(0.001, 0.18);
+        n.connect(hp); hp.connect(ng); ng.connect(out); n.start(0); n.stop(0.20);
+        const freqs = [1980, 1420, 960];
+        for (let i = 0; i < 3; i++) {
+          const t0 = i * 0.025;
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = 'sine'; osc.frequency.setValueAtTime(freqs[i], t0);
+          osc.frequency.exponentialRampToValueAtTime(freqs[i] * 0.62, t0 + 0.14);
+          g.gain.setValueAtTime(0.075, t0); g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.16);
+          osc.connect(g); g.connect(out); osc.start(t0); osc.stop(t0 + 0.17);
+        }
+      }],
+      ['bell_quake', 0.70, (c, out) => {
+        const freqs = [110, 220, 329.6, 523.25, 880];
+        for (let i = 0; i < freqs.length; i++) {
+          const f = freqs[i];
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = i === 0 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(f * 1.04, 0); osc.frequency.exponentialRampToValueAtTime(f * 0.94, 0.62);
+          g.gain.setValueAtTime(0.22 / (i * 0.65 + 1), 0); g.gain.exponentialRampToValueAtTime(0.0008, 0.66);
+          osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.68);
+        }
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const bp = c.createBiquadFilter(); bp.type = 'bandpass';
+        bp.frequency.setValueAtTime(920, 0); bp.frequency.exponentialRampToValueAtTime(180, 0.28); bp.Q.value = 1.1;
+        const ng = c.createGain(); ng.gain.setValueAtTime(0.24, 0); ng.gain.exponentialRampToValueAtTime(0.001, 0.30);
+        n.connect(bp); bp.connect(ng); ng.connect(out); n.start(0); n.stop(0.32);
+      }],
+      ['res_bell_single', 1.02, (c, out) => {
+        const freqs = [440, 660, 1056];
+        for (let i = 0; i < 3; i++) {
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = i === 0 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(freqs[i], 0); osc.frequency.exponentialRampToValueAtTime(freqs[i] * 0.992, 0.95);
+          g.gain.setValueAtTime(0.14 / (i * 0.7 + 1), 0); g.gain.exponentialRampToValueAtTime(0.0006, 0.98);
+          osc.connect(g); g.connect(out); osc.start(0); osc.stop(1.0);
+        }
+      }],
+      ['res_bell_harmony', 1.56, (c, out) => {
+        const freqs = [440, 550, 660, 880];
+        for (let i = 0; i < 4; i++) {
+          const t0 = i * 0.045;
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = i === 0 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(freqs[i], t0); osc.frequency.exponentialRampToValueAtTime(freqs[i] * 0.992, 1.45);
+          g.gain.setValueAtTime(0.16 / (i * 0.7 + 1), t0); g.gain.exponentialRampToValueAtTime(0.0006, 1.50);
+          osc.connect(g); g.connect(out); osc.start(t0); osc.stop(1.54);
+        }
+      }],
+      ['shade_dash', 0.28, (c, out) => {
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const bp = c.createBiquadFilter(); bp.type = 'bandpass';
+        bp.frequency.setValueAtTime(1900, 0); bp.frequency.exponentialRampToValueAtTime(340, 0.22); bp.Q.value = 1.9;
+        const ng = c.createGain(); ng.gain.setValueAtTime(0.22, 0); ng.gain.exponentialRampToValueAtTime(0.001, 0.24);
+        n.connect(bp); bp.connect(ng); ng.connect(out); n.start(0); n.stop(0.25);
+        const freqs = [311.1, 622.3];
+        for (let i = 0; i < 2; i++) {
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = i === 0 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(freqs[i] * 1.25, 0); osc.frequency.exponentialRampToValueAtTime(freqs[i] * 0.72, 0.24);
+          g.gain.setValueAtTime(0.11 / (i + 1), 0); g.gain.exponentialRampToValueAtTime(0.0008, 0.25);
+          osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.26);
+        }
+      }],
+      ['shade_burst', 0.32, (c, out) => {
+        const freqs = [185, 370, 740, 1175];
+        for (let i = 0; i < 4; i++) {
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = i === 0 ? 'sawtooth' : 'sine';
+          osc.frequency.setValueAtTime(freqs[i], 0); osc.frequency.exponentialRampToValueAtTime(freqs[i] * 0.58, 0.26);
+          g.gain.setValueAtTime(0.15 / (i * 0.65 + 1), 0); g.gain.exponentialRampToValueAtTime(0.0008, 0.28);
+          osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.30);
+        }
+      }],
+      ['echo_reclaim', 0.78, (c, out) => {
+        const freqs = [392.0, 493.88, 587.33, 783.99];
+        for (let i = 0; i < 4; i++) {
+          const t0 = i * 0.055;
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = 'sine'; osc.frequency.setValueAtTime(freqs[i], t0);
+          g.gain.setValueAtTime(0.13, t0); g.gain.exponentialRampToValueAtTime(0.0008, t0 + 0.55);
+          osc.connect(g); g.connect(out); osc.start(t0); osc.stop(t0 + 0.58);
+        }
+      }],
+      ['shadow_blink', 0.36, (c, out) => {
+        const freqs = [987.77, 1479.98, 440];
+        for (let i = 0; i < 3; i++) {
+          const t0 = i * 0.03;
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = i === 0 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(freqs[i], t0); osc.frequency.exponentialRampToValueAtTime(freqs[i] * 0.76, t0 + 0.24);
+          g.gain.setValueAtTime(0.11 / (i + 1), t0); g.gain.exponentialRampToValueAtTime(0.0008, t0 + 0.26);
+          osc.connect(g); g.connect(out); osc.start(t0); osc.stop(t0 + 0.28);
+        }
+      }],
+      ['crumble', 0.30, (c, out) => {
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const lp = c.createBiquadFilter(); lp.type = 'lowpass';
+        lp.frequency.setValueAtTime(720, 0); lp.frequency.exponentialRampToValueAtTime(140, 0.24);
+        const g = c.createGain(); g.gain.setValueAtTime(0.18, 0); g.gain.exponentialRampToValueAtTime(0.001, 0.26);
+        n.connect(lp); lp.connect(g); g.connect(out); n.start(0); n.stop(0.28);
+      }],
+      // 5. BGM Instrument Voices (pre-baked at D4/D3, pitched via playbackRate -> 1 node per note!)
+      ['bgm_pluck', 0.58, (c, out) => {
+        const freq = 293.66;
+        const osc = c.createOscillator(); const lp = c.createBiquadFilter(); const g = c.createGain();
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(freq, 0);
+        lp.type = 'lowpass'; lp.frequency.setValueAtTime(1520, 0); lp.frequency.exponentialRampToValueAtTime(340, 0.52);
+        g.gain.setValueAtTime(0.0005, 0); g.gain.linearRampToValueAtTime(0.13, 0.012); g.gain.exponentialRampToValueAtTime(0.0005, 0.54);
+        osc.connect(lp); lp.connect(g); g.connect(out); osc.start(0); osc.stop(0.56);
+      }],
+      ['bgm_chime', 1.65, (c, out) => {
+        const freq = 293.66;
+        const mults = [1, 2.003, 2.98];
+        for (let i = 0; i < 3; i++) {
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = 'sine'; osc.frequency.setValueAtTime(freq * mults[i], 0);
+          g.gain.setValueAtTime(0.0004, 0); g.gain.linearRampToValueAtTime(0.11 / (i * 1.4 + 1), 0.015);
+          g.gain.exponentialRampToValueAtTime(0.0004, 1.55 / (i * 0.45 + 1));
+          osc.connect(g); g.connect(out); osc.start(0); osc.stop(1.60);
+        }
+      }],
+      ['bgm_bass', 0.38, (c, out) => {
+        const osc = c.createOscillator(); const lp = c.createBiquadFilter(); const g = c.createGain();
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(146.83 * 0.5, 0);
+        lp.type = 'lowpass'; lp.frequency.setValueAtTime(280, 0);
+        g.gain.setValueAtTime(0.0006, 0); g.gain.linearRampToValueAtTime(0.17, 0.02); g.gain.exponentialRampToValueAtTime(0.0006, 0.34);
+        osc.connect(lp); lp.connect(g); g.connect(out); osc.start(0); osc.stop(0.36);
+      }],
+      ['bgm_drum_acc', 0.27, (c, out) => {
+        const osc = c.createOscillator(); const g = c.createGain();
+        osc.type = 'sine'; osc.frequency.setValueAtTime(112, 0); osc.frequency.exponentialRampToValueAtTime(34, 0.22);
+        g.gain.setValueAtTime(0.34, 0); g.gain.exponentialRampToValueAtTime(0.0008, 0.24);
+        osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.26);
+      }],
+      ['bgm_drum_soft', 0.20, (c, out) => {
+        const osc = c.createOscillator(); const g = c.createGain();
+        osc.type = 'sine'; osc.frequency.setValueAtTime(84, 0); osc.frequency.exponentialRampToValueAtTime(34, 0.15);
+        g.gain.setValueAtTime(0.20, 0); g.gain.exponentialRampToValueAtTime(0.0008, 0.16);
+        osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.18);
+      }],
+      ['bgm_tap_acc', 0.09, (c, out) => {
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.setValueAtTime(1650, 0); bp.Q.value = 3.2;
+        const g = c.createGain(); g.gain.setValueAtTime(0.14, 0); g.gain.exponentialRampToValueAtTime(0.0006, 0.065);
+        n.connect(bp); bp.connect(g); g.connect(out); n.start(0); n.stop(0.08);
+      }],
+      ['bgm_tap_soft', 0.09, (c, out) => {
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.setValueAtTime(1650, 0); bp.Q.value = 3.2;
+        const g = c.createGain(); g.gain.setValueAtTime(0.075, 0); g.gain.exponentialRampToValueAtTime(0.0006, 0.065);
+        n.connect(bp); bp.connect(g); g.connect(out); n.start(0); n.stop(0.08);
+      }]
+    ];
+
+    // Bake in small async batches so main thread stays silky during startup
+    const BATCH = 6;
+    for (let i = 0; i < tasks.length; i += BATCH) {
+      const slice = tasks.slice(i, i + BATCH);
+      await Promise.all(slice.map(t => this._bakeOne(t[0], t[1], t[2])));
+    }
+    this._bakeReady = true;
+  }
+
+  // Single-node fire-and-forget playback: 1 AudioBufferSourceNode, 0 onended listeners, 0 extra C++ nodes!
+  _playBaked(key, rate = 1.0, dest = null) {
+    if (!this.ctx || this.muted) return false;
+    const buf = this._baked[key];
+    if (!buf) return false;
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    if (rate !== 1.0) src.playbackRate.value = rate;
+    src.connect(dest || this.sfxOut);
+    src.start();
+    return true;
+  }
+
   playDistantBell() {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    [146.8, 293.6, 440.0].forEach((f, i) => {
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(f, t);
-      osc.frequency.exponentialRampToValueAtTime(f * 0.992, t + 2.8);
-      g.gain.setValueAtTime(0.032 / (i + 1), t);
-      g.gain.exponentialRampToValueAtTime(0.0005, t + 2.9);
-      osc.connect(g); g.connect(this.sfxOut);
-      osc.start(t); osc.stop(t + 3.0);
-    });
+    this._playBaked('distant_bell', 1.0, this.sfxOut);
   }
 
   playHeartbeat() {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    [0, 0.22].forEach((offset, idx) => {
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(idx === 0 ? 58 : 48, t + offset);
-      osc.frequency.exponentialRampToValueAtTime(28, t + offset + 0.14);
-      g.gain.setValueAtTime(idx === 0 ? 0.18 : 0.12, t + offset);
-      g.gain.exponentialRampToValueAtTime(0.001, t + offset + 0.16);
-      osc.connect(g); g.connect(this.sfxOut);
-      osc.start(t + offset); osc.stop(t + offset + 0.18);
-    });
+    this._playBaked('heartbeat', 1.0, this.sfxOut);
   }
 
-  _playMusicPluck(freq, vol = 0.12, dur = 0.72) {
+  _playMusicPluck(freq, loud = false) {
     if (!this.ctx || !this.musicGain) return;
-    const t = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const lp = this.ctx.createBiquadFilter();
-    const g = this.ctx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(freq, t);
-    lp.type = 'lowpass';
-    lp.frequency.setValueAtTime(Math.min(2800, freq * 5.2), t);
-    lp.frequency.exponentialRampToValueAtTime(Math.max(240, freq * 1.15), t + dur);
-    g.gain.setValueAtTime(0.0005, t);
-    g.gain.linearRampToValueAtTime(vol, t + 0.012);
-    g.gain.exponentialRampToValueAtTime(0.0005, t + dur);
-    osc.connect(lp); lp.connect(g); g.connect(this.musicGain);
-    osc.start(t); osc.stop(t + dur + 0.04);
+    this._playBaked('bgm_pluck', freq / 293.66, loud ? this.musicGainLoud : this.musicGain);
   }
 
-  _playMusicChime(freq, vol = 0.10, dur = 1.65) {
+  _playMusicChime(freq, soft = false, loud = false) {
     if (!this.ctx || !this.musicGain) return;
-    const t = this.ctx.currentTime;
-    [1, 2.003, 2.98].forEach((mult, i) => {
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq * mult, t);
-      g.gain.setValueAtTime(0.0004, t);
-      g.gain.linearRampToValueAtTime(vol / (i * 1.4 + 1), t + 0.015);
-      g.gain.exponentialRampToValueAtTime(0.0004, t + dur / (i * 0.45 + 1));
-      osc.connect(g); g.connect(this.musicGain);
-      osc.start(t); osc.stop(t + dur + 0.05);
-    });
+    const bus = soft ? this.musicGainSoft : (loud ? this.musicGainLoud : this.musicGain);
+    this._playBaked('bgm_chime', freq / 293.66, bus);
   }
 
   _playMusicDrum(accent = false, highTap = false) {
     if (!this.ctx || !this.musicGain) return;
-    const t = this.ctx.currentTime;
-    if (highTap) {
-      const n = this.ctx.createBufferSource();
-      n.buffer = this.noiseBuf;
-      const bp = this.ctx.createBiquadFilter();
-      bp.type = 'bandpass';
-      bp.frequency.setValueAtTime(1650, t);
-      bp.Q.value = 3.2;
-      const g = this.ctx.createGain();
-      g.gain.setValueAtTime(accent ? 0.14 : 0.075, t);
-      g.gain.exponentialRampToValueAtTime(0.0006, t + 0.065);
-      n.connect(bp); bp.connect(g); g.connect(this.musicGain);
-      n.start(t); n.stop(t + 0.08);
-      return;
-    }
-    const osc = this.ctx.createOscillator();
-    const g = this.ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(accent ? 112 : 84, t);
-    osc.frequency.exponentialRampToValueAtTime(34, t + (accent ? 0.22 : 0.15));
-    g.gain.setValueAtTime(accent ? 0.34 : 0.20, t);
-    g.gain.exponentialRampToValueAtTime(0.0008, t + (accent ? 0.24 : 0.16));
-    osc.connect(g); g.connect(this.musicGain);
-    osc.start(t); osc.stop(t + 0.26);
+    const key = highTap ? (accent ? 'bgm_tap_acc' : 'bgm_tap_soft') : (accent ? 'bgm_drum_acc' : 'bgm_drum_soft');
+    this._playBaked(key, 1.0, this.musicGain);
   }
 
-  _playMusicBass(freq, vol = 0.16, dur = 0.45) {
+  _playMusicBass(freq, loud = false) {
     if (!this.ctx || !this.musicGain) return;
-    const t = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const lp = this.ctx.createBiquadFilter();
-    const g = this.ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(freq * 0.5, t);
-    lp.type = 'lowpass';
-    lp.frequency.setValueAtTime(280, t);
-    g.gain.setValueAtTime(0.0006, t);
-    g.gain.linearRampToValueAtTime(vol, t + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0006, t + dur);
-    osc.connect(lp); lp.connect(g); g.connect(this.musicGain);
-    osc.start(t); osc.stop(t + dur + 0.05);
+    this._playBaked('bgm_bass', freq / 146.83, loud ? this.musicGainLoud : this.musicGain);
   }
 
-  updateAmbience(dt, bossAwake, bossPhase = 0, inCombat = false, parryStreak = 0) {
+  getActiveBiomeAmbienceLabel() {
+    const key = BIOME_AMBIENCE_PROFILES[this.activeBiome] ? this.activeBiome : 'sanctuary';
+    const profObj = BIOME_AMBIENCE_PROFILES[key];
+    return locBiomeAmbience(key, profObj.label);
+  }
+
+  _crossfadeBiomeStems(themeKey, bossAwake, bossPhase2, bossPhase3) {
+    if (!this.ctx || !this.biomeGains) return;
+    const key = BIOME_AMBIENCE_PROFILES[themeKey] ? themeKey : 'sanctuary';
+    this.activeBiome = key;
+    const appliedKey = `${key}|${bossPhase3 ? 3 : bossPhase2 ? 2 : bossAwake ? 1 : 0}`;
+    if (appliedKey === this._appliedBiomeKey) return;
+    this._appliedBiomeKey = appliedKey;
+
+    const p = BIOME_AMBIENCE_PROFILES[key];
+    const now = this.ctx.currentTime;
+    const duck = bossPhase2 ? 0.62 : bossAwake ? 0.78 : 1.0;
+    const tc = 0.72;
+    const rampGain = (node, target) => {
+      if (!node) return;
+      node.gain.cancelScheduledValues(now);
+      node.gain.setTargetAtTime(Math.max(0.0001, target), now, tc);
+    };
+    rampGain(this.biomeGains.wind, p.wind * duck);
+    rampGain(this.biomeGains.rain, p.rain * duck);
+    rampGain(this.biomeGains.well, p.well * duck);
+    rampGain(this.biomeGains.foundry, p.foundry * (bossAwake && key === 'foundry' ? 1.05 : duck));
+    rampGain(this.biomeGains.drone, p.drone * (bossPhase2 ? 1.25 : 1.0));
+
+    const targetWindHz = bossPhase3 ? 135 : bossPhase2 ? 150 : bossAwake ? 185 : p.windHz;
+    if (this.windFilter && targetWindHz !== this._windFreqTarget) {
+      this._windFreqTarget = targetWindHz;
+      this.windFilter.frequency.cancelScheduledValues(now);
+      this.windFilter.frequency.setTargetAtTime(targetWindHz, now, 0.55);
+    }
+    const targetDroneHz = bossPhase3 ? 260 : bossPhase2 ? 220 : p.droneHz;
+    if (this.droneFilter && targetDroneHz !== this._droneFreqTarget) {
+      this._droneFreqTarget = targetDroneHz;
+      this.droneFilter.frequency.cancelScheduledValues(now);
+      this.droneFilter.frequency.setTargetAtTime(targetDroneHz, now, 0.65);
+    }
+  }
+
+  playBiomeAccent(themeKey) {
+    const p = BIOME_AMBIENCE_PROFILES[themeKey] || BIOME_AMBIENCE_PROFILES.sanctuary;
+    if (p.accent === 'drip') {
+      this._playBaked('amb_drip', 0.84 + Math.random() * 0.36, this.ambientGain || this.sfxOut);
+    } else if (p.accent === 'ember') {
+      this._playBaked('amb_ember_crack', 0.85 + Math.random() * 0.35, this.ambientGain || this.sfxOut);
+    } else if (p.accent === 'choir') {
+      this._playBaked('amb_chapel_choir', 0.96 + Math.random() * 0.08, this.ambientGain || this.sfxOut);
+    } else {
+      this.playDistantBell();
+    }
+  }
+
+  updateAmbience(dt, bossAwake, bossPhase = 0, inCombat = false, parryStreak = 0, biomeTheme = 'sanctuary') {
     if (!this.ctx || this.muted || !this.ambientStarted) return;
     const pNum = typeof bossPhase === 'number' ? bossPhase : (bossPhase ? 2 : (bossAwake ? 1 : 0));
     const bossPhase2 = pNum >= 2;
     const bossPhase3 = pNum >= 3;
-    if (this.windFilter) {
-      const targetFreq = bossPhase3 ? 135 : bossPhase2 ? 150 : bossAwake ? 185 : 225;
-      this.windFilter.frequency.setTargetAtTime(targetFreq, this.ctx.currentTime, 0.4);
-    }
+    this._crossfadeBiomeStems(biomeTheme, bossAwake, bossPhase2, bossPhase3);
+
     if (bossPhase2) {
       this.heartbeatTimer -= dt;
       if (this.heartbeatTimer <= 0) {
@@ -293,71 +971,73 @@ export class SoundEngine {
     } else {
       this.distantBellTimer -= dt;
       if (this.distantBellTimer <= 0) {
-        this.distantBellTimer = 15 + Math.random() * 10;
-        this.playDistantBell();
+        const p = BIOME_AMBIENCE_PROFILES[this.activeBiome] || BIOME_AMBIENCE_PROFILES.sanctuary;
+        this.distantBellTimer = (p.accent === 'drip' || p.accent === 'ember')
+          ? (4.8 + Math.random() * 5.2)
+          : (12 + Math.random() * 9);
+        this.playBiomeAccent(this.activeBiome);
       }
     }
 
-    // Layered D-Phrygian Procedural Score (with Phase 3 Climax Tempo & Counter-Chime)
     if (!this.musicEnabled || !this.musicGain) return;
     const layer = bossPhase3 ? 'boss3' : bossPhase2 ? 'boss2' : bossAwake ? 'boss1' : inCombat ? 'combat' : 'explore';
     this.musicLayer = layer;
     const bpm = layer === 'boss3' ? 142 : layer === 'boss2' ? 132 : layer === 'boss1' ? 114 : layer === 'combat' ? 98 : 72;
-    const stepDur = 60 / bpm / 4; // 16th-note pulse
+    const stepDur = 60 / bpm / 4;
     this.musicAccum += dt;
     if (this.musicAccum < stepDur) return;
     this.musicAccum -= stepDur;
     const s = this.musicStep % 32;
-    const bar = Math.floor(s / 16);
-    const pos = s % 16;
-    const sc = this.phrygianScale;
+    const bar = (s >= 16) ? 1 : 0;
+    const pos = s & 15;
+    const sc = PHRYGIAN_SCALE;
 
     if (layer === 'explore') {
-      // Sparse ancient bronze chimes & wistful plucked D-Phrygian motif
-      const exploreChime = { 0: 7, 6: 11, 10: 8, 16: 7, 22: 12, 26: 10 };
-      const explorePluck = { 4: 4, 12: 5, 14: 4, 20: 1, 28: 4, 30: 0 };
-      if (exploreChime[s] !== undefined) this._playMusicChime(sc[exploreChime[s]], 0.11, 2.2);
-      if (explorePluck[s] !== undefined) this._playMusicPluck(sc[explorePluck[s]], 0.11, 0.9);
+      const ec = EXPLORE_CHIME[s];
+      const ep = EXPLORE_PLUCK[s];
+      const bio = this.activeBiome;
+      if (bio === 'foundry' || bio === 'ascent') {
+        if (pos === 0 || pos === 8) this._playMusicBass(sc[bar === 0 ? 0 : 1], false);
+        if (ec !== undefined) this._playMusicChime(sc[ec], true, false);
+        if (ep !== undefined && (s % 4 === 0)) this._playMusicPluck(sc[ep], false);
+      } else if (bio === 'bell_well' || bio === 'crypt') {
+        if (ec !== undefined) this._playMusicChime(sc[Math.min(sc.length - 1, ec + 1)], true, false);
+        if (s === 8 || s === 24) this._playMusicPluck(sc[bar === 0 ? 4 : 1], false);
+      } else {
+        if (ec !== undefined) this._playMusicChime(sc[ec], bio === 'heart', false);
+        if (ep !== undefined) this._playMusicPluck(sc[ep], false);
+      }
     } else if (layer === 'combat') {
-      // Tense low frame-drum & rhythmic ostinato
       if (pos === 0 || pos === 6 || pos === 10) this._playMusicDrum(pos === 0, false);
       if (pos === 4 || pos === 12 || pos === 14) this._playMusicDrum(false, true);
-      const bassSeq = [0, -1, 0, -1, 1, -1, 0, -1, 4, -1, 1, -1, 0, -1, 5, -1];
-      if (bassSeq[pos] >= 0) this._playMusicBass(sc[bassSeq[pos]], 0.15, 0.34);
-      const pluckSeq = [7, -1, 8, -1, 7, 11, -1, 8, 10, -1, 8, -1, 7, -1, 5, -1];
-      if (pluckSeq[pos] >= 0) this._playMusicPluck(sc[pluckSeq[pos]], 0.12, 0.45);
-      if (pos === 0) this._playMusicChime(sc[bar === 0 ? 7 : 8], 0.10, 1.5);
+      if (COMBAT_BASS[pos] >= 0) this._playMusicBass(sc[COMBAT_BASS[pos]], false);
+      if (COMBAT_PLUCK[pos] >= 0) this._playMusicPluck(sc[COMBAT_PLUCK[pos]], false);
+      if (pos === 0) this._playMusicChime(sc[bar === 0 ? 7 : 8], false, false);
     } else {
-      // Boss 1 & Boss 2 driving Phrygian duel
       const isP2 = layer === 'boss2' || layer === 'boss3';
       const isP3 = layer === 'boss3';
       if (pos === 0 || pos === 3 || pos === 6 || pos === 10 || (isP2 && pos === 14)) {
         this._playMusicDrum(pos === 0 || pos === 10, false);
       }
-      if (pos % 2 === 1 && (isP2 || pos === 5 || pos === 13)) {
+      if ((pos & 1) === 1 && (isP2 || pos === 5 || pos === 13)) {
         this._playMusicDrum(pos === 13, true);
       }
-      const bossBass = bar === 0
-        ? [0, 0, -1, 0, 1, -1, 0, -1, 4, -1, 5, -1, 4, -1, 1, -1]
-        : [0, 0, -1, 1, 5, -1, 4, -1, 1, -1, 0, -1, 6, -1, 5, 1];
-      if (bossBass[pos] >= 0) this._playMusicBass(sc[bossBass[pos]], isP2 ? 0.21 : 0.17, 0.28);
-      const leadSeq = bar === 0
-        ? [7, -1, 8, 7, 11, -1, 10, 8, 7, -1, 12, 11, 8, -1, 7, -1]
-        : [7, 8, 11, -1, 12, 11, 10, 8, 13, -1, 12, 11, 8, 7, 5, -1];
-      if (leadSeq[pos] >= 0) this._playMusicPluck(sc[leadSeq[pos]], isP2 ? 0.16 : 0.13, 0.36);
+      const bossBass = bar === 0 ? BOSS_BASS_0 : BOSS_BASS_1;
+      if (bossBass[pos] >= 0) this._playMusicBass(sc[bossBass[pos]], isP2);
+      const leadSeq = bar === 0 ? BOSS_LEAD_0 : BOSS_LEAD_1;
+      if (leadSeq[pos] >= 0) this._playMusicPluck(sc[leadSeq[pos]], isP2);
       if (pos === 0 || (isP2 && pos === 8)) {
         const chimeIdx = (bar === 0 ? 7 : 8) + (isP2 && pos === 8 ? 4 : 0);
-        this._playMusicChime(sc[Math.min(sc.length - 1, chimeIdx)], isP2 ? 0.14 : 0.11, 1.35);
+        this._playMusicChime(sc[chimeIdx < sc.length ? chimeIdx : sc.length - 1], false, isP2);
       }
       if (isP3 && (pos === 4 || pos === 12)) {
-        this._playMusicChime(sc[bar === 0 ? 11 : 13], 0.11, 0.85);
+        this._playMusicChime(sc[bar === 0 ? 11 : 13], false, false);
       }
-      // Parry streak high harmonic shimmer
-      if (parryStreak >= 3 && pos % 4 === 2) {
-        this._playMusicChime(sc[11 + (pos % 3)], 0.08, 0.55);
+      if (parryStreak >= 3 && (pos & 3) === 2) {
+        this._playMusicChime(sc[11 + (pos % 3)], true, false);
       }
     }
-    this.musicStep = (this.musicStep + 1) % 32;
+    this.musicStep = (this.musicStep + 1) & 31;
   }
 
   _canPlaySfx(key, minGap = 0.028) {
@@ -371,633 +1051,144 @@ export class SoundEngine {
 
   playSlash(pitch = 1.0, heavy = false) {
     if (!this._canPlaySfx('slash', 0.03)) return;
-    const t = this.ctx.currentTime;
-    // Filtered air-cut swoosh
-    const n = this.ctx.createBufferSource();
-    n.buffer = this.noiseBuf;
-    const bp = this.ctx.createBiquadFilter();
-    bp.type = 'bandpass';
-    bp.frequency.setValueAtTime((heavy ? 1050 : 1380) * pitch, t);
-    bp.frequency.exponentialRampToValueAtTime((heavy ? 240 : 380) * pitch, t + (heavy ? 0.18 : 0.13));
-    bp.Q.value = heavy ? 1.15 : 1.5;
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(heavy ? 0.24 : 0.17, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + (heavy ? 0.19 : 0.14));
-    n.connect(bp); bp.connect(g); g.connect(this.sfxOut);
-    n.start(t); n.stop(t + 0.2);
-
-    // Subtle steel blade-edge whistle overtone
-    const osc = this.ctx.createOscillator();
-    const og = this.ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime((heavy ? 760 : 1120) * pitch, t);
-    osc.frequency.exponentialRampToValueAtTime((heavy ? 290 : 520) * pitch, t + 0.11);
-    og.gain.setValueAtTime(heavy ? 0.055 : 0.032, t);
-    og.gain.exponentialRampToValueAtTime(0.0008, t + 0.12);
-    osc.connect(og); og.connect(this.sfxOut);
-    osc.start(t); osc.stop(t + 0.13);
+    this._playBaked(heavy ? 'slash_heavy' : 'slash_light', pitch);
   }
 
   playHit(heavy = false, comboStep = 1) {
     if (!this._canPlaySfx('hit', 0.024)) return;
-    const t = this.ctx.currentTime;
     const stepPitch = 1 + Math.max(0, comboStep - 1) * 0.08;
-
-    // 1. Meaty low body thump
-    const osc = this.ctx.createOscillator();
-    const g = this.ctx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime((heavy ? 195 : 235) * stepPitch, t);
-    osc.frequency.exponentialRampToValueAtTime(heavy ? 38 : 52, t + (heavy ? 0.18 : 0.11));
-    g.gain.setValueAtTime(heavy ? 0.36 : 0.24, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + (heavy ? 0.19 : 0.12));
-    osc.connect(g); g.connect(this.sfxOut);
-    osc.start(t); osc.stop(t + 0.21);
-
-    // 2. Crisp steel-bite transient burst
-    const n = this.ctx.createBufferSource();
-    n.buffer = this.noiseBuf;
-    const hp = this.ctx.createBiquadFilter();
-    hp.type = 'bandpass';
-    hp.frequency.setValueAtTime(heavy ? 2600 : 3200, t);
-    hp.Q.value = 1.2;
-    const ng = this.ctx.createGain();
-    ng.gain.setValueAtTime(heavy ? 0.24 : 0.15, t);
-    ng.gain.exponentialRampToValueAtTime(0.001, t + (heavy ? 0.095 : 0.06));
-    n.connect(hp); hp.connect(ng); ng.connect(this.sfxOut);
-    n.start(t); n.stop(t + 0.11);
-
-    // 3. Subtle armor-iron overtone ring on heavy / finisher hits
-    if (heavy) {
-      const ring = this.ctx.createOscillator();
-      const rg = this.ctx.createGain();
-      ring.type = 'sine';
-      ring.frequency.setValueAtTime(1180 * stepPitch, t);
-      ring.frequency.exponentialRampToValueAtTime(920 * stepPitch, t + 0.22);
-      rg.gain.setValueAtTime(0.075, t);
-      rg.gain.exponentialRampToValueAtTime(0.0008, t + 0.24);
-      ring.connect(rg); rg.connect(this.sfxOut);
-      ring.start(t); ring.stop(t + 0.25);
-    }
+    this._playBaked(heavy ? 'hit_heavy' : 'hit_light', stepPitch);
   }
 
   playParry(perfect = true, streak = 1) {
     if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
     if (perfect) {
       const rise = 1 + Math.min(4, Math.max(0, streak - 1)) * 0.068;
-
-      // 1. Razor-crisp steel transient click
-      const n = this.ctx.createBufferSource();
-      n.buffer = this.noiseBuf;
-      const hp = this.ctx.createBiquadFilter();
-      hp.type = 'highpass';
-      hp.frequency.setValueAtTime(3400, t);
-      const ng = this.ctx.createGain();
-      ng.gain.setValueAtTime(0.28, t);
-      ng.gain.exponentialRampToValueAtTime(0.001, t + 0.055);
-      n.connect(hp); hp.connect(ng); ng.connect(this.sfxOut);
-      n.start(t); n.stop(t + 0.065);
-
-      // 2. Metallic Sekiro-style CLANG harmonic stack with streak pitch escalation
-      [1046, 1568, 2489, 3620, 4698].forEach((f, i) => {
-        const osc = this.ctx.createOscillator();
-        const g = this.ctx.createGain();
-        osc.type = i % 2 === 0 ? 'triangle' : 'sine';
-        osc.frequency.setValueAtTime(f * rise, t);
-        osc.frequency.exponentialRampToValueAtTime(f * rise * 0.965, t + 0.42);
-        g.gain.setValueAtTime(0.24 / (i * 0.68 + 1), t);
-        g.gain.exponentialRampToValueAtTime(0.0007, t + 0.44);
-        osc.connect(g); g.connect(this.sfxOut);
-        osc.start(t); osc.stop(t + 0.46);
-      });
-
-      // 3. Low bronze bell anvil resonance
-      const sub = this.ctx.createOscillator();
-      const sg = this.ctx.createGain();
-      sub.type = 'sine';
-      sub.frequency.setValueAtTime(293.6 * rise, t);
-      sub.frequency.exponentialRampToValueAtTime(260 * rise, t + 0.36);
-      sg.gain.setValueAtTime(0.14, t);
-      sg.gain.exponentialRampToValueAtTime(0.0008, t + 0.38);
-      sub.connect(sg); sg.connect(this.sfxOut);
-      sub.start(t); sub.stop(t + 0.4);
+      this._playBaked('parry_perfect', rise);
     } else {
-      // Dull damped steel block thud + short scrape
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(300, t);
-      osc.frequency.exponentialRampToValueAtTime(95, t + 0.14);
-      g.gain.setValueAtTime(0.19, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
-      osc.connect(g); g.connect(this.sfxOut);
-      osc.start(t); osc.stop(t + 0.17);
-
-      const n = this.ctx.createBufferSource();
-      n.buffer = this.noiseBuf;
-      const bp = this.ctx.createBiquadFilter();
-      bp.type = 'bandpass';
-      bp.frequency.setValueAtTime(1400, t);
-      bp.Q.value = 1.6;
-      const ng = this.ctx.createGain();
-      ng.gain.setValueAtTime(0.14, t);
-      ng.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-      n.connect(bp); bp.connect(ng); ng.connect(this.sfxOut);
-      n.start(t); n.stop(t + 0.09);
+      this._playBaked('parry_block', 1.0);
     }
   }
 
   playGlintCue(delayed = false) {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    const freqs = delayed ? [1174.66, 1760.0, 2637.0] : [1567.98, 2349.32];
-    freqs.forEach((f, i) => {
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = i === 0 ? 'triangle' : 'sine';
-      osc.frequency.setValueAtTime(f, t + i * 0.015);
-      osc.frequency.exponentialRampToValueAtTime(f * (delayed ? 1.06 : 0.94), t + (delayed ? 0.16 : 0.10));
-      g.gain.setValueAtTime((delayed ? 0.095 : 0.075) / (i + 1), t + i * 0.015);
-      g.gain.exponentialRampToValueAtTime(0.0006, t + (delayed ? 0.18 : 0.11));
-      osc.connect(g); g.connect(this.sfxOut);
-      osc.start(t + i * 0.015); osc.stop(t + (delayed ? 0.20 : 0.13));
-    });
+    this._playBaked(delayed ? 'glint_delayed' : 'glint_fast', 1.0);
   }
 
   playFinisherDeflect() {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    [587.33, 880.0, 1318.5, 2093.0, 3135.96].forEach((f, i) => {
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = i % 2 === 0 ? 'triangle' : 'sine';
-      osc.frequency.setValueAtTime(f, t);
-      osc.frequency.exponentialRampToValueAtTime(f * 0.985, t + 0.65);
-      g.gain.setValueAtTime(0.18 / (i * 0.55 + 1), t);
-      g.gain.exponentialRampToValueAtTime(0.0007, t + 0.68);
-      osc.connect(g); g.connect(this.sfxOut);
-      osc.start(t); osc.stop(t + 0.7);
-    });
+    this._playBaked('finisher_deflect', 1.0);
   }
 
   playDangerAlert() {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    [740, 1108].forEach((f, i) => {
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(f, t);
-      osc.frequency.linearRampToValueAtTime(f * 0.86, t + 0.28);
-      g.gain.setValueAtTime(0.11 / (i + 1), t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-      osc.connect(g); g.connect(this.sfxOut);
-      osc.start(t); osc.stop(t + 0.32);
-    });
+    this._playBaked('danger_alert', 1.0);
   }
 
   playBellToll() {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    [146.8, 220, 349.2, 587.3].forEach((f, i) => {
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(f, t);
-      osc.frequency.exponentialRampToValueAtTime(f * 0.985, t + 1.6);
-      g.gain.setValueAtTime(0.2 / (i * 0.8 + 1), t);
-      g.gain.exponentialRampToValueAtTime(0.0008, t + 1.7);
-      osc.connect(g); g.connect(this.sfxOut);
-      osc.start(t); osc.stop(t + 1.75);
-    });
+    this._playBaked('bell_toll', 1.0);
   }
 
   playPogoLantern() {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    [880, 1320].forEach((f, i) => {
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(f, t);
-      osc.frequency.exponentialRampToValueAtTime(f * 0.96, t + 0.32);
-      g.gain.setValueAtTime(0.13 / (i + 1), t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-      osc.connect(g); g.connect(this.sfxOut);
-      osc.start(t); osc.stop(t + 0.36);
-    });
+    this._playBaked('pogo_lantern', 1.0);
   }
 
   playIaiReady() {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const g = this.ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(1320, t);
-    osc.frequency.exponentialRampToValueAtTime(2200, t + 0.12);
-    g.gain.setValueAtTime(0.12, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
-    osc.connect(g); g.connect(this.sfxOut);
-    osc.start(t); osc.stop(t + 0.18);
+    this._playBaked('iai_ready', 1.0);
   }
 
   playIaiSlash() {
-    if (!this.ctx || this.muted) return;
-    this.playSlash(1.45);
-    const t = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const g = this.ctx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(1480, t);
-    osc.frequency.exponentialRampToValueAtTime(420, t + 0.22);
-    g.gain.setValueAtTime(0.18, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-    osc.connect(g); g.connect(this.sfxOut);
-    osc.start(t); osc.stop(t + 0.27);
+    this._playBaked('iai_slash', 1.0);
   }
 
   playCounterSlash() {
-    if (!this.ctx || this.muted) return;
-    this.playIaiSlash();
-    const t = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const g = this.ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(1760, t);
-    osc.frequency.exponentialRampToValueAtTime(1180, t + 0.26);
-    g.gain.setValueAtTime(0.15, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
-    osc.connect(g); g.connect(this.sfxOut);
-    osc.start(t); osc.stop(t + 0.3);
+    this._playBaked('counter_slash', 1.0);
   }
 
   playDetonate() {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const g = this.ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(160, t);
-    osc.frequency.exponentialRampToValueAtTime(32, t + 0.35);
-    g.gain.setValueAtTime(0.4, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
-    osc.connect(g); g.connect(this.sfxOut);
-    osc.start(t); osc.stop(t + 0.4);
-    this.playParry(true);
+    this._playBaked('detonate', 1.0);
   }
 
   playExecution() {
     if (!this.ctx || this.muted) return;
-    this.playDetonate();
-    this.playBellToll();
+    this._playBaked('detonate', 1.0);
+    this._playBaked('bell_toll', 1.0);
   }
 
   playHeal() {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    [440, 554, 659].forEach((f, i) => {
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(f, t + i * 0.06);
-      g.gain.setValueAtTime(0.1, t + i * 0.06);
-      g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.06 + 0.35);
-      osc.connect(g); g.connect(this.sfxOut);
-      osc.start(t + i * 0.06); osc.stop(t + i * 0.06 + 0.36);
-    });
+    this._playBaked('heal', 1.0);
   }
 
   playSoulCast() {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    [587, 880, 1318].forEach((f, i) => {
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = i === 0 ? 'triangle' : 'sine';
-      osc.frequency.setValueAtTime(f, t);
-      osc.frequency.exponentialRampToValueAtTime(f * 0.78, t + 0.32);
-      g.gain.setValueAtTime(0.12 / (i + 1), t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-      osc.connect(g); g.connect(this.sfxOut);
-      osc.start(t); osc.stop(t + 0.37);
-    });
+    this._playBaked('soul_cast', 1.0);
   }
 
   playGrappleLaunch() {
     if (!this._canPlaySfx('grapple', 0.04)) return;
-    const t = this.ctx.currentTime;
-    const n = this.ctx.createBufferSource();
-    n.buffer = this.noiseBuf;
-    const hp = this.ctx.createBiquadFilter();
-    hp.type = 'highpass';
-    hp.frequency.setValueAtTime(1600, t);
-    hp.frequency.exponentialRampToValueAtTime(4200, t + 0.14);
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.18, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
-    n.connect(hp); hp.connect(g); g.connect(this.sfxOut);
-    n.start(t); n.stop(t + 0.17);
+    this._playBaked('grapple_launch', 1.0);
   }
 
   playGrappleLatch() {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    [1480, 2320].forEach((f, i) => {
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(f, t);
-      osc.frequency.exponentialRampToValueAtTime(f * 0.94, t + 0.14);
-      g.gain.setValueAtTime(0.14 / (i + 1), t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
-      osc.connect(g); g.connect(this.sfxOut);
-      osc.start(t); osc.stop(t + 0.17);
-    });
+    this._playBaked('grapple_latch', 1.0);
   }
 
   playWraithShot() {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const g = this.ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(520, t);
-    osc.frequency.exponentialRampToValueAtTime(240, t + 0.24);
-    g.gain.setValueAtTime(0.09, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.26);
-    osc.connect(g); g.connect(this.sfxOut);
-    osc.start(t); osc.stop(t + 0.28);
+    this._playBaked('wraith_shot', 1.0);
   }
 
   playTideRoar() {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    const n = this.ctx.createBufferSource();
-    n.buffer = this.noiseBuf;
-    const lp = this.ctx.createBiquadFilter();
-    lp.type = 'lowpass';
-    lp.frequency.setValueAtTime(240, t);
-    lp.frequency.linearRampToValueAtTime(620, t + 0.22);
-    lp.frequency.exponentialRampToValueAtTime(140, t + 0.5);
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.28, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
-    n.connect(lp); lp.connect(g); g.connect(this.sfxOut);
-    n.start(t); n.stop(t + 0.5);
-
-    const osc = this.ctx.createOscillator();
-    const og = this.ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(92, t);
-    osc.frequency.exponentialRampToValueAtTime(42, t + 0.45);
-    og.gain.setValueAtTime(0.16, t);
-    og.gain.exponentialRampToValueAtTime(0.001, t + 0.48);
-    osc.connect(og); og.connect(this.sfxOut);
-    osc.start(t); osc.stop(t + 0.5);
+    this._playBaked('tide_roar', 1.0);
   }
 
   playFootstep() {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    const n = this.ctx.createBufferSource();
-    n.buffer = this.noiseBuf;
-    const bp = this.ctx.createBiquadFilter();
-    bp.type = 'bandpass';
-    bp.frequency.setValueAtTime(420 + Math.random() * 140, t);
-    bp.Q.value = 1.8;
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.055, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
-    n.connect(bp); bp.connect(g); g.connect(this.sfxOut);
-    n.start(t); n.stop(t + 0.05);
+    this._playBaked('footstep', 0.88 + Math.random() * 0.24);
   }
 
   playLand() {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const g = this.ctx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(135, t);
-    osc.frequency.exponentialRampToValueAtTime(44, t + 0.08);
-    g.gain.setValueAtTime(0.13, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
-    osc.connect(g); g.connect(this.sfxOut);
-    osc.start(t); osc.stop(t + 0.1);
+    this._playBaked('land', 1.0);
   }
 
   playWingJump() {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    const n = this.ctx.createBufferSource();
-    n.buffer = this.noiseBuf;
-    const bp = this.ctx.createBiquadFilter();
-    bp.type = 'bandpass';
-    bp.frequency.setValueAtTime(520, t);
-    bp.frequency.exponentialRampToValueAtTime(1450, t + 0.14);
-    bp.Q.value = 1.3;
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.16, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
-    n.connect(bp); bp.connect(g); g.connect(this.sfxOut);
-    n.start(t); n.stop(t + 0.18);
-
-    [587.3, 880].forEach((f, i) => {
-      const osc = this.ctx.createOscillator();
-      const og = this.ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(f, t + i * 0.03);
-      osc.frequency.exponentialRampToValueAtTime(f * 1.18, t + 0.2);
-      og.gain.setValueAtTime(0.075 / (i + 1), t + i * 0.03);
-      og.gain.exponentialRampToValueAtTime(0.0008, t + 0.22);
-      osc.connect(og); og.connect(this.sfxOut);
-      osc.start(t + i * 0.03); osc.stop(t + 0.24);
-    });
+    this._playBaked('wing_jump', 1.0);
   }
 
   playShieldBreak() {
     if (!this.ctx || this.muted) return;
-    this.playParry(true, 2);
-    const t = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const g = this.ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(220, t);
-    osc.frequency.exponentialRampToValueAtTime(55, t + 0.24);
-    g.gain.setValueAtTime(0.26, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.26);
-    osc.connect(g); g.connect(this.sfxOut);
-    osc.start(t); osc.stop(t + 0.28);
+    this._playBaked('parry_perfect', 1.068);
+    this._playBaked('shield_break', 1.0);
   }
 
   playGrayShatter() {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    const n = this.ctx.createBufferSource();
-    n.buffer = this.noiseBuf;
-    const hp = this.ctx.createBiquadFilter();
-    hp.type = 'highpass';
-    hp.frequency.setValueAtTime(2400, t);
-    const ng = this.ctx.createGain();
-    ng.gain.setValueAtTime(0.16, t);
-    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-    n.connect(hp); hp.connect(ng); ng.connect(this.sfxOut);
-    n.start(t); n.stop(t + 0.2);
-
-    [1980, 1420, 960].forEach((f, i) => {
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(f, t + i * 0.025);
-      osc.frequency.exponentialRampToValueAtTime(f * 0.62, t + i * 0.025 + 0.14);
-      g.gain.setValueAtTime(0.075, t + i * 0.025);
-      g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.025 + 0.16);
-      osc.connect(g); g.connect(this.sfxOut);
-      osc.start(t + i * 0.025); osc.stop(t + i * 0.025 + 0.17);
-    });
+    this._playBaked('gray_shatter', 1.0);
   }
 
   playBellQuake() {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    // Deep bronze bell shock boom + ascending soul resonance chord
-    [110, 220, 329.6, 523.25, 880].forEach((f, i) => {
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = i === 0 ? 'triangle' : 'sine';
-      osc.frequency.setValueAtTime(f * 1.04, t);
-      osc.frequency.exponentialRampToValueAtTime(f * 0.94, t + 0.62);
-      g.gain.setValueAtTime(0.22 / (i * 0.65 + 1), t);
-      g.gain.exponentialRampToValueAtTime(0.0008, t + 0.66);
-      osc.connect(g); g.connect(this.sfxOut);
-      osc.start(t); osc.stop(t + 0.68);
-    });
-    const n = this.ctx.createBufferSource();
-    n.buffer = this.noiseBuf;
-    const bp = this.ctx.createBiquadFilter();
-    bp.type = 'bandpass';
-    bp.frequency.setValueAtTime(920, t);
-    bp.frequency.exponentialRampToValueAtTime(180, t + 0.28);
-    bp.Q.value = 1.1;
-    const ng = this.ctx.createGain();
-    ng.gain.setValueAtTime(0.24, t);
-    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-    n.connect(bp); bp.connect(ng); ng.connect(this.sfxOut);
-    n.start(t); n.stop(t + 0.32);
+    this._playBaked('bell_quake', 1.0);
   }
 
   playResonanceBell(baseFreq = 440, harmony = false) {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    const freqs = harmony ? [baseFreq, baseFreq * 1.25, baseFreq * 1.5, baseFreq * 2] : [baseFreq, baseFreq * 1.5, baseFreq * 2.4];
-    freqs.forEach((f, i) => {
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = i === 0 ? 'triangle' : 'sine';
-      osc.frequency.setValueAtTime(f, t + (harmony ? i * 0.045 : 0));
-      osc.frequency.exponentialRampToValueAtTime(f * 0.992, t + (harmony ? 1.45 : 0.95));
-      g.gain.setValueAtTime((harmony ? 0.16 : 0.14) / (i * 0.7 + 1), t + (harmony ? i * 0.045 : 0));
-      g.gain.exponentialRampToValueAtTime(0.0006, t + (harmony ? 1.5 : 0.98));
-      osc.connect(g); g.connect(this.sfxOut);
-      osc.start(t + (harmony ? i * 0.045 : 0));
-      osc.stop(t + (harmony ? 1.55 : 1.0));
-    });
+    this._playBaked(harmony ? 'res_bell_harmony' : 'res_bell_single', baseFreq / 440);
   }
 
   playShadeDash() {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    const n = this.ctx.createBufferSource();
-    n.buffer = this.noiseBuf;
-    const bp = this.ctx.createBiquadFilter();
-    bp.type = 'bandpass';
-    bp.frequency.setValueAtTime(1900, t);
-    bp.frequency.exponentialRampToValueAtTime(340, t + 0.22);
-    bp.Q.value = 1.9;
-    const ng = this.ctx.createGain();
-    ng.gain.setValueAtTime(0.22, t);
-    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.24);
-    n.connect(bp); bp.connect(ng); ng.connect(this.sfxOut);
-    n.start(t); n.stop(t + 0.25);
-    [311.1, 622.3].forEach((f, i) => {
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = i === 0 ? 'triangle' : 'sine';
-      osc.frequency.setValueAtTime(f * 1.25, t);
-      osc.frequency.exponentialRampToValueAtTime(f * 0.72, t + 0.24);
-      g.gain.setValueAtTime(0.11 / (i + 1), t);
-      g.gain.exponentialRampToValueAtTime(0.0008, t + 0.25);
-      osc.connect(g); g.connect(this.sfxOut);
-      osc.start(t); osc.stop(t + 0.26);
-    });
+    this._playBaked('shade_dash', 1.0);
   }
 
   playShadeBurst() {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    [185, 370, 740, 1175].forEach((f, i) => {
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = i === 0 ? 'sawtooth' : 'sine';
-      osc.frequency.setValueAtTime(f, t);
-      osc.frequency.exponentialRampToValueAtTime(f * 0.58, t + 0.26);
-      g.gain.setValueAtTime(0.15 / (i * 0.65 + 1), t);
-      g.gain.exponentialRampToValueAtTime(0.0008, t + 0.28);
-      osc.connect(g); g.connect(this.sfxOut);
-      osc.start(t); osc.stop(t + 0.3);
-    });
+    this._playBaked('shade_burst', 1.0);
   }
 
   playEchoReclaim() {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    [392.0, 493.88, 587.33, 783.99].forEach((f, i) => {
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(f, t + i * 0.055);
-      g.gain.setValueAtTime(0.13, t + i * 0.055);
-      g.gain.exponentialRampToValueAtTime(0.0008, t + i * 0.055 + 0.55);
-      osc.connect(g); g.connect(this.sfxOut);
-      osc.start(t + i * 0.055); osc.stop(t + i * 0.055 + 0.58);
-    });
+    this._playBaked('echo_reclaim', 1.0);
   }
 
   playShadowBlink() {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    [987.77, 1479.98, 440].forEach((f, i) => {
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = i === 0 ? 'triangle' : 'sine';
-      osc.frequency.setValueAtTime(f, t + i * 0.03);
-      osc.frequency.exponentialRampToValueAtTime(f * 0.76, t + i * 0.03 + 0.24);
-      g.gain.setValueAtTime(0.11 / (i + 1), t + i * 0.03);
-      g.gain.exponentialRampToValueAtTime(0.0008, t + i * 0.03 + 0.26);
-      osc.connect(g); g.connect(this.sfxOut);
-      osc.start(t + i * 0.03); osc.stop(t + i * 0.03 + 0.28);
-    });
+    this._playBaked('shadow_blink', 1.0);
   }
 
   playEndingChord(isTrueEnding = false, step = 0) {
     if (!this.ctx || this.muted) return;
     const t = this.ctx.currentTime;
-    const dawnChords = [
-      [146.83, 220.00, 293.66, 369.99],
-      [196.00, 246.94, 369.99, 440.00],
-      [220.00, 277.18, 329.63, 554.37],
-      [146.83, 293.66, 369.99, 587.33, 739.99]
-    ];
-    const vowChords = [
-      [146.83, 174.61, 220.00, 293.66],
-      [130.81, 155.56, 233.08, 311.13],
-      [116.54, 174.61, 220.00, 349.23],
-      [146.83, 220.00, 293.66, 440.00]
-    ];
-    const chord = (isTrueEnding ? dawnChords : vowChords)[step % 4];
-    chord.forEach((f, i) => {
+    const chord = (isTrueEnding ? DAWN_CHORDS : VOW_CHORDS)[step % 4];
+    for (let i = 0; i < chord.length; i++) {
+      const f = chord[i];
       const osc = this.ctx.createOscillator();
       const g = this.ctx.createGain();
       osc.type = i === 0 ? 'triangle' : 'sine';
@@ -1007,24 +1198,33 @@ export class SoundEngine {
       g.gain.exponentialRampToValueAtTime(0.0006, t + i * 0.09 + 3.2);
       osc.connect(g); g.connect(this.sfxOut);
       osc.start(t + i * 0.09); osc.stop(t + i * 0.09 + 3.3);
-    });
+    }
   }
 
   playCrumble() {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
-    const n = this.ctx.createBufferSource();
-    n.buffer = this.noiseBuf;
-    const lp = this.ctx.createBiquadFilter();
-    lp.type = 'lowpass';
-    lp.frequency.setValueAtTime(720, t);
-    lp.frequency.exponentialRampToValueAtTime(140, t + 0.24);
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.18, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.26);
-    n.connect(lp); lp.connect(g); g.connect(this.sfxOut);
-    n.start(t); n.stop(t + 0.28);
+    this._playBaked('crumble', 1.0);
   }
 }
 
 export const audio = new SoundEngine();
+
+// Instrument all SoundEngine playback & ambience methods with re-entrancy-safe CPU timing
+let _audioProfDepth = 0;
+for (const key of Object.getOwnPropertyNames(SoundEngine.prototype)) {
+  if (key === 'updateAmbience' || key.startsWith('play')) {
+    const orig = SoundEngine.prototype[key];
+    if (typeof orig !== 'function') continue;
+    const isSfx = key.startsWith('play');
+    audio[key] = function (...args) {
+      if (_audioProfDepth > 0) return orig.apply(this, args);
+      const t0 = performance.now();
+      _audioProfDepth++;
+      try {
+        return orig.apply(this, args);
+      } finally {
+        _audioProfDepth--;
+        prof.addAudioTime(performance.now() - t0, isSfx && !this.muted);
+      }
+    };
+  }
+}

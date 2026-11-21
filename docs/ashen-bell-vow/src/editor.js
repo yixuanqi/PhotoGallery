@@ -1,5 +1,6 @@
 // Zero-dependency Minimal Web Level Editor for Room-Based JSON Data Stream
 import { COLORS, PREVIEW_STORAGE_KEY } from './config.js';
+import { STAMP_DEFS, getStampDef, drawStampPreview } from './stampAtlas.js';
 
 const canvas = document.getElementById('editorCanvas');
 const ctx = canvas.getContext('2d');
@@ -17,6 +18,7 @@ const state = {
   activeRoomIdx: 0,
   viewMode: 'room', // 'room' | 'world'
   tool: 'select',
+  activeStampType: 'broken_arch',
   gridSize: 10,
   cam: { x: -60, y: -40, zoom: 0.72 },
   selection: null, // { kind, index, subIndex? }
@@ -146,8 +148,8 @@ function getRoomObjects(rm) {
   (rm.gates || []).forEach((o, i) => addRect('gate', rm.gates, i, o, o.w, o.h, true));
   (rm.rivers || []).forEach((o, i) => addRect('river', rm.rivers, i, o, o.w, 22, true));
   (rm.enemies || []).forEach((o, i) => {
-    const ew = o.kind === 'golem' ? 46 : o.kind === 'duelist' || o.kind === 'leech' ? 34 : 36;
-    const eh = o.kind === 'golem' ? 78 : o.kind === 'priest' ? 66 : o.kind === 'duelist' ? 60 : o.kind === 'wraith' ? 48 : o.kind === 'leech' ? 38 : 62;
+    const ew = o.kind === 'golem' ? 46 : o.kind === 'dummy' ? 38 : o.kind === 'duelist' || o.kind === 'leech' ? 34 : 36;
+    const eh = o.kind === 'golem' ? 78 : o.kind === 'dummy' ? 68 : o.kind === 'priest' ? 66 : o.kind === 'duelist' ? 60 : o.kind === 'wraith' ? 48 : o.kind === 'leech' ? 38 : 62;
     addRect('enemy', rm.enemies, i, o, ew, eh, false);
   });
   (rm.bosses || []).forEach((o, i) => addRect('boss', rm.bosses, i, o, 58, 102, false));
@@ -192,6 +194,20 @@ function getRoomObjects(rm) {
   const props = rm.props || {};
   (props.banners || []).forEach((o, i) => addPoint('banner', props.banners, i, o, 'x', 'y', 20));
   (props.candles || []).forEach((o, i) => addPoint('candle', props.candles, i, o, 'x', 'y', 18));
+  (props.stamps || []).forEach((o, i) => {
+    const def = getStampDef(o.type);
+    const sc = Number(o.scale) || 1;
+    const sw = def ? Math.max(36, def.w * sc) : 64;
+    const sh = def ? Math.max(36, def.h * sc) : 64;
+    const ax = def ? def.ax : 0.5;
+    const ay = def ? def.ay : 0.5;
+    const wx = ox + (Number(o.x) || 0);
+    const wy = oy + (Number(o.y) || 0);
+    items.push({
+      kind: 'stamp', arr: props.stamps, idx: i, obj: o, xKey: 'x', yKey: 'y', resizable: false,
+      wx: wx - sw * ax, wy: wy - sh * ay, w: sw, h: sh, cx: wx, cy: wy
+    });
+  });
   return items;
 }
 
@@ -243,6 +259,14 @@ function drawRoomContents(rm, isGhost = false) {
   // Room Bounds Frame
   ctx.fillStyle = isGhost ? 'rgba(14, 20, 32, 0.35)' : 'rgba(13, 19, 32, 0.55)';
   ctx.fillRect(ox, oy, rm.bounds.w, rm.bounds.h);
+
+  // Background Procedural Ink Stamps (WYSIWYG preview)
+  const rmProps = rm.props || {};
+  for (const st of (rmProps.stamps || [])) {
+    const def = getStampDef(st.type);
+    const ly = st.layer || (def ? def.defaultLayer : 'bg');
+    if (ly === 'bg') drawStampPreview(ctx, st, ox, oy);
+  }
 
   // Solids
   for (const s of (rm.solids || [])) {
@@ -396,12 +420,13 @@ function drawRoomContents(rm, isGhost = false) {
     ctx.fillText('坛', ox + a.x, oy + a.y - 28);
   }
   for (const npc of (rm.npcs || [])) {
-    ctx.fillStyle = COLORS.gold;
+    ctx.fillStyle = npc.kind === 'keeper' ? COLORS.cyanBright : npc.kind === 'chronicler' ? COLORS.goldBright : COLORS.gold;
     ctx.beginPath(); ctx.arc(ox + npc.x, oy + npc.y - 30, 14, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#090c12';
     ctx.font = 'bold 11px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('匠', ox + npc.x, oy + npc.y - 26);
+    const g = npc.kind === 'keeper' ? '汐' : npc.kind === 'chronicler' ? '墨' : '匠';
+    ctx.fillText(g, ox + npc.x, oy + npc.y - 26);
   }
   for (const lt of (rm.loreTablets || [])) {
     ctx.fillStyle = '#253147';
@@ -416,6 +441,7 @@ function drawRoomContents(rm, isGhost = false) {
 
   // Enemies + Patrol Bars
   const eColMap = {
+    dummy: 'rgba(245, 158, 11, 0.78)',
     golem: 'rgba(251, 146, 60, 0.75)',
     wraith: 'rgba(244, 63, 94, 0.75)',
     priest: 'rgba(192, 132, 252, 0.78)',
@@ -423,10 +449,10 @@ function drawRoomContents(rm, isGhost = false) {
     leech: 'rgba(56, 189, 248, 0.78)',
     sentinel: 'rgba(220, 38, 38, 0.72)'
   };
-  const eGlyph = { golem: '铁', wraith: '灵', priest: '祭', duelist: '刃', leech: '蛭', sentinel: '矛' };
+  const eGlyph = { dummy: '偶', golem: '铁', wraith: '灵', priest: '祭', duelist: '刃', leech: '蛭', sentinel: '矛' };
   for (const e of (rm.enemies || [])) {
-    const ew = e.kind === 'golem' ? 46 : e.kind === 'duelist' || e.kind === 'leech' ? 34 : 36;
-    const eh = e.kind === 'golem' ? 78 : e.kind === 'priest' ? 66 : e.kind === 'duelist' ? 60 : e.kind === 'wraith' ? 48 : e.kind === 'leech' ? 38 : 62;
+    const ew = e.kind === 'golem' ? 46 : e.kind === 'dummy' ? 38 : e.kind === 'duelist' || e.kind === 'leech' ? 34 : 36;
+    const eh = e.kind === 'golem' ? 78 : e.kind === 'dummy' ? 68 : e.kind === 'priest' ? 66 : e.kind === 'duelist' ? 60 : e.kind === 'wraith' ? 48 : e.kind === 'leech' ? 38 : 62;
     if (e.minX !== undefined && e.maxX !== undefined) {
       ctx.strokeStyle = 'rgba(248, 113, 113, 0.35)';
       ctx.setLineDash([4, 4]);
@@ -458,6 +484,13 @@ function drawRoomContents(rm, isGhost = false) {
     ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(b.id === 'boss_yuan' ? '渊' : b.id === 'boss_ji' ? '寂' : '晦', ox + b.x + 29, oy + b.y + 54);
+  }
+
+  // Foreground Procedural Ink Stamps (WYSIWYG preview)
+  for (const st of (rmProps.stamps || [])) {
+    const def = getStampDef(st.type);
+    const ly = st.layer || (def ? def.defaultLayer : 'bg');
+    if (ly === 'fg') drawStampPreview(ctx, st, ox, oy);
   }
 
   // Inscriptions
@@ -630,7 +663,7 @@ function renderRoomList() {
   state.bundle.rooms.forEach((rm, idx) => {
     const btn = document.createElement('button');
     btn.className = `room-item${idx === state.activeRoomIdx ? ' active' : ''}`;
-    const count = (rm.solids || []).length + (rm.enemies || []).length + (rm.lanterns || []).length + (rm.pickups || []).length;
+    const count = (rm.solids || []).length + (rm.enemies || []).length + (rm.lanterns || []).length + (rm.pickups || []).length + ((rm.props && rm.props.stamps) ? rm.props.stamps.length : 0);
     btn.innerHTML = `
       <div class="room-item-title"><span>${rm.name}</span><span style="font-size:10.5px;color:var(--dim);">${rm.id}</span></div>
       <div class="room-item-meta">${rm.bounds.w}×${rm.bounds.h} · 偏移 (${rm.bounds.x}, ${rm.bounds.y}) · ${count} 物件</div>
@@ -653,6 +686,13 @@ function addField(parent, labelText, value, type, onChange) {
     inp = document.createElement('textarea');
     inp.className = 'prop-input';
     inp.value = value ?? '';
+  } else if (type === 'checkbox') {
+    inp = document.createElement('input');
+    inp.type = 'checkbox';
+    inp.checked = !!value;
+    inp.style.width = '16px';
+    inp.style.height = '16px';
+    inp.style.cursor = 'pointer';
   } else if (Array.isArray(type)) {
     inp = document.createElement('select');
     inp.className = 'prop-input';
@@ -671,7 +711,7 @@ function addField(parent, labelText, value, type, onChange) {
   }
   inp.addEventListener('change', () => {
     pushUndo();
-    const val = type === 'number' ? Number(inp.value) : inp.value;
+    const val = type === 'checkbox' ? !!inp.checked : (type === 'number' ? Number(inp.value) : inp.value);
     onChange(val);
     syncManifestFromRooms();
     renderRoomList();
@@ -687,7 +727,7 @@ function renderRoomProps() {
   addField(roomPropsEl, '房间ID', rm.id, 'text', v => { rm.id = v.trim() || rm.id; });
   addField(roomPropsEl, '大区名', rm.zoneName, 'text', v => { rm.zoneName = v; });
   addField(roomPropsEl, '房间名', rm.name, 'text', v => { rm.name = v; });
-  addField(roomPropsEl, '生态主题', rm.theme || 'corridor', ['sanctuary', 'corridor', 'chapel', 'bell_well', 'foundry', 'crypt', 'ascent', 'heart'], v => { rm.theme = v; });
+  addField(roomPropsEl, '生态主题', rm.theme || 'corridor', ['sanctuary', 'corridor', 'chapel', 'bell_well', 'foundry', 'crypt', 'ascent', 'heart', 'wind', 'forest', 'mountain'], v => { rm.theme = v; });
   addField(roomPropsEl, '世界 X', rm.bounds.x, 'number', v => { rm.bounds.x = v; });
   addField(roomPropsEl, '世界 Y', rm.bounds.y, 'number', v => { rm.bounds.y = v; });
   addField(roomPropsEl, '宽度 W', rm.bounds.w, 'number', v => { rm.bounds.w = Math.max(320, v); });
@@ -738,8 +778,19 @@ function renderInspector() {
   grid.lastChild.disabled = true;
 
   if (o.id !== undefined) addField(grid, 'ID', o.id, 'text', v => { o.id = v; });
-  if (o.type !== undefined) addField(grid, '形态', o.type, ['ground', 'pillar', 'platform'], v => { o.type = v; });
-  if (o.kind !== undefined && sel.kind === 'enemy') addField(grid, '兵种', o.kind, ['sentinel', 'wraith', 'golem', 'priest', 'duelist', 'leech'], v => { o.kind = v; });
+  if (sel.kind === 'stamp') {
+    addField(grid, '图章类型', o.type, STAMP_DEFS.map(d => d.id), v => { o.type = v; });
+    addField(grid, '前后图层', o.layer || 'bg', ['bg', 'fg'], v => { o.layer = v; });
+    addField(grid, '缩放倍率', o.scale !== undefined ? o.scale : 1, 'number', v => { o.scale = Math.max(0.25, Math.min(3.0, v || 1)); });
+    addField(grid, '水平翻转', !!o.flip, 'checkbox', v => { o.flip = !!v; });
+    addField(grid, '变体种子', o.seed !== undefined ? o.seed : 0, 'number', v => { o.seed = Math.max(0, Math.floor(v || 0)); });
+    addField(grid, '透明度', o.alpha !== undefined ? o.alpha : 0.85, 'number', v => { o.alpha = Math.max(0.1, Math.min(1.0, v || 0.85)); });
+    addField(grid, '旋转弧度', o.rotate || 0, 'number', v => { o.rotate = Number(v) || 0; });
+  } else if (o.type !== undefined) {
+    addField(grid, '形态', o.type, ['ground', 'pillar', 'platform'], v => { o.type = v; });
+  }
+  if (o.kind !== undefined && sel.kind === 'enemy') addField(grid, '兵种', o.kind, ['dummy', 'sentinel', 'wraith', 'golem', 'priest', 'duelist', 'leech'], v => { o.kind = v; });
+  if (o.kind !== undefined && sel.kind === 'npc') addField(grid, 'NPC类', o.kind, ['smith', 'chronicler', 'keeper'], v => { o.kind = v; });
   if (o.kind !== undefined && sel.kind === 'pickup') addField(grid, '秘宝类', o.kind, ['flaskCore', 'relic', 'ability', 'echoCache', 'statCore', 'keyItem'], v => { o.kind = v; });
   if (o.echoAmount !== undefined) addField(grid, '残响量', o.echoAmount, 'number', v => { o.echoAmount = Math.max(10, v); });
 
@@ -861,6 +912,22 @@ function createPointObject(tool, lx, ly) {
   } else if (tool === 'candle') {
     rm.props.candles.push({ x: lx, y: ly, count: 3 });
     state.selection = { kind: 'candle', idx: rm.props.candles.length - 1 };
+  } else if (tool === 'stamp') {
+    if (!rm.props) rm.props = { puddles: [], banners: [], candles: [], boneCairns: [], stamps: [] };
+    if (!Array.isArray(rm.props.stamps)) rm.props.stamps = [];
+    const def = getStampDef(state.activeStampType) || STAMP_DEFS[0];
+    rm.props.stamps.push({
+      type: def.id,
+      x: lx,
+      y: ly,
+      scale: 1,
+      flip: false,
+      layer: def.defaultLayer || 'bg',
+      alpha: def.defaultLayer === 'fg' ? 0.72 : 0.78,
+      seed: rm.props.stamps.length % 3
+    });
+    state.selection = { kind: 'stamp', idx: rm.props.stamps.length - 1 };
+    showToast(`已放置图章「${def.label}」`);
   }
   renderAllUI();
   draw();
@@ -1132,7 +1199,13 @@ window.addEventListener('keydown', e => {
 
 function setTool(tool) {
   state.tool = tool;
-  document.querySelectorAll('.tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
+  document.querySelectorAll('.tool-btn').forEach(b => {
+    if (b.dataset.stampType) {
+      b.classList.toggle('active', tool === 'stamp' && b.dataset.stampType === state.activeStampType);
+    } else {
+      b.classList.toggle('active', b.dataset.tool === tool);
+    }
+  });
   renderAllUI();
 }
 
@@ -1171,6 +1244,24 @@ function downloadJson(filename, obj) {
 document.querySelectorAll('.tool-btn').forEach(btn => {
   btn.addEventListener('click', () => setTool(btn.dataset.tool));
 });
+
+// Dynamically build Procedural Ink Stamp Palette from STAMP_DEFS
+const stampPaletteEl = document.getElementById('stamp-palette');
+if (stampPaletteEl) {
+  for (const def of STAMP_DEFS) {
+    const btn = document.createElement('button');
+    btn.className = 'tool-btn';
+    btn.dataset.tool = 'stamp';
+    btn.dataset.stampType = def.id;
+    btn.title = `${def.cat} · ${def.label} (${def.w}×${def.h}, 默认层: ${def.defaultLayer})`;
+    btn.innerHTML = `<span class="stamp-cat-tag">${def.cat}</span><span>${def.label}</span>`;
+    btn.addEventListener('click', () => {
+      state.activeStampType = def.id;
+      setTool('stamp');
+    });
+    stampPaletteEl.appendChild(btn);
+  }
+}
 document.getElementById('sel-grid').addEventListener('change', e => {
   state.gridSize = Number(e.target.value) || 10;
   draw();
@@ -1226,7 +1317,7 @@ document.getElementById('btn-add-room').addEventListener('click', () => {
     enemies: [],
     bosses: [],
     inscriptions: [],
-    props: { puddles: [], banners: [], candles: [], boneCairns: [] }
+    props: { puddles: [], banners: [], candles: [], boneCairns: [], stamps: [] }
   };
   state.bundle.rooms.push(newRoom);
   syncManifestFromRooms();

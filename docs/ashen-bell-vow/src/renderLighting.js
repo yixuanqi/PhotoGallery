@@ -34,6 +34,11 @@ const _cyanLightMask = makeRadialMask([[0, 'rgba(186,230,253,0.82)'], [0.42, 'rg
 const _goldLightMask = makeRadialMask([[0, 'rgba(254,240,138,0.92)'], [0.42, 'rgba(245,158,11,0.34)'], [1, 'rgba(0,0,0,0)']]);
 
 const _casterPool = [];
+let _casterCount = 0;
+const _vx = new Float64Array(4);
+const _vy = new Float64Array(4);
+const _lpOut = { x: 0, y: 0 };
+const _bestLanternOut = { x: 0, y: 0, flash: false };
 let _lightingFrame = 0;
 const _shadowState = { x: -9999, y: -9999, valid: false, hasCasters: false };
 const _pLightState = { x: -9999, y: -9999, isGold: false, valid: false };
@@ -47,76 +52,81 @@ function getPlayerLanternPos() {
   if (!G.player || G.player.hp <= 0) return null;
   const cx = G.player.x + G.player.w * 0.5;
   const crouch = (G.player.landCrouch || 0) * 6 + (G.player.isCharging && G.player.chargeTime > 0.14 ? 5 : 0);
-  return {
-    x: cx - G.player.facing * 9,
-    y: G.player.y + G.player.h - 21 + crouch
-  };
+  _lpOut.x = cx - G.player.facing * 9;
+  _lpOut.y = G.player.y + G.player.h - 21 + crouch;
+  return _lpOut;
+}
+
+function _pushCaster(lx, ly, minX, maxX, minY, maxY, x, y, w, h) {
+  if (w <= 0 || h <= 0) return;
+  if (x + w < minX || x > maxX || y + h < minY || y > maxY) return;
+  if (lx >= x - 2 && lx <= x + w + 2 && ly >= y - 2 && ly <= y + h + 2) return;
+  let slot = _casterPool[_casterCount];
+  if (!slot) {
+    slot = { x: 0, y: 0, w: 0, h: 0 };
+    _casterPool.push(slot);
+  }
+  slot.x = x; slot.y = y; slot.w = w; slot.h = h;
+  _casterCount++;
 }
 
 function collectShadowCasters(lx, ly, radius) {
-  _casterPool.length = 0;
+  _casterCount = 0;
   const minX = lx - radius;
   const maxX = lx + radius;
   const minY = ly - radius;
   const maxY = ly + radius;
 
-  const pushRect = (x, y, w, h) => {
-    if (w <= 0 || h <= 0) return;
-    if (x + w < minX || x > maxX || y + h < minY || y > maxY) return;
-    if (lx >= x - 2 && lx <= x + w + 2 && ly >= y - 2 && ly <= y + h + 2) return;
-    _casterPool.push({ x, y, w, h });
-  };
-
   for (let i = 0; i < SOLIDS.length; i++) {
     const s = SOLIDS[i];
     if (s.type === 'pillar' || s.type === 'platform') {
-      pushRect(s.x, s.y, s.w, s.h);
+      _pushCaster(lx, ly, minX, maxX, minY, maxY, s.x, s.y, s.w, s.h);
     } else if (s.type === 'ground') {
-      if (ly > s.y + 8 && s.h <= 220) pushRect(s.x, s.y, s.w, s.h);
+      if (ly > s.y + 8 && s.h <= 220) _pushCaster(lx, ly, minX, maxX, minY, maxY, s.x, s.y, s.w, s.h);
     }
   }
   if (G.crumblePlatforms) {
     for (let i = 0; i < G.crumblePlatforms.length; i++) {
       const cp = G.crumblePlatforms[i];
-      if (cp.state !== 'broken') pushRect(cp.x, cp.y, cp.w, cp.h);
+      if (cp.state !== 'broken') _pushCaster(lx, ly, minX, maxX, minY, maxY, cp.x, cp.y, cp.w, cp.h);
     }
   }
   if (G.worldState) {
     for (let i = 0; i < G.worldState.secretWalls.length; i++) {
       const sw = G.worldState.secretWalls[i];
-      if (!sw.broken) pushRect(sw.x, sw.y, sw.w, sw.h);
+      if (!sw.broken) _pushCaster(lx, ly, minX, maxX, minY, maxY, sw.x, sw.y, sw.w, sw.h);
     }
     if (!G.worldState.shortcutOpen && SHORTCUT_GATE_DEF.w > 0) {
-      pushRect(SHORTCUT_GATE_DEF.x, SHORTCUT_GATE_DEF.y, SHORTCUT_GATE_DEF.w, SHORTCUT_GATE_DEF.h);
+      _pushCaster(lx, ly, minX, maxX, minY, maxY, SHORTCUT_GATE_DEF.x, SHORTCUT_GATE_DEF.y, SHORTCUT_GATE_DEF.w, SHORTCUT_GATE_DEF.h);
     }
     if (!G.worldState.bossDefeated && CHAPEL_EXIT_GATE_DEF.w > 0) {
-      pushRect(CHAPEL_EXIT_GATE_DEF.x, CHAPEL_EXIT_GATE_DEF.y, CHAPEL_EXIT_GATE_DEF.w, CHAPEL_EXIT_GATE_DEF.h);
+      _pushCaster(lx, ly, minX, maxX, minY, maxY, CHAPEL_EXIT_GATE_DEF.x, CHAPEL_EXIT_GATE_DEF.y, CHAPEL_EXIT_GATE_DEF.w, CHAPEL_EXIT_GATE_DEF.h);
     }
     if (!G.worldState.abilities.doubleJump && !G.echoSession && FOUNDRY_ENTRY_GATE_DEF.w > 0) {
-      pushRect(FOUNDRY_ENTRY_GATE_DEF.x, FOUNDRY_ENTRY_GATE_DEF.y, FOUNDRY_ENTRY_GATE_DEF.w, FOUNDRY_ENTRY_GATE_DEF.h);
+      _pushCaster(lx, ly, minX, maxX, minY, maxY, FOUNDRY_ENTRY_GATE_DEF.x, FOUNDRY_ENTRY_GATE_DEF.y, FOUNDRY_ENTRY_GATE_DEF.w, FOUNDRY_ENTRY_GATE_DEF.h);
     }
     if (!G.worldState.boss2Defeated && !G.echoSession && FOUNDRY_EXIT_GATE_DEF.w > 0) {
-      pushRect(FOUNDRY_EXIT_GATE_DEF.x, FOUNDRY_EXIT_GATE_DEF.y, FOUNDRY_EXIT_GATE_DEF.w, FOUNDRY_EXIT_GATE_DEF.h);
+      _pushCaster(lx, ly, minX, maxX, minY, maxY, FOUNDRY_EXIT_GATE_DEF.x, FOUNDRY_EXIT_GATE_DEF.y, FOUNDRY_EXIT_GATE_DEF.w, FOUNDRY_EXIT_GATE_DEF.h);
     }
   }
   for (let i = 0; i < VOID_BARRIERS.length; i++) {
     const vb = VOID_BARRIERS[i];
-    pushRect(vb.x, vb.y, vb.w, vb.h);
+    _pushCaster(lx, ly, minX, maxX, minY, maxY, vb.x, vb.y, vb.w, vb.h);
   }
-  return _casterPool;
+  return _casterCount;
 }
 
-function traceExtrudedShadows(tctx, lx, ly, casters, extLen) {
+function traceExtrudedShadows(tctx, lx, ly, casterCount, extLen) {
   tctx.beginPath();
-  for (let i = 0; i < casters.length; i++) {
-    const c = casters[i];
+  for (let i = 0; i < casterCount; i++) {
+    const c = _casterPool[i];
     const x1 = c.x, y1 = c.y, x2 = c.x + c.w, y2 = c.y + c.h;
-    const vx = [x1, x2, x2, x1];
-    const vy = [y1, y1, y2, y2];
+    _vx[0] = x1; _vx[1] = x2; _vx[2] = x2; _vx[3] = x1;
+    _vy[0] = y1; _vy[1] = y1; _vy[2] = y2; _vy[3] = y2;
     for (let e = 0; e < 4; e++) {
       const n = (e + 1) & 3;
-      const ax = vx[e], ay = vy[e];
-      const bx = vx[n], by = vy[n];
+      const ax = _vx[e], ay = _vy[e];
+      const bx = _vx[n], by = _vy[n];
       const edx = bx - ax;
       const edy = by - ay;
       if (edy * (lx - ax) - edx * (ly - ay) <= 0) {
@@ -152,12 +162,12 @@ export function drawLanternCastShadows() {
   // Re-rasterize on even frames when moved > 2.5px (cuts shadow pass cost by >55% with zero visible lag)
   const moved = Math.abs(lp.x - _shadowState.x) + Math.abs(lp.y - _shadowState.y);
   if (!_shadowState.valid || (moved > 2.5 && (_lightingFrame & 1) === 0)) {
-    const casters = collectShadowCasters(lp.x, lp.y, radius);
+    const casterCnt = collectShadowCasters(lp.x, lp.y, radius);
     _shadowState.x = lp.x;
     _shadowState.y = lp.y;
     _shadowState.valid = true;
-    _shadowState.hasCasters = casters.length > 0;
-    if (casters.length > 0) {
+    _shadowState.hasCasters = casterCnt > 0;
+    if (casterCnt > 0) {
       const sctx = _shadowBuf.ctx;
       const scale = BUFFER_DIM / dia;
       sctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -168,7 +178,7 @@ export function drawLanternCastShadows() {
       sctx.scale(scale, scale);
       sctx.translate(-ox, -oy);
       sctx.fillStyle = '#020409';
-      traceExtrudedShadows(sctx, lp.x, lp.y, casters, radius + 120);
+      traceExtrudedShadows(sctx, lp.x, lp.y, casterCnt, radius + 120);
       sctx.restore();
 
       sctx.globalCompositeOperation = 'destination-in';
@@ -187,7 +197,7 @@ function rasterizeVolumetricLight(buf, lx, ly, radius, maskCanvas) {
   const scale = BUFFER_DIM / dia;
   const ox = lx - radius;
   const oy = ly - radius;
-  const casters = collectShadowCasters(lx, ly, radius);
+  const casterCnt = collectShadowCasters(lx, ly, radius);
   const lctx = buf.ctx;
 
   lctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -195,13 +205,13 @@ function rasterizeVolumetricLight(buf, lx, ly, radius, maskCanvas) {
   lctx.clearRect(0, 0, BUFFER_DIM, BUFFER_DIM);
   lctx.drawImage(maskCanvas, 0, 0);
 
-  if (casters.length > 0) {
+  if (casterCnt > 0) {
     lctx.save();
     lctx.scale(scale, scale);
     lctx.translate(-ox, -oy);
     lctx.globalCompositeOperation = 'destination-out';
     lctx.fillStyle = '#000';
-    traceExtrudedShadows(lctx, lx, ly, casters, radius + 110);
+    traceExtrudedShadows(lctx, lx, ly, casterCnt, radius + 110);
     lctx.restore();
   }
 }
@@ -247,7 +257,7 @@ export function drawVolumetricLanternLights(camOriginX, camOriginY) {
       const ly = l.anchorY + Math.cos(l.angle) * l.len;
       if (lx < camOriginX - 180 || lx > camOriginX + G.canvasW + 180 || ly < camOriginY - 180 || ly > camOriginY + G.canvasH + 180) continue;
       const d = Math.hypot(lx - refX, ly - refY);
-      if (d < bestDist) { bestDist = d; best = { x: lx, y: ly, flash: l.ringFlash > 0 }; }
+      if (d < bestDist) { bestDist = d; _bestLanternOut.x = lx; _bestLanternOut.y = ly; _bestLanternOut.flash = l.ringFlash > 0; best = _bestLanternOut; }
     }
     if (best) {
       const r = best.flash ? 240 : 190;

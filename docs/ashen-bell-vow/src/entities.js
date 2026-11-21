@@ -1,6 +1,6 @@
 // Player, enemy & boss entity factories
 import { FLOOR_Y, WELL_BOTTOM_Y, ENEMIES_DEF, BOSSES_DEF } from './config.js';
-import { getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks, getPlayerMaxSeals } from './state.js';
+import { getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks, getPlayerMaxSeals, getCombatScaling } from './state.js';
 import { createCloak } from './vfx.js';
 
 export function createPlayer(x = 340, y = FLOOR_Y - 56) {
@@ -81,6 +81,8 @@ export function createPlayer(x = 340, y = FLOOR_Y - 56) {
     grappleTarget: null,
     grappleTx: 0,
     grappleTy: 0,
+    lastGrappleRef: null,
+    lastGrappleIgnoreTimer: 0,
     healTimer: 0,
     healDone: false,
     execTimer: 0,
@@ -278,22 +280,78 @@ export function makeLeech(id, x, y) {
   };
 }
 
+export function makeDummy(id, x, y, minX, maxX) {
+  return {
+    id,
+    name: '青铜演武钟偶',
+    kind: 'dummy',
+    isDummy: true,
+    isBoss: false,
+    x, y,
+    homeX: x,
+    minX, maxX,
+    w: 38,
+    h: 68,
+    vx: 0,
+    vy: 0,
+    facing: -1,
+    hp: 260,
+    maxHp: 260,
+    posture: 0,
+    maxPosture: 90,
+    postureDecayDelay: 0,
+    alive: true,
+    active: false, // Dormant until struck or toggled via [E]
+    modeIdx: 0,    // 0: cycle, 1: parryOnly, 2: redOnly, 3: dormant
+    drillStep: 0,
+    idleResetTimer: 0,
+    hitPlayerDuringDrill: false,
+    state: 'idle', // idle, stalk, windup, attack, shieldGuard, recover, stagger
+    stateTimer: 0.6,
+    windupDuration: 0.56,
+    attackKind: 'parry1', // parry1, combo2, redThrust
+    comboIdx: 0,
+    comboTotal: 1,
+    isDelayedHit: false,
+    glintPlayed: false,
+    shieldUp: false,
+    shieldBrokenTimer: 0,
+    didHit: false,
+    hurtFlash: 0,
+    bellShake: 0,
+    walkCycle: 0
+  };
+}
+
+function applyFoeScaling(ent) {
+  if (!ent || ent.isDummy) return ent;
+  const sc = getCombatScaling();
+  ent.maxHp = Math.round(ent.maxHp * sc.hpMult);
+  ent.hp = ent.maxHp;
+  ent.maxPosture = Math.round(ent.maxPosture * sc.postureMult);
+  return ent;
+}
+
 export function createSentinels() {
   const list = [];
   for (const e of ENEMIES_DEF) {
-    if (e.kind === 'wraith') {
-      list.push(makeWraith(e.id, e.x, e.y));
+    let ent;
+    if (e.kind === 'dummy') {
+      ent = makeDummy(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 110, e.maxX !== undefined ? e.maxX : e.x + 130);
+    } else if (e.kind === 'wraith') {
+      ent = makeWraith(e.id, e.x, e.y);
     } else if (e.kind === 'golem') {
-      list.push(makeGolem(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 160, e.maxX !== undefined ? e.maxX : e.x + 160));
+      ent = makeGolem(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 160, e.maxX !== undefined ? e.maxX : e.x + 160);
     } else if (e.kind === 'priest') {
-      list.push(makePriest(e.id, e.x, e.y));
+      ent = makePriest(e.id, e.x, e.y);
     } else if (e.kind === 'duelist') {
-      list.push(makeDuelist(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 170, e.maxX !== undefined ? e.maxX : e.x + 170));
+      ent = makeDuelist(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 170, e.maxX !== undefined ? e.maxX : e.x + 170);
     } else if (e.kind === 'leech') {
-      list.push(makeLeech(e.id, e.x, e.y));
+      ent = makeLeech(e.id, e.x, e.y);
     } else {
-      list.push(makeSentinel(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 160, e.maxX !== undefined ? e.maxX : e.x + 160));
+      ent = makeSentinel(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 160, e.maxX !== undefined ? e.maxX : e.x + 160);
     }
+    list.push(applyFoeScaling(ent));
   }
   return list;
 }
@@ -302,7 +360,7 @@ export function createBoss() {
   const cfg = BOSSES_DEF.boss_hui;
   const bx = cfg ? cfg.x : 3420;
   const by = cfg ? cfg.y : (FLOOR_Y - 104);
-  return {
+  return applyFoeScaling({
     id: 'boss_hui',
     name: '断钟骑士 · 晦',
     phase1Title: '第一幕 · 寂静守誓',
@@ -345,14 +403,14 @@ export function createBoss() {
     bellSwing: 0,
     walkCycle: 0,
     cloak: createCloak(bx + 20, by + 28, 8, 12)
-  };
+  });
 }
 
 export function createBoss2() {
   const cfg = BOSSES_DEF.boss_ji;
   const bx = cfg ? cfg.x : 6360;
   const by = cfg ? cfg.y : (WELL_BOTTOM_Y - 142);
-  return {
+  return applyFoeScaling({
     id: 'boss_ji',
     name: '沉渊铸钟师 · 寂',
     phase1Title: '第一幕 · 铸魂悬丝',
@@ -397,14 +455,14 @@ export function createBoss2() {
     hurtFlash: 0,
     orbitAngle: 0,
     cloak: createCloak(bx + 28, by + 27, 8, 12)
-  };
+  });
 }
 
 export function createBoss3() {
   const cfg = BOSSES_DEF.boss_yuan;
   const bx = cfg ? cfg.x : 9220;
   const by = cfg ? cfg.y : (FLOOR_Y - 116);
-  return {
+  return applyFoeScaling({
     id: 'boss_yuan',
     name: '初钟圣骸 · 渊',
     phase1Title: '第一幕 · 初钟苏醒',
@@ -450,5 +508,5 @@ export function createBoss3() {
     haloAngle: 0,
     walkCycle: 0,
     cloak: createCloak(bx + 30, by + 30, 9, 13)
-  };
+  });
 }
