@@ -223,7 +223,7 @@ export function drawBoss2(b) {
   const fy = b.y + b.h;
   const isStagger = b.state === 'stagger';
   const isP2 = b.phase === 2;
-  const isRed = (b.moveKind === 'redSweepHook' || b.moveKind === 'resonanceNova') && (b.state === 'windup' || b.state === 'strike');
+  const isRed = (b.moveKind === 'redSweepHook' || b.moveKind === 'resonanceNova' || b.moveKind === 'antiAirRise') && (b.state === 'windup' || b.state === 'strike');
   const now = G.globalTime;
 
   G.ctx.save();

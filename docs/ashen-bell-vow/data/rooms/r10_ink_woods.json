@@ -213,18 +213,18 @@
       "kind": "echoCache",
       "x": 845,
       "y": 195,
-      "echoAmount": 190,
+      "echoAmount": 95,
       "name": "树冠荧光残响",
-      "desc": "荧光孢伞林梢凝结的残响"
+      "desc": "荧光孢伞林梢凝结的残响（+95 残响）"
     },
     {
       "id": "pickup_echo_forest",
       "kind": "echoCache",
       "x": 92,
       "y": 640,
-      "echoAmount": 175,
+      "echoAmount": 85,
       "name": "枯根古印",
-      "desc": "藏于古林暗影屏障之后的残响"
+      "desc": "藏于古林暗影屏障之后的残响（+85 残响）"
     }
   ],
   "resonancePuzzles": [

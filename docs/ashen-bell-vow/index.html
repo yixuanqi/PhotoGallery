@@ -7,9 +7,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="screen-orientation" content="landscape" />
 <meta name="x5-orientation" content="landscape" />
-<title>灰钟残誓 v32.0 — 模块化重构与 144Hz 字形/背景缓存提速版 · 暗黑手绘魂系类银河恶魔城</title>
+<title>灰钟残誓 v35.0 — 可视化钟脉技能树、极简去文字化与圣物羁绊星轨版 · 暗黑手绘魂系类银河恶魔城</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24'>🔔</text></svg>" />
-<link rel="stylesheet" href="./styles.css?v=32.0.0" />
+<link rel="stylesheet" href="./styles.css?v=35.0.1" />
 </head>
 <body>
 <div id="game-root">
@@ -26,6 +26,7 @@
             <span id="ability-shade-tag" class="ability-badge shade" data-i18n="hud.abilityShade" data-i18n-title="hud.abilityShadeTip" title="已习得幽影穿身：按 Shift 穿透暗蚀结界与敌人并触发残爆">幽影穿身</span>
             <span id="key-dawn-tag" class="ability-badge dawn" data-i18n="hud.keyDawn" data-i18n-title="hud.keyDawnTip" title="持有真结局关键信物「破晓初印」：斩落初钟圣骸后可开启真结局「破晓熄钟」">破晓初印</span>
             <span id="blessing-tag" class="ability-badge blessing" data-i18n="hud.blessing" data-i18n-title="hud.blessingTip" title="守灯祝福生效中：魂火自然回复翻倍，承受致命伤时保留 22% 气血并震退敌兵">守灯祝福</span>
+            <span id="realm-seals-tag" class="ability-badge realm-seals" data-i18n-title="hud.realmSealsTip" title="三境铭印（风/林/霜）：1印破境增伤，2印精粹强化，3印解封终誓第三圣物槽"></span>
             <span id="vow-cycle-tag" class="ability-badge vow-cycle" data-i18n-title="hud.vowCycleTip" title="当前周目轮回与生效中的钟誓制约"></span>
             <span id="relic-tag" class="relic-badge">噬痛荆棘</span>
           </div>
@@ -236,14 +237,16 @@
     </div>
   </div>
 
-  <!-- Blind Old Bellsmith Forge Modal -->
+  <!-- Blind Old Bellsmith Forge Modal (v35.0 Visual Bell-Vein Skill Tree) -->
   <div id="smith-modal" class="overlay-screen hidden">
-    <div class="modal-card" style="width: min(620px, 94%);">
+    <div class="modal-card smith-tree-modal-card">
       <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="smith" data-i18n="modal.back">✕ 返回</button></div>
       <div id="smith-modal-title" class="modal-title">盲眼老铸钟匠 · 砺</div>
-      <div class="modal-sub" data-i18n="smith.sub">熄灯铁砧 · 以击杀强敌所得「残响」淬炼断刃与魂炉</div>
-      <div id="smith-dialogue" class="lore-text" style="border-left-color:var(--gold);margin-bottom:12px;"></div>
-      <div id="smith-echo-bar" class="smith-echo-bar"></div>
+      <div class="modal-sub" data-i18n="smith.sub">钟脉星图 · 点击节点直览动作演示并点亮三脉</div>
+      <div class="smith-header-strip">
+        <div id="smith-dialogue" class="smith-quote-pill"></div>
+        <div id="smith-echo-bar" class="smith-echo-bar"></div>
+      </div>
       <div id="smith-upgrade-list" class="smith-upgrade-list"></div>
       <button id="btn-close-smith" class="primary-btn" data-i18n="smith.close">收刃告辞</button>
     </div>
@@ -578,6 +581,6 @@
   }, 8000);
 })();
 </script>
-<script type="module" src="./src/main.js?v=32.0.0"></script>
+<script type="module" src="./src/main.js?v=35.0.1"></script>
 </body>
 </html>

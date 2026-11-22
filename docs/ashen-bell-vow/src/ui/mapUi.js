@@ -1,7 +1,7 @@
 // Minimap Fast Blit, Zoomable/Draggable Parchment Map, Ink Pins & Click-to-Warp (split from src/ui.js in v32.0)
 import {
   COLORS, RELICS, RELIC_SYNERGIES, VOW_CONSTRAINTS, DUMMY_MODES, SMITH_UPGRADES, ACTION_META, ROOMS, SOLIDS, ALTARS, NPCS, LORE_TABLETS, PICKUPS_DEF, ENEMIES_DEF, BOSSES_DEF,
-  SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, FIRST_BELL_CORE_POS, VOID_BARRIERS,
+  SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, SKY_BRIDGE_GATE_DEF, FIRST_BELL_CORE_POS, VOID_BARRIERS,
   ABYSSAL_RIVERS, WIND_ZONES, BOUNCE_PADS, WORLD_MIN_X, WORLD_MIN_Y, WORLD_W, WORLD_H, WORLD_SPAN_W, WORLD_SPAN_H, FLOOR_Y, WELL_BOTTOM_Y,
   MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H, ECHO_GRADE_ORDER, SEVEN_BELLS_ORDER
 } from '../config.js';
@@ -12,7 +12,7 @@ import {
   ensureNpcQuests, hasKeeperBlessing,
   getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks, getPlayerMaxSeals,
   markMapExplored, getExplorationPercent, createLanterns,
-  createResonancePuzzles, createCrumblePlatforms, getAwakeBoss, getHudBoss, isBoss4Unlocked, clearOutcomeTimer, triggerBossBanner, setTextFast
+  createResonancePuzzles, createCrumblePlatforms, getAwakeBoss, getHudBoss, isBoss4Unlocked, isSkyBridgeOpen, clearOutcomeTimer, triggerBossBanner, setTextFast
 } from '../state.js';
 import { audio } from '../audio.js';
 import {
@@ -341,6 +341,15 @@ export function renderParchmentMap(targetCanvas, detailed = false, omitPlayer = 
     const gy4 = my(FOUNDRY_EXIT_GATE_DEF.y);
     mctx.fillStyle = G.worldState.boss2Defeated ? 'rgba(245, 158, 11, 0.35)' : COLORS.crimsonBright;
     mctx.fillRect(gx4, gy4, Math.max(2.5, FOUNDRY_EXIT_GATE_DEF.w * sx), Math.max(4, FOUNDRY_EXIT_GATE_DEF.h * sy * (G.worldState.boss2Defeated ? 0.25 : 1)));
+  }
+
+  // High-Altitude Sky Bridge Gate (r13 <-> r17)
+  if (SKY_BRIDGE_GATE_DEF.w > 0) {
+    const gx5 = mx(SKY_BRIDGE_GATE_DEF.x);
+    const gy5 = my(SKY_BRIDGE_GATE_DEF.y);
+    const skyOpen = isSkyBridgeOpen();
+    mctx.fillStyle = skyOpen ? 'rgba(186, 230, 253, 0.38)' : '#38bdf8';
+    mctx.fillRect(gx5, gy5, Math.max(2.5, SKY_BRIDGE_GATE_DEF.w * sx), Math.max(4, SKY_BRIDGE_GATE_DEF.h * sy * (skyOpen ? 0.25 : 1)));
   }
 
   // Data-Driven Main Boss Markers (from BOSSES_DEF)

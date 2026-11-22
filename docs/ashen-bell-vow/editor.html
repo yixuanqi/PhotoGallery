@@ -3,15 +3,15 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>灰钟残誓 v32.0 — 全境生态关卡与水墨图章编辑器</title>
-<link rel="stylesheet" href="./editor.css?v=30.0" />
+<title>灰钟残誓 v35.0 — 全境生态关卡、铭印神龛与经济体检编辑器</title>
+<link rel="stylesheet" href="./editor.css?v=35.0" />
 </head>
 <body>
 <div class="ed-shell">
   <!-- Top Bar -->
   <header class="ed-topbar">
     <div class="ed-brand">
-      <span>灰钟残誓 v32.0 · 全境编辑器</span>
+      <span>灰钟残誓 v35.0 · 全境编辑器</span>
     </div>
     <div class="ed-top-group">
       <button id="btn-view-room" class="ed-btn active">单房间编辑</button>
@@ -26,7 +26,7 @@
       <button id="btn-fit" class="ed-btn" title="居中适配画布 [F]">适配视野</button>
       <button id="btn-undo" class="ed-btn" title="撤销 [Ctrl+Z]">↶ 撤销</button>
       <button id="btn-redo" class="ed-btn" title="重做 [Ctrl+Y]">↷ 重做</button>
-      <button id="btn-audit" class="ed-btn" title="一键体检全境房间重叠、断链、越界与生态机关参数">🩺 全境体检</button>
+      <button id="btn-audit" class="ed-btn" title="一键体检房间重叠、断链、生态机关、铭印神龛、天顶石门与全境残响经济总量">🩺 全境体检</button>
     </div>
     <div class="ed-top-group">
       <button id="btn-playtest" class="ed-btn primary" title="直接跳入当前编辑的房间试玩">▶ 试玩当前房</button>
@@ -105,6 +105,8 @@
         <button class="tool-btn" data-tool="resonancePuzzle"><span class="tool-dot" style="background:#fbbf24"></span>三钟共鸣</button>
         <button class="tool-btn" data-tool="altar"><span class="tool-dot" style="background:#38bdf8"></span>熄灯祭坛</button>
         <button class="tool-btn" data-tool="pickup"><span class="tool-dot" style="background:#facc15"></span>秘宝/残芯</button>
+        <button class="tool-btn" data-tool="realmSeal"><span class="tool-dot" style="background:#d8b4fe"></span>铭印神龛</button>
+        <button class="tool-btn" data-tool="skyBridgeGate"><span class="tool-dot" style="background:#7dd3fc"></span>天顶石门</button>
         <button class="tool-btn" data-tool="lore"><span class="tool-dot" style="background:#c8ba9b"></span>风化残碑</button>
         <button class="tool-btn" data-tool="inscription"><span class="tool-dot" style="background:#94a3b8"></span>墙面铭文</button>
         <button class="tool-btn" data-tool="banner"><span class="tool-dot" style="background:#881337"></span>垂吊旗帜</button>
@@ -161,6 +163,6 @@
     <span id="status-info">就绪</span>
   </footer>
 </div>
-<script type="module" src="./src/editor.js?v=32.0"></script>
+<script type="module" src="./src/editor.js?v=35.0"></script>
 </body>
 </html>

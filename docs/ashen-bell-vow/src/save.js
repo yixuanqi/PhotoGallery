@@ -87,7 +87,7 @@ export function loadUserSettings() {
 export function readSaveSlot(slot = G.activeSaveSlot) {
   migrateLegacySaveIfNeeded();
   const data = storage.getJSON(slotKey(slot));
-  if (!data || ![8, 9, 10, 11, 12, 15, 17, 18, 19, 20, 25, 26, 30].includes(data.v)) return null;
+  if (!data || ![8, 9, 10, 11, 12, 15, 17, 18, 19, 20, 25, 26, 30, 33, 34, 35].includes(data.v)) return null;
   return data;
 }
 
@@ -117,11 +117,11 @@ export function saveProgress(showToast = false) {
   const exploredStr = G.worldState.explored
     .map(row => row.map(cell => (cell ? '1' : '0')).join(''))
     .join('|');
-  const eqIds = (G.equippedRelics || [G.currentRelic, null]).map(r => (r ? r.id : null));
+  const eqIds = (G.equippedRelics || [G.currentRelic, null, null]).slice(0, 3).map(r => (r ? r.id : null));
   const rawCodex = G.worldState.codex || { readTablets: [], bestiary: {}, achievements: [], discoveredSynergies: [] };
   const rawNq = G.worldState.npcQuests || { metChronicler: false, chroniclerClaims: [], metKeeper: false, keeperWickGifted: false, keeperBlessingActive: false };
   const payload = {
-    v: 30,
+    v: 35,
     npcQuests: {
       metChronicler: !!rawNq.metChronicler,
       chroniclerClaims: Array.isArray(rawNq.chroniclerClaims) ? [...new Set(rawNq.chroniclerClaims)] : [],
@@ -152,6 +152,7 @@ export function saveProgress(showToast = false) {
     boss3Defeated: !!G.worldState.boss3Defeated,
     boss4Defeated: !!G.worldState.boss4Defeated,
     defeatedMiniBosses: G.worldState.defeatedMiniBosses ? [...G.worldState.defeatedMiniBosses] : [],
+    realmSeals: G.worldState.realmSeals ? { wind: !!G.worldState.realmSeals.wind, forest: !!G.worldState.realmSeals.forest, mountain: !!G.worldState.realmSeals.mountain } : { wind: false, forest: false, mountain: false },
     keyItems: { dawnSigil: !!(G.worldState.keyItems && G.worldState.keyItems.dawnSigil) },
     endingsUnlocked: Array.isArray(G.worldState.endingsUnlocked) ? [...G.worldState.endingsUnlocked] : [],
     echoRecords: G.worldState.echoRecords || { hui: null, ji: null, yuan: null, rush: null, warden_wind: null, warden_forest: null, warden_mountain: null, warden_rush: null, zhu: null, seven_bells: null },
@@ -170,7 +171,9 @@ export function saveProgress(showToast = false) {
     unlockedWeapons: G.worldState.unlockedWeapons ? [...G.worldState.unlockedWeapons] : ['blade'],
     weaponTraits: G.worldState.weaponTraits ? { ...G.worldState.weaponTraits } : { blade: null, hammer: null, bell: null },
     unlockedWeaponTraits: G.worldState.unlockedWeaponTraits ? [...G.worldState.unlockedWeaponTraits] : [],
+    skillNodes: G.worldState.skillNodes ? [...G.worldState.skillNodes] : [],
     unlockedRelics: [...G.worldState.unlockedRelics],
+    refinedRelics: G.worldState.refinedRelics ? [...G.worldState.refinedRelics] : [],
     exploredStr,
     explorePct: getExplorationPercent()
   };
@@ -221,6 +224,13 @@ export function applySaveData(data) {
   G.worldState.chapelExitAnim = G.worldState.bossDefeated ? 1 : 0;
   G.worldState.foundryGateAnim = (data.abilities && data.abilities.doubleJump) ? 1 : 0;
   G.worldState.foundryExitAnim = G.worldState.boss2Defeated ? 1 : 0;
+  const rawSeals = data.realmSeals && typeof data.realmSeals === 'object' ? data.realmSeals : null;
+  G.worldState.realmSeals = {
+    wind: !!(rawSeals ? rawSeals.wind : G.worldState.defeatedMiniBosses.has('warden_wind_boss')),
+    forest: !!(rawSeals ? rawSeals.forest : G.worldState.defeatedMiniBosses.has('warden_forest_boss')),
+    mountain: !!(rawSeals ? rawSeals.mountain : G.worldState.defeatedMiniBosses.has('warden_mountain_boss'))
+  };
+  G.worldState.skyBridgeGateAnim = (G.worldState.realmSeals.wind || G.worldState.realmSeals.mountain || G.worldState.defeatedMiniBosses.has('warden_wind_boss') || G.worldState.defeatedMiniBosses.has('warden_mountain_boss')) ? 1 : 0;
   G.worldState.keyItems = { dawnSigil: !!(data.keyItems && data.keyItems.dawnSigil) };
   G.worldState.endingsUnlocked = Array.isArray(data.endingsUnlocked) ? [...new Set(data.endingsUnlocked)] : [];
   G.worldState.echoRecords = {
@@ -279,6 +289,7 @@ export function applySaveData(data) {
   G.worldState.equippedWeapon = G.worldState.unlockedWeapons.has(eqNorm) ? eqNorm : 'blade';
   const rawTraits = Array.isArray(data.unlockedWeaponTraits) ? data.unlockedWeaponTraits.filter(x => typeof x === 'string') : [];
   G.worldState.unlockedWeaponTraits = new Set(rawTraits);
+  G.worldState.skillNodes = new Set(Array.isArray(data.skillNodes) ? data.skillNodes.filter(x => typeof x === 'string') : []);
   const wtObj = data.weaponTraits && typeof data.weaponTraits === 'object' ? data.weaponTraits : {};
   G.worldState.weaponTraits = {
     blade: (wtObj.blade && G.worldState.unlockedWeaponTraits.has(wtObj.blade)) ? wtObj.blade : null,
@@ -286,6 +297,7 @@ export function applySaveData(data) {
     bell: (wtObj.bell && G.worldState.unlockedWeaponTraits.has(wtObj.bell)) ? wtObj.bell : null
   };
   G.worldState.unlockedRelics = new Set(Array.isArray(data.unlockedRelics) && data.unlockedRelics.length ? data.unlockedRelics : ['thorn', 'mirror', 'ember']);
+  G.worldState.refinedRelics = new Set(Array.isArray(data.refinedRelics) ? data.refinedRelics.filter(id => typeof id === 'string' && RELICS.some(r => r.id === id)) : []);
 
   const brokenSet = new Set(Array.isArray(data.brokenWalls) ? data.brokenWalls : []);
   for (const w of G.worldState.secretWalls) {
@@ -324,11 +336,13 @@ export function applySaveData(data) {
   }
 
   const resolveUnlocked = id => RELICS.find(r => r.id === id && (!r.hidden || G.worldState.unlockedRelics.has(r.id))) || null;
-  const rawIds = Array.isArray(data.equippedRelicIds) && data.equippedRelicIds.length ? data.equippedRelicIds : [data.relicId, null];
+  const rawIds = Array.isArray(data.equippedRelicIds) && data.equippedRelicIds.length ? data.equippedRelicIds : [data.relicId, null, null];
   const slot0 = resolveUnlocked(rawIds[0]) || RELICS[0];
   let slot1 = resolveUnlocked(rawIds[1]);
   if (slot1 && slot1.id === slot0.id) slot1 = null;
-  G.equippedRelics = [slot0, slot1];
+  let slot2 = resolveUnlocked(rawIds[2]);
+  if (slot2 && (slot2.id === slot0.id || (slot1 && slot2.id === slot1.id))) slot2 = null;
+  G.equippedRelics = [slot0, slot1, slot2];
   G.currentRelic = slot0;
   if (data.controlMode === 'kbmouse' || data.controlMode === 'keyboard') {
     G.controlMode = data.controlMode;

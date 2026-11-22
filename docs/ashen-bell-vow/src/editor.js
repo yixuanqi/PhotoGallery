@@ -1,5 +1,5 @@
-// Zero-dependency Web Level Editor v30.0 for Full-Biome Room-Based JSON Data Stream
-import { COLORS, GRAVITY, PREVIEW_STORAGE_KEY } from './config.js';
+// Zero-dependency Web Level Editor v34.0 for Full-Biome Room-Based JSON Data Stream
+import { COLORS, GRAVITY, PREVIEW_STORAGE_KEY, RELICS, ENEMY_ECHO_REWARDS, SMITH_UPGRADES, RELIC_REFINE_COST } from './config.js';
 import { STAMP_DEFS, getStampDef, drawStampPreview } from './stampAtlas.js';
 import { TERRAIN_OVERLAY_OPTIONS, drawEditorRoomBackdrop, drawEditorRoomSolids } from './renderTerrain.js';
 
@@ -498,13 +498,25 @@ function drawRoomContents(rm, isGhost = false) {
     ctx.strokeRect(ox + vb.x, oy + vb.y, vb.w, vb.h);
   }
 
-  // Gates
+  // Gates (incl. v34.0 skyBridgeGate frost-gold visual)
   for (const g of (rm.gates || [])) {
-    ctx.fillStyle = 'rgba(220, 38, 38, 0.25)';
-    ctx.strokeStyle = COLORS.goldBright;
+    const isSky = g.role === 'skyBridge' || g.id === 'gate_sky_bridge';
+    ctx.fillStyle = isSky ? 'rgba(56, 189, 248, 0.28)' : 'rgba(220, 38, 38, 0.25)';
+    ctx.strokeStyle = isSky ? '#bae6fd' : COLORS.goldBright;
     ctx.lineWidth = 2 / state.cam.zoom;
     ctx.fillRect(ox + g.x, oy + g.y, g.w, g.h);
     ctx.strokeRect(ox + g.x, oy + g.y, g.w, g.h);
+    if (isSky) {
+      ctx.strokeStyle = 'rgba(253, 224, 71, 0.72)';
+      ctx.lineWidth = 1.4 / state.cam.zoom;
+      for (let bx = g.x + 8; bx < g.x + g.w - 4; bx += 10) {
+        ctx.beginPath(); ctx.moveTo(ox + bx, oy + g.y); ctx.lineTo(ox + bx, oy + g.y + g.h); ctx.stroke();
+      }
+      ctx.fillStyle = '#e0f2fe';
+      ctx.font = `bold ${Math.round(10.5 / Math.max(0.55, state.cam.zoom))}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('天顶石门', ox + g.x + g.w * 0.5, oy + g.y - 6 / Math.max(0.55, state.cam.zoom));
+    }
     if (g.leverX !== undefined) {
       ctx.strokeStyle = COLORS.goldBright;
       ctx.beginPath();
@@ -624,8 +636,46 @@ function drawRoomContents(rm, isGhost = false) {
     ctx.strokeRect(ox + lt.x - 14, oy + lt.y - 50, 28, 50);
   }
   for (const pk of (rm.pickups || [])) {
-    ctx.fillStyle = pk.kind === 'weapon' ? '#38bdf8' : (pk.kind === 'relic' ? COLORS.goldBright : COLORS.cyanBright);
-    ctx.beginPath(); ctx.arc(ox + pk.x, oy + pk.y - 24, 11, 0, Math.PI * 2); ctx.fill();
+    const px = ox + pk.x;
+    const py = oy + pk.y;
+    if (pk.kind === 'realmSeal') {
+      const sCol = pk.sealId === 'forest' ? '#6ee7b7' : pk.sealId === 'mountain' ? '#bae6fd' : '#7dd3fc';
+      ctx.fillStyle = 'rgba(168, 85, 247, 0.22)';
+      ctx.fillRect(px - 18, py - 84, 36, 84);
+      ctx.fillStyle = '#182132';
+      ctx.strokeStyle = sCol;
+      ctx.lineWidth = 2 / state.cam.zoom;
+      ctx.fillRect(px - 14, py - 12, 28, 12);
+      ctx.strokeRect(px - 14, py - 12, 28, 12);
+      ctx.fillStyle = sCol;
+      ctx.beginPath();
+      ctx.moveTo(px, py - 46); ctx.lineTo(px + 13, py - 28); ctx.lineTo(px, py - 12); ctx.lineTo(px - 13, py - 28);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = COLORS.goldBright;
+      ctx.stroke();
+      ctx.fillStyle = '#fef9c3';
+      ctx.font = `bold ${Math.round(10 / Math.max(0.55, state.cam.zoom))}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText(`印:${pk.sealId || 'wind'}`, px, py - 52);
+    } else {
+      ctx.fillStyle = pk.kind === 'weapon' ? '#38bdf8' : (pk.kind === 'relic' ? COLORS.goldBright : pk.kind === 'echoCache' ? '#fbbf24' : COLORS.cyanBright);
+      ctx.beginPath(); ctx.arc(px, py - 24, 11, 0, Math.PI * 2); ctx.fill();
+    }
+    if (pk.requiresBoss) {
+      // Crossed bronze-crimson boss seal lock chain preview
+      ctx.strokeStyle = 'rgba(245, 158, 11, 0.90)';
+      ctx.lineWidth = 1.8 / state.cam.zoom;
+      ctx.strokeRect(px - 18, py - 46, 36, 44);
+      ctx.strokeStyle = 'rgba(248, 113, 113, 0.90)';
+      ctx.beginPath();
+      ctx.moveTo(px - 16, py - 44); ctx.lineTo(px + 16, py - 6);
+      ctx.moveTo(px + 16, py - 44); ctx.lineTo(px - 16, py - 6);
+      ctx.stroke();
+      ctx.fillStyle = '#fecaca';
+      ctx.font = `bold ${Math.round(9.5 / Math.max(0.55, state.cam.zoom))}px ui-monospace, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText(`🔒${pk.requiresBoss}`, px, py + 12 / Math.max(0.55, state.cam.zoom));
+    }
   }
 
   // Enemies & Biome Wardens + Patrol Bars
@@ -1119,12 +1169,56 @@ function renderInspector() {
       }
     });
   }
+  if (sel.kind === 'gate') {
+    addField(grid, '石门角色', o.role || 'shortcut', [
+      { value: 'shortcut', label: '捷径锁链闸 (shortcut)' },
+      { value: 'chapelExit', label: '礼拜堂东门 (chapelExit)' },
+      { value: 'foundryEntry', label: '铸钟殿入口 (foundryEntry)' },
+      { value: 'foundryExit', label: '铸钟殿出口 (foundryExit)' },
+      { value: 'skyBridge', label: '天顶断桥石门 (skyBridge)' }
+    ], v => { o.role = v; });
+  }
   if (o.kind !== undefined && sel.kind === 'npc') addField(grid, 'NPC类', o.kind, ['smith', 'chronicler', 'keeper'], v => { o.kind = v; });
-  if (o.kind !== undefined && sel.kind === 'pickup') addField(grid, '秘宝类', o.kind, ['flaskCore', 'relic', 'ability', 'weapon', 'echoCache', 'statCore', 'keyItem'], v => { o.kind = v; });
+  if (o.kind !== undefined && sel.kind === 'pickup') {
+    addField(grid, '秘宝类', o.kind, ['flaskCore', 'relic', 'realmSeal', 'ability', 'weapon', 'echoCache', 'statCore', 'keyItem'], v => {
+      o.kind = v;
+      if (v === 'realmSeal') {
+        if (!o.sealId) o.sealId = 'wind';
+        if (!o.relicId) o.relicId = 'galefather';
+        if (!o.requiresBoss) o.requiresBoss = 'warden_wind_boss';
+        if (o.echoAmount === undefined) o.echoAmount = 60;
+      }
+    });
+    if (o.kind === 'realmSeal' || o.sealId !== undefined) {
+      addField(grid, '铭印境', o.sealId || 'wind', [
+        { value: 'wind', label: '绝风铭印 (wind)' },
+        { value: 'forest', label: '枯林铭印 (forest)' },
+        { value: 'mountain', label: '霜脊铭印 (mountain)' }
+      ], v => { o.sealId = v; });
+    }
+    const bossOpts = [
+      { value: '', label: '无封印（直接可拾）' },
+      { value: 'warden_wind_boss', label: '守誓 · 朔 (warden_wind_boss)' },
+      { value: 'warden_forest_boss', label: '守誓 · 枯 (warden_forest_boss)' },
+      { value: 'warden_mountain_boss', label: '守誓 · 凛 (warden_mountain_boss)' },
+      { value: 'boss_hui', label: '首领 · 晦 (boss_hui)' },
+      { value: 'boss_ji', label: '首领 · 寂 (boss_ji)' },
+      { value: 'boss_yuan', label: '首领 · 渊 (boss_yuan)' }
+    ];
+    addField(grid, '战后解封', o.requiresBoss || '', bossOpts, v => {
+      if (v) o.requiresBoss = v;
+      else delete o.requiresBoss;
+    });
+  }
   if (o.weaponId !== undefined) addField(grid, '兵刃ID', o.weaponId, ['blade', 'hammer', 'bell'], v => { o.weaponId = v; });
-  if (o.relicId !== undefined) addField(grid, '圣物ID', o.relicId, 'text', v => { o.relicId = v; });
+  if (o.relicId !== undefined || (sel.kind === 'pickup' && (o.kind === 'relic' || o.kind === 'realmSeal'))) {
+    const relicOpts = RELICS.map(r => ({ value: r.id, label: `${r.name} (${r.id})` }));
+    addField(grid, '圣物ID', o.relicId || RELICS[0].id, relicOpts, v => { o.relicId = v; });
+  }
   if (o.abilityId !== undefined) addField(grid, '能力ID', o.abilityId, ['doubleJump', 'shadeDash'], v => { o.abilityId = v; });
-  if (o.echoAmount !== undefined) addField(grid, '残响量', o.echoAmount, 'number', v => { o.echoAmount = Math.max(10, v); });
+  if (o.echoAmount !== undefined || (sel.kind === 'pickup' && (o.kind === 'echoCache' || o.kind === 'realmSeal'))) {
+    addField(grid, '残响量', o.echoAmount !== undefined ? o.echoAmount : 0, 'number', v => { o.echoAmount = Math.max(0, Math.round(v || 0)); });
+  }
 
   if (o.x !== undefined) addField(grid, sel.kind === 'bouncePad' ? '底心 X' : '局部 X', o.x, 'number', v => { o.x = v; });
   if (o.y !== undefined) addField(grid, sel.kind === 'bouncePad' ? '底心 Y' : '局部 Y', o.y, 'number', v => { o.y = v; });
@@ -1373,6 +1467,34 @@ function createPointObject(tool, lx, ly) {
     if (!Array.isArray(rm.pickups)) rm.pickups = [];
     rm.pickups.push({ id: uid, kind: 'flaskCore', x: lx, y: ly, name: '灯油残芯', desc: '灯油上限永久 +1！' });
     state.selection = { kind: 'pickup', idx: rm.pickups.length - 1 };
+  } else if (tool === 'realmSeal') {
+    if (!Array.isArray(rm.pickups)) rm.pickups = [];
+    rm.pickups.push({
+      id: `pickup_seal_${Date.now().toString(36).slice(-4)}`,
+      kind: 'realmSeal',
+      sealId: 'wind',
+      relicId: 'galefather',
+      requiresBoss: 'warden_wind_boss',
+      echoAmount: 60,
+      x: lx,
+      y: ly,
+      name: '绝风铭印 · 朔风铃羽',
+      desc: '斩落守誓后解封！赐予三境铭印与对应秘境圣物'
+    });
+    state.selection = { kind: 'pickup', idx: rm.pickups.length - 1 };
+    showToast('已放置三境铭印神龛（右侧可配置铭印境与战后解封目标）');
+  } else if (tool === 'skyBridgeGate') {
+    if (!Array.isArray(rm.gates)) rm.gates = [];
+    rm.gates.push({
+      id: 'gate_sky_bridge',
+      role: 'skyBridge',
+      x: lx,
+      y: Math.max(0, ly - 200),
+      w: 36,
+      h: 200
+    });
+    state.selection = { kind: 'gate', idx: rm.gates.length - 1 };
+    showToast('已放置天顶断桥石门 (skyBridge)');
   } else if (tool === 'lore') {
     if (!Array.isArray(rm.loreTablets)) rm.loreTablets = [];
     rm.loreTablets.push({ id: uid, x: lx, y: ly, title: '风化残碑', sub: rm.name, html: '“新刻的晦渊铭文……”' });
@@ -1771,6 +1893,143 @@ function runWorldAudit() {
     }
   });
 
+  // 6. v34.0 Ecological Mechanics, Realm Seals, requiresBoss & skyBridgeGate Audit + 1x Economy Accounting
+  const allActorIds = new Set(['boss_hui', 'boss_ji', 'boss_yuan', 'boss_zhu']);
+  const foundSeals = new Set();
+  const validRelicIds = new Set(RELICS.map(r => r.id));
+  let skyBridgeCount = 0;
+  const eco = { regEnemies: 0, regCount: 0, wardens: 0, bosses: 0, echoCaches: 0, otherPickups: 0, npcQuests: 580 };
+
+  rooms.forEach(rm => {
+    (rm.enemies || []).forEach(e => { if (e.id) allActorIds.add(e.id); });
+    (rm.bosses || []).forEach(b => { if (b.id) allActorIds.add(b.id); });
+  });
+
+  rooms.forEach((rm, ri) => {
+    const rw = rm.bounds.w;
+    const rh = rm.bounds.h;
+    (rm.windZones || []).forEach((wz, wi) => {
+      if ((Number(wz.w) || 0) < 40 || (Number(wz.h) || 0) < 60) {
+        issues.push({
+          sev: 'warn',
+          title: `罡风尺寸过窄：${rm.id} · ${wz.id || wi}`,
+          msg: `风区尺寸 ${wz.w}×${wz.h} 偏小，可能导致玩家滑脱气流。`,
+          roomIdx: ri,
+          sel: { kind: 'windZone', idx: wi },
+          wx: rm.bounds.x + wz.x,
+          wy: rm.bounds.y + wz.y
+        });
+      }
+      if (wz.x < -40 || wz.x + (wz.w || 0) > rw + 40) {
+        issues.push({
+          sev: 'warn',
+          title: `罡风水平越界：${rm.id} · ${wz.id || wi}`,
+          msg: `风区水平区间 [${wz.x}, ${wz.x + (wz.w || 0)}] 超出房间宽度 ${rw}。`,
+          roomIdx: ri,
+          sel: { kind: 'windZone', idx: wi }
+        });
+      }
+    });
+    (rm.bouncePads || []).forEach((bp, bi) => {
+      if ((Number(bp.w) || 0) < 36 || (Number(bp.h) || 0) < 14 || bp.x < 0 || bp.x > rw || bp.y < 0 || bp.y > rh + 20) {
+        issues.push({
+          sev: 'warn',
+          title: `孢伞位置或尺寸异常：${rm.id} · ${bp.id || bi}`,
+          msg: `坐标 (${bp.x}, ${bp.y}) 尺寸 ${bp.w}×${bp.h} 建议保持在房间内且 ≥ 36×14。`,
+          roomIdx: ri,
+          sel: { kind: 'bouncePad', idx: bi },
+          wx: rm.bounds.x + bp.x,
+          wy: rm.bounds.y + bp.y
+        });
+      }
+    });
+    (rm.gates || []).forEach((g, gi) => {
+      if (g.role === 'skyBridge' || g.id === 'gate_sky_bridge') {
+        skyBridgeCount++;
+        if ((Number(g.w) || 0) <= 0 || (Number(g.h) || 0) <= 0) {
+          issues.push({
+            sev: 'err',
+            title: `天顶石门尺寸为零：${rm.id} · ${g.id}`,
+            msg: `skyBridge 石门宽高必须 > 0，否则无法阻挡未解封通路。`,
+            roomIdx: ri,
+            sel: { kind: 'gate', idx: gi }
+          });
+        }
+      }
+    });
+    (rm.pickups || []).forEach((pk, pi) => {
+      const amt = Number(pk.echoAmount) || 0;
+      if (amt > 0) {
+        if (pk.kind === 'echoCache') eco.echoCaches += amt;
+        else eco.otherPickups += amt;
+      }
+      if (pk.kind === 'realmSeal') {
+        if (pk.sealId) foundSeals.add(pk.sealId);
+        if (pk.relicId && !validRelicIds.has(pk.relicId)) {
+          issues.push({
+            sev: 'err',
+            title: `铭印神龛圣物ID无效：${rm.id} · ${pk.id}`,
+            msg: `relicId「${pk.relicId}」不在 RELICS 注册表中。`,
+            roomIdx: ri,
+            sel: { kind: 'pickup', idx: pi },
+            wx: rm.bounds.x + pk.x,
+            wy: rm.bounds.y + pk.y
+          });
+        }
+      }
+      if (pk.requiresBoss && !allActorIds.has(pk.requiresBoss)) {
+        issues.push({
+          sev: 'err',
+          title: `战后解封目标不存在：${rm.id} · ${pk.id}`,
+          msg: `requiresBoss「${pk.requiresBoss}」在全境敌兵/首领中未找到。`,
+          roomIdx: ri,
+          sel: { kind: 'pickup', idx: pi },
+          wx: rm.bounds.x + pk.x,
+          wy: rm.bounds.y + pk.y
+        });
+      }
+    });
+    (rm.enemies || []).forEach(e => {
+      const r = Number(ENEMY_ECHO_REWARDS[e.kind]) || 0;
+      if (e.kind === 'dummy') return;
+      if (e.kind && e.kind.startsWith('warden_')) eco.wardens += r;
+      else { eco.regEnemies += r; eco.regCount++; }
+    });
+  });
+
+  eco.bosses = (ENEMY_ECHO_REWARDS.boss || 0) + (ENEMY_ECHO_REWARDS.boss2 || 0) + (ENEMY_ECHO_REWARDS.boss3 || 0) + (ENEMY_ECHO_REWARDS.boss4 || 0);
+  eco.total1x = eco.regEnemies + eco.wardens + eco.bosses + eco.echoCaches + eco.otherPickups + eco.npcQuests;
+  eco.smithTotal = SMITH_UPGRADES.reduce((acc, u) => acc + u.costs.reduce((a, b) => a + b, 0), 0);
+  eco.coreSink = eco.smithTotal + 140 * 3 + 200 + RELIC_REFINE_COST * 3;
+  state.lastAuditEco = eco;
+
+  for (const needSeal of ['wind', 'forest', 'mountain']) {
+    if (!foundSeals.has(needSeal)) {
+      issues.push({
+        sev: 'warn',
+        title: `缺失三境铭印神龛：${needSeal}`,
+        msg: `全境未检测到 sealId="${needSeal}" 的 realmSeal 秘宝，玩家将无法解封第三圣物槽。`,
+        roomIdx: 0
+      });
+    }
+  }
+  if (skyBridgeCount === 0) {
+    issues.push({
+      sev: 'warn',
+      title: `缺失天顶断桥石门 (skyBridge)`,
+      msg: `未检测到 role="skyBridge" 石门（通常位于 r17_frost_summit 西侧边界）。`,
+      roomIdx: 0
+    });
+  }
+  if (eco.total1x < 4600 || eco.total1x > 5500) {
+    issues.push({
+      sev: 'warn',
+      title: `全境 1× 残响经济偏离目标区间：${eco.total1x}`,
+      msg: `v34.0 紧凑经济目标为 4,600 ~ 5,500 残响（当前 ${eco.total1x}），建议核查 echoCache 与守誓奖励。`,
+      roomIdx: 0
+    });
+  }
+
   if (totalAltars === 0 || !hasStartAltar) {
     issues.push({
       sev: 'err',
@@ -1792,8 +2051,34 @@ function showAuditPanel() {
   }
   if (auditListEl) {
     auditListEl.innerHTML = '';
+    if (state.lastAuditEco) {
+      const e = state.lastAuditEco;
+      const inRange = e.total1x >= 4600 && e.total1x <= 5500;
+      const ecoEl = document.createElement('div');
+      ecoEl.className = `audit-eco${inRange ? '' : ' warn'}`;
+      ecoEl.innerHTML = `
+        <div class="audit-eco-head">
+          <span>✦ v34.0 残响经济总量体检 (1× 清图)</span>
+          <span style="color:${inRange ? 'var(--emerald)' : 'var(--red)'};">${e.total1x} 残响 (${inRange ? '达标' : '偏离'})</span>
+        </div>
+        <div class="audit-eco-grid">
+          <span>常规怪(${e.regCount}只): <strong>${e.regEnemies}</strong></span>
+          <span>三境守誓(3位): <strong>${e.wardens}</strong></span>
+          <span>主线/隐藏首领: <strong>${e.bosses}</strong></span>
+          <span>残响秘宝匣: <strong>${e.echoCaches}</strong></span>
+          <span>铭印/核心附赠: <strong>${e.otherPickups}</strong></span>
+          <span>NPC支线酬谢: <strong>${e.npcQuests}</strong></span>
+          <span>铁匠满级消耗: <strong>${e.smithTotal}</strong></span>
+          <span>3槽主力总耗: <strong>${e.coreSink}</strong></span>
+        </div>
+      `;
+      auditListEl.appendChild(ecoEl);
+    }
     if (issues.length === 0) {
-      auditListEl.innerHTML = `<div class="audit-ok">✦ 全境 ${state.bundle.rooms.length} 房间体检全部通过！<br>0 边界重叠 · 0 断链孤岛 · 0 生态参数异常</div>`;
+      const okEl = document.createElement('div');
+      okEl.className = 'audit-ok';
+      okEl.innerHTML = `✦ 全境 ${state.bundle.rooms.length} 房间体检全部通过！<br>0 边界重叠 · 0 断链孤岛 · 铭印神龛 / 天顶石门 / 生态机关 / 经济总量均达标`;
+      auditListEl.appendChild(okEl);
     } else {
       for (const iss of issues) {
         const btn = document.createElement('button');
@@ -2370,7 +2655,7 @@ async function bootEditor() {
     resizeCanvas();
     renderAllUI();
     fitView();
-    showToast(`v30.0 已载入 ${state.bundle.rooms.length} 个全境房间 JSON`);
+    showToast(`v35.0 已载入 ${state.bundle.rooms.length} 个全境房间 JSON`);
   } catch (err) {
     showToast(`加载失败: ${err.message}（请通过 serve_local.py 启动）`);
   }

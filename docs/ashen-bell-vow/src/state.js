@@ -7,7 +7,7 @@ import { WEAPON_ORDER, normalizeWeaponId, getWeaponById, getForgeTraitById } fro
 
 export const G = {
   currentRelic: RELICS[0],
-  equippedRelics: [RELICS[0], null],
+  equippedRelics: [RELICS[0], null, null],
   activeRelicSlot: 0,
 
   // Canvas & procedural frame state
@@ -175,6 +175,8 @@ export function createFreshWorldState() {
     chapelExitAnim: 0,
     foundryGateAnim: 0,
     foundryExitAnim: 0,
+    skyBridgeGateAnim: 0,
+    realmSeals: { wind: false, forest: false, mountain: false },
     echoRecords: { hui: null, ji: null, yuan: null, rush: null, warden_wind: null, warden_forest: null, warden_mountain: null, warden_rush: null, zhu: null, seven_bells: null },
     keyItems: { dawnSigil: false },
     endingsUnlocked: [],
@@ -202,7 +204,9 @@ export function createFreshWorldState() {
     unlockedWeapons: new Set(['blade']),
     weaponTraits: { blade: null, hammer: null, bell: null },
     unlockedWeaponTraits: new Set(),
+    skillNodes: new Set(),
     unlockedRelics: new Set(['thorn', 'mirror', 'ember']),
+    refinedRelics: new Set(),
     explored: Array.from({ length: MAP_ROWS }, () => new Array(MAP_COLS).fill(false))
   };
 }
@@ -287,19 +291,89 @@ let _relicCacheKey = '';
 let _cachedSynergies = [];
 let _cachedRelicStats = null;
 
+export function getRealmSealCount() {
+  const rs = G.worldState && G.worldState.realmSeals;
+  if (!rs) return 0;
+  return (rs.wind ? 1 : 0) + (rs.forest ? 1 : 0) + (rs.mountain ? 1 : 0);
+}
+
+export function hasThirdRelicSlot() {
+  return getRealmSealCount() >= 3;
+}
+
+export function isSkyBridgeOpen() {
+  if (!G.worldState) return false;
+  const dm = G.worldState.defeatedMiniBosses;
+  const rs = G.worldState.realmSeals;
+  return !!(
+    (dm && (dm.has('warden_wind_boss') || dm.has('warden_mountain_boss'))) ||
+    (rs && (rs.wind || rs.mountain))
+  );
+}
+
+export function getRealmSealBonusMult() {
+  const cnt = getRealmSealCount();
+  return cnt >= 3 ? 1.12 : cnt === 2 ? 1.08 : cnt === 1 ? 1.04 : 1.0;
+}
+
+export function isSkillNodeUnlocked(skillId) {
+  return !!(skillId && G.worldState && G.worldState.skillNodes && G.worldState.skillNodes.has(skillId));
+}
+
+export function unlockSkillNode(skillId) {
+  if (!skillId || !G.worldState) return false;
+  if (!G.worldState.skillNodes) G.worldState.skillNodes = new Set();
+  const isNew = !G.worldState.skillNodes.has(skillId);
+  G.worldState.skillNodes.add(skillId);
+  return isNew;
+}
+
+export function getSwitchStrikeWindowSec() {
+  const lv = (G.worldState && G.worldState.smithUpgrades) ? (G.worldState.smithUpgrades.blade || 0) : 0;
+  return lv >= 5 ? 0.62 : 0.44;
+}
+
+export function isRelicRefined(id) {
+  return !!(id && G.worldState && G.worldState.refinedRelics && G.worldState.refinedRelics.has(id));
+}
+
+export function refineRelic(id) {
+  if (!id || !G.worldState) return false;
+  if (!G.worldState.refinedRelics) G.worldState.refinedRelics = new Set();
+  const isNew = !G.worldState.refinedRelics.has(id);
+  G.worldState.refinedRelics.add(id);
+  _relicCacheKey = '';
+  return isNew;
+}
+
+export function getEffectiveRelic(relic) {
+  if (!relic) return null;
+  if (relic.refined && isRelicRefined(relic.id)) {
+    return { ...relic, ...relic.refined, isRefined: true };
+  }
+  return relic;
+}
+
 function _ensureRelicCache() {
   const eq = G.equippedRelics;
+  const thirdOpen = hasThirdRelicSlot();
   const r0 = (eq && eq[0]) || G.currentRelic || RELICS[0];
   const r1 = (eq && eq[1]) || null;
+  const r2 = (thirdOpen && eq && eq[2]) ? eq[2] : null;
+  const ref0 = r0 && isRelicRefined(r0.id) ? 1 : 0;
+  const ref1 = r1 && isRelicRefined(r1.id) ? 1 : 0;
+  const ref2 = r2 && isRelicRefined(r2.id) ? 1 : 0;
   const pMult = (G.settings && G.settings.parryWindowMult) ? G.settings.parryWindowMult : 1.0;
   const wId = getActiveWeaponId();
   const wTrait = getActiveWeaponTraitId(wId) || '';
-  const key = `${r0 ? r0.id : ''}|${r1 ? r1.id : ''}|${pMult}|${wId}|${wTrait}`;
+  const sealCnt = getRealmSealCount();
+  const key = `${r0 ? r0.id : ''}:${ref0}|${r1 ? r1.id : ''}:${ref1}|${r2 ? r2.id : ''}:${ref2}|${pMult}|${wId}|${wTrait}|${sealCnt}`;
   if (key === _relicCacheKey && _cachedRelicStats) return;
   _relicCacheKey = key;
 
-  const active = r1 ? [r0, r1] : [r0];
-  const has = id => (r0 && r0.id === id) || (r1 && r1.id === id);
+  const active = [r0, r1, r2].filter(Boolean).map(getEffectiveRelic);
+  const has = id => active.some(r => r && r.id === id);
+  const mirrorRelic = active.find(r => r && r.id === 'mirror') || null;
   const synergies = [];
   const synFlags = {};
   for (let i = 0; i < RELIC_SYNERGIES.length; i++) {
@@ -314,8 +388,10 @@ function _ensureRelicCache() {
   const wp = getWeaponById(wId).passives;
   const traitParryBonus = wTrait === 'parry_seal' ? 15 : 0;
   const traitSpellMult = wTrait === 'echo_ring' ? 1.18 : 1.0;
-  let parryWindowMs = Math.max(70, Math.round(((has('mirror') ? 100 : Math.max(...active.map(r => r.parryWindowMs || 140))) + (wp.parryWindowBonusMs || 0) + traitParryBonus) * pMult));
-  let blockWindowMs = Math.max(parryWindowMs + 60, Math.round(((has('mirror') ? 225 : Math.max(...active.map(r => r.blockWindowMs || 260))) + (wp.blockWindowBonusMs || 0)) * (1 + (pMult - 1) * 0.65)));
+  const baseParryWin = mirrorRelic ? (mirrorRelic.parryWindowMs || 100) : Math.max(...active.map(r => r.parryWindowMs || 140));
+  const baseBlockWin = mirrorRelic ? (mirrorRelic.blockWindowMs || 225) : Math.max(...active.map(r => r.blockWindowMs || 260));
+  let parryWindowMs = Math.max(70, Math.round((baseParryWin + (wp.parryWindowBonusMs || 0) + traitParryBonus) * pMult));
+  let blockWindowMs = Math.max(parryWindowMs + 60, Math.round((baseBlockWin + (wp.blockWindowBonusMs || 0)) * (1 + (pMult - 1) * 0.65)));
   let blockChipMult = wp.blockChipMult || 1.0;
   let parryPostureMult = active.reduce((acc, r) => acc * (r.parryPostureMult || 1.0), 1.0) * (wp.parryPostureMult || 1.0);
   let parryReflectDmg = active.reduce((acc, r) => acc + (r.parryReflectDmg || 0), 0);
@@ -420,12 +496,12 @@ export function hasKeeperBlessing() {
 
 export function getBladeDamageMult() {
   const lv = (G.worldState && G.worldState.smithUpgrades) ? (G.worldState.smithUpgrades.blade || 0) : 0;
-  return 1 + lv * 0.14;
+  return (1 + lv * 0.10) * getRealmSealBonusMult();
 }
 
 export function getSmithPostureMult() {
   const lv = (G.worldState && G.worldState.smithUpgrades) ? (G.worldState.smithUpgrades.posture || 0) : 0;
-  return 1 + lv * 0.12;
+  return (1 + lv * 0.09) * getRealmSealBonusMult();
 }
 
 export function getPlayerMaxHp() {

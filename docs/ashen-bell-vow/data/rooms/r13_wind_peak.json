@@ -68,7 +68,20 @@
       "bonusHp": 15,
       "bonusSoul": 15,
       "name": "风淬魂核",
-      "desc": "受罡风千年涤荡的魂火凝核（生命上限 +15 · 魂火上限 +15）"
+      "desc": "受罡风千年涤荡的魂火凝核（生命上限 +15 · 魂火上限 +15）",
+      "requiresBoss": "warden_wind_boss"
+    },
+    {
+      "id": "pickup_seal_wind",
+      "kind": "realmSeal",
+      "sealId": "wind",
+      "relicId": "galefather",
+      "requiresBoss": "warden_wind_boss",
+      "echoAmount": 60,
+      "x": 760,
+      "y": 620,
+      "name": "绝风铭印 · 朔风铃羽",
+      "desc": "斩落截风巡塔使·朔解封！赐予「绝风铭印」与圣物「朔风铃羽」"
     }
   ],
   "pendulums": [],

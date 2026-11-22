@@ -5,7 +5,7 @@ import {
 import {
   G, hooks, getLivingFoes, getAwakeBoss, isWorldPosExplored, getRelicStats, getActiveVowStats, getCombatScaling, getBladeDamageMult, getSmithPostureMult,
   getActiveWeaponId, getActiveWeapon, isWeaponUnlocked, getUnlockedWeaponIds, unlockWeapon,
-  hasActiveWeaponTrait,
+  hasActiveWeaponTrait, isSkillNodeUnlocked, getSwitchStrikeWindowSec,
   getBossBonusDamageMult, hasKeeperBlessing,
   getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks,
   scheduleOutcome, addShake, kickCamera, punchZoom, triggerBossBanner, triggerHitstop
@@ -21,7 +21,7 @@ import { recordBestiaryEvent, checkAchievements } from '../codex.js';
 import { t, isEn, locDummyMode, locPickup, locPuzzleName, locBoss, locRelic } from '../i18n.js';
 import { WEAPON_ORDER, normalizeWeaponId, getWeaponById, getWeaponMoveDef, getWeaponUltimateDef } from '../weapons.js';
 import {
-  reclaimLostEchoes, rallyPlayerGrayHp, damageEnemyHP, addPostureToEnemy
+  reclaimLostEchoes, rallyPlayerGrayHp, damageEnemyHP, addPostureToEnemy, applyIncomingAttackToPlayer
 } from './damageCombat.js';
 import {
   tryQuellChapelTideByLantern, openSkywayShortcut, damageSecretWall, ringResonanceBell
@@ -232,6 +232,13 @@ export function performExecution(target) {
   G.player.hp = Math.min(G.player.maxHp, G.player.hp + heal);
   G.player.grayHp = 0;
   if (rs.execFullSoul) G.player.soul = G.player.maxSoul;
+  if (isSkillNodeUnlocked('exec_surge')) {
+    G.player.surgeTimer = 1.6;
+    G.player.dashCd = 0;
+    G.player.grappleCd = 0;
+    G.player.airJumpsLeft = 1;
+    spawnFloatText(G.player.x + G.player.w * 0.5, G.player.y - 46, t('combat.skillExecSurge'), COLORS.cyanBright, 17, 0.9);
+  }
 
   const cx = target.x + target.w / 2;
   const cy = target.y + target.h * 0.45;
@@ -286,7 +293,7 @@ export function evaluatePlayerActiveAttack() {
       hitAny = true;
       const stepIdx = atk.type === 'slash3' ? 3 : atk.type === 'slash2' ? 2 : 1;
       audio.playHit(atk.heavy, stepIdx);
-      G.player.switchStrikeWindow = 0.44;
+      G.player.switchStrikeWindow = getSwitchStrikeWindowSec();
       triggerHaptic(atk.type === 'iai' || atk.type === 'counter' ? 'iai' : atk.heavy ? 'heavyHit' : 'lightHit');
       triggerHitstop(atk.type === 'iai' || atk.type === 'counter' ? 0.042 : atk.heavy ? 0.032 : 0.018, true);
       addShake(atk.heavy ? 7.5 : 3.8);
@@ -362,10 +369,19 @@ export function evaluatePlayerActiveAttack() {
           if (!isBarkArmorUp) G.player.vx = -G.player.facing * 155;
           continue;
         }
+      } else if (atk.type === 'pogo' && foe.canopyThornTimer > 0 && (G.player.y + G.player.h) <= foe.y + 34) {
+        audio.playParry(false);
+        spawnShockwave(foe.x + foe.w * 0.5, foe.y + 8, 72, '#4ade80', 3.4, 0.24);
+        spawnFloatText(foe.x + foe.w * 0.5, foe.y - 26, t('combat.thornPunish'), '#4ade80', 18, 0.9);
+        G.player.vy = -260;
+        G.player.vx = (G.player.x + G.player.w * 0.5 >= foe.x + foe.w * 0.5 ? 1 : -1) * 280;
+        applyIncomingAttackToPlayer(foe, 14, true, 240);
+        continue;
       } else {
+        const isBossPogoDecay = atk.type === 'pogo' && (foe.isBoss || foe.isMiniBoss) && (G.player.pogoChain || 0) >= 2;
         const quakePosMult = (atk.weaponId === 'hammer' && hasActiveWeaponTrait('quake_echo') && (atk.type === 'slash2' || atk.type === 'iai' || atk.type === 'switch')) ? 1.22 : 1.0;
-        const postureHit = (atk.posture + bonusPosture) * (atk.type === 'counter' && rs.synCoreCounter ? 1.5 : 1) * quakePosMult;
-        damageEnemyHP(foe, finalDmg, true);
+        const postureHit = (atk.posture + bonusPosture) * (atk.type === 'counter' && rs.synCoreCounter ? 1.5 : 1) * quakePosMult * (isBossPogoDecay ? 0.45 : 1.0);
+        damageEnemyHP(foe, isBossPogoDecay ? Math.max(4, Math.round(finalDmg * 0.72)) : finalDmg, true);
         addPostureToEnemy(foe, postureHit);
       }
       // Synergy 「镜烬印记」: free talisman plant on melee strike after 3-streak parry!
@@ -475,9 +491,21 @@ export function evaluatePlayerActiveAttack() {
 
       if (atk.type === 'pogo' && !atk.pogoBounced) {
         atk.pogoBounced = true;
-        G.player.vy = -510;
-        G.player.dashCd = 0;
-        G.player.airJumpsLeft = 1;
+        const onMajorFoe = !!(foe.isBoss || foe.isMiniBoss);
+        if (onMajorFoe) {
+          G.player.pogoChain = (G.player.pogoChain || 0) + 1;
+          foe.pogoHitsTaken = (foe.pogoHitsTaken || 0) + 1;
+          foe.overheadPressure = (foe.overheadPressure || 0) + 0.78;
+        }
+        const chain = onMajorFoe ? (G.player.pogoChain || 1) : 1;
+        if (chain <= 2) {
+          G.player.vy = -510;
+          G.player.dashCd = 0;
+          G.player.airJumpsLeft = 1;
+        } else {
+          G.player.vy = chain === 3 ? -355 : -260;
+          spawnFloatText(G.player.x + G.player.w * 0.5, G.player.y - 24, t('combat.pogoFatigue'), '#cbd5e1', 15, 0.7);
+        }
         G.player.squashX = 0.8;
         G.player.squashY = 1.25;
       }
@@ -498,6 +526,7 @@ export function evaluatePlayerActiveAttack() {
         G.player.vy = -545;
         G.player.dashCd = 0;
         G.player.airJumpsLeft = 1;
+        G.player.pogoChain = 0;
         G.player.soul = Math.min(G.player.maxSoul, G.player.soul + 12);
         audio.playPogoLantern();
         triggerHitstop(0.032);
@@ -519,6 +548,7 @@ export function evaluatePlayerActiveAttack() {
         G.player.vy = -545;
         G.player.dashCd = 0;
         G.player.airJumpsLeft = 1;
+        G.player.pogoChain = 0;
         G.player.soul = Math.min(G.player.maxSoul, G.player.soul + 14);
         audio.playParry(true, 1);
         triggerHitstop(0.038);

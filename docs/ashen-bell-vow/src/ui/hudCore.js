@@ -9,7 +9,7 @@ import { getRoomAt, getZoneLabelAt, getPreviewSpawnRoomId, getPreviewSpawnCoords
 import {
   G, createFreshWorldState, getActiveAltar, getActiveSynergies, getRelicStats, getActiveVowStats, getCombatScaling, getEquippedRelicLabel, getActiveWeaponId, getActiveWeapon, isWeaponUnlocked, getUnlockedWeaponIds, unlockWeapon,
   isWeaponTraitUnlocked, getActiveWeaponTraitId, unlockWeaponTrait, setActiveWeaponTrait,
-  ensureNpcQuests, hasKeeperBlessing,
+  ensureNpcQuests, hasKeeperBlessing, getRealmSealCount, hasThirdRelicSlot, isRelicRefined,
   getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks, getPlayerMaxSeals,
   markMapExplored, getExplorationPercent, createLanterns,
   createResonancePuzzles, createCrumblePlatforms, getAwakeBoss, getHudBoss, isBoss4Unlocked, clearOutcomeTimer, triggerBossBanner, setTextFast
@@ -210,17 +210,30 @@ export function syncHUD(force = false) {
   const activeSyns = getActiveSynergies();
   const r0 = (G.equippedRelics && G.equippedRelics[0]) || G.currentRelic || RELICS[0];
   const r1 = (G.equippedRelics && G.equippedRelics[1]) || null;
-  const r0Id = r0 ? r0.id : '';
-  const r1Id = r1 ? r1.id : '';
-  const syn0Id = activeSyns.length ? activeSyns[0].id : '';
-  if (force || hudCache.r0Id !== r0Id || hudCache.r1Id !== r1Id || hudCache.syn0Id !== syn0Id) {
+  const r2 = (hasThirdRelicSlot() && G.equippedRelics && G.equippedRelics[2]) || null;
+  const r0Id = r0 ? `${r0.id}:${isRelicRefined(r0.id) ? 1 : 0}` : '';
+  const r1Id = r1 ? `${r1.id}:${isRelicRefined(r1.id) ? 1 : 0}` : '';
+  const r2Id = r2 ? `${r2.id}:${isRelicRefined(r2.id) ? 1 : 0}` : '';
+  const synKey = activeSyns.map(s => s.id).join(',');
+  if (force || hudCache.r0Id !== r0Id || hudCache.r1Id !== r1Id || hudCache.r2Id !== r2Id || hudCache.synKey !== synKey) {
     hudCache.r0Id = r0Id;
     hudCache.r1Id = r1Id;
-    hudCache.syn0Id = syn0Id;
-    const icon0 = r0 ? `<span class="hud-relic-ico" title="${t('hud.primaryRelicTip', locRelic(r0, 'name'))}">${getRelicEmblemSvg(r0.id)}</span>` : '';
-    const icon1 = r1 ? `<span class="hud-relic-ico sub" title="${t('hud.secondaryRelicTip', locRelic(r1, 'name'))}">${getRelicEmblemSvg(r1.id)}</span>` : '';
-    const synHtml = activeSyns.length > 0 ? `<span class="hud-syn-pill">✦${locSynergy(activeSyns[0], 'name')}</span>` : '';
-    HUD_DOM.relicTag.innerHTML = `${icon0}${icon1}<span class="hud-relic-names">${getLocalizedRelicLabel()}</span>${synHtml}`;
+    hudCache.r2Id = r2Id;
+    hudCache.synKey = synKey;
+    const icon0 = r0 ? `<span class="hud-relic-ico${isRelicRefined(r0.id) ? ' refined' : ''}" title="${t('hud.primaryRelicTip', locRelic(r0, 'name'))}${isRelicRefined(r0.id) ? ' ★+1' : ''}">${getRelicEmblemSvg(r0.id)}</span>` : '';
+    const icon1 = r1 ? `<span class="hud-relic-ico sub${isRelicRefined(r1.id) ? ' refined' : ''}" title="${t('hud.secondaryRelicTip', locRelic(r1, 'name'))}${isRelicRefined(r1.id) ? ' ★+1' : ''}">${getRelicEmblemSvg(r1.id)}</span>` : '';
+    const icon2 = r2 ? `<span class="hud-relic-ico tri${isRelicRefined(r2.id) ? ' refined' : ''}" title="${t('hud.tertiaryRelicTip', locRelic(r2, 'name'))}${isRelicRefined(r2.id) ? ' ★+1' : ''}">${getRelicEmblemSvg(r2.id)}</span>` : '';
+    const synHtml = activeSyns.length > 0 ? `<span class="hud-syn-pill">✦${locSynergy(activeSyns[0], 'name')}${activeSyns.length > 1 ? ` +${activeSyns.length - 1}` : ''}</span>` : '';
+    HUD_DOM.relicTag.innerHTML = `${icon0}${icon1}${icon2}<span class="hud-relic-names">${getLocalizedRelicLabel()}</span>${synHtml}`;
+  }
+  if (HUD_DOM.realmSealsTag) {
+    const sCnt = getRealmSealCount();
+    if (force || hudCache.realmSealCnt !== sCnt) {
+      hudCache.realmSealCnt = sCnt;
+      HUD_DOM.realmSealsTag.classList.toggle('unlocked', sCnt > 0);
+      HUD_DOM.realmSealsTag.classList.toggle('full', sCnt >= 3);
+      if (sCnt > 0) setTextFast(HUD_DOM.realmSealsTag, t('hud.realmSealsShort', sCnt));
+    }
   }
   if (force || hudCache.hasDoubleJump !== hasDoubleJump) {
     hudCache.hasDoubleJump = hasDoubleJump;

@@ -2,7 +2,7 @@
 import {
   COLORS, GRAVITY, FLOOR_Y, ALTARS, NPCS, LORE_TABLETS, SHORTCUT_GATE_DEF, VOID_BARRIERS, FIRST_BELL_CORE_POS, ABYSSAL_RIVERS, PUDDLES, DUMMY_MODES, WIND_ZONES, BOUNCE_PADS
 } from './config.js';
-import { G, hooks, getLivingFoes, getRelicStats, getActiveWeapon, getFlaskHealPct, hasKeeperBlessing, markMapExplored, addShake, punchZoom, triggerBossBanner, triggerHitstop, damp } from './state.js';
+import { G, hooks, getLivingFoes, getRelicStats, getActiveWeapon, getFlaskHealPct, hasKeeperBlessing, isSkillNodeUnlocked, markMapExplored, addShake, punchZoom, triggerBossBanner, triggerHitstop, damp } from './state.js';
 import { audio } from './audio.js';
 import { isActionHeld, consumeActionPress, consumeActionRelease } from './input.js';
 import {
@@ -93,6 +93,12 @@ export function updatePlayer(dt) {
   if (G.player.shadePassTimer > 0) G.player.shadePassTimer = Math.max(0, G.player.shadePassTimer - dt);
   if (G.player.shadeGrappleBoostTimer > 0) G.player.shadeGrappleBoostTimer = Math.max(0, G.player.shadeGrappleBoostTimer - dt);
   if (G.player.galeSurgeTimer > 0) G.player.galeSurgeTimer = Math.max(0, G.player.galeSurgeTimer - dt);
+  if (G.player.surgeTimer > 0) {
+    G.player.surgeTimer = Math.max(0, G.player.surgeTimer - dt);
+    if (Math.abs(G.player.vx) > 90 && Math.random() < 16 * dt) {
+      spawnParticles(G.player.x + G.player.w * 0.5, G.player.y + 34, 1, { color: COLORS.cyanBright, speed: 60, grav: -20, life: 0.22 });
+    }
+  }
   if (G.player.barrierHintCd > 0) G.player.barrierHintCd = Math.max(0, G.player.barrierHintCd - dt);
   if (G.player.iframeTimer > 0) G.player.iframeTimer -= dt;
   if (G.player.hurtTimer > 0) {
@@ -187,10 +193,18 @@ export function updatePlayer(dt) {
     }
   }
 
-  // Heal [H]
+  // Heal [H] (v35.0: Aerial Lantern skill allows mid-air heal with brief slow-fall hover!)
+  const canAirHeal = isSkillNodeUnlocked('air_flask');
   if (G.player.healTimer > 0) {
     G.player.healTimer -= dt;
     G.player.vx *= damp(0.78, dt);
+    if (!G.player.grounded && canAirHeal) {
+      G.player.vy *= damp(0.68, dt);
+      if (G.player.vy > 32) G.player.vy = 32;
+      if (Math.random() < 22 * dt) {
+        spawnParticles(G.player.x + G.player.w * 0.5 + (Math.random() - 0.5) * 18, G.player.y + 30, 1, { color: COLORS.cyanBright, speed: 55, grav: -90, life: 0.3 });
+      }
+    }
     if (!G.player.healDone && G.player.healTimer <= 0.24) {
       G.player.healDone = true;
       G.player.flasks--;
@@ -200,11 +214,15 @@ export function updatePlayer(dt) {
       spawnParticles(G.player.x + G.player.w / 2, G.player.y + 24, 20, { color: COLORS.cyanBright, speed: 150, grav: -200, life: 0.55 });
       spawnFloatText(G.player.x + G.player.w / 2, G.player.y - 16, `+${healAmt}`, COLORS.cyanBright, 18);
     }
-  } else if (consumeActionPress('heal') && G.player.flasks > 0 && G.player.grounded && G.player.dashTimer <= 0 && G.player.detonateLungeTimer <= 0 && G.player.iaiLungeTimer <= 0 && G.player.grappleState === 'none') {
-    G.player.healTimer = 0.52;
+  } else if (consumeActionPress('heal') && G.player.flasks > 0 && (G.player.grounded || canAirHeal) && G.player.dashTimer <= 0 && G.player.detonateLungeTimer <= 0 && G.player.iaiLungeTimer <= 0 && G.player.grappleState === 'none') {
+    G.player.healTimer = !G.player.grounded ? 0.44 : 0.52;
     G.player.healDone = false;
     G.player.isCharging = false;
     G.player.chargeTime = 0;
+    if (!G.player.grounded) {
+      G.player.vy = Math.min(G.player.vy, -65);
+      spawnShockwave(G.player.x + G.player.w * 0.5, G.player.y + 32, 48, COLORS.cyanBright, 2.4, 0.24);
+    }
     audio.playHeal();
   }
 
@@ -478,6 +496,7 @@ export function updatePlayer(dt) {
         G.player.jumpBufTimer = 0;
         G.player.dashCd = 0;
         G.player.airJumpsLeft = 1;
+        G.player.pogoChain = 0;
         G.player.coyoteTimer = 0.08;
         if (getRelicStats().synGaleThread) G.player.galeSurgeTimer = 2.6;
         G.player.squashX = 0.78;
@@ -560,7 +579,8 @@ export function updatePlayer(dt) {
   } else {
     // Standard Run & Air Control (Frostbite Chill reduces speed by 28%)
     const chillMult = (G.player.frostChilledTimer > 0) ? 0.72 : 1.0;
-    const spdMult = (getRelicStats().moveSpeedMult || 1.0) * chillMult;
+    const surgeMult = (G.player.surgeTimer > 0) ? 1.20 : 1.0;
+    const spdMult = (getRelicStats().moveSpeedMult || 1.0) * chillMult * surgeMult;
     const maxSpd = (G.player.isCharging && G.player.chargeTime > 0.16 ? 130 : G.player.parryActive ? 95 : 310) * spdMult;
     if (G.player.wallJumpLock <= 0 && G.player.hurtTimer <= 0 && G.player.healTimer <= 0) {
       const targetVx = moveDir * maxSpd;
@@ -570,8 +590,10 @@ export function updatePlayer(dt) {
       if (moveDir !== 0 && G.player.attackTimer <= 0 && !G.player.parryActive) G.player.facing = moveDir;
     }
 
-    // Gravity & Wall Slide
-    G.player.vy += GRAVITY * dt;
+    // Gravity & Wall Slide (softened while mid-air Aerial Lantern healing)
+    if (!(G.player.healTimer > 0 && !G.player.grounded && isSkillNodeUnlocked('air_flask'))) {
+      G.player.vy += GRAVITY * dt;
+    }
     if (!G.player.grounded && G.player.wallDir !== 0 && G.player.vy > 115 && moveDir === G.player.wallDir) {
       G.player.vy = 115;
       if (Math.random() < 15 * dt) {
@@ -626,6 +648,7 @@ export function updatePlayer(dt) {
     if (G.player.grounded) {
       G.player.coyoteTimer = 0.11;
       G.player.airJumpsLeft = 1;
+      G.player.pogoChain = 0;
     }
     if (G.player.jumpBufTimer > 0 && G.player.healTimer <= 0) {
       if (G.player.grounded && G.player.onPlatform && isActionHeld('down')) {
@@ -694,6 +717,7 @@ export function updatePlayer(dt) {
         G.player.grounded = false;
         G.player.coyoteTimer = 0;
         G.player.airJumpsLeft = 1;
+        G.player.pogoChain = 0;
         G.player.dashCd = 0;
         G.player.squashX = 0.72;
         G.player.squashY = 1.34;

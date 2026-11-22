@@ -1,11 +1,11 @@
 // World Backdrop, Props, Altars, NPCs, Gates, Puzzles & Grapple Reticle Renderer (v32.0)
 import {
   COLORS, ROOMS, ALTARS, NPCS, ALTAR_POS, LORE_TABLETS,
-  SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, FIRST_BELL_CORE_POS,
+  SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, SKY_BRIDGE_GATE_DEF, FIRST_BELL_CORE_POS,
   PENDULUMS, VOID_BARRIERS, WALL_INSCRIPTIONS, GRAPPLE_ANCHORS, WIND_ZONES, BOUNCE_PADS,
   BANNERS, CANDLE_CLUSTERS, BONE_CAIRNS, FLOOR_Y, WELL_BOTTOM_Y, DUMMY_MODES
 } from '../config.js';
-import { G, getAwakeBoss, getRelicStats, hasKeeperBlessing, getExplorationPercent, getActiveWeaponId, isWeaponUnlocked } from '../state.js';
+import { G, getAwakeBoss, getRelicStats, hasKeeperBlessing, getExplorationPercent, getActiveWeaponId, isWeaponUnlocked, isSkyBridgeOpen } from '../state.js';
 import { prof } from '../profiler.js';
 import { getControlLabels, getActionKeyLabel } from '../input.js';
 import {
@@ -913,6 +913,29 @@ export function drawFoundryExitGate() {
   G.ctx.restore();
 }
 
+export function drawSkyBridgeGate() {
+  if (!G.worldState || SKY_BRIDGE_GATE_DEF.w <= 0) return;
+  const g = SKY_BRIDGE_GATE_DEF;
+  if (!isInView(g.x - 20, g.y - 20, g.w + 40, g.h + 40, 120)) return;
+  const lift = (G.worldState.skyBridgeGateAnim || 0) * (g.h - 14);
+  const barH = g.h - lift;
+  if (barH <= 14) return;
+  const open = isSkyBridgeOpen();
+  G.ctx.save();
+  G.ctx.fillStyle = '#101c2d';
+  G.ctx.fillRect(g.x + 2, g.y, g.w - 4, barH);
+  G.ctx.strokeStyle = open ? COLORS.goldBright : '#7dd3fc';
+  G.ctx.lineWidth = 2.2;
+  for (let bx = g.x + 8; bx <= g.x + g.w - 8; bx += 10) {
+    boilLine(G.ctx, bx, g.y, bx, g.y + barH, 7480 + bx, 0.9, 3);
+  }
+  G.ctx.fillStyle = '#1b2c44';
+  G.ctx.strokeStyle = open ? COLORS.goldBright : '#bae6fd';
+  G.ctx.fillRect(g.x - 3, g.y + barH - 10, g.w + 6, 10);
+  G.ctx.strokeRect(g.x - 3, g.y + barH - 10, g.w + 6, 10);
+  G.ctx.restore();
+}
+
 export function drawFirstBellCore() {
   if (!G.worldState || !G.worldState.boss3Defeated || G.echoSession) return;
   const { x, y } = FIRST_BELL_CORE_POS;
@@ -1112,11 +1135,20 @@ export function drawPickups() {
     const isAbility = p.kind === 'ability';
     const isWeapon = p.kind === 'weapon';
     const isKey = p.kind === 'keyItem';
+    const isRealmSeal = p.kind === 'realmSeal';
+    const bossLocked = !!(p.requiresBoss && !isPickupUnlocked(p));
     const isShade = (isAbility && p.abilityId === 'shadeDash') || p.kind === 'statCore';
-    const col = isKey ? '#fef9c3' : (isShade ? COLORS.violetBright : (isFlask || isAbility || isWeapon ? COLORS.cyanBright : COLORS.goldBright));
+    const sealCol = p.sealId === 'forest' ? '#6ee7b7' : p.sealId === 'mountain' ? '#bae6fd' : '#7dd3fc';
+    const col = isRealmSeal ? sealCol : (isKey ? '#fef9c3' : (isShade ? COLORS.violetBright : (isFlask || isAbility || isWeapon ? COLORS.cyanBright : COLORS.goldBright)));
 
     G.ctx.save();
-    drawGlowSprite(isShade ? 'violet' : (isFlask || isAbility || isWeapon ? 'cyan' : 'gold'), p.x, py, (isAbility || isWeapon) ? 64 : 46, (isAbility || isWeapon) ? 0.58 : 0.42);
+    if (bossLocked) G.ctx.globalAlpha = 0.55;
+    if (isRealmSeal && !bossLocked) {
+      G.ctx.fillStyle = p.sealId === 'forest' ? 'rgba(110, 231, 183, 0.11)' : 'rgba(186, 230, 253, 0.11)';
+      G.ctx.fillRect(p.x - 24, p.y - 160, 48, 152);
+      drawGlowSprite('gold', p.x, py, 74, 0.65);
+    }
+    drawGlowSprite(isShade ? 'violet' : (isFlask || isAbility || isWeapon || isRealmSeal ? 'cyan' : 'gold'), p.x, py, (isAbility || isWeapon || isRealmSeal) ? 68 : 46, (isAbility || isWeapon || isRealmSeal) ? 0.60 : 0.42);
     if (isWeapon) drawGlowSprite('gold', p.x, py, 36, 0.44);
 
     // Stone miniature shrine plinth
@@ -1186,6 +1218,27 @@ export function drawPickups() {
       G.ctx.stroke();
     }
     G.ctx.restore();
+    if (bossLocked) {
+      G.ctx.save();
+      G.ctx.strokeStyle = 'rgba(245, 158, 11, 0.72)';
+      G.ctx.fillStyle = 'rgba(10, 14, 22, 0.46)';
+      G.ctx.lineWidth = 1.9;
+      G.ctx.beginPath();
+      G.ctx.moveTo(p.x - 22, p.y);
+      G.ctx.lineTo(p.x - 22, p.y - 44);
+      G.ctx.quadraticCurveTo(p.x, p.y - 66, p.x + 22, p.y - 44);
+      G.ctx.lineTo(p.x + 22, p.y);
+      G.ctx.closePath();
+      G.ctx.fill();
+      G.ctx.stroke();
+      G.ctx.strokeStyle = 'rgba(248, 113, 113, 0.68)';
+      G.ctx.lineWidth = 1.5;
+      G.ctx.beginPath();
+      G.ctx.moveTo(p.x - 16, p.y - 42); G.ctx.lineTo(p.x + 16, p.y - 10);
+      G.ctx.moveTo(p.x + 16, p.y - 42); G.ctx.lineTo(p.x - 16, p.y - 10);
+      G.ctx.stroke();
+      G.ctx.restore();
+    }
   }
 }
 

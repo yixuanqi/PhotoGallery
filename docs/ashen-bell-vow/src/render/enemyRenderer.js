@@ -959,7 +959,7 @@ function drawWardenForest(e) {
   const cx = e.x + e.w * 0.5;
   const fy = e.y + e.h;
   const isStagger = e.state === 'stagger';
-  const isRed = e.moveKind === 'vineWave' && (e.state === 'windup' || e.state === 'strike');
+  const isRed = (e.moveKind === 'vineWave' || e.moveKind === 'canopyThorns' || e.moveKind === 'rootEruption') && (e.state === 'windup' || e.state === 'strike');
   const armored = e.barkArmor && (e.shieldBrokenTimer || 0) <= 0 && !isStagger;
   const pulse = Math.sin(e.pulsePhase || 0) * 3;
 
@@ -979,6 +979,24 @@ function drawWardenForest(e) {
   G.ctx.quadraticCurveTo(24, -26, 30, 0);
   G.ctx.closePath();
   G.ctx.fill(); G.ctx.stroke();
+
+  if (e.canopyThornTimer > 0) {
+    drawGlowSprite('cyan', 0, -102, 46, 0.55);
+    G.ctx.fillStyle = '#15803d';
+    G.ctx.strokeStyle = '#86efac';
+    G.ctx.lineWidth = 1.8;
+    for (let ti = -3; ti <= 3; ti++) {
+      const tx = ti * 13;
+      const th = 22 - Math.abs(ti) * 3;
+      G.ctx.beginPath();
+      G.ctx.moveTo(tx - 5, -88);
+      G.ctx.lineTo(tx + ti * 2, -88 - th);
+      G.ctx.lineTo(tx + 5, -88);
+      G.ctx.closePath();
+      G.ctx.fill();
+      G.ctx.stroke();
+    }
+  }
 
   // Antler-like Blighted Canopy Branches
   G.ctx.strokeStyle = '#365341';

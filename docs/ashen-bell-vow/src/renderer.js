@@ -11,7 +11,7 @@ import { isInView, drawContactShadow } from './render/renderShared.js';
 import {
   drawWorldBackdrop, drawWeatherRipples, drawRoomOcclusionMasks, drawWallInscriptions,
   drawAltars, drawNpcs, drawShortcutGate, drawChapelExitGate, drawFoundryEntryGate,
-  drawFoundryExitGate, drawFirstBellCore, drawPendulums, drawSecretWalls, drawVoidBarriers,
+  drawFoundryExitGate, drawSkyBridgeGate, drawFirstBellCore, drawPendulums, drawSecretWalls, drawVoidBarriers,
   drawLostEchoes, drawPickups, drawWindZones, drawBouncePads, drawCrumblePlatforms,
   drawResonancePuzzles, drawLoreTablets, drawLanterns, drawGrappleAnchors,
   drawGrappleReticle, drawGrappleThread, drawMistBarrier
@@ -190,6 +190,7 @@ export function render() {
   drawChapelExitGate();
   drawFoundryEntryGate();
   drawFoundryExitGate();
+  drawSkyBridgeGate();
   drawSecretWalls();
   let _t5 = performance.now();
   prof.addModuleTime('vfx', _t5 - _t4);

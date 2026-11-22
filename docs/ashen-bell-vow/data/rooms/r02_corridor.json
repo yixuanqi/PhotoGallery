@@ -219,11 +219,11 @@
       "kind": "statCore",
       "bonusHp": 20,
       "bonusSoul": 25,
-      "echoAmount": 120,
+      "echoAmount": 70,
       "x": 1630,
       "y": 270,
       "name": "礼拜堂暗阁 · 古钟魂晶",
-      "desc": "生命上限 +20、魂火上限 +25，并获 +120 残响！"
+      "desc": "生命上限 +20、魂火上限 +25，并获 +70 残响！"
     }
   ],
   "resonancePuzzles": [

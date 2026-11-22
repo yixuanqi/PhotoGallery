@@ -147,9 +147,9 @@
       "kind": "echoCache",
       "x": 455,
       "y": 385,
-      "echoAmount": 210,
+      "echoAmount": 105,
       "name": "冰封残响",
-      "desc": "冻雪岩崖上留存的旧誓残响"
+      "desc": "冻雪岩崖上留存的旧誓残响（+105 残响）"
     }
   ],
   "resonancePuzzles": [],

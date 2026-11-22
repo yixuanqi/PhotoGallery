@@ -7,7 +7,7 @@ import {
   getActiveWeaponId, getActiveWeapon, isWeaponUnlocked, getUnlockedWeaponIds, unlockWeapon,
   hasActiveWeaponTrait,
   getBossBonusDamageMult, hasKeeperBlessing,
-  getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks,
+  getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks, getRealmSealCount, hasThirdRelicSlot,
   scheduleOutcome, addShake, kickCamera, punchZoom, triggerBossBanner, triggerHitstop
 } from '../state.js';
 import { getRoomAt } from '../levelLoader.js';
@@ -84,8 +84,18 @@ export function damageSecretWall(w, dmg = 1) {
 }
 
 export function isPickupUnlocked(p) {
-  if (!p.requiresPuzzle) return true;
-  return !!(G.worldState && G.worldState.solvedPuzzles && G.worldState.solvedPuzzles.has(p.requiresPuzzle));
+  if (p.requiresPuzzle) {
+    if (!(G.worldState && G.worldState.solvedPuzzles && G.worldState.solvedPuzzles.has(p.requiresPuzzle))) return false;
+  }
+  if (p.requiresBoss) {
+    if (!G.worldState) return false;
+    const bid = p.requiresBoss;
+    if (bid === 'boss_hui') return !!G.worldState.bossDefeated;
+    if (bid === 'boss_ji') return !!G.worldState.boss2Defeated;
+    if (bid === 'boss_yuan') return !!G.worldState.boss3Defeated;
+    return !!(G.worldState.defeatedMiniBosses && G.worldState.defeatedMiniBosses.has(bid));
+  }
+  return true;
 }
 
 export function ringResonanceBell(puzzle, bell, impulseDir = 1) {
@@ -438,6 +448,34 @@ export function collectPickup(p) {
       triggerBossBanner(t('combat.weaponUnlockBanner', wName), isEn() ? wDef.tagEn : wDef.tag, wDef.color, 3.0);
       spawnFloatText(p.x, p.y - 58, `${pkName} · ${pkDesc}`, wDef.color, 20, 2.3);
     }
+  } else if (p.kind === 'realmSeal') {
+    if (!G.worldState.realmSeals) G.worldState.realmSeals = { wind: false, forest: false, mountain: false };
+    const sid = p.sealId || 'wind';
+    G.worldState.realmSeals[sid] = true;
+    if (p.relicId) {
+      if (G.worldState.unlockedRelics.has(p.relicId)) {
+        const ngEcho = Math.round(240 * getCombatScaling(false).echoMult);
+        G.worldState.echoes = (G.worldState.echoes || 0) + ngEcho;
+      } else {
+        G.worldState.unlockedRelics.add(p.relicId);
+      }
+    }
+    const sealCnt = getRealmSealCount();
+    const relicObj = p.relicId ? RELICS.find(r => r.id === p.relicId) : null;
+    const rName = relicObj ? locRelic(relicObj, 'name') : '';
+    audio.playEndingChord(true, Math.min(3, sealCnt));
+    punchZoom(1.055);
+    addShake(12);
+    G.screenFlash = { alpha: 0.28, color: COLORS.goldBright };
+    spawnShockwave(p.x, p.y - 26, 195, COLORS.goldBright, 5.4, 0.56);
+    spawnShockwave(p.x, p.y - 26, 130, COLORS.cyanBright, 3.6, 0.42);
+    const tierMsg = sealCnt >= 3
+      ? t('combat.realmSealTier3')
+      : sealCnt === 2
+        ? t('combat.realmSealTier2')
+        : t('combat.realmSealTier1');
+    triggerBossBanner(t('combat.realmSealBanner', pkName, sealCnt), tierMsg, sealCnt >= 3 ? '#e9d5ff' : COLORS.goldBright, 3.4);
+    spawnFloatText(p.x, p.y - 60, rName ? t('combat.wardenRelicFloat', rName) : pkName, COLORS.cyanBright, 21, 2.3);
   } else if (p.kind === 'relic') {
     if (G.worldState.unlockedRelics.has(p.relicId)) {
       const ngEcho = Math.round(220 * getCombatScaling(false).echoMult);

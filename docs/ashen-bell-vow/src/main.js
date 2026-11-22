@@ -28,7 +28,7 @@ import {
   openSmithModal, openNpcModal, openDummyModal, openLoreModal, openMapModal, openCodexModal, openPauseModal, returnToTitle, interactWithAltar, respawnAtActiveAltar,
   startEchoChallenge, advanceEchoRushStage2, advanceEchoRushStage3, advanceWardenRushStage2, advanceWardenRushStage3, advanceSevenBellsNext, showDeath, showVictory,
   startGame, startNewGamePlus, continueSavedGame, continueIntoBellWell,
-  openEndingChoice, startEndingCinematic, advanceEndingCinematic, updateAndRenderEndingCinematic
+  openEndingChoice, startEndingCinematic, advanceEndingCinematic, updateAndRenderEndingCinematic, updateAndRenderSkillPreview
 } from './ui.js';
 
 // Register cross-layer hooks (eliminates all circular ES Module dependencies)
@@ -343,6 +343,7 @@ function runGameFrame(timestamp) {
   }
 
   if (G.activeModal === 'ending-cinematic') updateAndRenderEndingCinematic(dt);
+  if (G.activeModal === 'smith') updateAndRenderSkillPreview(dt);
   clearFrameInputs();
   const isStaticOverlay = G.gameState === 'modal' || G.gameState === 'dead' || G.gameState === 'victory';
   if (isStaticOverlay) {

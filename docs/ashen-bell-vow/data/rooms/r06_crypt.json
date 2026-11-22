@@ -153,11 +153,11 @@
     {
       "id": "pickup_echo_crypt",
       "kind": "echoCache",
-      "echoAmount": 220,
+      "echoAmount": 105,
       "x": 78,
       "y": 640,
       "name": "秘库古钟残响匣",
-      "desc": "获得大量残响，可回老铸钟匠处淬炼断刃！"
+      "desc": "获得 +105 残响，可回老铸钟匠处淬炼断刃或圣物！"
     },
     {
       "id": "pickup_shade_dash",

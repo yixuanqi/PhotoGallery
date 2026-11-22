@@ -179,7 +179,7 @@ export const WORLD_EN = {
     },
     pickup_core_corridor: {
       name: 'Chapel Vault · Bell Soul-Crystal',
-      desc: 'Max Vitality +20, Max Soulfire +25, and +120 Echoes!'
+      desc: 'Max Vitality +20, Max Soulfire +25, and +70 Echoes!'
     },
     pickup_flask_core_well: {
       name: 'Deep-Well Oil Wick',
@@ -195,7 +195,7 @@ export const WORLD_EN = {
     },
     pickup_flask_abyss: {
       name: 'Abyssal Alcove · Sacred Oil Wick',
-      desc: 'Max Lantern Oil +1, Vitality +15, and +160 Echoes!'
+      desc: 'Max Lantern Oil +1, Vitality +15, and +90 Echoes!'
     },
     pickup_echo_crypt: {
       name: 'Vault Ancient Echo Coffer',
@@ -215,7 +215,7 @@ export const WORLD_EN = {
     },
     pickup_echo_ascent: {
       name: 'Spire Ancient Echo Coffer',
-      desc: 'Grants +260 Echoes—return to the anvil for final tempering!'
+      desc: 'Grants +130 Echoes—return to the anvil for tempering or Relic Refinement!'
     },
     pickup_core_wind: {
       name: 'Spire Crest · Gale Soul Core',
@@ -223,7 +223,7 @@ export const WORLD_EN = {
     },
     pickup_echo_wind: {
       name: 'Gale-Spire Echo Coffer',
-      desc: 'Grants +200 Echoes for tempering at the anvil!'
+      desc: 'Grants +80 Echoes for tempering at the anvil!'
     },
     pickup_core_forest: {
       name: 'Ancient Woods · Luminous Spore Fruit',
@@ -231,7 +231,7 @@ export const WORLD_EN = {
     },
     pickup_echo_forest: {
       name: 'Root-Cavern Echo Coffer',
-      desc: 'Abundant Echoes (+280) recovered behind the Ink-Blight Barrier!'
+      desc: 'Recovered +85 Echoes behind the Ink-Blight Barrier!'
     },
     pickup_core_mountain: {
       name: 'Blade Mound · Frost-Bone Soul Crystal',
@@ -239,27 +239,39 @@ export const WORLD_EN = {
     },
     pickup_echo_mountain: {
       name: 'Frost-Cliff Echo Coffer',
-      desc: 'Grants +210 Echoes for blade tempering!'
+      desc: 'Grants +105 Echoes for blade tempering!'
     },
     pickup_echo_wind_top: {
       name: 'Thermal-Draft Echo Seal',
-      desc: 'Grants +180 molten-draft Echoes!'
+      desc: 'Grants +90 molten-draft Echoes!'
     },
     pickup_echo_wind_bridge: {
       name: 'Thousand-Bell Bridge Echoes',
-      desc: 'Grants +240 Echoes from the high wind bridge!'
+      desc: 'Grants +115 Echoes from the high wind bridge!'
     },
     pickup_echo_woods_canopy: {
       name: 'Canopy Spore Echoes',
-      desc: 'Grants +190 Echoes from the glowing canopy!'
+      desc: 'Grants +95 Echoes from the glowing canopy!'
     },
     pickup_echo_woods_deep: {
       name: 'Seepage Pool Bell Echoes',
-      desc: 'Grants +240 Echoes from the sunken seepage bridge!'
+      desc: 'Grants +115 Echoes from the sunken seepage bridge!'
     },
     pickup_echo_frost_tomb: {
       name: 'Frozen Sword-Mound Echoes',
-      desc: 'Grants +260 Echoes from the Keepers’ blade steps!'
+      desc: 'Grants +130 Echoes from the Keepers’ blade steps!'
+    },
+    pickup_seal_wind: {
+      name: 'Gale Realm Seal · Gale Bell-Plume',
+      desc: 'Unsealed upon defeating Shuo! Grants the Gale Realm Seal & Gale Bell-Plume relic.'
+    },
+    pickup_seal_forest: {
+      name: 'Woods Realm Seal · Spore-Root Seal',
+      desc: 'Unsealed upon defeating Ku! Grants the Woods Realm Seal & Spore-Root Seal relic.'
+    },
+    pickup_seal_mountain: {
+      name: 'Frost Realm Seal · Frost-Ridge Shard',
+      desc: 'Unsealed upon defeating Lin! Grants the Frost Realm Seal & Frost-Ridge Shard relic.'
     }
   },
 

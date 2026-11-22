@@ -262,11 +262,11 @@
     {
       "id": "pickup_echo_ascent",
       "kind": "echoCache",
-      "echoAmount": 260,
+      "echoAmount": 130,
       "x": 530,
       "y": 740,
       "name": "圣阶古钟遗匣",
-      "desc": "获得 +260 残响，可回铁砧完成最终淬炼！"
+      "desc": "获得 +130 残响，可回铁砧淬炼断刃与圣物精粹！"
     }
   ],
   "resonancePuzzles": [],

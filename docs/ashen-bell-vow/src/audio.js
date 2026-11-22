@@ -1062,6 +1062,24 @@ export class SoundEngine {
           osc.connect(g); g.connect(out); osc.start(t0); osc.stop(t0 + 0.50);
         }
       }],
+      ['relic_refine', 0.96, (c, out) => {
+        const anvil = c.createBufferSource(); anvil.buffer = this._makeOfflineNoise(c);
+        const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.setValueAtTime(2800, 0);
+        const ag = c.createGain(); ag.gain.setValueAtTime(0.20, 0); ag.gain.exponentialRampToValueAtTime(0.0008, 0.09);
+        anvil.connect(hp); hp.connect(ag); ag.connect(out); anvil.start(0); anvil.stop(0.11);
+        const notes = [440.0, 659.25, 880.0, 1318.51, 1760.0, 2637.02];
+        for (let i = 0; i < notes.length; i++) {
+          const t0 = i * 0.048;
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = i < 2 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(notes[i], t0);
+          osc.frequency.exponentialRampToValueAtTime(notes[i] * 1.006, t0 + 0.62);
+          g.gain.setValueAtTime(0.0005, t0);
+          g.gain.linearRampToValueAtTime(0.16 / (i * 0.36 + 1), t0 + 0.015);
+          g.gain.exponentialRampToValueAtTime(0.0005, t0 + 0.66);
+          osc.connect(g); g.connect(out); osc.start(t0); osc.stop(t0 + 0.68);
+        }
+      }],
       ['frost_shatter', 0.44, (c, out) => {
         const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
         const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.setValueAtTime(3100, 0);
@@ -1564,6 +1582,10 @@ export class SoundEngine {
 
   playForgeTrait() {
     this._playBaked('forge_trait', 1.0);
+  }
+
+  playRelicRefine() {
+    this._playBaked('relic_refine', 1.0);
   }
 
   playBoss4Swap() {

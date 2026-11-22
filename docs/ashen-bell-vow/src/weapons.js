@@ -21,8 +21,8 @@ export const WEAPONS = {
     summaryEn: 'Agile broken odachi. Crisp 3-hit combo, hold for piercing Iai Flash lunge, and Bell-Breaker Riposte with 2x rally.',
     unlockHint: '初始执刃 · 醒于熄灯祭坛',
     unlockHintEn: 'Starting weapon · Awakened at the Extinguished Altar',
-    traits: ['3连快斩 · 标准弹反窗 · 机动极佳', '长按：居合一闪（高速突刺破盾）', '切刃技：流影拔刀（高速切入回魂）'],
-    traitsEn: ['Fast 3-hit · Balanced parry & mobility', 'Hold: Iai Flash piercing lunge', 'Switch Strike: Flash Draw (+Soul)'],
+    traits: ['3连快斩 · 机动见切', '长按 · 居合穿刺破盾', '切刃 · 流影拔刀回魂'],
+    traitsEn: ['Fast 3-Hit · Agile Parry', 'Hold · Iai Pierce Break', 'Switch · Flash Draw'],
     passives: {
       parryWindowBonusMs: 0,
       blockWindowBonusMs: 0,
@@ -64,8 +64,8 @@ export const WEAPONS = {
     summaryEn: 'Reforged from shattered bell bronze. Heavy 2-hit crush combo (all swings shatter shields, ×1.35 posture); 2nd slam & Charged Abyssal Sundering grant hyper-armor and unleash a seismic ground wave.',
     unlockHint: '斩落断钟礼拜堂首领「断钟骑士 · 晦」后，回起点找盲眼老铸钟匠 · 砺重铸解锁。',
     unlockHintEn: 'Fell Hui in the Chapel of the Broken Bell, then return to Blind Bell-Smith Li to reforge it.',
-    traits: ['2段沉重砸击 · 全招破重盾 · 削势 ×1.35', '二段/蓄力自带霸体减伤 · 轰出裂地震荡波', '切刃技：落钟破岳（霸体瞬砸碎盾）'],
-    traitsEn: ['Heavy 2-hit smash · All hits shatter shields (×1.35 posture)', '2nd Hit & Hold: Hyper-armor slam + seismic wave', 'Switch Strike: Falling Maul armored crush'],
+    traits: ['2段重砸 · 全招破盾 ×1.35势', '长按 · 霸体陨钟震波', '切刃 · 落钟霸体碎盾'],
+    traitsEn: ['Heavy 2-Hit · ×1.35 Posture', 'Hold · Armored Quake', 'Switch · Falling Maul'],
     passives: {
       parryWindowBonusMs: -4,
       blockWindowBonusMs: 25,
@@ -106,8 +106,8 @@ export const WEAPONS = {
     summaryEn: 'Bronze soul-calling staff. +35% Soul gain, -20% spell cost & +25% spell DMG; attacks launch piercing harmonic rings, hold fires 3 homing Spirit Darts, and parries unleash a 360° Requiem Pulse.',
     unlockHint: '潜入沉渊钟井西侧「残钟地窖」，在东侧暗道半埋断钟骸旁的深处秘龛中寻得。',
     unlockHintEn: 'Explore the Crypt of Shards west of the Abyssal Bell Well; hidden in the eastern sunken alcove beside the fallen bell.',
-    traits: ['回魂 ×1.35 · 法术耗蓝 -20% · 法术伤害 +25%', '3连挥铃发射穿透音环 · 长按3枚追踪铃矢', '切刃技：退步双鸣（后跃双环风筝回魂）'],
-    traitsEn: ['×1.35 Soul · -20% spell cost · +25% spell DMG', '3-Hit piercing rings · Hold 3-dart homing volley', 'Switch Strike: Recoil Chime backstep + twin rings'],
+    traits: ['回魂+35% · 法伤+25%', '长按 · 3枚追踪铃矢', '切刃 · 退步双环回魂'],
+    traitsEn: ['Soul +35% · Spell +25%', 'Hold · 3 Homing Darts', 'Switch · Recoil Chime'],
     passives: {
       parryWindowBonusMs: -6,
       blockWindowBonusMs: 0,

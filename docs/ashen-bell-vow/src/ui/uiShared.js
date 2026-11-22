@@ -9,7 +9,7 @@ import { getRoomAt, getZoneLabelAt, getPreviewSpawnRoomId, getPreviewSpawnCoords
 import {
   G, createFreshWorldState, getActiveAltar, getActiveSynergies, getRelicStats, getActiveVowStats, getCombatScaling, getEquippedRelicLabel, getActiveWeaponId, getActiveWeapon, isWeaponUnlocked, getUnlockedWeaponIds, unlockWeapon,
   isWeaponTraitUnlocked, getActiveWeaponTraitId, unlockWeaponTrait, setActiveWeaponTrait,
-  ensureNpcQuests, hasKeeperBlessing,
+  ensureNpcQuests, hasKeeperBlessing, isRelicRefined,
   getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks, getPlayerMaxSeals,
   markMapExplored, getExplorationPercent, createLanterns,
   createResonancePuzzles, createCrumblePlatforms, getAwakeBoss, getHudBoss, isBoss4Unlocked, clearOutcomeTimer, triggerBossBanner, setTextFast
@@ -69,6 +69,7 @@ export const HUD_DOM = {
   abilityShadeTag: document.getElementById('ability-shade-tag'),
   keyDawnTag: document.getElementById('key-dawn-tag'),
   blessingTag: document.getElementById('blessing-tag'),
+  realmSealsTag: document.getElementById('realm-seals-tag'),
   vowCycleTag: document.getElementById('vow-cycle-tag'),
   soulFill: document.getElementById('soul-fill'),
   soulText: document.getElementById('soul-text'),
@@ -99,7 +100,7 @@ export const HUD_DOM = {
 export function getLocalizedRelicLabel() {
   const active = (G.equippedRelics || [G.currentRelic]).filter(Boolean);
   if (active.length === 0) return locRelic(RELICS[0], 'name');
-  return active.map(r => locRelic(r, 'name')).join(' · ');
+  return active.map(r => locRelic(r, 'name') + (isRelicRefined(r.id) ? '★' : '')).join(' · ');
 }
 
 export function getLocalizedVowShorts() {

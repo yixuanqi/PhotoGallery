@@ -509,7 +509,7 @@ export function startGame() {
   clearOutcomeTimer();
   hideAllOverlays();
   G.worldState = createFreshWorldState();
-  G.equippedRelics = [RELICS[0], null];
+  G.equippedRelics = [RELICS[0], null, null];
   G.currentRelic = RELICS[0];
   G.activeRelicSlot = 1;
   const previewCoords = G.isEditorPreview ? getPreviewSpawnCoords() : null;
@@ -577,16 +577,19 @@ export function startNewGamePlus() {
   const prev = G.worldState;
   const nextCycle = Math.max(1, Math.floor(Number(prev.ngPlusCycle) || 1)) + 1;
   const keepEquipped = Array.isArray(G.equippedRelics) && G.equippedRelics.length >= 2
-    ? [G.equippedRelics[0] || RELICS[0], G.equippedRelics[1] || null]
-    : [G.currentRelic || RELICS[0], null];
+    ? [G.equippedRelics[0] || RELICS[0], G.equippedRelics[1] || null, G.equippedRelics[2] || null]
+    : [G.currentRelic || RELICS[0], null, null];
 
   const fresh = createFreshWorldState();
   fresh.ngPlusCycle = nextCycle;
   fresh.activeVows = new Set(prev.activeVows ? [...prev.activeVows] : []);
   fresh.unlockedRelics = new Set(prev.unlockedRelics ? [...prev.unlockedRelics] : ['thorn', 'mirror', 'ember']);
+  fresh.refinedRelics = new Set(prev.refinedRelics ? [...prev.refinedRelics] : []);
+  fresh.realmSeals = prev.realmSeals ? { wind: !!prev.realmSeals.wind, forest: !!prev.realmSeals.forest, mountain: !!prev.realmSeals.mountain } : { wind: false, forest: false, mountain: false };
   fresh.unlockedWeapons = new Set(prev.unlockedWeapons ? [...prev.unlockedWeapons] : ['blade']);
   fresh.equippedWeapon = prev.equippedWeapon || 'blade';
   fresh.unlockedWeaponTraits = new Set(prev.unlockedWeaponTraits ? [...prev.unlockedWeaponTraits] : []);
+  fresh.skillNodes = new Set(prev.skillNodes ? [...prev.skillNodes] : []);
   fresh.weaponTraits = prev.weaponTraits ? { ...prev.weaponTraits } : { blade: null, hammer: null, bell: null };
   fresh.smithUpgrades = { ...(prev.smithUpgrades || { blade: 0, posture: 0, forge: 0 }) };
   fresh.bonusFlasks = Math.min(3, Number(prev.bonusFlasks) || 0);

@@ -12,6 +12,11 @@ export const SLOT_EMBLEMS = {
     <path d="M16.8 7.8 A6.6 6.6 0 1 0 16.8 20.2 A4.9 4.9 0 1 1 16.8 7.8 Z" fill="#38bdf8" stroke="#e0f2fe" stroke-width="1.1"/>
     <circle cx="18.2" cy="14" r="1.9" fill="#e0f2fe"/>
   </svg>`,
+  tertiary: `<svg viewBox="0 0 28 28" class="seal-crest-svg tertiary" aria-hidden="true">
+    <polygon points="14,2 25,8.5 25,19.5 14,26 3,19.5 3,8.5" fill="rgba(168,85,247,0.22)" stroke="#e9d5ff" stroke-width="1.4"/>
+    <circle cx="14" cy="14" r="5.5" fill="#2e1065" stroke="#fde047" stroke-width="1.3"/>
+    <polygon points="14,9.5 16.5,14 14,18.5 11.5,14" fill="#fde047"/>
+  </svg>`,
   empty: `<svg viewBox="0 0 32 32" class="relic-svg empty" aria-hidden="true">
     <circle cx="16" cy="16" r="12" fill="rgba(15,23,42,0.45)" stroke="rgba(216,207,184,0.34)" stroke-width="1.3" stroke-dasharray="3 3"/>
     <path d="M16 11 V21 M11 16 H21" stroke="rgba(216,207,184,0.45)" stroke-width="1.5" stroke-linecap="round"/>

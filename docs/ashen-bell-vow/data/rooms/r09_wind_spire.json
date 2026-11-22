@@ -171,18 +171,18 @@
       "kind": "echoCache",
       "x": 935,
       "y": 390,
-      "echoAmount": 160,
+      "echoAmount": 80,
       "name": "残风余响",
-      "desc": "风井悬台间凝结的古钟残响"
+      "desc": "风井悬台间凝结的古钟残响（+80 残响）"
     },
     {
       "id": "pickup_echo_wind_top",
       "kind": "echoCache",
       "x": 598,
       "y": 205,
-      "echoAmount": 180,
+      "echoAmount": 90,
       "name": "炉风残印",
-      "desc": "热浪卷上高台的熔金残响"
+      "desc": "热浪卷上高台的熔金残响（+90 残响）"
     }
   ],
   "resonancePuzzles": [],

@@ -6,6 +6,9 @@ export const ENTITIES_EN = {
       name: 'Pain-Drinker Thorn',
       tag: 'Rally Leech',
       effect: '2x Gray-HP Window · Strike Rally +65%',
+      refinedEffect: 'Gray-HP 6.8s · Strike Rally +105% · Exec Heal 16%',
+      shortEffect: '2x Gray-HP · Rally +65%',
+      shortRefined: 'Gray 6.8s · Rally +105%',
       usage: 'After blocking chip damage, slash right back to reclaim Vitality.',
       desc: 'Doubles gray-HP duration; slashes strongly restore lost Vitality.'
     },
@@ -13,6 +16,9 @@ export const ENTITIES_EN = {
       name: 'Shattered Mirror Eye',
       tag: 'Master Parry',
       effect: 'Parry Posture ×1.6 + 16 Reflect DMG (100ms window)',
+      refinedEffect: 'Parry Posture ×1.85 + 26 Reflect DMG (112ms window)',
+      shortEffect: 'Parry ×1.6 · 16 Reflect',
+      shortRefined: 'Parry ×1.85 · 112ms/26 Ref',
       usage: 'Deflect golden glints with razor precision to shatter boss posture.',
       desc: 'Tightens parry window to 100ms; perfect parries reflect damage & deal 1.6x posture.'
     },
@@ -20,6 +26,9 @@ export const ENTITIES_EN = {
       name: 'Lone Lantern Ember',
       tag: 'Riposte Sustain',
       effect: 'Execution heals 35% + Full Soulfire (Oil -1)',
+      refinedEffect: 'Execution heals 48% + Full Soul · Parry Posture ×1.28 / +10 Reflect',
+      shortEffect: 'Exec +35% HP & Full Soul',
+      shortRefined: 'Exec +48% HP · Parry ×1.28',
       usage: 'Break enemy posture and execute to sustain endless combat.',
       desc: '-1 Lantern Oil; executions restore 35% Vitality and refill Soulfire.'
     },
@@ -27,6 +36,9 @@ export const ENTITIES_EN = {
       name: 'Phantom-Thread Bell',
       tag: 'Grapple & Blade',
       effect: 'Grapple Recovery Halved · Resonant Blade Costs 22 Soul',
+      refinedEffect: 'Grapple Recovery 0.20s · Resonant Blade 18 Soul · +20 Spell Posture',
+      shortEffect: 'Hook CD 0.28s · Blade 22 Soul',
+      shortRefined: 'Hook CD 0.20s · Blade 18',
       usage: 'Chain rapid grapples with ranged Resonant Blades to crush posture.',
       hint: 'High northwest of Sanctuary · Grapple up & break the secret wall',
       desc: '0.28s grapple recovery; Resonant Blade costs 22 Soul and deals bonus posture.'
@@ -35,6 +47,9 @@ export const ENTITIES_EN = {
       name: 'Ancient Bell Core',
       tag: 'Apex Clash',
       effect: 'Max Seals 4 · Parry Heals 6 · Iai / Riposte +25%',
+      refinedEffect: 'Max Seals 4 · Parry Heals 10 / +12 Reflect · Iai & Riposte +38%',
+      shortEffect: '4 Seals · Parry +6HP · Iai +25%',
+      shortRefined: '4 Seals · +10HP · Iai +38%',
       usage: 'Follow parries with Riposte or Iai Flash, then detonate 4 Ink Seals.',
       hint: 'Skyward Bell Loft above Sanctuary · Requires Ink-Wing Stride',
       desc: 'Max Ink Seals 4, perfect parry heals 6 Vitality, +25% Iai & Riposte DMG.'
@@ -43,6 +58,9 @@ export const ENTITIES_EN = {
       name: 'Echoing Clapper',
       tag: 'Soul Resonance',
       effect: 'Soul Gain +35% · Spell DMG +30% / AoE +25%',
+      refinedEffect: 'Soul Gain +55% · Spell DMG +46% / AoE +38% · Quake Costs 26',
+      shortEffect: 'Soul +35% · Spell +30%',
+      shortRefined: 'Soul +55% · Spell +46%',
       usage: 'Cast W+Spell “Requiem Chime” to shatter shields & clear rooms.',
       hint: 'Corridor of Withered Bones · Ring all 3 bronze resonance bells in time',
       desc: '+35% Soulfire gain; +30% spell damage and +25% blast radius.'
@@ -51,6 +69,9 @@ export const ENTITIES_EN = {
       name: 'Sundered Ironheart',
       tag: 'Swift Iai',
       effect: 'All Posture DMG +25% · Iai Charge Cut to 0.30s',
+      refinedEffect: 'All Posture DMG +38% · Parry Posture ×1.36 · Iai Charge 0.25s',
+      shortEffect: 'Posture +25% · Iai 0.30s',
+      shortRefined: 'Posture +38% · Iai 0.25s',
       usage: 'Hold Attack for rapid Iai Flash to cleave straight through heavy shields.',
       hint: 'Upper Abyssal Bell Well · Ring all 3 bronze resonance bells in time',
       desc: '+25% posture damage across all moves; Iai Flash charges in 0.30s.'
@@ -59,6 +80,9 @@ export const ENTITIES_EN = {
       name: 'Shroud of the Bell',
       tag: 'Shadow Strike',
       effect: 'Phase Recovery 0.95s · Burst +55% · Pass-Through Heals 8',
+      refinedEffect: 'Phase Recovery 0.72s · Shadow Burst +85% · Pass-Through Heals 13',
+      shortEffect: 'Phase 0.95s · Burst +55%',
+      shortRefined: 'Phase 0.72s · Burst +85%',
       usage: 'Dash through foes to detonate Shadow Burst and reset dash.',
       hint: 'Behind western Ink-Blight Barrier in Sanctuary · Requires Shadow Phase',
       desc: '0.95s Shadow Phase recovery, +55% Shadow Burst DMG, heals 8 & resets dash on pass.'
@@ -67,6 +91,9 @@ export const ENTITIES_EN = {
       name: 'Gale Bell-Plume',
       tag: 'Aerial Gale',
       effect: 'Move Speed +12% · Aerial / Up-Cut / Pogo DMG +30%',
+      refinedEffect: 'Move Speed +18% · Aerial / Up-Cut / Pogo DMG +45% · Parry ×1.15',
+      shortEffect: 'Speed +12% · Air DMG +30%',
+      shortRefined: 'Speed +18% · Air DMG +45%',
       usage: 'Ride updrafts, double-jumps, or grapples to overwhelm foes from above.',
       hint: 'Gale-Shattered Spire · Awarded upon defeating Shuo, Gale Spire Warden',
       desc: '+12% movement speed; +30% damage on airborne strikes, up-cuts, and pogo slashes.'
@@ -75,6 +102,9 @@ export const ENTITIES_EN = {
       name: 'Spore-Root Seal',
       tag: 'Spore Purge',
       effect: 'Toxic Spore Immune · Requiem Chime Purify +22 Soul & +8 HP',
+      refinedEffect: 'Spore Immune · Purify +32 Soul & +14 HP · Strike Rally +35%',
+      shortEffect: 'Spore Immune · Purify +22S/+8HP',
+      shortRefined: 'Immune · Purify +32S/+14HP',
       usage: 'Stride through forest spores unscathed and cast Requiem Chime to harvest soulfire.',
       hint: 'Withered Ink Woods · Awarded upon defeating Ku, Root-Bound Bell Treant',
       desc: 'Full immunity to toxic spore clouds; purifying a cloud with Requiem Chime restores 22 Soul & 8 HP.'
@@ -83,6 +113,9 @@ export const ENTITIES_EN = {
       name: 'Frost-Ridge Shard',
       tag: 'Glacial Break',
       effect: 'Frostbite Buildup -70% · Heavy / Iai / Riposte +18 Shatter Posture',
+      refinedEffect: 'Frostbite Buildup -85% · Shatter Posture +28 · +12 Parry Reflect',
+      shortEffect: 'Frost -70% · Heavy +18 Pos',
+      shortRefined: 'Frost -85% · Heavy +28 Pos',
       usage: 'Shrug off ridge frostbite and detonate glacial shatters on heavy finishes.',
       hint: 'Frost-Bone Ridge · Awarded upon defeating Lin, Frost-Marquis of the Broken Blade',
       desc: '-70% incoming Frostbite buildup; heavy blows, Iai Flash & Riposte deal +18 bonus glacial posture.'
@@ -92,48 +125,56 @@ export const ENTITIES_EN = {
   synergies: {
     grapple_quake: {
       name: 'Phantom Resonance',
-      desc: 'Grappling into a foe triggers a free “Requiem Chime” burst, shattering shields and ringing nearby bells & lanterns.'
+      desc: 'Grappling into a foe triggers a free “Requiem Chime” burst, shattering shields and ringing nearby bells & lanterns.',
+      shortDesc: 'Grapple hit triggers free Requiem Chime',
     },
     mirror_ember: {
       name: 'Mirror-Cinder Seal',
-      desc: 'After 3 consecutive Perfect Parries, your next melee hit plants a free detonating Ink Seal talisman.'
+      desc: 'After 3 consecutive Perfect Parries, your next melee hit plants a free detonating Ink Seal talisman.',
+      shortDesc: '3-parry streak arms free Ink Seal on next hit',
     },
     blood_iai: {
       name: 'Crimson-Iron Iai',
-      desc: 'While holding Gray HP, Iai Flash charges 28% faster, unleashes a piercing Crimson Wave, and strongly rallies Vitality.'
+      desc: 'While holding Gray HP, Iai Flash charges 28% faster, unleashes a piercing Crimson Wave, and strongly rallies Vitality.',
+      shortDesc: 'Gray-HP Iai 28% faster + Crimson Wave',
     },
     core_counter: {
       name: 'Heart-Shatter Toll',
-      desc: 'Bell-Breaker Riposte deals 1.5x posture and instantly detonates stuck Ink Seals for 1.35x burst damage.'
+      desc: 'Bell-Breaker Riposte deals 1.5x posture and instantly detonates stuck Ink Seals for 1.35x burst damage.',
+      shortDesc: 'Riposte ×1.5 posture + instant 1.35x seal blast',
     },
     shade_thread: {
       name: 'Umbral Severance',
-      desc: 'Shadow Phasing through a foe resets Grapple recovery; your next grapple strike within 2.2s deals 2x posture & bonus Soulfire.'
+      desc: 'Shadow Phasing through a foe resets Grapple recovery; your next grapple strike within 2.2s deals 2x posture & bonus Soulfire.',
+      shortDesc: 'Phase pass resets Hook · next Hook 2x posture',
     },
     gale_thread: {
       name: 'Gale-Thread Tempest',
-      desc: 'Grappling or double-jumping arms a 2.6s Gale Surge; your next strike deals +30% DMG and +16 posture with a wind shockwave.'
+      desc: 'Grappling or double-jumping arms a 2.6s Gale Surge; your next strike deals +30% DMG and +16 posture with a wind shockwave.',
+      shortDesc: 'Hook/Air-jump next strike +30% DMG & wind break',
     },
     spore_clapper: {
       name: 'Spore-Purge Resonance',
-      desc: 'Purifying toxic spore clouds via Requiem Chime or Soul Waves detonates an emerald nova dealing 38 AoE DMG & healing +10 HP.'
+      desc: 'Purifying toxic spore clouds via Requiem Chime or Soul Waves detonates an emerald nova dealing 38 AoE DMG & healing +10 HP.',
+      shortDesc: 'Spore purge triggers 38 AoE nova + 10 HP',
     },
     frost_iron: {
       name: 'Glacial-Iron Sunder',
-      desc: 'Iai Flash and heavy finishers unleash a frost-shatter wave dealing +35% glacial posture and shattering all shields & bark armor.'
+      desc: 'Iai Flash and heavy finishers unleash a frost-shatter wave dealing +35% glacial posture and shattering all shields & bark armor.',
+      shortDesc: 'Iai/Heavy frost wave +35% posture & breaks all shields',
     }
   },
 
   smithUpgrades: {
     blade: {
       name: 'Temper Broken Blade',
-      desc: 'Permanently boosts melee blade damage by +14% per rank and sharpens its cold gleam.',
-      bonus: (lv) => `Melee DMG +${lv * 14}%`
+      desc: 'Permanently boosts melee blade damage by +10% per rank and sharpens its cold gleam.',
+      bonus: (lv) => `Melee DMG +${lv * 10}%`
     },
     posture: {
       name: 'Reforge Bell-Weight',
-      desc: 'Permanently boosts posture damage of all strikes & parries by +12% per rank.',
-      bonus: (lv) => `Posture DMG +${lv * 12}%`
+      desc: 'Permanently boosts posture damage of all strikes & parries by +9% per rank.',
+      bonus: (lv) => `Posture DMG +${lv * 9}%`
     },
     forge: {
       name: 'Kindle Soul Furnace',

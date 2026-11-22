@@ -1,12 +1,12 @@
 // Core Damage, Posture, Parry/Block Resolution & Echo Drop/Reclaim (split from src/combat.js in v32.0)
 import {
-  COLORS, RELICS, GRAPPLE_ANCHORS, PENDULUMS, VOID_BARRIERS, ABYSSAL_RIVERS, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, FIRST_BELL_CORE_POS, ENEMY_ECHO_REWARDS, DUMMY_MODES, SEVEN_BELLS_ORDER
+  COLORS, RELICS, GRAPPLE_ANCHORS, PENDULUMS, VOID_BARRIERS, ABYSSAL_RIVERS, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, SKY_BRIDGE_GATE_DEF, FIRST_BELL_CORE_POS, ENEMY_ECHO_REWARDS, DUMMY_MODES, SEVEN_BELLS_ORDER
 } from '../config.js';
 import {
   G, hooks, getLivingFoes, getAwakeBoss, isWorldPosExplored, getRelicStats, getActiveVowStats, getCombatScaling, getBladeDamageMult, getSmithPostureMult,
   getActiveWeaponId, getActiveWeapon, isWeaponUnlocked, getUnlockedWeaponIds, unlockWeapon,
-  hasActiveWeaponTrait,
-  getBossBonusDamageMult, hasKeeperBlessing,
+  hasActiveWeaponTrait, isSkillNodeUnlocked,
+  getBossBonusDamageMult, hasKeeperBlessing, isSkyBridgeOpen,
   getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks,
   scheduleOutcome, addShake, kickCamera, punchZoom, triggerBossBanner, triggerHitstop
 } from '../state.js';
@@ -162,7 +162,10 @@ export function damageEnemyHP(enemy, amount, showNum = true) {
 export function addPostureToEnemy(enemy, amount) {
   if (!enemy || !enemy.alive || enemy.state === 'stagger' || enemy.state === 'phaseShift') return;
   const chantBonus = (enemy.kind === 'priest' && enemy.state === 'chant') ? 1.5 : 1.0;
-  const scaled = amount * getRelicStats().postureDmgMult * getSmithPostureMult() * chantBonus;
+  const rawPostureMult = getRelicStats().postureDmgMult * getSmithPostureMult();
+  // Soft-cap extreme endgame posture stacking (>2.20x) to preserve late-game parry rhythm
+  const effPostureMult = rawPostureMult > 2.2 ? (2.2 + (rawPostureMult - 2.2) * 0.55) : rawPostureMult;
+  const scaled = amount * effPostureMult * chantBonus;
   enemy.posture = Math.min(enemy.maxPosture, enemy.posture + scaled);
   if (enemy.isDummy && enemy.meter && scaled > 0) {
     const now = G.globalTime || 0;
@@ -188,6 +191,13 @@ export function addPostureToEnemy(enemy, amount) {
 export function killEnemy(enemy) {
   enemy.alive = false;
   if (enemy.kind && !enemy.isDummy) recordBestiaryEvent(enemy.kind, 'kill');
+  if (!enemy.isDummy && G.player && G.player.hp > 0 && isSkillNodeUnlocked('exec_surge')) {
+    G.player.surgeTimer = 1.6;
+    G.player.dashCd = 0;
+    G.player.grappleCd = 0;
+    G.player.airJumpsLeft = 1;
+    spawnShockwave(G.player.x + G.player.w * 0.5, G.player.y + 26, 62, COLORS.cyanBright, 2.8, 0.24);
+  }
   if (enemy.kind === 'priest') clearPriestWards();
   if (G.worldState && !G.echoSession && !enemy.isDummy) {
     const baseReward = ENEMY_ECHO_REWARDS[enemy.kind] || 30;
@@ -232,27 +242,30 @@ export function killEnemy(enemy) {
       }
       return;
     }
-    const wardenRelicMap = {
-      warden_wind: 'galefather',
-      warden_forest: 'sporeseal',
-      warden_mountain: 'frostcore'
-    };
-    const rewardRelicId = wardenRelicMap[enemy.kind];
-    let bannerQuote = t('combat.wardenDefeated');
+    const wasBridgeOpen = isSkyBridgeOpen();
+    let bannerQuote = t('combat.wardenShrineUnsealed');
     if (G.worldState) {
       if (!G.worldState.defeatedMiniBosses) G.worldState.defeatedMiniBosses = new Set();
       G.worldState.defeatedMiniBosses.add(enemy.id);
-      if (rewardRelicId) {
-        const relicObj = RELICS.find(r => r.id === rewardRelicId);
-        const rName = relicObj ? locRelic(relicObj, 'name') : rewardRelicId;
-        if (G.worldState.unlockedRelics.has(rewardRelicId)) {
-          const ngEcho = Math.round(240 * getCombatScaling(false).echoMult);
-          G.worldState.echoes = (G.worldState.echoes || 0) + ngEcho;
-          spawnFloatText(enemy.x + enemy.w / 2, enemy.y - 46, t('combat.ngRelicDup', ngEcho), COLORS.goldBright, 19, 1.85);
-        } else {
+      let unsealedAny = false;
+      for (const pk of G.worldState.pickups) {
+        if (!pk.collected && pk.requiresBoss === enemy.id) {
+          unsealedAny = true;
+          spawnShockwave(pk.x, pk.y - 28, 145, COLORS.goldBright, 4.6, 0.48);
+          spawnParticles(pk.x, pk.y - 28, 28, { color: COLORS.goldBright, speed: 240, spark: true, life: 0.65 });
+          spawnFloatText(pk.x, pk.y - 68, t('combat.shrineUnsealedFloat'), COLORS.goldBright, 18, 2.1);
+        }
+      }
+      if (!wasBridgeOpen && isSkyBridgeOpen() && SKY_BRIDGE_GATE_DEF.w > 0) {
+        bannerQuote = t('combat.wardenSkyBridgeOpen');
+        spawnShockwave(SKY_BRIDGE_GATE_DEF.x + 18, SKY_BRIDGE_GATE_DEF.y + 100, 160, COLORS.cyanBright, 4.5, 0.45);
+        spawnFloatText(enemy.x + enemy.w / 2, enemy.y - 64, t('combat.skyBridgeToast'), COLORS.cyanBright, 20, 2.2);
+      }
+      if (!unsealedAny) {
+        const wardenRelicMap = { warden_wind: 'galefather', warden_forest: 'sporeseal', warden_mountain: 'frostcore' };
+        const rewardRelicId = wardenRelicMap[enemy.kind];
+        if (rewardRelicId && !G.worldState.unlockedRelics.has(rewardRelicId)) {
           G.worldState.unlockedRelics.add(rewardRelicId);
-          bannerQuote = t('combat.wardenRelicUnlock', rName);
-          spawnFloatText(enemy.x + enemy.w / 2, enemy.y - 48, t('combat.wardenRelicFloat', rName), COLORS.cyanBright, 20, 2.0);
         }
       }
       G.minimapDirty = true;
@@ -260,7 +273,7 @@ export function killEnemy(enemy) {
       hooks.saveProgress(true);
       hooks.syncHUD(true);
     }
-    triggerBossBanner(locBoss(enemy, 'name'), bannerQuote, COLORS.goldBright, 2.8);
+    triggerBossBanner(locBoss(enemy, 'name'), bannerQuote, COLORS.goldBright, 3.0);
   }
   if (enemy.isBoss) {
     G.chapelTide = null;

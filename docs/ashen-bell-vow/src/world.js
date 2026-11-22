@@ -1,7 +1,7 @@
 // World hazards, pendulums, Abyssal River, projectiles, talismans, tides & camera
 import { COLORS, ROOM_THEMES, ROOMS, SOLIDS, VOID_BARRIERS, WORLD_MIN_X, WORLD_MIN_Y, WORLD_W, WORLD_H, FLOOR_Y, PENDULUMS, ABYSSAL_RIVERS, PUDDLES, WIND_ZONES, BOUNCE_PADS } from './config.js';
 import {
-  G, hooks, getLivingFoes, getAwakeBoss, getRelicStats, hasActiveWeaponTrait, scheduleOutcome, addShake, punchZoom, triggerHitstop, damp
+  G, hooks, getLivingFoes, getAwakeBoss, getRelicStats, hasActiveWeaponTrait, isSkyBridgeOpen, scheduleOutcome, addShake, punchZoom, triggerHitstop, damp
 } from './state.js';
 import { getRoomAt } from './levelLoader.js';
 import { audio } from './audio.js';
@@ -32,6 +32,9 @@ export function updateWorldEffects(dt) {
     }
     if (G.worldState.boss2Defeated && G.worldState.foundryExitAnim < 1) {
       G.worldState.foundryExitAnim = Math.min(1, G.worldState.foundryExitAnim + dt * 1.6);
+    }
+    if (isSkyBridgeOpen() && (G.worldState.skyBridgeGateAnim || 0) < 1) {
+      G.worldState.skyBridgeGateAnim = Math.min(1, (G.worldState.skyBridgeGateAnim || 0) + dt * 1.4);
     }
     for (const w of G.worldState.secretWalls) {
       if (w.shake > 0) w.shake = Math.max(0, w.shake - dt);
@@ -1243,6 +1246,7 @@ function isHorizontalLinkOpen(fromRm, toRm) {
   if (pair === 'r04_bell_well>r05_foundry') return !!((ws.abilities && ws.abilities.doubleJump) || G.echoSession);
   if (pair === 'r03_chapel>r04_bell_well') return !!ws.bossDefeated;
   if (pair === 'r05_foundry>r07_ascent') return !!ws.boss2Defeated;
+  if (pair === 'r13_wind_peak>r17_frost_summit' || pair === 'r17_frost_summit>r13_wind_peak') return isSkyBridgeOpen();
   return true;
 }
 

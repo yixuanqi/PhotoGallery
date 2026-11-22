@@ -135,9 +135,9 @@
       "kind": "echoCache",
       "x": 1455,
       "y": 270,
-      "echoAmount": 240,
+      "echoAmount": 115,
       "name": "渗池古铃残响",
-      "desc": "沉没于暗河渗水断桥上的大量残响"
+      "desc": "沉没于暗河渗水断桥上的古铃残响（+115 残响）"
     }
   ],
   "pendulums": [],

@@ -58,7 +58,16 @@
   "npcs": [],
   "secretWalls": [],
   "voidBarriers": [],
-  "gates": [],
+  "gates": [
+    {
+      "id": "gate_sky_bridge",
+      "role": "skyBridge",
+      "x": 0,
+      "y": 420,
+      "w": 36,
+      "h": 200
+    }
+  ],
   "pickups": [
     {
       "id": "pickup_core_mountain",
@@ -68,7 +77,20 @@
       "bonusHp": 15,
       "bonusSoul": 15,
       "name": "霜髓冰核",
-      "desc": "绝脊孤峰千年不融的寒髓魂核（生命上限 +15 · 魂火上限 +15）"
+      "desc": "绝脊孤峰千年不融的寒髓魂核（生命上限 +15 · 魂火上限 +15）",
+      "requiresBoss": "warden_mountain_boss"
+    },
+    {
+      "id": "pickup_seal_mountain",
+      "kind": "realmSeal",
+      "sealId": "mountain",
+      "relicId": "frostcore",
+      "requiresBoss": "warden_mountain_boss",
+      "echoAmount": 80,
+      "x": 710,
+      "y": 620,
+      "name": "霜脊铭印 · 霜脊断魄",
+      "desc": "斩落断剑霜侯·凛解封！赐予「霜脊铭印」与圣物「霜脊断魄」"
     }
   ],
   "pendulums": [],

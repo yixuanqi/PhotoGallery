@@ -82,7 +82,20 @@
       "bonusHp": 15,
       "bonusSoul": 15,
       "name": "古根生息核",
-      "desc": "枯木树窟深处凝结的生机魂核（生命上限 +15 · 魂火上限 +15）"
+      "desc": "枯木树窟深处凝结的生机魂核（生命上限 +15 · 魂火上限 +15）",
+      "requiresBoss": "warden_forest_boss"
+    },
+    {
+      "id": "pickup_seal_forest",
+      "kind": "realmSeal",
+      "sealId": "forest",
+      "relicId": "sporeseal",
+      "requiresBoss": "warden_forest_boss",
+      "echoAmount": 70,
+      "x": 640,
+      "y": 600,
+      "name": "枯林铭印 · 枯根菌印",
+      "desc": "斩落盘根古钟精·枯解封！赐予「枯林铭印」与圣物「枯根菌印」"
     }
   ],
   "pendulums": [],

@@ -1,10 +1,12 @@
-// UI System Facade (v32.0 modularized into src/ui/uiShared.js, mapUi.js, hudCore.js, modalsUi.js, progressionUi.js)
+// UI System Facade (v35.0 modularized into uiShared, mapUi, hudCore, modalsUi, skillTreeUi, relicBoardUi, progressionUi)
 import { uiHooks } from './ui/uiShared.js';
 import { refreshTitleSaveUI, syncHUD } from './ui/hudCore.js';
 import {
-  renderSettingsModal, renderRelicChoices, renderCodexModal,
-  renderChroniclerModal, renderKeeperModal, renderSmithModal, renderDummyModal, renderLoreModal
+  renderSettingsModal, renderCodexModal,
+  renderChroniclerModal, renderKeeperModal, renderDummyModal, renderLoreModal
 } from './ui/modalsUi.js';
+import { renderSmithModal, updateAndRenderSkillPreview } from './ui/skillTreeUi.js';
+import { renderAltarArmory, renderRelicChoices } from './ui/relicBoardUi.js';
 import {
   startGame, startNewGamePlus, respawnAtActiveAltar, startEchoChallenge, startEndingCinematic
 } from './ui/progressionUi.js';
@@ -33,10 +35,12 @@ export { renderParchmentMap, initMapInteractions, openMapModal } from './ui/mapU
 export { refreshTitleSaveUI, continueSavedGame, syncHUD } from './ui/hudCore.js';
 export {
   openCodexModal, renderCodexModal,
-  openNpcModal, openChroniclerModal, openKeeperModal, openSmithModal, renderSmithModal,
+  openNpcModal, openChroniclerModal, openKeeperModal, openSmithModal,
   openDummyModal, renderDummyModal, openLoreModal, openPauseModal,
-  renderSettingsModal, renderAltarArmory, renderRelicChoices
+  renderSettingsModal
 } from './ui/modalsUi.js';
+export { renderSmithModal, updateAndRenderSkillPreview } from './ui/skillTreeUi.js';
+export { renderAltarArmory, renderRelicChoices } from './ui/relicBoardUi.js';
 export {
   returnToTitle, evaluateEchoGrade, setupEchoArena, startEchoChallenge,
   advanceSevenBellsNext, advanceEchoRushStage2, advanceEchoRushStage3,

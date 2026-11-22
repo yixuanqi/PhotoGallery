@@ -122,9 +122,9 @@
       "kind": "echoCache",
       "x": 155,
       "y": 285,
-      "echoAmount": 240,
+      "echoAmount": 115,
       "name": "悬桥古铃残响",
-      "desc": "断塔高悬风桥遗落的丰厚残响"
+      "desc": "断塔高悬风桥遗落的古铃残响（+115 残响）"
     }
   ],
   "pendulums": [],

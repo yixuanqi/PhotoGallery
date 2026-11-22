@@ -180,9 +180,9 @@
       "kind": "echoCache",
       "x": 545,
       "y": 1200,
-      "echoAmount": 260,
+      "echoAmount": 130,
       "name": "冻剑冢古响",
-      "desc": "插满霜刃的守灯人墓阶间留存的精纯残响"
+      "desc": "插满霜刃的守灯人墓阶间留存的精纯残响（+130 残响）"
     }
   ],
   "pendulums": [],

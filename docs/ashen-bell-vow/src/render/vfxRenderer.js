@@ -727,6 +727,12 @@ export function drawSlashes() {
       G.ctx.quadraticCurveTo(len * 0.4, halfH, -24, 0);
       G.ctx.closePath();
       G.ctx.fill();
+    } else if (s.type === 'bossAntiAir') {
+      G.ctx.translate(s.x, s.y);
+      drawGlowSprite('gold', 0, -24, 92, 0.78 * a);
+      drawTaperedCrescent(86, 32 * a, -Math.PI + 0.14, -0.14, 'rgba(10, 14, 22, 0.85)', null);
+      drawTaperedCrescent(80, 24 * a, -Math.PI + 0.16, -0.16, 'rgba(245, 158, 11, 0.92)', '#fef9c3');
+      if (a > 0.4) drawParryStarGlint(0, -76, 18 * a, COLORS.goldBright);
     } else if (s.type === 'bossSlam' || s.type === 'bossRedSlam') {
       G.ctx.translate(s.x, s.y);
       const isRed = s.type === 'bossRedSlam';

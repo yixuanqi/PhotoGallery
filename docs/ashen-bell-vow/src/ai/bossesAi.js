@@ -51,6 +51,29 @@ function applyClashSpacingStrike(b, px) {
   }
 }
 
+function tickBossOverheadPressure(b, dt) {
+  if (b.antiAirCd > 0) b.antiAirCd = Math.max(0, b.antiAirCd - dt);
+  if (!G.player || G.player.hp <= 0) return false;
+  const px = G.player.x + G.player.w * 0.5;
+  const pFootY = G.player.y + G.player.h;
+  const bx = b.x + b.w * 0.5;
+  const overhead = pFootY < b.y + 24 && Math.abs(px - bx) < 138;
+  if (overhead) {
+    b.overheadPressure = (b.overheadPressure || 0) + dt * 1.55;
+  } else {
+    b.overheadPressure = Math.max(0, (b.overheadPressure || 0) - dt * 0.72);
+    if (G.player.grounded && b.pogoHitsTaken > 0) b.pogoHitsTaken = 0;
+  }
+  return b.antiAirCd <= 0 && (b.overheadPressure >= 0.68 || (b.pogoHitsTaken || 0) >= 2);
+}
+
+function consumeBossAntiAirTrigger(b, cd = 3.2) {
+  b.overheadPressure = 0;
+  b.pogoHitsTaken = 0;
+  b.antiAirCd = cd;
+}
+
+
 export function updateBoss(b, dt) {
   if (!b || !b.alive) return;
   if (b.hurtFlash > 0) b.hurtFlash -= dt;
@@ -89,6 +112,7 @@ export function updateBoss(b, dt) {
   const absDx = Math.abs(dx);
   const b1Aggro = (b.state === 'recover' || b.state === 'stalk' || b.state === 'idle') ? getCombatScaling().aggroMult : 1;
   b.stateTimer -= dt * b1Aggro;
+  const b1WantsAntiAir = tickBossOverheadPressure(b, dt);
   if (b.phase === 2 && b.inkTideCd > 0) b.inkTideCd -= dt * b1Aggro;
 
   if (b.state === 'phaseShift') {
@@ -112,7 +136,22 @@ export function updateBoss(b, dt) {
     const moveSpd = b.phase === 2 ? 178 : 132;
     b.vx = absDx > 112 ? b.facing * moveSpd : b.vx * 0.85;
 
-    if (b.stateTimer <= 0 && b.phase === 2 && b.inkTideCd <= 0 && !G.chapelTide) {
+    if (b1WantsAntiAir) {
+      consumeBossAntiAirTrigger(b, 3.0);
+      b.moveKind = 'antiAirSlash';
+      b.lastMoveKind = 'antiAirSlash';
+      b.comboIdx = 0;
+      b.comboTotal = 1;
+      b.isDelayedHit = false;
+      b.glintPlayed = false;
+      b.finisherParried = false;
+      b.state = 'windup';
+      b.stateTimer = 0.42;
+      b.windupDuration = 0.42;
+      b.didHit = false;
+      b.vx = 0;
+      spawnFloatText(b.x + b.w / 2, b.y - 44, t('combat.antiAirHui'), COLORS.goldBright, 17, 0.9);
+    } else if (b.stateTimer <= 0 && b.phase === 2 && b.inkTideCd <= 0 && !G.chapelTide) {
       b.moveKind = 'inkTide';
       b.lastMoveKind = 'inkTide';
       b.comboIdx = 0;
@@ -138,10 +177,12 @@ export function updateBoss(b, dt) {
             { kind: 'redLeap', w: absDx > 165 ? 26 : 16 },
             { kind: 'chargeThrust', w: absDx > 200 ? 28 : 12 },
             { kind: 'delaySlam', w: 22 },
-            { kind: 'combo2', w: 14 }
+            { kind: 'feintSweep', w: 20 },
+            { kind: 'combo2', w: 12 }
           ]
         : [
-            { kind: 'combo2', w: 34 },
+            { kind: 'combo2', w: 28 },
+            { kind: 'feintSweep', w: 24 },
             { kind: 'delaySlam', w: 30 },
             { kind: 'chargeThrust', w: absDx > 195 ? 34 : 14 }
           ];
@@ -149,7 +190,7 @@ export function updateBoss(b, dt) {
       b.moveKind = chosen;
       b.lastMoveKind = chosen;
       b.comboIdx = 0;
-      b.comboTotal = chosen === 'flurry4' ? 4 : chosen === 'combo2' ? 2 : 1;
+      b.comboTotal = chosen === 'flurry4' ? 4 : (chosen === 'combo2' || chosen === 'feintSweep') ? 2 : 1;
       b.isDelayedHit = chosen === 'delaySlam';
       b.glintPlayed = false;
       b.finisherParried = false;
@@ -161,8 +202,8 @@ export function updateBoss(b, dt) {
         b.stateTimer = 0.46;
       } else if (chosen === 'chargeThrust') {
         b.stateTimer = 0.58;
-      } else if (chosen === 'combo2') {
-        b.stateTimer = 0.46;
+      } else if (chosen === 'combo2' || chosen === 'feintSweep') {
+        b.stateTimer = chosen === 'feintSweep' ? 0.36 : 0.46;
       } else {
         b.stateTimer = 0.86;
       }
@@ -221,6 +262,25 @@ export function updateBoss(b, dt) {
         b.vx = b.facing * 640;
         audio.playSlash(0.75, true);
         G.slashes.push({ x: bx + b.facing * 46, y: by + 6, facing: b.facing, type: 'bossThrust', life: 0.26, maxLife: 0.26 });
+      } else if (b.moveKind === 'antiAirSlash') {
+        b.stateTimer = 0.26;
+        b.vx = b.facing * 90;
+        audio.playSlash(1.06, true);
+        spawnShockwave(bx, b.y - 12, 118, COLORS.goldBright, 3.8, 0.26);
+        G.slashes.push({ x: bx, y: b.y - 16, facing: b.facing, type: 'bossAntiAir', life: 0.28, maxLife: 0.28 });
+      } else if (b.moveKind === 'feintSweep') {
+        const isFollow = b.comboIdx === 1;
+        b.stateTimer = isFollow ? 0.24 : 0.14;
+        b.vx = b.facing * (isFollow ? 320 : 210);
+        audio.playSlash(isFollow ? 0.74 : 1.24, isFollow);
+        G.slashes.push({
+          x: bx + b.facing * (isFollow ? 48 : 30),
+          y: by + (isFollow ? 4 : -6),
+          facing: b.facing,
+          type: isFollow ? 'bossRedSweep' : 'bossThrust',
+          life: isFollow ? 0.26 : 0.18,
+          maxLife: isFollow ? 0.26 : 0.18
+        });
       } else if (b.moveKind === 'delaySlam') {
         b.stateTimer = 0.24;
         b.vx = b.facing * (absDx > 96 ? 260 : 120);
@@ -248,14 +308,17 @@ export function updateBoss(b, dt) {
     }
     if (b.moveKind !== 'inkTide') {
       const isRed = b.moveKind === 'redLeap';
-      const reach = b.moveKind === 'chargeThrust' ? 128 : b.moveKind === 'delaySlam' ? 118 : 112;
+      const isAA = b.moveKind === 'antiAirSlash';
+      const reach = b.moveKind === 'chargeThrust' ? 128 : b.moveKind === 'delaySlam' ? 118 : b.moveKind === 'feintSweep' ? 124 : 112;
       if (!b.didHit) {
-        const hitBox = {
-          x: b.x + b.w / 2 + (b.facing > 0 ? -10 : -reach + 10),
-          y: b.y + 8,
-          w: reach,
-          h: 92
-        };
+        const hitBox = isAA
+          ? { x: b.x + b.w / 2 - 82, y: b.y - 76, w: 164, h: 128 }
+          : {
+              x: b.x + b.w / 2 + (b.facing > 0 ? -10 : -reach + 10),
+              y: b.y + 8,
+              w: reach,
+              h: 92
+            };
         if (aabbOverlap(hitBox, G.player)) {
           b.didHit = true;
           const dmg = isRed ? 32 : b.moveKind === 'delaySlam' ? 28 : (b.comboIdx === b.comboTotal - 1 ? 25 : 20);
@@ -287,10 +350,10 @@ export function updateBoss(b, dt) {
       if (b.comboIdx < b.comboTotal) {
         b.state = 'windup';
         // Upgraded flurry4 cadence: Fast -> Fast -> Fast -> Delayed Slow-Blade Finisher (0.52s)
-        const isDelayedNext = b.moveKind === 'flurry4' && b.comboIdx === 3;
+        const isDelayedNext = (b.moveKind === 'flurry4' && b.comboIdx === 3) || (b.moveKind === 'feintSweep' && b.comboIdx === 1);
         b.isDelayedHit = isDelayedNext;
         b.glintPlayed = false;
-        b.stateTimer = b.moveKind === 'flurry4' ? (isDelayedNext ? 0.52 : 0.28) : 0.36;
+        b.stateTimer = b.moveKind === 'flurry4' ? (isDelayedNext ? 0.52 : 0.28) : (b.moveKind === 'feintSweep' ? 0.56 : 0.36);
         b.windupDuration = b.stateTimer;
         b.didHit = false;
       } else {
@@ -362,6 +425,7 @@ export function updateBoss2(b, dt) {
   const absDx = Math.abs(dx);
   const b2Aggro = (b.state === 'recover' || b.state === 'stalk' || b.state === 'idle') ? getCombatScaling().aggroMult : 1;
   b.stateTimer -= dt * b2Aggro;
+  const b2WantsAntiAir = tickBossOverheadPressure(b, dt);
   if (b.phase === 2 && b.novaCd > 0) b.novaCd -= dt * b2Aggro;
 
   if (b.state === 'phaseShift') {
@@ -397,7 +461,21 @@ export function updateBoss2(b, dt) {
     b.x = Math.max(b.arenaMinX, Math.min(b.arenaMaxX - b.w, b.x + b.vx * dt));
     b.y = Math.max(b.arenaTopY + 50, Math.min(floorTop, b.y + b.vy * dt));
 
-    if (b.stateTimer <= 0) {
+    if (b2WantsAntiAir) {
+      consumeBossAntiAirTrigger(b, 3.2);
+      b.moveKind = 'antiAirRise';
+      b.lastMoveKind = 'antiAirRise';
+      b.comboIdx = 0;
+      b.comboTotal = 1;
+      b.isDelayedHit = false;
+      b.glintPlayed = false;
+      b.didHit = false;
+      b.state = 'windup';
+      b.stateTimer = 0.44;
+      b.windupDuration = 0.44;
+      audio.playDangerAlert();
+      spawnFloatText(bx, b.y - 46, t('combat.antiAirJi'), COLORS.crimsonBright, 17, 0.9);
+    } else if (b.stateTimer <= 0) {
       if (b.phase === 2 && b.novaCd <= 0 && !G.chapelTide) {
         b.moveKind = 'resonanceNova';
         b.lastMoveKind = 'resonanceNova';
@@ -419,8 +497,9 @@ export function updateBoss2(b, dt) {
         const chosen = pickWeightedBossMove(b.lastMoveKind, [
           { kind: 'chainDropSlam', w: 28 },
           { kind: 'bellShieldCharge', w: absDx > 160 ? 30 : 20 },
-          { kind: 'bellBarrage', w: 26 },
-          { kind: 'redSweepHook', w: absDx < 250 ? 28 : 16 }
+          { kind: 'bellBarrage', w: 22 },
+          { kind: 'twinBellCross', w: 24 },
+          { kind: 'redSweepHook', w: absDx < 250 ? 26 : 16 }
         ]);
         b.moveKind = chosen;
         b.lastMoveKind = chosen;
@@ -439,8 +518,8 @@ export function updateBoss2(b, dt) {
           b.stateTimer = 0.58;
           b.shieldUp = true;
           audio.playBellToll();
-        } else if (chosen === 'bellBarrage') {
-          b.stateTimer = 0.62;
+        } else if (chosen === 'bellBarrage' || chosen === 'twinBellCross') {
+          b.stateTimer = chosen === 'twinBellCross' ? 0.56 : 0.62;
           b.hoverTargetX = Math.max(b.arenaMinX + 60, Math.min(b.arenaMaxX - b.w - 60, px > 6140 ? 5800 : 6440));
           b.hoverTargetY = WELL_BOTTOM_Y - 210;
           audio.playWraithShot();
@@ -452,7 +531,7 @@ export function updateBoss2(b, dt) {
       }
     }
   } else if (b.state === 'windup') {
-    const isRedMove = b.moveKind === 'redSweepHook' || b.moveKind === 'resonanceNova';
+    const isRedMove = b.moveKind === 'redSweepHook' || b.moveKind === 'resonanceNova' || b.moveKind === 'antiAirRise';
     if (b.moveKind !== 'resonanceNova' && b.stateTimer > 0.20) {
       b.facing = dx >= 0 ? 1 : -1;
     }
@@ -472,7 +551,9 @@ export function updateBoss2(b, dt) {
       }
       b.x += (b.hoverTargetX - b.x) * Math.min(1, dt * 9);
       b.y += (b.hoverTargetY - b.y) * Math.min(1, dt * 9);
-    } else if (b.moveKind === 'bellBarrage') {
+    } else if (b.moveKind === 'antiAirRise') {
+      b.y += (Math.max(b.arenaTopY + 70, b.y - 14) - b.y) * Math.min(1, dt * 6);
+    } else if (b.moveKind === 'bellBarrage' || b.moveKind === 'twinBellCross') {
       b.x += (b.hoverTargetX - b.x) * Math.min(1, dt * 5);
       b.y += (b.hoverTargetY - b.y) * Math.min(1, dt * 5);
     } else {
@@ -506,6 +587,31 @@ export function updateBoss2(b, dt) {
         b.y = floorTop;
         audio.playSlash(0.75, true);
         G.slashes.push({ x: bx + b.facing * 42, y: b.y + 50, facing: b.facing, type: 'bossThrust', life: 0.28, maxLife: 0.28 });
+      } else if (b.moveKind === 'antiAirRise') {
+        b.stateTimer = 0.30;
+        b.y = Math.max(b.arenaTopY + 55, b.y - 88);
+        audio.playBellQuake();
+        addShake(11);
+        spawnShockwave(bx, b.y + 12, 165, COLORS.crimsonBright, 4.6, 0.32);
+        spawnParticles(bx, b.y + 12, 26, { color: COLORS.goldBright, speed: 290, spark: true, life: 0.42 });
+        G.slashes.push({ x: bx, y: b.y - 10, facing: b.facing, type: 'bossAntiAir', life: 0.30, maxLife: 0.30 });
+      } else if (b.moveKind === 'twinBellCross') {
+        b.stateTimer = 0.26;
+        audio.playBellToll();
+        [-1, 1].forEach(side => {
+          const ox = bx + side * 125;
+          const oy = b.y + 12;
+          const a = Math.atan2(py - oy, px - ox);
+          spawnShockwave(ox, oy, 58, COLORS.goldBright, 2.8, 0.22);
+          for (let k = -1; k <= 1; k += (b.phase === 2 ? 1 : 2)) {
+            const ang = a + k * 0.16;
+            G.projectiles.push({
+              owner: 'enemy', source: b, kind: 'wraithOrb',
+              x: ox, y: oy, vx: Math.cos(ang) * 375, vy: Math.sin(ang) * 375,
+              r: 13, dmg: 20, posture: 28, life: 2.6, maxLife: 2.6, reflected: false, hitIds: new Set()
+            });
+          }
+        });
       } else if (b.moveKind === 'bellBarrage') {
         b.stateTimer = 0.22;
         const count = b.phase === 2 ? 5 : 3;
@@ -532,7 +638,19 @@ export function updateBoss2(b, dt) {
           });
         }
         spawnShockwave(bx, b.y + 42, 74, COLORS.goldBright, 3.2, 0.24);
-      } else if (b.moveKind === 'redSweepHook') {
+      } else if (b.moveKind === 'antiAirRise') {
+      if (!b.didHit) {
+        const aaBox = { x: bx - 96, y: b.y - 72, w: 192, h: 146 };
+        if (aabbOverlap(aaBox, G.player)) {
+          b.didHit = true;
+          applyIncomingAttackToPlayer(b, 28, true, 290);
+        }
+      }
+      if (b.stateTimer <= 0) {
+        b.state = 'recover';
+        b.stateTimer = 0.68;
+      }
+    } else if (b.moveKind === 'redSweepHook') {
         b.stateTimer = 0.26;
         b.y = floorTop;
         b.vx = b.facing * 260;
@@ -672,6 +790,7 @@ export function updateBoss3(b, dt) {
 
   const b3Aggro = (b.state === 'recover' || b.state === 'stalk' || b.state === 'idle') ? getCombatScaling().aggroMult : 1;
   b.stateTimer -= dt * b3Aggro;
+  const b3WantsAntiAir = tickBossOverheadPressure(b, dt);
   if (b.phase >= 2 && b.tideCd > 0) b.tideCd -= dt * b3Aggro;
 
   if (b.state === 'phaseShift') {
@@ -695,7 +814,22 @@ export function updateBoss3(b, dt) {
     const moveSpd = b.phase === 3 ? 205 : b.phase === 2 ? 178 : 148;
     b.vx = absDx > 114 ? b.facing * moveSpd : b.vx * 0.84;
 
-    if (b.stateTimer <= 0 && b.phase >= 2 && b.tideCd <= 0 && !G.chapelTide) {
+    if (b3WantsAntiAir) {
+      consumeBossAntiAirTrigger(b, 3.0);
+      b.moveKind = 'antiAirSwords';
+      b.lastMoveKind = 'antiAirSwords';
+      b.comboIdx = 0;
+      b.comboTotal = 1;
+      b.isDelayedHit = false;
+      b.glintPlayed = false;
+      b.finisherParried = false;
+      b.state = 'windup';
+      b.stateTimer = 0.42;
+      b.windupDuration = 0.42;
+      b.didHit = false;
+      b.vx = 0;
+      spawnFloatText(bxCenter, b.y - 50, t('combat.antiAirYuan'), COLORS.goldBright, 18, 0.9);
+    } else if (b.stateTimer <= 0 && b.phase >= 2 && b.tideCd <= 0 && !G.chapelTide) {
       b.moveKind = 'eclipseTide';
       b.lastMoveKind = 'eclipseTide';
       b.comboIdx = 0;
@@ -724,7 +858,8 @@ export function updateBoss3(b, dt) {
         pool = [
           { kind: 'judgementFlurry', w: absDx < 270 ? 36 : 20 },
           { kind: 'skyShatter', w: absDx > 140 ? 24 : 14 },
-          { kind: 'shadowCloneStrike', w: 20 },
+          { kind: 'shadowCloneStrike', w: 18 },
+          { kind: 'echoTwinCut', w: 22 },
           { kind: 'bellRain', w: absDx > 210 ? 20 : 10 },
           { kind: 'eclipseThrust', w: absDx > 195 ? 22 : 10 },
           { kind: 'crimsonArc', w: absDx < 200 ? 16 : 8 }
@@ -732,7 +867,8 @@ export function updateBoss3(b, dt) {
       } else if (b.phase === 2) {
         pool = [
           { kind: 'tripleChime', w: absDx < 250 ? 30 : 18 },
-          { kind: 'shadowCloneStrike', w: 24 },
+          { kind: 'shadowCloneStrike', w: 20 },
+          { kind: 'echoTwinCut', w: 22 },
           { kind: 'bellRain', w: absDx > 180 ? 24 : 12 },
           { kind: 'eclipseThrust', w: absDx > 200 ? 26 : 12 },
           { kind: 'crimsonArc', w: absDx < 210 ? 20 : 10 }
@@ -748,7 +884,7 @@ export function updateBoss3(b, dt) {
       b.moveKind = chosen;
       b.lastMoveKind = chosen;
       b.comboIdx = 0;
-      b.comboTotal = chosen === 'judgementFlurry' ? 5 : chosen === 'tripleChime' ? 3 : 1;
+      b.comboTotal = chosen === 'judgementFlurry' ? 5 : chosen === 'tripleChime' ? 3 : chosen === 'echoTwinCut' ? 2 : 1;
       b.isDelayedHit = chosen === 'shadowCloneStrike';
       b.glintPlayed = false;
       b.finisherParried = false;
@@ -777,8 +913,8 @@ export function updateBoss3(b, dt) {
         audio.playWraithShot();
       } else if (chosen === 'eclipseThrust') {
         b.stateTimer = 0.54;
-      } else if (chosen === 'tripleChime') {
-        b.stateTimer = 0.44;
+      } else if (chosen === 'tripleChime' || chosen === 'echoTwinCut') {
+        b.stateTimer = chosen === 'echoTwinCut' ? 0.36 : 0.44;
       } else {
         b.stateTimer = 0.68;
         audio.playDangerAlert();
@@ -792,7 +928,7 @@ export function updateBoss3(b, dt) {
     if (b.moveKind !== 'eclipseTide' && b.stateTimer > 0.19) {
       b.facing = dx >= 0 ? 1 : -1;
     }
-    if (b.moveKind === 'tripleChime' || b.moveKind === 'judgementFlurry') {
+    if (b.moveKind === 'tripleChime' || b.moveKind === 'judgementFlurry' || b.moveKind === 'echoTwinCut') {
       applyClashSpacingWindup(b, px, dt);
     } else {
       b.vx *= damp(0.82, dt);
@@ -842,6 +978,21 @@ export function updateBoss3(b, dt) {
         b.vx = b.facing * 310;
         audio.playSlash(0.66, true);
         G.slashes.push({ x: bxCenter + b.facing * 56, y: by + 4, facing: b.facing, type: 'bossRedSweep', life: 0.28, maxLife: 0.28 });
+      } else if (b.moveKind === 'antiAirSwords') {
+        b.stateTimer = 0.28;
+        audio.playIaiSlash();
+        audio.playBellChimeCast(3);
+        addShake(10);
+        spawnShockwave(bxCenter, b.y - 16, 138, b.phase === 2 ? COLORS.violetBright : COLORS.goldBright, 4.2, 0.28);
+        G.slashes.push({ x: bxCenter, y: b.y - 22, facing: b.facing, type: 'bossAntiAir', life: 0.30, maxLife: 0.30 });
+        [-0.55, 0, 0.55].forEach(sp => {
+          const a = -Math.PI * 0.5 + sp;
+          G.projectiles.push({
+            owner: 'enemy', source: b, kind: 'wraithOrb',
+            x: bxCenter, y: b.y - 12, vx: Math.cos(a) * 380, vy: Math.sin(a) * 380,
+            r: 12, dmg: 20, posture: 26, life: 1.7, maxLife: 1.7, reflected: false, hitIds: new Set()
+          });
+        });
       } else if (b.moveKind === 'shadowCloneStrike') {
         b.stateTimer = 0.22;
         b.vx = b.facing * (absDx > 95 ? 360 : 165);
@@ -882,7 +1033,7 @@ export function updateBoss3(b, dt) {
     }
   } else if (b.state === 'strike') {
     b.vx *= damp(0.90, dt);
-    if (b.moveKind === 'tripleChime' || b.moveKind === 'judgementFlurry') {
+    if (b.moveKind === 'tripleChime' || b.moveKind === 'judgementFlurry' || b.moveKind === 'echoTwinCut') {
       applyClashSpacingStrike(b, px);
     }
     // Brief apex hang-glint on skyShatter so the downward slam has iconic rhythmic readability
@@ -900,14 +1051,17 @@ export function updateBoss3(b, dt) {
     }
     if (b.moveKind !== 'eclipseTide' && b.moveKind !== 'bellRain') {
       const isRed = b.moveKind === 'crimsonArc' || b.moveKind === 'skyShatter';
+      const isAA3 = b.moveKind === 'antiAirSwords';
       const reach = b.moveKind === 'eclipseThrust' ? 142 : b.moveKind === 'crimsonArc' ? 148 : 122;
       if (!b.didHit && !(b.moveKind === 'skyShatter' && skipGravity)) {
-        const hitBox = {
-          x: bxCenter + (b.facing > 0 ? -12 : -reach + 12),
-          y: b.y + 8,
-          w: reach,
-          h: 102
-        };
+        const hitBox = isAA3
+          ? { x: bxCenter - 96, y: b.y - 86, w: 192, h: 138 }
+          : {
+              x: bxCenter + (b.facing > 0 ? -12 : -reach + 12),
+              y: b.y + 8,
+              w: reach,
+              h: 102
+            };
         if (aabbOverlap(hitBox, G.player)) {
           b.didHit = true;
           const dmg = isRed ? 34 : b.moveKind === 'shadowCloneStrike' ? 28 : (b.comboIdx === b.comboTotal - 1 ? 26 : 21);
@@ -938,6 +1092,7 @@ export function updateBoss3(b, dt) {
         // tripleChime: 1(0.44) - 2(0.26) -- [pause] -- 3(0.54)
         // judgementFlurry: 1(0.44) - 2(0.25) -- [pause] -- 3(0.54) - 4(0.25) -- [pause] -- 5(0.56)
         const delayed = (b.moveKind === 'tripleChime' && b.comboIdx === 2) ||
+          (b.moveKind === 'echoTwinCut' && b.comboIdx === 1) ||
           (b.moveKind === 'judgementFlurry' && (b.comboIdx === 2 || b.comboIdx === 4));
         b.isDelayedHit = delayed;
         b.glintPlayed = false;
@@ -1087,6 +1242,7 @@ export function updateBoss4(b, dt) {
 
   const aggro = (b.state === 'recover' || b.state === 'stalk' || b.state === 'idle') ? getCombatScaling().aggroMult : 1;
   b.stateTimer -= dt * aggro;
+  const b4WantsAntiAir = tickBossOverheadPressure(b, dt);
 
   if (b.state === 'phaseShift') {
     b.vx *= damp(0.8, dt);
@@ -1127,7 +1283,22 @@ export function updateBoss4(b, dt) {
     else if (b.stance === 'bell' && absDx < 140) b.vx = -b.facing * 135;
     else b.vx *= 0.84;
 
-    if (b.stateTimer <= 0 && b.movesInStance >= 2) {
+    if (b4WantsAntiAir) {
+      consumeBossAntiAirTrigger(b, 2.8);
+      b.moveKind = 'antiAirStance';
+      b.lastMoveKind = 'antiAirStance';
+      b.comboIdx = 0;
+      b.comboTotal = 1;
+      b.isDelayedHit = false;
+      b.glintPlayed = false;
+      b.finisherParried = false;
+      b.didHit = false;
+      b.state = 'windup';
+      b.stateTimer = 0.40;
+      b.windupDuration = 0.40;
+      b.vx = 0;
+      spawnFloatText(bxCenter, b.y - 46, t('combat.antiAirZhu'), b.stance === 'bell' ? COLORS.cyanBright : COLORS.goldBright, 18, 0.9);
+    } else if (b.stateTimer <= 0 && b.movesInStance >= 2) {
       const order = b.phase >= 2 ? ['blade', 'hammer', 'bell'] : ['blade', 'hammer'];
       const curIdx = order.indexOf(b.stance);
       b.nextStance = order[(curIdx + 1) % order.length];
@@ -1210,7 +1381,30 @@ export function updateBoss4(b, dt) {
     if (b.stateTimer <= 0) {
       b.state = 'strike';
       b.didHit = false;
-      if (b.moveKind === 'bladeFlurry') {
+      if (b.moveKind === 'antiAirStance') {
+        b.stateTimer = 0.28;
+        const stCol = b.stance === 'bell' ? COLORS.cyanBright : b.stance === 'hammer' ? COLORS.gold : COLORS.goldBright;
+        if (b.stance === 'blade') {
+          b.vy = -510;
+          b.vx = b.facing * 140;
+          audio.playBoss4Iai();
+        } else if (b.stance === 'hammer') {
+          audio.playBellQuake();
+          addShake(12);
+        } else {
+          audio.playBoss4Counter();
+          [-0.48, 0, 0.48].forEach(sp => {
+            const a = -Math.PI * 0.5 + sp;
+            G.projectiles.push({
+              owner: 'enemy', source: b, kind: 'boss4EchoOrb', stance: 'bell',
+              x: bxCenter, y: b.y - 12, vx: Math.cos(a) * 410, vy: Math.sin(a) * 410,
+              r: 13, dmg: 20, posture: 26, life: 1.8, maxLife: 1.8, reflected: false, hitIds: new Set()
+            });
+          });
+        }
+        spawnShockwave(bxCenter, b.y - 16, 134, stCol, 4.2, 0.28);
+        G.slashes.push({ x: bxCenter, y: b.y - 22, facing: b.facing, type: 'bossAntiAir', life: 0.30, maxLife: 0.30 });
+      } else if (b.moveKind === 'bladeFlurry') {
         const isFin = b.comboIdx === b.comboTotal - 1;
         b.stateTimer = isFin ? 0.26 : 0.17;
         b.vx = b.facing * (isFin ? 340 : 230);
@@ -1325,13 +1519,16 @@ export function updateBoss4(b, dt) {
     const meleeHit = b.moveKind !== 'bellBarrage' && !(b.moveKind === 'triResonanceFinale' && b.comboIdx === 2);
     if (meleeHit && !b.didHit && !(b.moveKind === 'hammerQuakeLeap' && skipGravity)) {
       const isRed = b.moveKind === 'hammerQuakeLeap';
+      const isAA4 = b.moveKind === 'antiAirStance';
       const reach = b.moveKind === 'iaiDash' ? 148 : b.stance === 'hammer' ? 132 : 118;
-      const hitBox = {
-        x: bxCenter + (b.facing > 0 ? -12 : -reach + 12),
-        y: b.y + 8,
-        w: reach,
-        h: 98
-      };
+      const hitBox = isAA4
+        ? { x: bxCenter - 86, y: b.y - 82, w: 172, h: 136 }
+        : {
+            x: bxCenter + (b.facing > 0 ? -12 : -reach + 12),
+            y: b.y + 8,
+            w: reach,
+            h: 98
+          };
       if (aabbOverlap(hitBox, G.player)) {
         b.didHit = true;
         const dmg = isRed ? 34 : b.moveKind === 'iaiDash' ? 28 : b.stance === 'hammer' ? 27 : 22;

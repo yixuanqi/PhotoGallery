@@ -286,11 +286,11 @@
       "id": "pickup_flask_abyss",
       "kind": "flaskCore",
       "bonusHp": 15,
-      "echoAmount": 160,
+      "echoAmount": 90,
       "x": 155,
       "y": 1380,
       "name": "沉渊秘龛 · 圣油残芯",
-      "desc": "灯油上限再 +1、生命 +15，并获 +160 残响！"
+      "desc": "灯油上限再 +1、生命 +15，并获 +90 残响！"
     }
   ],
   "resonancePuzzles": [

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Zero-dependency static verifier for Ashen Bell Vow v32.0
+"""Zero-dependency static verifier for Ashen Bell Vow v35.0
 Checks:
 1. JS lexical & bracket syntax across all src/**/*.js
 2. ES Module import/export path existence, explicit .js suffix, exact case sensitivity & symbol verification
@@ -10,6 +10,10 @@ Checks:
 6. Rooms JSON graph, stamps registry, vertical drop river check & en-US inscription coverage
 7. Launcher script integrity (Python AST + start_game.bat pure ASCII & CRLF check)
 8. Oversized JS module line-count monitor
+9. v34.0 1x Echo economy balance audit (income vs sinks & compact [4600, 5500] target window)
+10. v34.0 Relic essence refinement (+1) full 11-relic & bilingual coverage check
+11. v34.0 Bilingual UI dictionary (zh-CN / en-US) key parity check
+12. v35.0 Visual Bell-Vein Skill Tree, Action Preview, Relic Synergy Constellation & Save v35 checks
 Run from project root:  python verify_project.py
 """
 import ast
@@ -280,6 +284,31 @@ def check_js_modules():
         for v, ln, cl in stack:
             errors.append(f"{rel}:{ln}:{cl}: Unclosed '{v}'")
 
+        # Missing comma / adjacent literal guard (catches JS object/array literal SyntaxErrors)
+        nt_c = len(tokens)
+        for ti in range(nt_c - 1):
+            t0, v0, ln0, _ = tokens[ti]
+            t1, v1, ln1, _ = tokens[ti + 1]
+            if t0 == 'PUNC' and v0 == '}' and t1 == 'PUNC' and v1 == '{':
+                errors.append(f"{rel}:{ln0}->{ln1}: Missing comma between '}}' and '{{'")
+            elif t0 == 'STR' and t1 == 'STR':
+                errors.append(f"{rel}:{ln0}->{ln1}: Adjacent string literals without comma/operator")
+            elif ti + 2 < nt_c:
+                t2, v2, ln2, _ = tokens[ti + 2]
+                if t2 == 'PUNC' and v2 == ':' and t1 in ('IDENT', 'STR') and ln1 > ln0:
+                    if (t1 == 'IDENT' and v1 == 'default') or (t0 == 'IDENT' and v0 == 'case'):
+                        continue
+                    if t0 in ('STR', 'NUM', 'TMPL', 'TMPL_END') or (t0 == 'IDENT' and v0 in ('true', 'false', 'null')) or (t0 == 'PUNC' and v0 == ']'):
+                        same_line_q = False
+                        kk = ti - 1
+                        while kk >= 0 and tokens[kk][2] == ln0:
+                            if tokens[kk][1] == '?':
+                                same_line_q = True
+                                break
+                            kk -= 1
+                        if not same_line_q:
+                            errors.append(f"{rel}:{ln0}->{ln1}: Missing comma after '{v0}' before '{v1}:'")
+
         exports, imports = set(), []
         i, nt = 0, len(tokens)
         while i < nt:
@@ -508,15 +537,174 @@ def check_launchers_and_python():
     return errors
 
 
+
+def check_v34_economy_relics_i18n(file_texts):
+    errors, warnings = [], []
+    cfg = file_texts.get('src/config.js', '')
+    modals = file_texts.get('src/ui/modalsUi.js', '')
+    ui_loc = file_texts.get('src/locales/ui.js', '')
+    ent_loc = file_texts.get('src/locales/entities.js', '')
+    editor_code = file_texts.get('src/editor.js', '')
+    save_code = file_texts.get('src/save.js', '')
+
+    # 9. Echo Economy Balance Audit
+    m_rew = re.search(r'export const ENEMY_ECHO_REWARDS\s*=\s*\{([^}]+)\}', cfg)
+    rewards = {}
+    if m_rew:
+        for k, v in re.findall(r'([A-Za-z0-9_]+)\s*:\s*(\d+)', m_rew.group(1)):
+            rewards[k] = int(v)
+    else:
+        errors.append("src/config.js: Could not parse ENEMY_ECHO_REWARDS")
+
+    m_ref_cost = re.search(r'export const RELIC_REFINE_COST\s*=\s*(\d+)', cfg)
+    refine_cost = int(m_ref_cost.group(1)) if m_ref_cost else 0
+    if refine_cost != 450:
+        errors.append(f"src/config.js: Expected RELIC_REFINE_COST = 450, found {refine_cost}")
+
+    smith_total = 0
+    m_smith = re.search(r'export const SMITH_UPGRADES\s*=\s*\[(.*?)\];', cfg, re.S)
+    if m_smith:
+        for arr_txt in re.findall(r'costs\s*:\s*\[([^\]]+)\]', m_smith.group(1)):
+            smith_total += sum(int(x) for x in re.findall(r'\d+', arr_txt))
+
+    reg_echo = 0
+    reg_cnt = 0
+    warden_echo = 0
+    cache_echo = 0
+    other_pickup_echo = 0
+    realm_seals = set()
+    sky_gates = 0
+    world_path = os.path.join(BASE_DIR, 'data', 'world.json')
+    with open(world_path, 'r', encoding='utf-8') as f:
+        world = json.load(f)
+    for entry in world.get('rooms', []):
+        rpath = os.path.join(BASE_DIR, entry['file'].lstrip('./'))
+        if not os.path.isfile(rpath):
+            continue
+        with open(rpath, 'r', encoding='utf-8') as f:
+            rm = json.load(f)
+        for e in rm.get('enemies', []):
+            k = e.get('kind', '')
+            if k == 'dummy':
+                continue
+            r = rewards.get(k, 0)
+            if k.startswith('warden_'):
+                warden_echo += r
+            else:
+                reg_echo += r
+                reg_cnt += 1
+        for pk in rm.get('pickups', []):
+            amt = int(pk.get('echoAmount') or 0)
+            if amt > 0:
+                if pk.get('kind') == 'echoCache':
+                    cache_echo += amt
+                else:
+                    other_pickup_echo += amt
+            if pk.get('kind') == 'realmSeal' and pk.get('sealId'):
+                realm_seals.add(pk['sealId'])
+        for g in rm.get('gates', []):
+            if g.get('role') == 'skyBridge' or g.get('id') == 'gate_sky_bridge':
+                sky_gates += 1
+
+    boss_echo = sum(rewards.get(k, 0) for k in ('boss', 'boss2', 'boss3', 'boss4'))
+    npc_echo = sum(int(x) for x in re.findall(r'G\.worldState\.echoes\s*=\s*\(G\.worldState\.echoes\s*\|\|\s*0\)\s*\+\s*(\d+);', modals))
+    total_1x = reg_echo + warden_echo + boss_echo + cache_echo + other_pickup_echo + npc_echo
+    core_sink = smith_total + 140 * 3 + 180 + 220 + 200 + refine_cost * 3
+    full_sink = smith_total + 140 * 6 + 180 + 220 + 200 + refine_cost * 11
+
+    if not (4600 <= total_1x <= 5500):
+        errors.append(f"Economy: 1x total income {total_1x} outside v34.0 compact range [4600, 5500]")
+    if realm_seals != {'wind', 'forest', 'mountain'}:
+        errors.append(f"Rooms: Incomplete realmSeal set {sorted(realm_seals)}")
+    if sky_gates < 1:
+        errors.append("Rooms: Missing skyBridge gate")
+
+    # 10. Relic Essence Refinement (+1) Coverage Check
+    m_relics = re.search(r'export const RELICS\s*=\s*\[(.*?)\n\];', cfg, re.S)
+    relic_ids = []
+    refined_count = 0
+    if m_relics:
+        r_body = m_relics.group(1)
+        relic_ids = re.findall(r"^\s+id:\s*'([^']+)'", r_body, re.M)
+        refined_count = len(re.findall(r'^\s+refined:\s*\{', r_body, re.M))
+    if len(relic_ids) != 11 or refined_count != len(relic_ids):
+        errors.append(f"Relics: Expected 11 relics all with refined blocks, found {len(relic_ids)} relics / {refined_count} refined")
+
+    en_refined_count = len(re.findall(r"^\s+refinedEffect:\s*'", ent_loc, re.M))
+    if en_refined_count != len(relic_ids):
+        errors.append(f"Locales: Expected {len(relic_ids)} refinedEffect entries in src/locales/entities.js, found {en_refined_count}")
+
+    # 11. Bilingual UI Dictionary Key Parity (zh-CN vs en-US)
+    zh_idx = ui_loc.find("'zh-CN': {")
+    en_idx = ui_loc.find("'en-US': {")
+    if zh_idx >= 0 and en_idx > zh_idx:
+        zh_keys = set(re.findall(r"^\s+'([^']+)'\s*:", ui_loc[zh_idx:en_idx], re.M))
+        en_keys = set(re.findall(r"^\s+'([^']+)'\s*:", ui_loc[en_idx:], re.M))
+        miss_en = sorted(zh_keys - en_keys)
+        miss_zh = sorted(en_keys - zh_keys)
+        if miss_en:
+            errors.append(f"src/locales/ui.js: Missing en-US keys ({len(miss_en)}): {', '.join(miss_en[:8])}")
+        if miss_zh:
+            errors.append(f"src/locales/ui.js: Missing zh-CN keys ({len(miss_zh)}): {', '.join(miss_zh[:8])}")
+    else:
+        zh_keys, en_keys = set(), set()
+        errors.append("src/locales/ui.js: Could not locate zh-CN / en-US dictionary blocks")
+
+    # 12. Editor v34/v35, Visual Bell-Vein Skill Tree, Relic Synergy Constellation & Save v35 Check
+    for tok in ('realmSeal', 'requiresBoss', 'skyBridge'):
+        if tok not in editor_code:
+            errors.append(f"src/editor.js: Missing editor feature '{tok}'")
+    if 'v: 35' not in save_code or 'refinedRelics' not in save_code or 'skillNodes' not in save_code:
+        errors.append("src/save.js: Missing v35 save version, refinedRelics, or skillNodes persistence")
+    skill_data = file_texts.get('src/skillTree.js', '')
+    skill_ui = file_texts.get('src/ui/skillTreeUi.js', '')
+    relic_ui = file_texts.get('src/ui/relicBoardUi.js', '')
+    skill_node_cnt = len(re.findall(r"^    id:\s*'([^']+)'", skill_data, re.M))
+    if skill_node_cnt < 18:
+        errors.append(f"src/skillTree.js: Expected >=18 Bell-Vein nodes, found {skill_node_cnt}")
+    if 'skill-preview-canvas' not in skill_ui or 'updateAndRenderSkillPreview' not in skill_ui:
+        errors.append("src/ui/skillTreeUi.js: Missing live action preview canvas")
+    if 'relic-synergy-svg' not in relic_ui or 'updateSynergyOverlay' not in relic_ui:
+        errors.append("src/ui/relicBoardUi.js: Missing interactive SVG synergy constellation overlay")
+
+    eco_summary = {
+        'reg_cnt': reg_cnt,
+        'reg_echo': reg_echo,
+        'warden_echo': warden_echo,
+        'boss_echo': boss_echo,
+        'cache_echo': cache_echo,
+        'other_pickup_echo': other_pickup_echo,
+        'npc_echo': npc_echo,
+        'total_1x': total_1x,
+        'smith_total': smith_total,
+        'core_sink': core_sink,
+        'full_sink': full_sink,
+        'relics_refined': refined_count,
+        'relics_total': len(relic_ids),
+        'i18n_keys': len(zh_keys),
+    }
+    return eco_summary, errors, warnings
+
+
 def main():
     js_cnt, file_texts, line_counts, cyc_cnt, js_errs, js_warns = check_js_modules()
     rm_cnt, st_cnt, rm_errs, rm_warns = check_rooms_and_locales(file_texts)
     lnch_errs = check_launchers_and_python()
+    eco, v34_errs, v34_warns = check_v34_economy_relics_i18n(file_texts)
 
-    all_errs = js_errs + rm_errs + lnch_errs
-    all_warns = js_warns + rm_warns
+    all_errs = js_errs + rm_errs + lnch_errs + v34_errs
+    all_warns = js_warns + rm_warns + v34_warns
 
-    print(f"[Ashen Bell Vow v32.0 Verifier] JS modules: {js_cnt} | Cycles: {cyc_cnt} | Rooms: {rm_cnt} | Stamps: {st_cnt}")
+    print(f"[Ashen Bell Vow v35.0 Verifier] JS modules: {js_cnt} | Cycles: {cyc_cnt} | Rooms: {rm_cnt} | Stamps: {st_cnt}")
+    print(
+        f"Economy (1x): {eco['total_1x']} echoes "
+        f"[Foes({eco['reg_cnt']}): {eco['reg_echo']} | Wardens: {eco['warden_echo']} | Bosses: {eco['boss_echo']} | "
+        f"Caches: {eco['cache_echo']} | Seals/Cores: {eco['other_pickup_echo']} | NPCs: {eco['npc_echo']}]"
+    )
+    print(
+        f"Sinks: Smith={eco['smith_total']} | Core 3-Slot Build={eco['core_sink']} | Full Completion={eco['full_sink']} | "
+        f"Refined Relics={eco['relics_refined']}/{eco['relics_total']} | i18n Keys={eco['i18n_keys']} (zh=en)"
+    )
     print("Top 6 largest JS modules:")
     for cnt, rel in line_counts[:6]:
         tag = " [OVER]" if cnt > LARGE_MODULE_WARN_LINES and not rel.endswith('editor.js') else ""
