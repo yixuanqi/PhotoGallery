@@ -1,7 +1,7 @@
 // Entry point: wires cross-module hooks, canvas lifecycle, UI listeners & main gameLoop
 window.__ABV_MODULE_LOADED__ = true;
 import { ALTARS, STAMPS, WORLD_W, WORLD_H, FLOOR_Y } from './config.js';
-import { G, hooks, createFreshWorldState, markMapExplored, createLanterns, createResonancePuzzles, createCrumblePlatforms, getAwakeBoss, setTextFast, damp } from './state.js';
+import { G, hooks, createFreshWorldState, markMapExplored, createLanterns, createResonancePuzzles, createCrumblePlatforms, getAwakeBoss, getHudBoss, setTextFast, damp } from './state.js';
 import { loadWorldData, getPreviewSpawnRoomId } from './levelLoader.js';
 import { audio } from './audio.js';
 import { buildParchmentPattern, buildGlowSprites, initAmbientMotes } from './vfx.js';
@@ -12,19 +12,21 @@ import {
 } from './input.js';
 import { capturePlayerInputBuffers, updatePlayer } from './player.js';
 import { equipWeapon, cycleWeapon } from './combat.js';
-import { updateEnemy, updateBoss, updateBoss2, updateBoss3 } from './ai.js';
-import { updateWorldEffects, updateCamera, updateAmbientOnly } from './world.js';
+import { updateEnemy, updateBoss, updateBoss2, updateBoss3, updateBoss4, triggerBoss4UltimateReaction, resetWardenState } from './ai.js';
+import { updateWorldEffects, updateCamera, updateAmbientOnly, snapCameraToPlayer } from './world.js';
 import { render } from './renderer.js';
 import { prewarmStampsForList } from './stampAtlas.js';
 import { prewarmTerrainChunks } from './renderTerrain.js';
+import { prewarmGlyphAtlas, clearGlyphAtlas, getGlyphAtlasStats } from './render/glyphAtlas.js';
+import { getBackdropCacheStats } from './render/backdropCache.js';
 import { prof } from './profiler.js';
 import { isBenchmarkActive, startCombatBenchmark, cancelCombatBenchmark, tickCombatBenchmark, openBenchmarkReportModal, copyBenchmarkReport } from './benchmark.js';
 import { readSaveData, saveProgress, loadUserSettings, saveUserSettings } from './save.js';
 import { t, setLocale, toggleLocale, loadSavedLocale, onLocaleChange } from './i18n.js';
 import {
   HUD_DOM, refreshTitleSaveUI, refreshActiveModalI18n, syncHUD, openModal, closeModal, renderParchmentMap, renderSettingsModal,
-  openSmithModal, openNpcModal, openLoreModal, openMapModal, openCodexModal, openPauseModal, returnToTitle, interactWithAltar, respawnAtActiveAltar,
-  startEchoChallenge, advanceEchoRushStage2, advanceEchoRushStage3, showDeath, showVictory,
+  openSmithModal, openNpcModal, openDummyModal, openLoreModal, openMapModal, openCodexModal, openPauseModal, returnToTitle, interactWithAltar, respawnAtActiveAltar,
+  startEchoChallenge, advanceEchoRushStage2, advanceEchoRushStage3, advanceWardenRushStage2, advanceWardenRushStage3, advanceSevenBellsNext, showDeath, showVictory,
   startGame, startNewGamePlus, continueSavedGame, continueIntoBellWell,
   openEndingChoice, startEndingCinematic, advanceEndingCinematic, updateAndRenderEndingCinematic
 } from './ui.js';
@@ -39,10 +41,15 @@ Object.assign(hooks, {
   showVictory,
   advanceEchoRushStage2,
   advanceEchoRushStage3,
+  advanceWardenRushStage2,
+  advanceWardenRushStage3,
+  advanceSevenBellsNext,
+  triggerBoss4UltimateReaction,
   openEndingChoice,
   interactWithAltar,
   openSmithModal,
   openNpcModal,
+  openDummyModal,
   openLoreModal,
   openMapModal,
   openCodexModal,
@@ -73,15 +80,23 @@ function resizeCanvas() {
   const dpr = Math.min(maxDpr, Math.max(1, window.devicePixelRatio || 1));
   const cssW = Math.max(320, (root && root.clientWidth) || window.innerWidth || 1280);
   const cssH = Math.max(240, (root && root.clientHeight) || window.innerHeight || 720);
-  // Auto zoom-out on short mobile landscape screens (< 540px tall) for wide Metroidvania visibility
-  const viewScale = cssH < 540 ? Math.max(0.66, cssH / 540) : 1;
+  // Unified virtual logical viewport: locks vertical FOV (~660px desktop / 560px mobile) & caps ultrawide FOV
+  // so 720p, 1080p, 2K, and 4K displays show identical framing and never bleed across stacked rooms.
+  const targetH = mobile ? 560 : 660;
+  const maxLogicalW = mobile ? 1180 : 1280;
+  const viewScale = Math.max(cssH / targetH, cssW / maxLogicalW);
   G.canvasW = Math.round(cssW / viewScale);
   G.canvasH = Math.round(cssH / viewScale);
   G.canvas.width = Math.round(cssW * dpr);
   G.canvas.height = Math.round(cssH * dpr);
-  G.ctx.setTransform(dpr * viewScale, 0, 0, dpr * viewScale, 0, 0);
-  G.cam.x = Math.max(0, Math.min(Math.max(0, WORLD_W - G.canvasW), G.cam.x));
-  G.cam.y = Math.min(WORLD_H - G.canvasH, Math.max(-40, G.cam.y));
+  G.renderScale = dpr * viewScale;
+  G.ctx.setTransform(G.renderScale, 0, 0, G.renderScale, 0, 0);
+  if (G.player) {
+    snapCameraToPlayer(G.cam.shake);
+  } else {
+    G.cam.x = Math.max(0, Math.min(Math.max(0, WORLD_W - G.canvasW), G.cam.x));
+    G.cam.y = Math.max(0, Math.min(Math.max(0, 720 - G.canvasH), G.cam.y));
+  }
   G.paperPattern = null;
   buildParchmentPattern();
 }
@@ -169,7 +184,9 @@ function renderLiveProfilerUI(stats, divisor) {
     ensureProfilerDom();
     const m = stats.modules;
     const stallTxt = stats.longStalls > 0 ? ` · 长顿 ${stats.longStalls}(${Math.round(stats.maxStallMs)}ms)` : '';
-    _profMetaNode.nodeValue = `刷频 ${prof.getRefreshHz()}Hz (1/${divisor}) · P50 ${stats.p50.toFixed(1)}ms · P95 ${stats.p95.toFixed(1)}ms · 掉帧 ${stats.dropPct.toFixed(1)}% · GC ${stats.gcDrops}${stallTxt}${stats.heapMB > 0 ? ` · ${stats.heapMB.toFixed(0)}MB` : ''}`;
+    const gSt = getGlyphAtlasStats();
+    const bSt = getBackdropCacheStats();
+    _profMetaNode.nodeValue = `刷频 ${prof.getRefreshHz()}Hz (1/${divisor}) · P50 ${stats.p50.toFixed(1)}ms · P95 ${stats.p95.toFixed(1)}ms · 掉帧 ${stats.dropPct.toFixed(1)}% · GC ${stats.gcDrops}${stallTxt}${stats.heapMB > 0 ? ` · ${stats.heapMB.toFixed(0)}MB` : ''} · 字图集 ${gSt.hitRate.toFixed(0)}%(${gSt.entries}) · 背景块 ${bSt.panels}`;
     const denom = Math.max(2.0, stats.budgetMs * 0.5);
     for (let i = 0; i < PROF_MOD_META.length; i++) {
       const mv = m[PROF_MOD_META[i][0]];
@@ -255,19 +272,27 @@ function runGameFrame(timestamp) {
     }
     const updT0 = performance.now();
     const curBoss = getAwakeBoss();
+    const curHudBoss = curBoss || getHudBoss();
     let inCombat = false;
-    if (!curBoss && G.player && G.player.hp > 0) {
+    if (!curHudBoss && G.player && G.player.hp > 0) {
       const px = G.player.x + G.player.w * 0.5;
       const py = G.player.y + G.player.h * 0.5;
       for (let i = 0; i < G.enemies.length; i++) {
         const e = G.enemies[i];
-        if (e && e.alive && !e.isDummy && e.state !== 'patrol' && e.state !== 'cling' && Math.hypot(e.x - px, e.y - py) < 520) {
+        if (!e || !e.alive || e.isDummy) continue;
+        if (e.isMiniBoss && !e.awake) continue;
+        if (e.state === 'patrol' || e.state === 'cling' || e.state === 'hover' || e.state === 'idle') continue;
+        if (e.roomId && G.currentRoomId && e.roomId !== G.currentRoomId) continue;
+        if (Math.abs(e.y - py) < 260 && Math.hypot(e.x - px, e.y - py) < 500) {
           inCombat = true; break;
         }
       }
     }
     const curBiome = G.themeBlend ? G.themeBlend.activeTheme : 'sanctuary';
-    audio.updateAmbience(dt, !!curBoss, curBoss ? (curBoss.phase || 1) : 0, inCombat, G.player ? G.player.parryStreak : 0, curBiome);
+    const bossPhaseAmb = curHudBoss
+      ? (curHudBoss.kind === 'boss4' && curHudBoss.phase >= 3 ? 4 : (curHudBoss.phase || 1))
+      : 0;
+    audio.updateAmbience(dt, !!curHudBoss, bossPhaseAmb, inCombat, G.player ? G.player.parryStreak : 0, curBiome);
     if (G.hitstopTimer > 0) {
       G.hitstopTimer = Math.max(0, G.hitstopTimer - dt);
       // Keep camera & hit/weather VFX smoothly alive during hitstop so impacts feel crisp instead of frozen!
@@ -282,12 +307,16 @@ function runGameFrame(timestamp) {
       for (let i = 0; i < G.enemies.length; i++) {
         const enemy = G.enemies[i];
         if (!enemy || !enemy.alive) continue;
-        if (Math.abs(enemy.x - px) > 1350 || Math.abs(enemy.y - py) > 820) continue;
+        if (Math.abs(enemy.x - px) > 1350 || Math.abs(enemy.y - py) > 820) {
+          if (enemy.isMiniBoss && enemy.awake && !G.echoSession) resetWardenState(enemy);
+          continue;
+        }
         updateEnemy(enemy, dt);
       }
       updateBoss(G.boss, dt);
       updateBoss2(G.boss2, dt);
       updateBoss3(G.boss3, dt);
+      updateBoss4(G.boss4, dt);
       updateWorldEffects(dt);
       updateCamera(dt);
     }
@@ -390,6 +419,8 @@ document.getElementById('btn-close-settings').addEventListener('click', () => {
   closeModal('settings');
 });
 document.getElementById('btn-close-smith').addEventListener('click', () => closeModal('smith'));
+const closeDummyBtn = document.getElementById('btn-close-dummy');
+if (closeDummyBtn) closeDummyBtn.addEventListener('click', () => closeModal('dummy'));
 const closeNpcBtn = document.getElementById('btn-close-npc');
 if (closeNpcBtn) closeNpcBtn.addEventListener('click', () => closeModal('npc'));
 document.getElementById('btn-music-toggle').addEventListener('click', () => {
@@ -429,6 +460,8 @@ if (closeCodexBtn) closeCodexBtn.addEventListener('click', () => closeModal('cod
 document.getElementById('btn-pause-respawn').addEventListener('click', respawnAtActiveAltar);
 document.getElementById('btn-pause-title').addEventListener('click', returnToTitle);
 function refreshAllDynamicLocaleUI() {
+  clearGlyphAtlas();
+  prewarmGlyphAtlas();
   syncControlModeUI();
   const muteEl = document.getElementById('btn-mute');
   if (muteEl) muteEl.textContent = audio.muted ? t('hud.muteOff') : t('hud.muteOn');
@@ -610,6 +643,10 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pagehide', () => {
   if (G.saveDirtyTimer > 0 && G.worldState) saveProgress(false);
+  audio.emergencySuspend();
+});
+window.addEventListener('error', () => {
+  audio.emergencySuspend();
 });
 
 // Internal dev-only preview return button (only visible when launched from editor.html?preview=1)
@@ -644,7 +681,9 @@ async function bootstrapGame() {
   if (contBtnEl) { contBtnEl.disabled = false; contBtnEl.style.opacity = ''; }
   refreshTitleSaveUI();
   resizeCanvas();
+  snapCameraToPlayer(0);
   prewarmTerrainChunks(G.cam.x, G.cam.y, G.canvasW, G.canvasH);
+  prewarmGlyphAtlas();
   G.lanterns = createLanterns();
   G.resonancePuzzles = createResonancePuzzles();
   G.crumblePlatforms = createCrumblePlatforms();

@@ -1,7 +1,7 @@
 // Codex (晦渊残卷): Bestiary stats, Lore Tablet archive, Achievements + Ink Unlock Banner, and Room Map Stats
 import {
   COLORS, ROOMS, RELICS, LORE_TABLETS, PICKUPS_DEF, ALTARS, VOID_BARRIERS,
-  MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H
+  WORLD_MIN_X, WORLD_MIN_Y, MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H
 } from './config.js';
 import { G } from './state.js';
 import { WEAPON_ORDER } from './weapons.js';
@@ -104,6 +104,69 @@ export const BESTIARY_ENTRIES = [
     habitat: '初钟圣心',
     tactic: '三幕完整打铁交响：掌握三响与五响断誓连舞的慢刀节奏，二/三幕借悬灯破除终末钟潮。',
     lore: '千年初钟吞噬历代守誓者魂火凝成的圣骸，既是永夜的囚笼，也是旧誓最后的回声。'
+  },
+  {
+    kind: 'falcon',
+    name: '衔铃风隼',
+    title: '绝风巡弋 · 鸣铃猛禽',
+    isBoss: false,
+    habitat: '绝风断塔 · 霜骸圣脊',
+    tactic: '高空鸣铃蓄势后俯冲直扑；在金芒闪现时精准弹反可令其失衡坠落并承受巨额削势。',
+    lore: '脚爪仍系着残破铜铃的苍隼，借断塔罡风盘旋于悬崖之上，猎杀一切攀登者。'
+  },
+  {
+    kind: 'fungus',
+    name: '孢蚀菌傀',
+    title: '古林寄生 · 毒雾行尸',
+    isBoss: false,
+    habitat: '枯墨古林',
+    tactic: '重拍可弹反；原地喷吐的毒孢云与阵亡残留孢雾皆可用 [W+U/R] 镇魂钟鸣一举驱散。',
+    lore: '被发光墨菌彻底吞噬的旧日林卒，每一次挥臂都伴随刺鼻的腐绿孢雾。'
+  },
+  {
+    kind: 'frostguard',
+    name: '寒戟骸卫',
+    title: '霜脊重卒 · 冻血长戟',
+    isBoss: false,
+    habitat: '霜骸圣脊',
+    tactic: '攻击附带寒霜积蓄，满额将触发冻伤并迟缓移速；精准弹反寒戟平挥、闪避猩红霜刺可免受侵蚀。',
+    lore: '在圣脊极寒中冻结成冰雕的旧誓卫士，长戟锋刃凝结着永不融化的霜髓。'
+  },
+  {
+    kind: 'warden_wind',
+    name: '截风巡塔使 · 朔',
+    title: '绝风守誓精英 · 乘风双刃',
+    isBoss: true,
+    habitat: '绝风断塔',
+    tactic: '善用断塔罡风与钩环周旋；其空中风刃齐射可精准弹反归元，近身双刃连斩遵循打铁节奏。',
+    lore: '曾独守绝风断塔高空的巡塔剑使，即便塔身倾颓，仍以双刃截断一切逆风而上者。'
+  },
+  {
+    kind: 'warden_forest',
+    name: '盘根古钟精 · 枯',
+    title: '古林守誓精英 · 盘根钟铠',
+    isBoss: true,
+    habitat: '枯墨古林',
+    tactic: '全身覆有坚韧树皮钟铠，轻斩会被大幅减伤；用居合、重劈、下劈、弹反或镇魂钟鸣破甲并净化毒孢云。',
+    lore: '枯墨古林深处吞没了古钟的千年树精，盘根错节间仍回荡着沉闷的旧誓钟鸣。'
+  },
+  {
+    kind: 'warden_mountain',
+    name: '断剑霜侯 · 凛',
+    title: '霜脊守誓精英 · 寒刃居合',
+    isBoss: true,
+    habitat: '霜骸圣脊',
+    tactic: '招招附带寒霜积蓄；稳住三至四连寒刃打铁与居合反制，二阶段须提防冰晶斩波与霜脊地波。',
+    lore: '立誓守护霜骸剑冢的冷峻剑侯，手中半截寒霜大剑曾斩断无数妄图窃火的闯入者。'
+  },
+  {
+    kind: 'boss4',
+    name: '初铸残影 · 铸',
+    title: '隐藏终局首领 · 三刃始祖',
+    isBoss: true,
+    habitat: '初钟圣心 · 残誓回响',
+    tactic: '动态切换断刃、钟锤与引魂摇铃三系姿态；面对其同源奥义反制铃球时精准弹反可反震巨额架势！',
+    lore: '斩落初钟圣骸与三境守誓后方于钟心浮现的第一代铸钟者残影，亦是一切三系兵刃的源头。'
   }
 ];
 
@@ -114,8 +177,8 @@ export const ACHIEVEMENTS_DEF = [
   { id: 'boss_hui', name: '断钟寂灭', desc: '于断钟礼拜堂斩落「断钟骑士 · 晦」。' },
   { id: 'boss_ji', name: '沉渊熄炉', desc: '于沉渊铸钟殿斩落「沉渊铸钟师 · 寂」。' },
   { id: 'boss_yuan', name: '初钟终末', desc: '于初钟圣心斩落最终首领「初钟圣骸 · 渊」。' },
-  { id: 'all_tablets', name: '晦渊拾碑人', desc: '寻得并研读晦渊全境全部 8 座风化残碑。' },
-  { id: 'all_relics', name: '八印归灯', desc: '寻得并解锁全部 8 枚晦渊圣物。' },
+  { id: 'all_tablets', name: '晦渊拾碑人', desc: '寻得并研读晦渊全境全部 11 座风化残碑。' },
+  { id: 'all_relics', name: '十一印归灯', desc: '寻得并解锁全部 11 枚晦渊与秘境圣物。' },
   { id: 'synergy_awakened', name: '双印共鸣', desc: '在祭坛同时铭刻特定双圣物，激活隐藏机制羁绊。' },
   { id: 'no_hit_echo', name: '无伤断誓', desc: '在任意残誓回响中零受创通关，夺得 S+ 评级。' },
   { id: 'rush_clear', name: '三钟宗师', desc: '在祭坛残誓回响中通关「三钟终试（晦→寂→渊）」。' },
@@ -123,7 +186,13 @@ export const ACHIEVEMENTS_DEF = [
   { id: 'chronicler_complete', name: '拾碑知己', desc: '助沉渊钟井的游方拾碑客 · 墨尘完成全部三卷《晦渊全史》拓录。' },
   { id: 'keeper_dawn_wick', name: '残灯赴晓', desc: '携「破晓初印」回访初钟圣顶的旧誓守灯人 · 汐，承接终誓灯芯。' },
   { id: 'three_weapons', name: '三刃齐鸣', desc: '集齐灰钟断刃、镇渊钟锤与引魂摇铃全部三系兵刃。' },
-  { id: 'three_biomes', name: '三境踏破', desc: '踏足绝风断塔、枯墨古林与霜骸圣脊全部三大秘境生态。' }
+  { id: 'three_biomes', name: '三境踏破', desc: '踏足绝风断塔、枯墨古林与霜骸圣脊全部三大秘境生态。' },
+  { id: 'three_wardens', name: '三境斩誓', desc: '分别击败绝风断塔、枯墨古林与霜骸圣脊的全部三位秘境守誓精英。' },
+  { id: 'warden_rush_clear', name: '三境连破', desc: '在祭坛残誓回响中通关「三境守誓连战（朔→枯→凛）」。' },
+  { id: 'weapon_trait_forged', name: '百炼成锋', desc: '在盲眼老铸钟匠处为任意三系兵刃淬炼首个专属流派词条。' },
+  { id: 'weapon_ultimate_cast', name: '满印绝响', desc: '攒满全部墨印并施放一次三系兵刃专属「满印共鸣奥义」。' },
+  { id: 'boss_zhu', name: '初铸终末', desc: '于祭坛残誓回响中击败隐藏终局首领「初铸残影 · 铸」。' },
+  { id: 'seven_bells_clear', name: '七响归寂', desc: '在祭坛残誓回响中通关终极连战「晦渊七响终试（晦→寂→朔→枯→凛→渊→铸）」。' }
 ];
 
 export function createFreshCodex() {
@@ -240,24 +309,14 @@ export function checkAchievements(ctx = null) {
   tryUnlock(c.discoveredSynergies.length >= 1 || (ctx && ctx.synergy), 'synergy_awakened');
 
   const recs = ws.echoRecords || {};
-  const anyNoHit = !!(
-    (ctx && ctx.echoNoHit) ||
-    (recs.hui && recs.hui.noHit) ||
-    (recs.ji && recs.ji.noHit) ||
-    (recs.yuan && recs.yuan.noHit) ||
-    (recs.rush && recs.rush.noHit)
-  );
-  const rushDone = !!(
-    (ctx && ctx.echoMode === 'rush') ||
-    (recs.rush && recs.rush.clears >= 1)
-  );
+  const recVals = Object.values(recs);
+  const anyNoHit = !!((ctx && ctx.echoNoHit) || recVals.some(r => r && r.noHit));
+  const rushDone = !!((ctx && ctx.echoMode === 'rush') || (recs.rush && recs.rush.clears >= 1));
+  const wardenRushDone = !!((ctx && ctx.echoMode === 'warden_rush') || (recs.warden_rush && recs.warden_rush.clears >= 1));
   const vowOrNg = !!(
     (ws.ngPlusCycle && ws.ngPlusCycle >= 2) ||
     (ctx && (ctx.ngPlus || ctx.echoVows >= 4)) ||
-    (recs.hui && recs.hui.bestVows >= 4) ||
-    (recs.ji && recs.ji.bestVows >= 4) ||
-    (recs.yuan && recs.yuan.bestVows >= 4) ||
-    (recs.rush && recs.rush.bestVows >= 4)
+    recVals.some(r => r && r.bestVows >= 4)
   );
   tryUnlock(anyNoHit, 'no_hit_echo');
   tryUnlock(rushDone, 'rush_clear');
@@ -273,6 +332,16 @@ export function checkAchievements(ctx = null) {
     return !!(st && st.explorePct > 0);
   });
   tryUnlock(allThreeBiomesVisited, 'three_biomes');
+  const wardenIds = ['warden_wind_boss', 'warden_forest_boss', 'warden_mountain_boss'];
+  const slainMinis = ws.defeatedMiniBosses;
+  tryUnlock(!!(slainMinis && wardenIds.every(wid => slainMinis.has(wid))), 'three_wardens');
+  tryUnlock(wardenRushDone, 'warden_rush_clear');
+  tryUnlock((ws.unlockedWeaponTraits && ws.unlockedWeaponTraits.size >= 1) || (ctx && ctx.traitForged), 'weapon_trait_forged');
+  tryUnlock(!!(ctx && ctx.ultimateCast), 'weapon_ultimate_cast');
+  const zhuDone = !!(ws.boss4Defeated || (recs.zhu && recs.zhu.clears >= 1) || (ctx && ctx.echoMode === 'zhu'));
+  const sevenDone = !!((ctx && ctx.echoMode === 'seven_bells') || (recs.seven_bells && recs.seven_bells.clears >= 1));
+  tryUnlock(zhuDone, 'boss_zhu');
+  tryUnlock(sevenDone, 'seven_bells_clear');
 
   if (newly.length > 0 && !G.achievementBanner) {
     G.achievementBanner = G.achievementQueue.shift();
@@ -379,10 +448,10 @@ export function getRoomCollectibleStats(room) {
   let totalCells = 0;
   let seenCells = 0;
   for (let r = 0; r < MAP_ROWS; r++) {
-    const cy = (r + 0.5) * MAP_CELL_H;
+    const cy = WORLD_MIN_Y + (r + 0.5) * MAP_CELL_H;
     if (cy < b.y || cy > b.y + b.h) continue;
     for (let col = 0; col < MAP_COLS; col++) {
-      const cx = (col + 0.5) * MAP_CELL_W;
+      const cx = WORLD_MIN_X + (col + 0.5) * MAP_CELL_W;
       if (cx < b.x || cx > b.x + b.w) continue;
       totalCells++;
       if (ws.explored[r] && ws.explored[r][col]) seenCells++;

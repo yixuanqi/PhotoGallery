@@ -10,6 +10,7 @@ import {
 import { G } from './state.js';
 import { t, locZoneName, locRoomName, locSubZone } from './i18n.js';
 import { invalidateTerrainCache } from './renderTerrain.js';
+import { invalidateBackdropCache } from './render/backdropCache.js';
 
 function resetArray(arr) {
   arr.length = 0;
@@ -26,6 +27,21 @@ export function isPreviewMode() {
 export function getPreviewSpawnRoomId() {
   try {
     return new URLSearchParams(window.location.search).get('room') || null;
+  } catch {
+    return null;
+  }
+}
+
+export function getPreviewSpawnCoords() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const sx = params.get('sx');
+    const sy = params.get('sy');
+    if (sx === null || sy === null || sx === '' || sy === '') return null;
+    const x = Number(sx);
+    const y = Number(sy);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    return { x: Math.round(x - 14), y: Math.round(y - 54) };
   } catch {
     return null;
   }
@@ -73,6 +89,8 @@ export function hydrateWorldBundle(bundle) {
   FOUNDRY_EXIT_GATE_DEF.h = 0;
   ABYSSAL_RIVER.w = 0;
 
+  let minX = 0;
+  let minY = 0;
   let maxW = 960;
   let maxH = 720;
 
@@ -82,6 +100,8 @@ export function hydrateWorldBundle(bundle) {
     const oy = Number(b.y) || 0;
     const rw = Number(b.w) || 1280;
     const rh = Number(b.h) || 720;
+    if (ox < minX) minX = ox;
+    if (oy < minY) minY = oy;
     if (ox + rw > maxW) maxW = ox + rw;
     if (oy + rh > maxH) maxH = oy + rh;
 
@@ -90,6 +110,7 @@ export function hydrateWorldBundle(bundle) {
       zoneName: room.zoneName || '晦渊',
       name: room.name || room.id,
       theme: room.theme || 'corridor',
+      terrainMod: room.terrainMod ? { ...room.terrainMod } : null,
       bounds: { x: ox, y: oy, w: rw, h: rh },
       connections: Array.isArray(room.connections) ? [...room.connections] : [],
       subZones: Array.isArray(room.subZones)
@@ -110,6 +131,7 @@ export function hydrateWorldBundle(bundle) {
         w: s.w,
         h: s.h,
         type: s.type || 'platform',
+        mod: s.mod ? { ...s.mod } : null,
         roomId: room.id,
         seamLeft: false,
         seamRight: false
@@ -352,8 +374,9 @@ export function hydrateWorldBundle(bundle) {
     Object.assign(ABYSSAL_RIVER, ABYSSAL_RIVERS[0]);
   }
 
-  setWorldMetrics(maxW, maxH, world.floorY || 580, world.wellBottomY || 1380);
+  setWorldMetrics(maxW, maxH, world.floorY || 580, world.wellBottomY || 1380, minX, minY);
   invalidateTerrainCache();
+  invalidateBackdropCache();
   G.levelBundle = bundle;
   G.exploreDirty = true;
   G.minimapDirty = true;

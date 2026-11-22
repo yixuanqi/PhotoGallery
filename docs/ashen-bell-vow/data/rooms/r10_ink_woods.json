@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "r10_ink_woods",
   "zoneName": "枯墨古林",
-  "name": "枯墨古林",
+  "name": "枯墨古林 · 渗水菌廊",
   "theme": "forest",
   "bounds": {
     "x": 0,
@@ -15,33 +15,56 @@
       "name": "枯墨古林 · 归坛古根井",
       "x": 0,
       "y": 0,
-      "w": 640,
+      "w": 460,
       "h": 780
     },
     {
       "name": "枯墨古林 · 荧光孢伞林",
-      "x": 640,
+      "x": 460,
       "y": 0,
-      "w": 720,
+      "w": 800,
       "h": 780
     },
     {
-      "name": "枯墨古林 · 沉根幽窟",
-      "x": 1360,
+      "name": "枯墨古林 · 暗河渗水廊",
+      "x": 1260,
       "y": 0,
-      "w": 620,
+      "w": 720,
       "h": 780
     }
   ],
   "connections": [
     "r06_crypt",
-    "r01_sanctuary"
+    "r01_sanctuary",
+    "r14_woods_cavern",
+    "r15_woods_heart"
   ],
   "solids": [
     {
       "x": 0,
       "y": 640,
-      "w": 1980,
+      "w": 260,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 260,
+      "y": 640,
+      "w": 200,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 460,
+      "y": 640,
+      "w": 800,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 1460,
+      "y": 640,
+      "w": 520,
       "h": 140,
       "type": "ground"
     },
@@ -150,14 +173,6 @@
       "w": 78,
       "h": 26,
       "boostVy": -780
-    },
-    {
-      "id": "bp_forest_4",
-      "x": 355,
-      "y": 640,
-      "w": 78,
-      "h": 26,
-      "boostVy": -820
     }
   ],
   "altars": [
@@ -194,25 +209,22 @@
   ],
   "pickups": [
     {
-      "id": "pickup_core_forest",
-      "kind": "statCore",
-      "requiresPuzzle": "puzzle_forest",
-      "bonusHp": 20,
-      "bonusSoul": 20,
-      "echoAmount": 260,
+      "id": "pickup_echo_woods_canopy",
+      "kind": "echoCache",
       "x": 845,
       "y": 195,
-      "name": "古林秘宝 · 莹孢灵实",
-      "desc": "生命上限 +20、魂火上限 +20，并获 +260 残响！"
+      "echoAmount": 190,
+      "name": "树冠荧光残响",
+      "desc": "荧光孢伞林梢凝结的残响"
     },
     {
       "id": "pickup_echo_forest",
       "kind": "echoCache",
-      "echoAmount": 280,
       "x": 92,
       "y": 640,
-      "name": "根窟古钟残响匣",
-      "desc": "穿过暗蚀结界寻得的巨量残响（+280）！"
+      "echoAmount": 175,
+      "name": "枯根古印",
+      "desc": "藏于古林暗影屏障之后的残响"
     }
   ],
   "resonancePuzzles": [
@@ -248,14 +260,7 @@
     }
   ],
   "pendulums": [],
-  "rivers": [
-    {
-      "id": "river_forest_1",
-      "x": 1220,
-      "y": 628,
-      "w": 240
-    }
-  ],
+  "rivers": [],
   "grappleAnchors": [
     {
       "id": "anc_forest_1",
@@ -308,10 +313,12 @@
       "y": 8
     },
     {
-      "id": "leech_forest_3",
-      "kind": "leech",
-      "x": 580,
-      "y": 8
+      "id": "fungus_forest_1",
+      "kind": "fungus",
+      "x": 1750,
+      "y": 582,
+      "minX": 1510,
+      "maxX": 1930
     },
     {
       "id": "priest_forest_1",
@@ -320,28 +327,12 @@
       "y": 294
     },
     {
-      "id": "duelist_forest_1",
-      "kind": "duelist",
-      "x": 1760,
-      "y": 580,
-      "minX": 1500,
-      "maxX": 1920
-    },
-    {
-      "id": "golem_forest_1",
-      "kind": "golem",
+      "id": "fungus_forest_2",
+      "kind": "fungus",
       "x": 780,
-      "y": 562,
-      "minX": 670,
-      "maxX": 930
-    },
-    {
-      "id": "duelist_forest_2",
-      "kind": "duelist",
-      "x": 460,
-      "y": 580,
-      "minX": 295,
-      "maxX": 605
+      "y": 582,
+      "minX": 520,
+      "maxX": 1180
     }
   ],
   "bosses": [],
@@ -362,6 +353,11 @@
       "x": 205,
       "y": 92,
       "text": "「斩断上方枯根封壁 · 直返起点熄灯祭坛 ↑」"
+    },
+    {
+      "x": 1355,
+      "y": 575,
+      "text": "东侧深根裂隙通往「盘根溶洞」— 沉渊暗河之水由此西渗滋养古林"
     }
   ],
   "props": {

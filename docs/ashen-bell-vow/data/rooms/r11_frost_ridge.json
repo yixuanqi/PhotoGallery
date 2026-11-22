@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "r11_frost_ridge",
   "zoneName": "霜骸圣脊",
-  "name": "霜骸圣脊",
+  "name": "霜骸圣脊 · 融雪谷口",
   "theme": "mountain",
   "bounds": {
     "x": 8360,
@@ -12,22 +12,23 @@
   },
   "subZones": [
     {
-      "name": "霜骸圣脊 · 寒崖冰廊",
+      "name": "霜骸圣脊 · 融雪冰廊",
       "x": 0,
       "y": 0,
-      "w": 620,
+      "w": 760,
       "h": 780
     },
     {
-      "name": "霜骸圣脊 · 风雪残刃冢",
-      "x": 620,
+      "name": "霜骸圣脊 · 东崖雪道",
+      "x": 760,
       "y": 0,
-      "w": 700,
+      "w": 560,
       "h": 780
     }
   ],
   "connections": [
-    "r07_ascent"
+    "r07_ascent",
+    "r16_frost_tomb"
   ],
   "solids": [
     {
@@ -54,8 +55,8 @@
     {
       "x": 1280,
       "y": 0,
-      "w": 60,
-      "h": 780,
+      "w": 40,
+      "h": 220,
       "type": "pillar"
     },
     {
@@ -142,24 +143,13 @@
   "secretWalls": [],
   "pickups": [
     {
-      "id": "pickup_core_mountain",
-      "kind": "statCore",
-      "bonusHp": 25,
-      "bonusSoul": 25,
-      "echoAmount": 360,
-      "x": 1195,
-      "y": 420,
-      "name": "残刃冢秘宝 · 霜骸魂晶",
-      "desc": "生命上限 +25、魂火上限 +25，并获 +360 残响！"
-    },
-    {
       "id": "pickup_echo_mountain",
       "kind": "echoCache",
-      "echoAmount": 240,
       "x": 455,
       "y": 385,
-      "name": "霜崖古钟残响匣",
-      "desc": "获得 +240 残响，可回铁砧完成最终淬炼！"
+      "echoAmount": 210,
+      "name": "冰封残响",
+      "desc": "冻雪岩崖上留存的旧誓残响"
     }
   ],
   "resonancePuzzles": [],
@@ -216,18 +206,18 @@
   ],
   "enemies": [
     {
-      "id": "golem_frost_1",
-      "kind": "golem",
-      "x": 380,
-      "y": 562,
-      "minX": 245,
-      "maxX": 510
+      "id": "frostguard_1",
+      "kind": "frostguard",
+      "x": 385,
+      "y": 572,
+      "minX": 170,
+      "maxX": 530
     },
     {
-      "id": "wraith_frost_1",
-      "kind": "wraith",
-      "x": 660,
-      "y": 210
+      "id": "falcon_frost_1",
+      "kind": "falcon",
+      "x": 665,
+      "y": 215
     },
     {
       "id": "priest_frost_1",
@@ -236,20 +226,20 @@
       "y": 179
     },
     {
-      "id": "golem_frost_2",
-      "kind": "golem",
-      "x": 920,
-      "y": 342,
-      "minX": 825,
-      "maxX": 1070
+      "id": "frostguard_2",
+      "kind": "frostguard",
+      "x": 655,
+      "y": 472,
+      "minX": 575,
+      "maxX": 780
     },
     {
-      "id": "duelist_frost_1",
-      "kind": "duelist",
-      "x": 1095,
-      "y": 360,
-      "minX": 850,
-      "maxX": 1230
+      "id": "frostguard_3",
+      "kind": "frostguard",
+      "x": 1060,
+      "y": 352,
+      "minX": 840,
+      "maxX": 1250
     }
   ],
   "bosses": [],
@@ -263,6 +253,11 @@
       "x": 1085,
       "y": 355,
       "text": "「风雪残刃冢 · 历代提灯者折戟之所」"
+    },
+    {
+      "x": 1150,
+      "y": 355,
+      "text": "东行攀登「冻剑冢」直上雪巅 — 峰顶融雪顺岩缝化为墨雨倾泻全境"
     }
   ],
   "props": {

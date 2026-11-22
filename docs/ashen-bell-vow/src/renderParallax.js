@@ -41,7 +41,8 @@ function getCachedSkyCanvas(tb, isPhase2) {
 
 // 2. Biome Vista Archetype Mapping (supports all 8 current rooms + upcoming wind/forest/mountain biomes)
 function getVistaKey(theme) {
-  if (theme === 'chapel' || theme === 'heart') return 'sanctum';
+  if (theme === 'chapel') return 'chapel';
+  if (theme === 'heart') return 'heart';
   if (theme === 'bell_well' || theme === 'crypt') return 'abyss';
   if (theme === 'foundry' || theme === 'ascent') return 'foundry';
   if (theme === 'wind') return 'wind';
@@ -71,37 +72,45 @@ function buildVistaTiles(vistaKey) {
   const mc = mid.ctx;
 
   if (vistaKey === 'cloister') {
-    // FAR: Distant Gothic Spires + Colossal Cracked Hanging Bell
+    // FAR: Ruined Gothic Belfry Towers, Broken Flying Buttresses & Misty Skyline (no crude polygon bell)
     fc.fillStyle = 'rgba(10, 15, 25, 0.88)';
     for (let i = 0; i < 4; i++) {
-      const bx = i * 192 + 30;
-      const topY = 125 + (i % 3) * 34;
+      const bx = i * 192 + 24;
+      const topY = 96 + (i % 3) * 42;
       fc.beginPath();
       fc.moveTo(bx, TILE_H);
-      fc.lineTo(bx + 18, topY);
-      fc.lineTo(bx + 36, TILE_H);
+      fc.lineTo(bx + 16, topY);
+      fc.lineTo(bx + 34, topY + 26);
+      fc.lineTo(bx + 44, TILE_H);
       fc.closePath();
       fc.fill();
-      // Buttress wings
-      fc.fillRect(bx + 6, topY + 70, 24, TILE_H - topY);
+      // Broken flying buttress arch
+      fc.strokeStyle = 'rgba(148, 163, 184, 0.12)';
+      fc.lineWidth = 2.0;
+      fc.beginPath();
+      fc.moveTo(bx + 36, topY + 86);
+      fc.quadraticCurveTo(bx + 96, topY + 42, bx + 138, topY + 132);
+      fc.stroke();
     }
-    const bellX = 430;
-    fc.fillStyle = 'rgba(8, 12, 20, 0.94)';
-    fc.strokeStyle = 'rgba(216, 207, 184, 0.14)';
-    fc.lineWidth = 2;
+    // Distant broken central watch-belfry silhouette
+    const tx = 432;
+    fc.fillStyle = 'rgba(8, 13, 22, 0.94)';
+    fc.strokeStyle = 'rgba(216, 207, 184, 0.13)';
+    fc.lineWidth = 1.6;
     fc.beginPath();
-    fc.moveTo(bellX - 38, 0);
-    fc.lineTo(bellX + 38, 0);
-    fc.quadraticCurveTo(bellX + 98, 165, bellX + 126, 262);
-    fc.lineTo(bellX - 126, 262);
-    fc.quadraticCurveTo(bellX - 98, 165, bellX - 38, 0);
+    fc.moveTo(tx - 54, TILE_H);
+    fc.lineTo(tx - 46, 118);
+    fc.lineTo(tx - 18, 84);
+    fc.lineTo(tx - 2, 108);
+    fc.lineTo(tx + 24, 62);
+    fc.lineTo(tx + 48, 126);
+    fc.lineTo(tx + 56, TILE_H);
     fc.closePath();
     fc.fill();
     fc.stroke();
-    fc.strokeStyle = 'rgba(245, 158, 11, 0.24)';
-    fc.beginPath();
-    fc.moveTo(bellX + 10, 74); fc.lineTo(bellX - 14, 140); fc.lineTo(bellX + 8, 196); fc.lineTo(bellX - 10, 258);
-    fc.stroke();
+    // Glowing narrow belfry slit window
+    fc.fillStyle = 'rgba(56, 189, 248, 0.14)';
+    fc.fillRect(tx - 6, 142, 12, 58);
 
     // MID: Ruined Gothic Colonnade Arches & Hanging Bell-Cords
     mc.fillStyle = 'rgba(13, 19, 32, 0.85)';
@@ -114,7 +123,6 @@ function buildVistaTiles(vistaKey) {
       mc.moveTo(ax + 28, 178);
       mc.quadraticCurveTo(ax + 128, 62, ax + 256, 178);
       mc.stroke();
-      // Hanging frayed bell-cord in archway center
       mc.strokeStyle = 'rgba(216, 207, 184, 0.08)';
       mc.beginPath();
       mc.moveTo(ax + 128, 118);
@@ -122,37 +130,104 @@ function buildVistaTiles(vistaKey) {
       mc.stroke();
       mc.strokeStyle = 'rgba(216, 207, 184, 0.10)';
     }
-  } else if (vistaKey === 'sanctum') {
-    // FAR: Giant Fractured Cathedral Rose-Halo & Ribbed Spires
-    const rx = TILE_W * 0.5;
-    const ry = 175;
-    fc.strokeStyle = 'rgba(248, 113, 113, 0.14)';
-    fc.lineWidth = 2.4;
-    fc.beginPath(); fc.arc(rx, ry, 148, 0, Math.PI * 2); fc.stroke();
-    fc.beginPath(); fc.arc(rx, ry, 92, 0, Math.PI * 2); fc.stroke();
-    for (let i = 0; i < 12; i++) {
-      const a = (i / 12) * Math.PI * 2;
+  } else if (vistaKey === 'chapel') {
+    // FAR: Rain-Lashed Collapsed Cathedral Nave & Shattered Tall Lancet Windows
+    fc.fillStyle = 'rgba(16, 10, 15, 0.86)';
+    for (let i = 0; i < 3; i++) {
+      const wx = i * 256 + 64;
+      // Slanted pale rainlight beam cutting through broken nave roof
+      fc.fillStyle = 'rgba(180, 210, 235, 0.045)';
       fc.beginPath();
-      fc.moveTo(rx + Math.cos(a) * 32, ry + Math.sin(a) * 32);
-      fc.lineTo(rx + Math.cos(a) * 148, ry + Math.sin(a) * 148);
+      fc.moveTo(wx + 24, 0); fc.lineTo(wx + 128, 0);
+      fc.lineTo(wx + 32, TILE_H); fc.lineTo(wx - 64, TILE_H);
+      fc.closePath();
+      fc.fill();
+      // Broken pointed lancet window frame
+      fc.strokeStyle = 'rgba(216, 207, 184, 0.13)';
+      fc.lineWidth = 2.0;
+      fc.beginPath();
+      fc.moveTo(wx, TILE_H); fc.lineTo(wx, 148);
+      fc.quadraticCurveTo(wx + 48, 38, wx + 96, 148);
+      fc.lineTo(wx + 96, TILE_H);
+      fc.stroke();
+      fc.strokeStyle = 'rgba(248, 113, 113, 0.10)';
+      fc.lineWidth = 1.2;
+      fc.beginPath();
+      fc.moveTo(wx + 48, 86); fc.lineTo(wx + 48, TILE_H);
       fc.stroke();
     }
-    fc.fillStyle = 'rgba(18, 9, 14, 0.85)';
-    for (let i = 0; i < 4; i++) {
-      const px = i * 192 + 12;
-      fc.fillRect(px, 40, 22, TILE_H);
-    }
-
-    // MID: Tall Cathedral Vaulted Ribs & Crimson Mist Shafts
-    mc.fillStyle = 'rgba(22, 11, 18, 0.84)';
-    mc.strokeStyle = 'rgba(245, 158, 11, 0.12)';
+    // MID: Half-Collapsed Vault Ribs & Leaning Cracked Chapel Piers
+    mc.fillStyle = 'rgba(20, 11, 17, 0.86)';
+    mc.strokeStyle = 'rgba(216, 207, 184, 0.11)';
     mc.lineWidth = 1.8;
     for (let i = 0; i < 3; i++) {
-      const ax = i * 256;
-      mc.fillRect(ax, 0, 32, TILE_H);
+      const px = i * 256 + 10;
       mc.beginPath();
-      mc.moveTo(ax + 32, 130);
-      mc.quadraticCurveTo(ax + 128, 16, ax + 256, 130);
+      mc.moveTo(px, TILE_H);
+      mc.lineTo(px + 6, 40 + (i % 2) * 34);
+      mc.lineTo(px + 34, 18 + (i % 2) * 24);
+      mc.lineTo(px + 42, TILE_H);
+      mc.closePath();
+      mc.fill();
+      mc.stroke();
+      // Broken vault rib snapping halfway across the ceiling
+      mc.beginPath();
+      mc.moveTo(px + 36, 112);
+      mc.quadraticCurveTo(px + 106, 48, px + 148, 66);
+      mc.stroke();
+    }
+  } else if (vistaKey === 'heart') {
+    // FAR: Open Shattered-Dome Abyssal Sky, Inverted Cloud-Sea & Celestial Orbit Arcs
+    fc.strokeStyle = 'rgba(253, 224, 71, 0.10)';
+    fc.lineWidth = 1.4;
+    fc.beginPath(); fc.arc(TILE_W * 0.5, 190, 210, Math.PI * 1.05, Math.PI * 1.95); fc.stroke();
+    fc.strokeStyle = 'rgba(192, 132, 252, 0.10)';
+    fc.beginPath(); fc.arc(TILE_W * 0.5, 190, 152, Math.PI * 0.12, Math.PI * 0.88); fc.stroke();
+    // Distant inverted storm cloud strata
+    fc.fillStyle = 'rgba(22, 12, 24, 0.72)';
+    fc.beginPath();
+    fc.moveTo(0, TILE_H);
+    for (let x = 0; x <= TILE_W; x += 64) {
+      fc.lineTo(x, 315 + Math.sin(x * 0.018) * 28 + Math.cos(x * 0.042) * 14);
+    }
+    fc.lineTo(TILE_W, TILE_H);
+    fc.closePath();
+    fc.fill();
+    // Levitating shattered dome monolith shards suspended in upper sky
+    fc.fillStyle = 'rgba(18, 12, 24, 0.90)';
+    fc.strokeStyle = 'rgba(253, 224, 71, 0.16)';
+    fc.lineWidth = 1.2;
+    const shards = [
+      [110, 92, 26, 54], [250, 58, 18, 38], [520, 72, 28, 46], [658, 108, 22, 42]
+    ];
+    for (const [sx, sy, sw, sh] of shards) {
+      fc.beginPath();
+      fc.moveTo(sx, sy); fc.lineTo(sx + sw, sy + 10); fc.lineTo(sx + sw * 0.7, sy + sh); fc.lineTo(sx - 6, sy + sh * 0.72);
+      fc.closePath(); fc.fill(); fc.stroke();
+    }
+
+    // MID: Ruined Sky-Terrace Ridge & Silhouetted Field of Ancient Oath-Swords
+    mc.fillStyle = 'rgba(16, 10, 20, 0.86)';
+    mc.beginPath();
+    mc.moveTo(0, TILE_H);
+    mc.lineTo(0, 352);
+    mc.lineTo(180, 336);
+    mc.lineTo(390, 360);
+    mc.lineTo(590, 332);
+    mc.lineTo(TILE_W, 354);
+    mc.lineTo(TILE_W, TILE_H);
+    mc.closePath();
+    mc.fill();
+    mc.strokeStyle = 'rgba(245, 158, 11, 0.16)';
+    mc.lineWidth = 2.0;
+    for (let i = 0; i < 9; i++) {
+      const swx = 42 + i * 82;
+      const tilt = ((i % 3) - 1) * 9;
+      mc.beginPath();
+      mc.moveTo(swx, 354);
+      mc.lineTo(swx + tilt, 272 + (i % 2) * 18);
+      mc.moveTo(swx + tilt - 9, 294 + (i % 2) * 18);
+      mc.lineTo(swx + tilt + 9, 292 + (i % 2) * 18);
       mc.stroke();
     }
   } else if (vistaKey === 'abyss') {

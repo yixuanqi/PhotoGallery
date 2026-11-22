@@ -658,17 +658,17 @@
   /* Quick Hint Bar */
   .quick-bar {
     position: absolute;
-    bottom: 10px;
+    bottom: 8px;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 11.5px;
-    color: rgba(216, 207, 184, 0.68);
-    background: rgba(8, 11, 18, 0.65);
-    border: 1px solid rgba(216, 207, 184, 0.15);
+    font-size: 11px;
+    color: rgba(216, 207, 184, 0.48);
+    background: rgba(6, 9, 15, 0.44);
+    border: 1px solid rgba(216, 207, 184, 0.10);
     border-radius: 999px;
-    padding: 4px 14px;
+    padding: 3px 12px;
     white-space: nowrap;
-    letter-spacing: 0.6px;
+    letter-spacing: 0.4px;
     pointer-events: none;
   }
 
@@ -2521,7 +2521,31 @@
   }
 
   #fullMapCanvas {
+    cursor: grab;
+  }
+  #fullMapCanvas.dragging {
+    cursor: grabbing;
+  }
+  #fullMapCanvas.pin-mode {
     cursor: crosshair;
+  }
+  #fullMapCanvas.warp-hover {
+    cursor: pointer;
+  }
+  .pin-tool-sep {
+    width: 1px;
+    height: 18px;
+    background: rgba(216, 207, 184, 0.24);
+    margin: 0 3px;
+  }
+  .map-zoom-pill {
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 11px;
+    color: var(--cyan-bright);
+    padding: 3px 7px;
+    border-radius: 5px;
+    background: rgba(10, 16, 28, 0.85);
+    border: 1px solid rgba(56, 189, 248, 0.35);
   }
 
   .map-room-detail {
@@ -3216,4 +3240,301 @@
   .smith-card.weapon-forge-card.locked {
     opacity: 0.68;
     border-style: dashed;
+  }
+
+
+  /* ==================== v25.0 WEAPON FORGE TRAITS & FULL-SEAL ULTIMATE HUD ==================== */
+  .seals-wrap.ult-ready {
+    padding: 1px 6px;
+    border-radius: 5px;
+    background: linear-gradient(135deg, rgba(120, 53, 15, 0.55), rgba(30, 20, 12, 0.85));
+    border: 1px solid var(--gold-bright);
+    color: var(--gold-bright);
+    box-shadow: 0 0 12px rgba(253, 224, 71, 0.45);
+    animation: ultSealPulse 1.15s ease-in-out infinite;
+  }
+  .seals-wrap.ult-ready .seal-pip.active {
+    box-shadow: 0 0 11px rgba(254, 240, 138, 0.95);
+    border-color: #ffffff;
+  }
+  @keyframes ultSealPulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(245, 158, 11, 0.35); }
+    50% { box-shadow: 0 0 18px rgba(253, 224, 71, 0.78); }
+  }
+
+  .smith-sec-divider {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 6px 2px 4px;
+    border-bottom: 1px solid rgba(245, 158, 11, 0.35);
+    color: var(--gold-bright);
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+  }
+  .smith-sec-sub {
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.4px;
+    color: var(--parchment-dim);
+  }
+  .smith-trait-group {
+    padding: 9px 11px;
+    border-radius: 8px;
+    background: rgba(10, 14, 22, 0.78);
+    border: 1px solid rgba(216, 207, 184, 0.20);
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .smith-trait-whead {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--parchment);
+  }
+  .smith-trait-wico {
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    flex-shrink: 0;
+  }
+  .smith-trait-wico .weapon-svg { width: 22px; height: 22px; }
+  .smith-trait-ult {
+    margin-left: auto;
+    font-size: 10.5px;
+    font-weight: 400;
+    color: var(--cyan-bright);
+    background: rgba(56, 189, 248, 0.14);
+    border: 1px solid rgba(56, 189, 248, 0.36);
+    border-radius: 4px;
+    padding: 1px 6px;
+  }
+  .smith-trait-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  @media (max-width: 560px) {
+    .smith-trait-grid { grid-template-columns: 1fr; }
+  }
+  .smith-trait-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 9px 10px;
+    border-radius: 7px;
+    background: rgba(15, 20, 32, 0.88);
+    border: 1px solid rgba(216, 207, 184, 0.22);
+  }
+  .smith-trait-card.unlocked {
+    border-color: rgba(56, 189, 248, 0.45);
+  }
+  .smith-trait-card.equipped {
+    border-color: var(--gold-bright);
+    background: linear-gradient(150deg, rgba(56, 36, 14, 0.56), rgba(14, 18, 28, 0.94));
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.22);
+  }
+  .smith-trait-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+  }
+  .smith-trait-name {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--gold-bright);
+  }
+  .smith-trait-tag {
+    font-size: 10px;
+    color: var(--cyan-bright);
+    background: rgba(14, 116, 144, 0.22);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-radius: 4px;
+    padding: 0 5px;
+  }
+  .smith-trait-desc {
+    font-size: 11px;
+    line-height: 1.48;
+    color: var(--parchment-dim);
+  }
+  .smith-trait-btn {
+    width: 100%;
+    padding: 5px 8px;
+    font-size: 11.5px;
+  }
+
+  /* Altar Armory Ultimate & Forged Trait Quick Chips */
+  .weapon-card-ult {
+    font-size: 10.5px;
+    color: var(--gold-bright);
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.34);
+    border-radius: 4px;
+    padding: 2px 6px;
+  }
+  .weapon-trait-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 2px;
+  }
+  .weapon-trait-chip {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(56, 189, 248, 0.42);
+    color: var(--cyan-bright);
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .weapon-trait-chip:hover {
+    border-color: var(--gold-bright);
+    color: var(--gold-bright);
+  }
+  .weapon-trait-chip.active {
+    background: rgba(245, 158, 11, 0.24);
+    border-color: var(--gold-bright);
+    color: var(--gold-bright);
+    font-weight: 700;
+  }
+  .weapon-trait-empty {
+    font-size: 10px;
+    color: rgba(155, 147, 126, 0.72);
+    font-style: italic;
+  }
+
+
+  /* ==================== v28.0 TRAINING GROUND CONTROL MODAL & BIOME ULTIMATE AUGMENTS ==================== */
+  .dummy-stats-bar {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  @media (max-width: 560px) {
+    .dummy-stats-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  .dummy-stat-box {
+    padding: 7px 8px;
+    border-radius: 6px;
+    background: rgba(10, 14, 22, 0.85);
+    border: 1px solid rgba(216, 207, 184, 0.20);
+    text-align: center;
+  }
+  .dummy-stat-lbl {
+    font-size: 10px;
+    color: var(--parchment-dim);
+    letter-spacing: 0.6px;
+  }
+  .dummy-stat-val {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--gold-bright);
+    margin-top: 2px;
+    font-family: ui-monospace, Menlo, monospace;
+  }
+  .dummy-quick-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-bottom: 11px;
+  }
+  .dummy-qbtn {
+    flex: 1 1 160px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.88);
+    border: 1px solid rgba(56, 189, 248, 0.45);
+    color: var(--cyan-bright);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.14s;
+  }
+  .dummy-qbtn:hover {
+    border-color: var(--gold-bright);
+    color: var(--gold-bright);
+  }
+  .dummy-qbtn.active {
+    background: rgba(245, 158, 11, 0.24);
+    border-color: var(--gold-bright);
+    color: var(--gold-bright);
+    font-weight: 700;
+  }
+  .dummy-mode-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+    margin-bottom: 11px;
+  }
+  @media (max-width: 560px) {
+    .dummy-mode-grid { grid-template-columns: 1fr; }
+  }
+  .dummy-mode-btn {
+    text-align: left;
+    padding: 8px 10px;
+    border-radius: 7px;
+    background: rgba(12, 16, 26, 0.82);
+    border: 1px solid rgba(216, 207, 184, 0.20);
+    color: var(--parchment);
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.14s;
+  }
+  .dummy-mode-btn:hover { border-color: var(--gold); }
+  .dummy-mode-btn.active {
+    background: linear-gradient(145deg, rgba(58, 36, 12, 0.58), rgba(14, 18, 28, 0.94));
+    border-color: var(--gold-bright);
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.22);
+  }
+  .dummy-mode-name {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--gold-bright);
+  }
+  .dummy-mode-tip {
+    font-size: 10.5px;
+    color: var(--parchment-dim);
+    margin-top: 2px;
+    line-height: 1.4;
+  }
+  .dummy-armory-bar {
+    padding: 9px 10px;
+    border-radius: 7px;
+    background: rgba(10, 14, 22, 0.78);
+    border: 1px solid rgba(216, 207, 184, 0.18);
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .dummy-armory-title {
+    font-size: 11px;
+    color: var(--parchment-dim);
+    letter-spacing: 0.8px;
+  }
+  .dummy-armory-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .ult-biome-banner {
+    margin-top: 7px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, rgba(12, 34, 48, 0.76), rgba(16, 24, 38, 0.90));
+    border: 1px solid rgba(110, 231, 183, 0.42);
+    font-size: 11.5px;
+    color: #a7f3d0;
+    line-height: 1.48;
   }

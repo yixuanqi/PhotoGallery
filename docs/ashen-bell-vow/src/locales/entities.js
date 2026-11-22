@@ -62,6 +62,30 @@ export const ENTITIES_EN = {
       usage: 'Dash through foes to detonate Shadow Burst and reset dash.',
       hint: 'Behind western Ink-Blight Barrier in Sanctuary · Requires Shadow Phase',
       desc: '0.95s Shadow Phase recovery, +55% Shadow Burst DMG, heals 8 & resets dash on pass.'
+    },
+    galefather: {
+      name: 'Gale Bell-Plume',
+      tag: 'Aerial Gale',
+      effect: 'Move Speed +12% · Aerial / Up-Cut / Pogo DMG +30%',
+      usage: 'Ride updrafts, double-jumps, or grapples to overwhelm foes from above.',
+      hint: 'Gale-Shattered Spire · Awarded upon defeating Shuo, Gale Spire Warden',
+      desc: '+12% movement speed; +30% damage on airborne strikes, up-cuts, and pogo slashes.'
+    },
+    sporeseal: {
+      name: 'Spore-Root Seal',
+      tag: 'Spore Purge',
+      effect: 'Toxic Spore Immune · Requiem Chime Purify +22 Soul & +8 HP',
+      usage: 'Stride through forest spores unscathed and cast Requiem Chime to harvest soulfire.',
+      hint: 'Withered Ink Woods · Awarded upon defeating Ku, Root-Bound Bell Treant',
+      desc: 'Full immunity to toxic spore clouds; purifying a cloud with Requiem Chime restores 22 Soul & 8 HP.'
+    },
+    frostcore: {
+      name: 'Frost-Ridge Shard',
+      tag: 'Glacial Break',
+      effect: 'Frostbite Buildup -70% · Heavy / Iai / Riposte +18 Shatter Posture',
+      usage: 'Shrug off ridge frostbite and detonate glacial shatters on heavy finishes.',
+      hint: 'Frost-Bone Ridge · Awarded upon defeating Lin, Frost-Marquis of the Broken Blade',
+      desc: '-70% incoming Frostbite buildup; heavy blows, Iai Flash & Riposte deal +18 bonus glacial posture.'
     }
   },
 
@@ -85,6 +109,18 @@ export const ENTITIES_EN = {
     shade_thread: {
       name: 'Umbral Severance',
       desc: 'Shadow Phasing through a foe resets Grapple recovery; your next grapple strike within 2.2s deals 2x posture & bonus Soulfire.'
+    },
+    gale_thread: {
+      name: 'Gale-Thread Tempest',
+      desc: 'Grappling or double-jumping arms a 2.6s Gale Surge; your next strike deals +30% DMG and +16 posture with a wind shockwave.'
+    },
+    spore_clapper: {
+      name: 'Spore-Purge Resonance',
+      desc: 'Purifying toxic spore clouds via Requiem Chime or Soul Waves detonates an emerald nova dealing 38 AoE DMG & healing +10 HP.'
+    },
+    frost_iron: {
+      name: 'Glacial-Iron Sunder',
+      desc: 'Iai Flash and heavy finishers unleash a frost-shatter wave dealing +35% glacial posture and shattering all shields & bark armor.'
     }
   },
 
@@ -133,7 +169,10 @@ export const ENTITIES_EN = {
     cycle:     { label: 'Full Drill Cycle', tip: 'Cycles: Golden Slash → Fast-Delayed Combo → Crimson Peril → Heavy Shield' },
     parryOnly: { label: 'Parry Practice', tip: 'Repeats golden single slash & fast-delayed combo for parry & riposte drills' },
     redOnly:   { label: 'Peril Evade Drill', tip: 'Repeats crimson peril lunges to practice Shadow Dash evasion' },
-    dormant:   { label: 'Still Target', tip: 'Stands still to test relic synergies, Iai Flash, and spell combos' }
+    dormant:       { label: 'Still Target', tip: 'Stands still to track live DPS/Posture and test full combos' },
+    biomeWind:     { label: 'Gale Sim · Wind Blades', tip: 'Fires parryable twin Gale Blades to practice projectile deflection' },
+    biomeForest:   { label: 'Woods Sim · Bark & Spores', tip: 'Raises armor shield and vents toxic spore clouds to drill shield-breaks & purification' },
+    biomeMountain: { label: 'Ridge Sim · Frost Halberd', tip: 'Performs Frostbite chains and Glacial Shards to drill rime parry cadence' }
   },
 
   mapPins: {
@@ -212,6 +251,55 @@ export const ENTITIES_EN = {
       habitat: 'Heart of the First Bell',
       tactic: 'A 3-act parry symphony: read the delayed beats in his 3-hit and 5-hit chains, and ring the arena lanterns to break Eclipse Tide.',
       lore: 'A sacred husk condensed from generations of Oath-Keepers’ soulfire—both cage of endless night and final echo of the old vow.'
+    },
+    falcon: {
+      name: 'Bell-Claw Wind Falcon',
+      title: 'Gale Hunter · Chiming Raptor',
+      habitat: 'Gale-Shattered Spire · Frost-Bone Ridge',
+      tactic: 'Chimes aloft before diving; a Perfect Parry on its golden dive glint crashes it downward for massive posture damage.',
+      lore: 'A pale raptor with a cracked bronze bell still lashed to its talons, riding spire updrafts to hunt climbers.'
+    },
+    fungus: {
+      name: 'Spore-Blighted Husk',
+      title: 'Forest Parasite · Toxic Walker',
+      habitat: 'Withered Ink Woods',
+      tactic: 'Parry its heavy slams; disperse its toxic spore clouds and death-spores cleanly with [W+Spell] Requiem Chime.',
+      lore: 'A former woodland sentinel consumed by luminous ink-fungi; every swing vents choking emerald spores.'
+    },
+    frostguard: {
+      name: 'Frost-Halberd Revenant',
+      title: 'Ridge Sentinel · Rime Polearm',
+      habitat: 'Frost-Bone Ridge',
+      tactic: 'Strikes inflict Frostbite buildup that triggers burst damage & chill at 100%; deflect standard sweeps and dodge crimson lunges.',
+      lore: 'An oath-bound guard frozen solid atop the ridge, wielding a halberd edged in unmelting rime.'
+    },
+    warden_wind: {
+      name: 'Shuo, Gale Spire Warden',
+      title: 'Wind Biome Warden · Twin Gale Blades',
+      habitat: 'Gale-Shattered Spire',
+      tactic: 'Leverage updrafts and grapple anchors; deflect his airborne wind-blade barrages right back and rhythm-parry his twin-blade chains.',
+      lore: 'Lone sentinel of the crumbling wind tower who still severs all who dare climb against the gale.'
+    },
+    warden_forest: {
+      name: 'Ku, Root-Bound Bell Treant',
+      title: 'Woods Biome Warden · Ancient Bark Armor',
+      habitat: 'Withered Ink Woods',
+      tactic: 'Thick bark armor mitigates light cuts; shatter it with Iai Flash, heavy strikes, pogo slams, Perfect Parries, or Requiem Chime, and purify its spore clouds.',
+      lore: 'A millennia-old treant that swallowed a fallen temple bell, its gnarled roots echoing with muffled chimes.'
+    },
+    warden_mountain: {
+      name: 'Lin, Frost-Marquis of the Broken Blade',
+      title: 'Ridge Biome Warden · Glacial Iai',
+      habitat: 'Frost-Bone Ridge',
+      tactic: 'Every cut builds Frostbite; master his 3-to-4-hit frost chains and Iai counter-timings, and watch for Phase II glacial waves and ice shards.',
+      lore: 'Stern guardian of the frozen sword mounds whose broken greatsword once felled countless ember-thieves.'
+    },
+    boss4: {
+      name: 'Zhu, Phantom of the First Founder',
+      title: 'Secret Final Boss · Progenitor of Three Arms',
+      habitat: 'Heart of the First Bell · Vow Echo',
+      tactic: 'Cycles dynamically between Broken Blade, Bell-Maul, and Bell Staff; Perfect-Parry his homologous counter-orbs right back to shatter his posture!',
+      lore: 'A lingering phantom of the First Founder that manifests once Yuan and all three Realm Wardens fall—the origin of every bell-arm.'
     }
   },
 
@@ -222,8 +310,8 @@ export const ENTITIES_EN = {
     boss_hui:            { name: 'Broken Bell Silenced',  desc: 'Fell Hui, Knight of the Broken Bell in the Chapel.' },
     boss_ji:             { name: 'Foundry Extinguished',  desc: 'Fell Ji, Abyssal Bell-Founder in the Abyssal Bell Foundry.' },
     boss_yuan:           { name: 'End of the First Toll', desc: 'Fell the final boss, Yuan, Relic of the First Bell.' },
-    all_tablets:         { name: 'Chronicler of the Abyss', desc: 'Find and inspect all 8 weathered steles across the Dim Abyss.' },
-    all_relics:          { name: 'Eight Seals Attuned',   desc: 'Discover and unlock all 8 Relics of the Dim Abyss.' },
+    all_tablets:         { name: 'Chronicler of the Abyss', desc: 'Find and inspect all 11 weathered steles across the Dim Abyss.' },
+    all_relics:          { name: 'Eleven Seals Attuned',  desc: 'Discover and unlock all 11 Relics across the Dim Abyss and hidden biomes.' },
     synergy_awakened:    { name: 'Twin-Seal Resonance',   desc: 'Attune two paired relics at an Altar to awaken a hidden synergy.' },
     no_hit_echo:         { name: 'Unscathed Oath',        desc: 'Clear any Vow Echo without taking damage to earn an S+ rank.' },
     rush_clear:          { name: 'Master of Three Bells', desc: 'Clear the “Trial of Three Bells (Hui → Ji → Yuan)” Boss Rush.' },
@@ -231,7 +319,13 @@ export const ENTITIES_EN = {
     chronicler_complete: { name: 'Kindred Scribe',        desc: 'Help Mochen complete all three volumes of the Annals of the Dim Abyss.' },
     keeper_dawn_wick:    { name: 'Last Wick to Dawn',     desc: 'Bring the First Seal of Dawn to Keeper Xi at the Spire and claim her wick.' },
     three_weapons:       { name: 'Three-Bell Arsenal',    desc: 'Unlock all three weapons: Broken Blade, Abyssal Bell-Maul, and Soul-Calling Bell Staff.' },
-    three_biomes:        { name: 'Wanderer of Three Realms', desc: 'Set foot in all three hidden biomes: Gale-Shattered Spire, Withered Ink Woods, and Frost-Bone Ridge.' }
+    three_biomes:        { name: 'Wanderer of Three Realms', desc: 'Set foot in all three hidden biomes: Gale-Shattered Spire, Withered Ink Woods, and Frost-Bone Ridge.' },
+    three_wardens:       { name: 'Bane of Three Wardens',    desc: 'Defeat all three hidden biome Wardens across Gale-Shattered Spire, Withered Ink Woods, and Frost-Bone Ridge.' },
+    warden_rush_clear:   { name: 'Scourge of Three Realms',  desc: 'Clear the “Three Wardens Gauntlet (Shuo → Ku → Lin)” Vow Echo at any Altar.' },
+    weapon_trait_forged: { name: 'Master-Forged Edge',       desc: 'Forge your first specialized weapon trait at Blind Bell-Smith Li’s anvil.' },
+    weapon_ultimate_cast:{ name: 'Full-Seal Resonance',      desc: 'Fill all Ink Seals and unleash a weapon-specific Full-Seal Resonance Ultimate.' },
+    boss_zhu:            { name: 'End of the First Founder', desc: 'Defeat the secret final boss, Zhu, Phantom of the First Founder, in Vow Echoes.' },
+    seven_bells_clear:   { name: 'Sevenfold Silence',        desc: 'Clear the ultimate “Trial of Seven Bells (Hui → Ji → Shuo → Ku → Lin → Yuan → Zhu)” gauntlet.' }
   },
 
   bosses: {
@@ -253,6 +347,31 @@ export const ENTITIES_EN = {
       phase1Title: 'Act I · First Bell Awakened',
       phase2Title: 'Act II · Twin Shadows of the Shard',
       phase3Title: 'Finale · Primeval Silence'
+    },
+    warden_wind_boss: {
+      name: 'Shuo, Gale Spire Warden',
+      shortName: 'Shuo',
+      phase1Title: 'Gale Vow · Twin Wind Blades',
+      phase2Title: 'Gale Tempest · Shattered Spire Pursuit'
+    },
+    warden_forest_boss: {
+      name: 'Ku, Root-Bound Bell Treant',
+      shortName: 'Ku',
+      phase1Title: 'Ancient Woods Vow · Bark Bell-Armor',
+      phase2Title: 'Frenzied Spores · Ten Thousand Roots'
+    },
+    warden_mountain_boss: {
+      name: 'Lin, Frost-Marquis of the Broken Blade',
+      shortName: 'Lin',
+      phase1Title: 'Frost Ridge Vow · Glacial Iai',
+      phase2Title: 'Frost Silence · Rime Marrow Severance'
+    },
+    boss_zhu: {
+      name: 'Zhu, Phantom of the First Founder',
+      shortName: 'Zhu',
+      phase1Title: 'Act I · First Ring of Three Arms',
+      phase2Title: 'Act II · Twin Echoes of the Chime',
+      phase3Title: 'Finale · Return to First Casting'
     }
   }
 };

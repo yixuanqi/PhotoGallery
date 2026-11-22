@@ -204,8 +204,9 @@ export function locPin(pin, field = 'label') {
 export function locBoss(boss, field = 'name') {
   if (!boss) return '';
   const id = typeof boss === 'string' ? boss : boss.id;
+  const kind = typeof boss === 'object' ? boss.kind : null;
   if (!isEn()) return (typeof boss === 'object' && boss[field]) || '';
-  const en = id && ENTITIES_EN.bosses[id];
+  const en = (id && ENTITIES_EN.bosses[id]) || (kind && ENTITIES_EN.bosses[kind]);
   return (en && en[field]) || (typeof boss === 'object' && boss[field]) || '';
 }
 

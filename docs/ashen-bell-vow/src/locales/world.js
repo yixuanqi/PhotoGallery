@@ -25,9 +25,15 @@ export const WORLD_EN = {
     r06_crypt:     { zoneName: 'Sunken Bell Cloister', name: 'Crypt of Shards' },
     r07_ascent:    { zoneName: 'Spire of the First Bell', name: 'Ascent of the First Bell' },
     r08_heart:       { zoneName: 'Spire of the First Bell', name: 'Heart of the First Bell' },
-    r09_wind_spire:  { zoneName: 'Gale-Shattered Spire',    name: 'Gale-Shattered Spire' },
-    r10_ink_woods:   { zoneName: 'Withered Ink Woods',      name: 'Withered Ink Woods' },
-    r11_frost_ridge: { zoneName: 'Frost-Bone Ridge',        name: 'Frost-Bone Ridge' }
+    r09_wind_spire:   { zoneName: 'Gale-Shattered Spire',    name: 'Gale Spire · Lower Thermal Shaft' },
+    r10_ink_woods:    { zoneName: 'Withered Ink Woods',      name: 'Ink Woods · Seepage Canopy' },
+    r11_frost_ridge:  { zoneName: 'Frost-Bone Ridge',        name: 'Frost Ridge · Snowmelt Pass' },
+    r12_wind_bridge:  { zoneName: 'Gale-Shattered Spire',    name: 'Gale Spire · Thousand-Bell Bridge' },
+    r13_wind_peak:    { zoneName: 'Gale-Shattered Spire',    name: 'Gale Spire · Cloud-Sea Summit' },
+    r14_woods_cavern: { zoneName: 'Withered Ink Woods',      name: 'Ink Woods · Root-Tangled Cavern' },
+    r15_woods_heart:  { zoneName: 'Withered Ink Woods',      name: 'Ink Woods · Hollow Bell-Tree' },
+    r16_frost_tomb:   { zoneName: 'Frost-Bone Ridge',        name: 'Frost Ridge · Frozen Blade Mound' },
+    r17_frost_summit: { zoneName: 'Frost-Bone Ridge',        name: 'Frost Ridge · Glacial Peak' }
   },
 
   subZones: {
@@ -56,7 +62,22 @@ export const WORLD_EN = {
     '枯墨古林 · 荧光孢伞林': 'Withered Ink Woods · Spore Canopy Grove',
     '枯墨古林 · 沉根幽窟': 'Withered Ink Woods · Sunken Root Cavern',
     '霜骸圣脊 · 寒崖冰廊': 'Frost-Bone Ridge · Glacial Cliff Gallery',
-    '霜骸圣脊 · 风雪残刃冢': 'Frost-Bone Ridge · Snowbound Blade Mound'
+    '霜骸圣脊 · 风雪残刃冢': 'Frost-Bone Ridge · Snowbound Blade Mound',
+    '绝风断塔 · 炉热排风井': 'Gale-Shattered Spire · Furnace Thermal Flue',
+    '绝风断塔 · 悬风断桥': 'Gale-Shattered Spire · Broken Gale Bridge',
+    '绝风断塔 · 西侧铃塔残垣': 'Gale-Shattered Spire · Western Belfry Ruins',
+    '绝风断塔 · 千铃断桥': 'Gale-Shattered Spire · Thousand-Bell Span',
+    '绝风断塔 · 云海风台': 'Gale-Shattered Spire · Cloud-Sea Terrace',
+    '枯墨古林 · 暗河渗水廊': 'Withered Ink Woods · River Seepage Gallery',
+    '枯墨古林 · 盘根深窟': 'Withered Ink Woods · Root-Tangled Deep',
+    '枯墨古林 · 暗河渗池': 'Withered Ink Woods · Seepage Pool',
+    '枯墨古林 · 千年古钟树窟': 'Withered Ink Woods · Ancient Bell-Tree Hollow',
+    '霜骸圣脊 · 融雪冰廊': 'Frost-Bone Ridge · Snowmelt Gallery',
+    '霜骸圣脊 · 东崖雪道': 'Frost-Bone Ridge · Eastern Snow Cliff',
+    '霜骸圣脊 · 融雪瀑布底': 'Frost-Bone Ridge · Snowmelt Falls Base',
+    '霜骸圣脊 · 冻剑墓阶': 'Frost-Bone Ridge · Frozen Sword Steps',
+    '霜骸圣脊 · 绝巅雪门': 'Frost-Bone Ridge · Summit Snow Gate',
+    '霜骸圣脊 · 绝脊孤峰': 'Frost-Bone Ridge · Lone Glacial Peak'
   },
 
   altars: {
@@ -67,7 +88,8 @@ export const WORLD_EN = {
     altar_summit:   { name: 'Spire of the First Bell · Final Vow Altar', shortName: 'Spire · Final Vow Altar' },
     altar_wind:     { name: 'Gale-Shattered Spire · Gale Altar',         shortName: 'Spire · Gale Altar' },
     altar_forest:   { name: 'Withered Ink Woods · Root Cavern Altar',    shortName: 'Woods · Root Altar' },
-    altar_mountain: { name: 'Frost-Bone Ridge · Blade Mound Altar',      shortName: 'Ridge · Frost Altar' }
+    altar_mountain:   { name: 'Frost-Bone Ridge · Snowmelt Altar',       shortName: 'Ridge · Snowmelt Altar' },
+    altar_frost_tomb: { name: 'Frost-Bone Ridge · Summit Snow Altar',    shortName: 'Ridge · Summit Altar' }
   },
 
   npcs: {
@@ -115,7 +137,22 @@ export const WORLD_EN = {
     lore_mountain: {
       title: 'Frost-Bone Blade Epitaph',
       sub: 'Frost-Bone Ridge · High Blade Mound',
-      html: '“Beneath the Heart of the First Bell, permafrost buries over a hundred lantern-bearers who fell short of silencing the final bell.<br>With their dying breath they drove their broken steel into the frozen ridge, raising a silent <strong>Snowbound Blade Mound</strong> for whoever comes next.<br><br>If you have gathered the <strong>Broken Blade, Abyssal Bell-Maul, and Soul-Calling Bell Staff</strong>, claim the Frost-Bone Crystal and ascend to end the First Bell!”'
+      html: '“Beneath the Heart of the First Bell, permafrost buries over a hundred lantern-bearers who fell short of silencing the final bell.<br>With their dying breath they drove their broken steel into the frozen ridge, raising a silent <strong>Snowbound Blade Mound</strong> for whoever comes next.<br><br>If you have gathered the <strong>Broken Blade, Abyssal Bell-Maul, and Soul-Calling Bell Staff</strong>, ascend the eastern cliff and claim the Frost-Bone Crystal!”'
+    },
+    lore_wind_furnace: {
+      title: 'Broken-Bridge Wind Stele',
+      sub: 'Gale-Shattered Spire · Thousand-Bell Bridge',
+      html: '“The Abyssal Foundry below never cools; searing furnace air surges through the iron grates beneath us, driving eternal gales up all seven wind towers.<br>Seeing the Heart corrupted, Warden Shuo severed this span himself to bar all who ride the wind.<br><br>Beyond the summit bridge lies <strong>Frost-Bone Ridge</strong>—<br><strong>where furnace heat melts ancient snow into the cold ink-rain that feeds the Abyssal River below.</strong>”'
+    },
+    lore_woods_seepage: {
+      title: 'Deserter’s Spore-Carved Stele',
+      sub: 'Withered Ink Woods · Seepage Pool Bridge',
+      html: '“The night the Chapel bell fell silent, we tunneled west from the Crypt—only to find ink-black river water seeping through the bedrock, turning this cavern into a glowing fungal grove.<br>Ash washed down from the cloister fed the tangled roots and birthed bouncing spore-caps.<br><br>Venture no further west into the <strong>Hollow Bell-Tree</strong>—<br><strong>the fallen bronze temple bell has been swallowed whole by the ancient treant within.</strong>”'
+    },
+    lore_frost_snowmelt: {
+      title: 'Epitaph of the Frozen Keepers',
+      sub: 'Frost-Bone Ridge · Frozen Sword Steps',
+      html: '“The old Lantern Keepers once stood vigil atop these peaks to freeze the cracked First Bell shut; yet heat rising from the western Gale Spire melted the summit snows into endless <strong>ashen rain</strong>.<br>The meltwater cascades down these cliffs, washes the cloister, and seeps into the sunken woods.<br><br>Climb past our sword-mounds to the peak: <strong>Frost-Marquis Lin</strong> guards the western sky-bridge linking directly to the <strong>Gale Spire Summit</strong>.”'
     }
   },
 
@@ -202,7 +239,27 @@ export const WORLD_EN = {
     },
     pickup_echo_mountain: {
       name: 'Frost-Cliff Echo Coffer',
-      desc: 'Grants +240 Echoes for final blade tempering!'
+      desc: 'Grants +210 Echoes for blade tempering!'
+    },
+    pickup_echo_wind_top: {
+      name: 'Thermal-Draft Echo Seal',
+      desc: 'Grants +180 molten-draft Echoes!'
+    },
+    pickup_echo_wind_bridge: {
+      name: 'Thousand-Bell Bridge Echoes',
+      desc: 'Grants +240 Echoes from the high wind bridge!'
+    },
+    pickup_echo_woods_canopy: {
+      name: 'Canopy Spore Echoes',
+      desc: 'Grants +190 Echoes from the glowing canopy!'
+    },
+    pickup_echo_woods_deep: {
+      name: 'Seepage Pool Bell Echoes',
+      desc: 'Grants +240 Echoes from the sunken seepage bridge!'
+    },
+    pickup_echo_frost_tomb: {
+      name: 'Frozen Sword-Mound Echoes',
+      desc: 'Grants +260 Echoes from the Keepers’ blade steps!'
     }
   },
 
@@ -244,7 +301,16 @@ export const WORLD_EN = {
     '「枯墨古林 · 踩踏荧光孢伞可借势腾跃」': '“Withered Ink Woods · Bounce Off Luminous Spore Caps”',
     '「斩断上方枯根封壁 · 直返起点熄灯祭坛 ↑」': '“Sever Overhead Root Seal · Direct Shortcut to Sanctuary ↑”',
     '「霜骸圣脊 · 逆风寒崖，钟锤与摇铃可破严阵」': '“Frost-Bone Ridge · Howling Cliff—Bell-Maul & Staff Shine Here”',
-    '「风雪残刃冢 · 历代提灯者折戟之所」': '“Snowbound Blade Mound · Resting Place of Fallen Keepers”'
+    '「风雪残刃冢 · 历代提灯者折戟之所」': '“Snowbound Blade Mound · Resting Place of Fallen Keepers”',
+    '脚下铁栅连通沉渊古炉 — 千年熔金热浪化作永续罡风，乘风直上可抵「千铃悬桥」': '“Iron grates below vent the Abyssal Foundry—ride the eternal thermal gale up to Thousand-Bell Bridge”',
+    '东侧深根裂隙通往「盘根溶洞」— 沉渊暗河之水由此西渗滋养古林': '“Eastern root chasm leads to Root-Tangled Cavern—seeping river water feeds these ancient woods”',
+    '东行攀登「冻剑冢」直上雪巅 — 峰顶融雪顺岩缝化为墨雨倾泻全境': '“Climb east through Frozen Blade Mound to the peak—melting snow pours down as ink-rain”',
+    '东行踏入「断塔绝顶」— 截风巡塔使 · 朔仍在云海守誓': '“East lies Cloud-Sea Summit—Shuo, Gale Spire Warden still keeps his vigil”',
+    '高空断桥直通「霜骸圣脊 · 绝脊霜台」': '“High sky-bridge links directly to Frost-Bone Ridge · Glacial Peak”',
+    '西行步入「古钟树窟」— 破除盘根树铠后可由西侧孢伞直冲回廊': '“West enters Hollow Bell-Tree—bounce up the western spore-caps to return to the cloister”',
+    '踏荧光巨孢伞连跃而上，可直返上层古林与起点圣所捷径': '“Bounce up the glowing spore-caps to ascend straight back to the upper woods and Sanctuary shortcut”',
+    '西登「绝脊霜台」迎战断剑霜侯·凛 — 越过霜台即可高空连通绝风断塔': '“Ascend west to Glacial Peak to face Lin, Frost-Marquis—beyond lies the sky-link to Gale Spire”',
+    '西越冰风断桥即达「绝风断塔 · 断塔绝顶」': '“Cross the icy wind-bridge west to reach Gale Spire · Cloud-Sea Summit”'
   },
 
   biomes: {

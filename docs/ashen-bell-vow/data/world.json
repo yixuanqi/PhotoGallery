@@ -150,7 +150,7 @@
       "id": "r09_wind_spire",
       "file": "./data/rooms/r09_wind_spire.json",
       "zoneName": "绝风断塔",
-      "name": "绝风断塔",
+      "name": "绝风断塔 · 风井下口",
       "theme": "wind",
       "bounds": {
         "x": 5560,
@@ -160,14 +160,15 @@
       },
       "connections": [
         "r04_bell_well",
-        "r07_ascent"
+        "r07_ascent",
+        "r12_wind_bridge"
       ]
     },
     {
       "id": "r10_ink_woods",
       "file": "./data/rooms/r10_ink_woods.json",
       "zoneName": "枯墨古林",
-      "name": "枯墨古林",
+      "name": "枯墨古林 · 渗水菌廊",
       "theme": "forest",
       "bounds": {
         "x": 0,
@@ -177,14 +178,16 @@
       },
       "connections": [
         "r06_crypt",
-        "r01_sanctuary"
+        "r01_sanctuary",
+        "r14_woods_cavern",
+        "r15_woods_heart"
       ]
     },
     {
       "id": "r11_frost_ridge",
       "file": "./data/rooms/r11_frost_ridge.json",
       "zoneName": "霜骸圣脊",
-      "name": "霜骸圣脊",
+      "name": "霜骸圣脊 · 融雪谷口",
       "theme": "mountain",
       "bounds": {
         "x": 8360,
@@ -193,7 +196,110 @@
         "h": 780
       },
       "connections": [
-        "r07_ascent"
+        "r07_ascent",
+        "r16_frost_tomb"
+      ]
+    },
+    {
+      "id": "r12_wind_bridge",
+      "file": "./data/rooms/r12_wind_bridge.json",
+      "zoneName": "绝风断塔",
+      "name": "绝风断塔 · 千铃悬桥",
+      "theme": "wind",
+      "bounds": {
+        "x": 5560,
+        "y": -740,
+        "w": 1180,
+        "h": 740
+      },
+      "connections": [
+        "r09_wind_spire",
+        "r13_wind_peak"
+      ]
+    },
+    {
+      "id": "r13_wind_peak",
+      "file": "./data/rooms/r13_wind_peak.json",
+      "zoneName": "绝风断塔",
+      "name": "绝风断塔 · 断塔绝顶",
+      "theme": "wind",
+      "bounds": {
+        "x": 6740,
+        "y": -740,
+        "w": 1520,
+        "h": 740
+      },
+      "connections": [
+        "r12_wind_bridge",
+        "r17_frost_summit"
+      ]
+    },
+    {
+      "id": "r14_woods_cavern",
+      "file": "./data/rooms/r14_woods_cavern.json",
+      "zoneName": "枯墨古林",
+      "name": "枯墨古林 · 盘根溶洞",
+      "theme": "forest",
+      "bounds": {
+        "x": 1080,
+        "y": 1520,
+        "w": 1600,
+        "h": 740
+      },
+      "connections": [
+        "r10_ink_woods",
+        "r15_woods_heart"
+      ]
+    },
+    {
+      "id": "r15_woods_heart",
+      "file": "./data/rooms/r15_woods_heart.json",
+      "zoneName": "枯墨古林",
+      "name": "枯墨古林 · 古钟树窟",
+      "theme": "forest",
+      "bounds": {
+        "x": 0,
+        "y": 1520,
+        "w": 1080,
+        "h": 740
+      },
+      "connections": [
+        "r14_woods_cavern",
+        "r10_ink_woods"
+      ]
+    },
+    {
+      "id": "r16_frost_tomb",
+      "file": "./data/rooms/r16_frost_tomb.json",
+      "zoneName": "霜骸圣脊",
+      "name": "霜骸圣脊 · 冻剑冢",
+      "theme": "mountain",
+      "bounds": {
+        "x": 9680,
+        "y": -740,
+        "w": 1500,
+        "h": 2260
+      },
+      "connections": [
+        "r11_frost_ridge",
+        "r17_frost_summit"
+      ]
+    },
+    {
+      "id": "r17_frost_summit",
+      "file": "./data/rooms/r17_frost_summit.json",
+      "zoneName": "霜骸圣脊",
+      "name": "霜骸圣脊 · 绝脊霜台",
+      "theme": "mountain",
+      "bounds": {
+        "x": 8260,
+        "y": -740,
+        "w": 1420,
+        "h": 740
+      },
+      "connections": [
+        "r16_frost_tomb",
+        "r13_wind_peak"
       ]
     }
   ]

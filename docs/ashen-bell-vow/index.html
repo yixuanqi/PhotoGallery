@@ -3,11 +3,13 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="screen-orientation" content="landscape" />
 <meta name="x5-orientation" content="landscape" />
-<title>灰钟残誓 v21.0 — 风林山三大生态扩展版 · 暗黑手绘魂系类银河恶魔城</title>
-<link rel="stylesheet" href="./styles.css?v=21.0.0" />
+<title>灰钟残誓 v32.0 — 模块化重构与 144Hz 字形/背景缓存提速版 · 暗黑手绘魂系类银河恶魔城</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24'>🔔</text></svg>" />
+<link rel="stylesheet" href="./styles.css?v=32.0.0" />
 </head>
 <body>
 <div id="game-root">
@@ -181,7 +183,7 @@
       <div id="map-modal-sub" class="modal-sub">沉钟回廊 · 已探索 0% · 已点燃祭坛 1 / 2</div>
       <div id="map-pin-toolbar" class="map-pin-toolbar"></div>
       <div class="parchment-map-box">
-        <canvas id="fullMapCanvas" width="640" height="248"></canvas>
+        <canvas id="fullMapCanvas" width="760" height="310"></canvas>
       </div>
       <div id="map-room-detail" class="map-room-detail"></div>
       <div class="map-legend">
@@ -205,7 +207,7 @@
         <button type="button" class="modal-top-close" data-close-modal="codex" data-i18n="modal.back">✕ 返回</button>
       </div>
       <div class="modal-title" style="letter-spacing: 6px;" data-i18n="codex.title">晦 渊 残 卷</div>
-      <div id="codex-modal-sub" class="modal-sub">残碑 0/8 · 图鉴 0/10 · 成就 0/16 · 羁绊 0/5</div>
+      <div id="codex-modal-sub" class="modal-sub">残碑 0/11 · 图鉴 0/17 · 成就 0/22 · 羁绊 0/8</div>
       <div id="codex-tabs" class="codex-tabs"></div>
       <div id="codex-body" class="codex-body"></div>
       <button id="btn-close-codex" class="primary-btn" style="margin-top: 14px;" data-i18n="codex.close">合上残卷 [B]</button>
@@ -257,6 +259,20 @@
       <div id="npc-echo-bar" class="smith-echo-bar"></div>
       <div id="npc-quest-list" class="smith-upgrade-list"></div>
       <button id="btn-close-npc" class="primary-btn" data-i18n="npc.close">拱手告辞</button>
+    </div>
+  </div>
+
+  <!-- Bronze Training Ground Control Modal (青铜演武台 v28.0) -->
+  <div id="dummy-modal" class="overlay-screen hidden">
+    <div class="modal-card" style="width: min(680px, 95%);">
+      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="dummy" data-i18n="modal.back">✕ 返回</button></div>
+      <div id="dummy-modal-title" class="modal-title" data-i18n="dummy.title">青铜演武台 · 试桩控制台</div>
+      <div class="modal-sub" data-i18n="dummy.sub">一键切换 7 种演武/生态模式、满印充能、实时 DPS/削势统计与热切兵刃词条</div>
+      <div id="dummy-stats-bar" class="dummy-stats-bar"></div>
+      <div id="dummy-quick-bar" class="dummy-quick-bar"></div>
+      <div id="dummy-mode-grid" class="dummy-mode-grid"></div>
+      <div id="dummy-armory-bar" class="dummy-armory-bar"></div>
+      <button id="btn-close-dummy" class="primary-btn" data-i18n="dummy.close">返回演武试桩</button>
     </div>
   </div>
 
@@ -525,8 +541,10 @@
     return;
   }
 
+  var bootErrShown = false;
   window.addEventListener('error', function (e) {
     if (window.__ABV_BOOTED__) return;
+    bootErrShown = true;
     var msg = (e && e.message) ? e.message : (isEnBoot ? 'Unknown module error' : '未知模块加载异常');
     showDiag(
       isEnBoot ? '⚠ Module Startup Failed' : '⚠ 模块启动失败',
@@ -538,7 +556,7 @@
   });
 
   window.setTimeout(function () {
-    if (window.__ABV_BOOTED__ || window.__ABV_MODULE_LOADED__) return;
+    if (window.__ABV_BOOTED__ || window.__ABV_MODULE_LOADED__ || bootErrShown) return;
     var isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
     if (isLocal) {
       showDiag(
@@ -560,6 +578,6 @@
   }, 8000);
 })();
 </script>
-<script type="module" src="./src/main.js?v=21.0.0"></script>
+<script type="module" src="./src/main.js?v=32.0.0"></script>
 </body>
 </html>

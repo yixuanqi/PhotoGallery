@@ -1,13 +1,13 @@
 // World hazards, pendulums, Abyssal River, projectiles, talismans, tides & camera
-import { COLORS, ROOM_THEMES, SOLIDS, VOID_BARRIERS, WORLD_W, WORLD_H, FLOOR_Y, PENDULUMS, ABYSSAL_RIVERS, PUDDLES, BOUNCE_PADS } from './config.js';
+import { COLORS, ROOM_THEMES, ROOMS, SOLIDS, VOID_BARRIERS, WORLD_MIN_X, WORLD_MIN_Y, WORLD_W, WORLD_H, FLOOR_Y, PENDULUMS, ABYSSAL_RIVERS, PUDDLES, WIND_ZONES, BOUNCE_PADS } from './config.js';
 import {
-  G, hooks, getLivingFoes, getAwakeBoss, getRelicStats, scheduleOutcome, addShake, punchZoom, triggerHitstop, damp
+  G, hooks, getLivingFoes, getAwakeBoss, getRelicStats, hasActiveWeaponTrait, scheduleOutcome, addShake, punchZoom, triggerHitstop, damp
 } from './state.js';
 import { getRoomAt } from './levelLoader.js';
 import { audio } from './audio.js';
 import { triggerHaptic } from './input.js';
 import {
-  spawnParticles, recycleParticle, spawnShockwave, spawnImpactBurst, spawnFloatText, spawnWeatherRipple
+  spawnParticles, recycleParticle, spawnShockwave, spawnImpactBurst, spawnHitMark, spawnFloatText, spawnWeatherRipple
 } from './vfx.js';
 import { aabbOverlap, getGroundSurfaceY } from './physics.js';
 import {
@@ -164,6 +164,19 @@ export function updateWorldEffects(dt) {
   for (let i = G.projectiles.length - 1; i >= 0; i--) {
     const pr = G.projectiles[i];
     pr.life -= dt;
+    if (WIND_ZONES.length > 0 && (pr.kind === 'wraithOrb' || pr.kind === 'windBlade' || pr.kind === 'frostShard' || pr.kind === 'soulWave' || pr.kind === 'bellWave' || pr.kind === 'crimsonWave')) {
+      for (let wi = 0; wi < WIND_ZONES.length; wi++) {
+        const wz = WIND_ZONES[wi];
+        if (pr.x >= wz.x && pr.x <= wz.x + wz.w && pr.y >= wz.y && pr.y <= wz.y + wz.h) {
+          pr.vy += (wz.vy || 0) * 0.45 * dt;
+          pr.vx += (wz.vx || 0) * 0.45 * dt;
+          if (Math.random() < 14 * dt) {
+            spawnParticles(pr.x, pr.y, 1, { color: '#e0f2fe', speed: 55, grav: -120, life: 0.22 });
+          }
+          break;
+        }
+      }
+    }
     pr.x += pr.vx * dt;
     pr.y += pr.vy * dt;
 
@@ -197,7 +210,7 @@ export function updateWorldEffects(dt) {
           audio.playHit(false, 2);
           audio.playBellChimeCast(3);
           triggerHaptic('lightHit', 0.7);
-          if ((foe.kind === 'golem' || ((foe.kind === 'boss2' || foe.kind === 'dummy') && foe.shieldUp)) && foe.shieldBrokenTimer <= 0 && pr.breaksShield) {
+          if ((foe.kind === 'golem' || foe.kind === 'warden_forest' || ((foe.kind === 'boss2' || foe.kind === 'dummy') && foe.shieldUp)) && foe.shieldBrokenTimer <= 0 && pr.breaksShield) {
             foe.shieldBrokenTimer = 2.4;
             if (foe.kind === 'boss2' || foe.kind === 'dummy') foe.shieldUp = false;
             audio.playShieldBreak();
@@ -208,6 +221,17 @@ export function updateWorldEffects(dt) {
           if (G.player) {
             G.player.soul = Math.min(G.player.maxSoul, G.player.soul + Math.round((pr.soulOnHit || 10) * getRelicStats().soulGainMult));
             G.player.switchStrikeWindow = 0.44;
+            if (hasActiveWeaponTrait('soul_gather') && G.player.bellSealCd <= 0) {
+              G.player.bellSealHits = (G.player.bellSealHits || 0) + 1;
+              if (G.player.bellSealHits >= 3) {
+                G.player.bellSealHits = 0;
+                G.player.bellSealCd = 1.8;
+                if (G.player.seals < G.player.maxSeals) {
+                  G.player.seals++;
+                  spawnFloatText(G.player.x + G.player.w * 0.5, G.player.y - 38, t('combat.traitSoulGather'), COLORS.cyanBright, 17, 0.85);
+                }
+              }
+            }
           }
           rallyPlayerGrayHp(8);
           spawnShockwave(pr.x, pr.y, 48, COLORS.cyanBright, 2.8, 0.20);
@@ -315,6 +339,39 @@ export function updateWorldEffects(dt) {
           if (pr.soulOnHit && G.player) {
             G.player.soul = Math.min(G.player.maxSoul, G.player.soul + Math.round(pr.soulOnHit * getRelicStats().soulGainMult));
             G.player.switchStrikeWindow = 0.44;
+            if (pr.kind === 'bellWave' && hasActiveWeaponTrait('soul_gather') && G.player.bellSealCd <= 0) {
+              G.player.bellSealHits = (G.player.bellSealHits || 0) + 1;
+              if (G.player.bellSealHits >= 3) {
+                G.player.bellSealHits = 0;
+                G.player.bellSealCd = 1.8;
+                if (G.player.seals < G.player.maxSeals) {
+                  G.player.seals++;
+                  spawnFloatText(G.player.x + G.player.w * 0.5, G.player.y - 38, t('combat.traitSoulGather'), COLORS.cyanBright, 17, 0.85);
+                }
+              }
+            }
+          }
+          if (pr.kind === 'bellWave' && pr.splitDart) {
+            pr.splitDart = false;
+            const ang = (pr.facing > 0 ? -0.45 : Math.PI + 0.45);
+            G.projectiles.push({
+              owner: 'player',
+              kind: 'bellHoming',
+              x: pr.x,
+              y: pr.y - 8,
+              vx: Math.cos(ang) * 490,
+              vy: Math.sin(ang) * 490,
+              speed: 490,
+              r: 10,
+              dmg: Math.max(10, Math.round(pr.dmg * 0.65)),
+              posture: 10,
+              breaksShield: true,
+              soulOnHit: 7,
+              life: 0.9,
+              maxLife: 0.9,
+              facing: pr.facing,
+              hitIds: new Set()
+            });
           }
           rallyPlayerGrayHp(isCrimson ? 18 : pr.kind === 'bellWave' ? 7 : 10);
           spawnParticles(foe.x + foe.w / 2, foe.y + foe.h * 0.45, 16, { color: pCol, speed: 240, spark: true, life: 0.34 });
@@ -392,9 +449,32 @@ export function updateWorldEffects(dt) {
           other.life = 0;
         }
       }
-    } else if (pr.kind === 'wraithOrb') {
+      if (G.sporeClouds && G.sporeClouds.length > 0 && getRelicStats().synSporeClapper) {
+        for (let si = G.sporeClouds.length - 1; si >= 0; si--) {
+          const sc = G.sporeClouds[si];
+          if (Math.hypot(pr.x - sc.x, pr.y - sc.y) < pr.r + sc.r) {
+            audio.playSporePurify();
+            spawnShockwave(sc.x, sc.y, sc.r * 1.45, '#4ade80', 4.0, 0.28);
+            spawnParticles(sc.x, sc.y, 20, { color: '#6ee7b7', speed: 210, spark: true, life: 0.4 });
+            for (const foe of targets) {
+              if (Math.hypot((foe.x + foe.w * 0.5) - sc.x, (foe.y + foe.h * 0.5) - sc.y) <= sc.r + 115) {
+                damageEnemyHP(foe, 38, true);
+                addPostureToEnemy(foe, 26);
+              }
+            }
+            if (G.player) {
+              G.player.hp = Math.min(G.player.maxHp, G.player.hp + 10);
+              G.player.soul = Math.min(G.player.maxSoul, G.player.soul + 18);
+            }
+            spawnFloatText(sc.x, sc.y - 26, t('combat.synSporeClapper'), '#6ee7b7', 17, 0.85);
+            G.sporeClouds.splice(si, 1);
+          }
+        }
+      }
+    } else if (pr.kind === 'wraithOrb' || pr.kind === 'windBlade' || pr.kind === 'frostShard' || pr.kind === 'boss4EchoOrb') {
       if (Math.random() < 28 * dt) {
-        spawnParticles(pr.x, pr.y, 1, { color: pr.reflected ? COLORS.goldBright : COLORS.crimson, speed: 45, grav: 0, life: 0.22 });
+        const trailCol = pr.reflected ? COLORS.goldBright : (pr.kind === 'boss4EchoOrb' ? (pr.stance === 'bell' ? COLORS.cyanBright : COLORS.goldBright) : pr.kind === 'windBlade' ? '#7dd3fc' : pr.kind === 'frostShard' ? '#bae6fd' : COLORS.crimson);
+        spawnParticles(pr.x, pr.y, 1, { color: trailCol, speed: 45, grav: 0, life: 0.22 });
       }
       const oBox = { x: pr.x - pr.r, y: pr.y - pr.r, w: pr.r * 2, h: pr.r * 2 };
       if (!pr.reflected) {
@@ -442,7 +522,10 @@ export function updateWorldEffects(dt) {
             spawnParticles(pr.x, pr.y, 22, { color: COLORS.goldBright, speed: 320, spark: true, bounce: true, grav: 560 });
             spawnFloatText(pr.x, pr.y - 22, t('combat.orbReflect'), COLORS.goldBright, 21, 0.85);
           } else {
-            applyIncomingAttackToPlayer(pr.source || { x: pr.x, w: 0, isBoss: false }, pr.dmg, false, 180);
+            const hitSrc = pr.inflictsFrost
+              ? { x: pr.x, w: 0, isBoss: false, inflictsFrost: pr.inflictsFrost }
+              : (pr.source || { x: pr.x, w: 0, isBoss: false });
+            applyIncomingAttackToPlayer(hitSrc, pr.dmg, false, 180);
             pr.life = 0;
           }
         }
@@ -453,8 +536,10 @@ export function updateWorldEffects(dt) {
             audio.playDetonate();
             triggerHitstop(0.05);
             addShake(9);
-            damageEnemyHP(foe, foe.isBoss ? 32 : 48, true);
-            addPostureToEnemy(foe, foe.isBoss ? 28 : 55);
+            const isEchoClash = pr.kind === 'boss4EchoOrb' && foe.kind === 'boss4';
+            damageEnemyHP(foe, isEchoClash ? 62 : (foe.isBoss ? 32 : 48), true);
+            addPostureToEnemy(foe, isEchoClash ? 56 : (foe.isBoss ? 28 : 55));
+            if (isEchoClash) spawnFloatText(foe.x + foe.w * 0.5, foe.y - 34, t('combat.boss4ClashBreak'), COLORS.goldBright, 22, 1.0);
             spawnShockwave(pr.x, pr.y, 75, COLORS.goldBright, 4, 0.25);
             spawnParticles(pr.x, pr.y, 22, { color: COLORS.goldBright, speed: 300, spark: true });
             pr.life = 0;
@@ -465,13 +550,13 @@ export function updateWorldEffects(dt) {
     }
 
     let hitSolid = false;
-    if (pr.kind === 'wraithOrb') {
+    if (pr.kind === 'wraithOrb' || pr.kind === 'windBlade' || pr.kind === 'frostShard' || pr.kind === 'boss4EchoOrb') {
       const pb = { x: pr.x - 5, y: pr.y - 5, w: 10, h: 10 };
       for (const s of SOLIDS) {
         if (s.type !== 'platform' && aabbOverlap(pb, s)) { hitSolid = true; break; }
       }
     }
-    if (hitSolid || pr.life <= 0 || pr.x < 0 || pr.x > WORLD_W || pr.y > WORLD_H + 40 || pr.y < -40) {
+    if (hitSolid || pr.life <= 0 || pr.x < WORLD_MIN_X - 40 || pr.x > WORLD_W + 40 || pr.y > WORLD_H + 40 || pr.y < WORLD_MIN_Y - 40) {
       if (hitSolid) spawnParticles(pr.x, pr.y, 7, { color: COLORS.crimsonBright, speed: 120, life: 0.22 });
       G.projectiles.splice(i, 1);
     }
@@ -545,13 +630,60 @@ export function updateWorldEffects(dt) {
     gw.x += gw.vx * dt;
     gw.life -= dt;
     if (Math.random() < 32 * dt) {
-      spawnParticles(gw.x, fy - 8, 1, { color: gw.gold ? COLORS.goldBright : COLORS.crimsonBright, speed: 90, grav: -160, life: 0.3 });
+      const gwCol = gw.theme === 'vine' ? '#4ade80' : (gw.theme === 'frost' ? '#7dd3fc' : (gw.gold ? COLORS.goldBright : COLORS.crimsonBright));
+      spawnParticles(gw.x, fy - 8, 1, { color: gwCol, speed: 90, grav: -160, life: 0.3 });
     }
     if (!gw.hit && aabbOverlap({ x: gw.x - gw.w / 2, y: fy - gw.h, w: gw.w, h: gw.h }, G.player)) {
       gw.hit = true;
-      applyIncomingAttackToPlayer({ x: gw.x, w: 0, isBoss: true }, 24, true, 240);
+      const gwSrc = gw.theme === 'frost' ? { x: gw.x, w: 0, isBoss: false, inflictsFrost: 28 } : { x: gw.x, w: 0, isBoss: true };
+      applyIncomingAttackToPlayer(gwSrc, 24, true, 240);
     }
     if (gw.life <= 0 || gw.x < minX || gw.x > maxX) G.groundWaves.splice(i, 1);
+  }
+
+  // Toxic Fungal Spore Clouds (枯墨古林毒孢云 — 可用 W+L 镇魂钟鸣驱散)
+  if (G.sporeClouds && G.sporeClouds.length > 0) {
+    for (let i = G.sporeClouds.length - 1; i >= 0; i--) {
+      const sc = G.sporeClouds[i];
+      sc.life -= dt;
+      if (Math.random() < 12 * dt) {
+        const ang = Math.random() * Math.PI * 2;
+        const dist = Math.random() * sc.r * 0.85;
+        spawnParticles(sc.x + Math.cos(ang) * dist, sc.y + Math.sin(ang) * dist * 0.65, 1, {
+          color: '#4ade80', speed: 32, grav: -35, life: 0.45
+        });
+      }
+      if (G.player && G.player.hp > 0 && G.player.sporeDmgCd <= 0 && G.player.iframeTimer <= 0 && G.player.execTimer <= 0 && G.player.grappleState === 'none') {
+        const px = G.player.x + G.player.w * 0.5;
+        const py = G.player.y + G.player.h * 0.5;
+        if (Math.hypot(px - sc.x, py - sc.y) < sc.r + 12) {
+          if (getRelicStats().sporeImmune) {
+            G.player.sporeDmgCd = 0.9;
+            spawnParticles(px, py, 5, { color: '#6ee7b7', speed: 80, grav: -60, life: 0.3 });
+            continue;
+          }
+          G.player.sporeDmgCd = 0.72;
+          const assistMult = (G.settings && typeof G.settings.damageTakenMult === 'number') ? G.settings.damageTakenMult : 1.0;
+          const dmg = Math.max(1, Math.round((sc.dmg || 9) * assistMult));
+          G.player.hp = Math.max(0, G.player.hp - dmg);
+          G.stats.damageTaken += dmg;
+          if (G.echoSession) G.echoSession.damageTaken += dmg;
+          audio.playHit(false);
+          G.screenFlash = { alpha: 0.16, color: '#22c55e' };
+          spawnParticles(px, py, 10, { color: '#4ade80', speed: 140, grav: -40, life: 0.4 });
+          spawnFloatText(px, G.player.y - 20, t('combat.sporeDmg', dmg), '#4ade80', 17, 0.8);
+          if (G.player.hp <= 0) {
+            G.player.hp = 0;
+            G.player.deathTimer = 0.65;
+            G.player.vx = -G.player.facing * 80;
+            G.player.vy = -120;
+            dropPlayerEchoesOnDeath(false);
+            scheduleOutcome(hooks.showDeath, 650, false);
+          }
+        }
+      }
+      if (sc.life <= 0) G.sporeClouds.splice(i, 1);
+    }
   }
 
   // Slashes, Shockwaves, ImpactBursts, HitMarks, Afterimages, Particles, Float Texts
@@ -570,6 +702,297 @@ export function updateWorldEffects(dt) {
     for (let i = G.bellQuakes.length - 1; i >= 0; i--) {
       G.bellQuakes[i].life -= dt;
       if (G.bellQuakes[i].life <= 0) G.bellQuakes.splice(i, 1);
+    }
+  }
+
+  // v25.0 Blade Forge Trait `shadow_twin` Delayed Phantom Follow-Up Cuts
+  if (G.delayedStrikes && G.delayedStrikes.length > 0) {
+    for (let i = G.delayedStrikes.length - 1; i >= 0; i--) {
+      const ds = G.delayedStrikes[i];
+      ds.timer -= dt;
+      if (ds.timer <= 0) {
+        audio.playIaiSlash();
+        addShake(6);
+        G.slashes.push({
+          x: ds.x, y: ds.y, x0: ds.x - ds.facing * 52, x1: ds.x + ds.facing * 88,
+          facing: ds.facing, type: 'iai', life: 0.24, maxLife: 0.24
+        });
+        spawnShockwave(ds.x, ds.y, 66, COLORS.cyanBright, 3.0, 0.22);
+        const dsBox = { x: ds.x - 74, y: ds.y - 36, w: 148, h: 72 };
+        let hitAny = false;
+        for (const foe of getLivingFoes()) {
+          if (aabbOverlap(dsBox, foe)) {
+            hitAny = true;
+            damageEnemyHP(foe, ds.dmg, true);
+            addPostureToEnemy(foe, ds.posture);
+            spawnHitMark(foe.x + foe.w * 0.5, foe.y + foe.h * 0.45, -0.35 * ds.facing, COLORS.cyanBright, 90, 7);
+          }
+        }
+        if (hitAny && G.player) {
+          G.player.soul = Math.min(G.player.maxSoul, G.player.soul + Math.round(10 * getRelicStats().soulGainMult));
+          spawnFloatText(ds.x, ds.y - 26, t('combat.traitShadowTwin'), COLORS.cyanBright, 16, 0.72);
+        }
+        G.delayedStrikes.splice(i, 1);
+      }
+    }
+  }
+
+  // v25.0 Full-Seal Weapon Resonance Ultimates Runtime
+  if (G.weaponUltimates && G.weaponUltimates.length > 0) {
+    for (let i = G.weaponUltimates.length - 1; i >= 0; i--) {
+      const u = G.weaponUltimates[i];
+      u.life -= dt;
+      if (u.kind === 'blade_dimension') {
+        u.cutTimer -= dt;
+        if (u.cutsDone < u.cutsTotal && u.cutTimer <= 0) {
+          const cutIdx = u.cutsDone++;
+          const isFinal = cutIdx === u.cutsTotal - 1;
+          u.cutTimer = u.cutStep || 0.085;
+          const liveTargets = (u.targets || []).filter(f => f && f.alive);
+          const pick = liveTargets.length > 0 ? liveTargets[cutIdx % liveTargets.length] : null;
+          const cx = pick ? (pick.x + pick.w * 0.5) : (u.x + (cutIdx - 2) * 34 * u.facing);
+          const cy = pick ? (pick.y + pick.h * 0.45) : (u.y + Math.sin(cutIdx * 1.9) * 28);
+          const ang = (cutIdx % 2 === 0 ? -0.62 : 0.62) + (cutIdx - 2) * 0.14;
+          u.ribbons.push({ x: cx, y: cy, ang, len: isFinal ? 175 : 132, life: 0.34, maxLife: 0.34, gold: isFinal });
+          audio.playHit(isFinal, isFinal ? 3 : 2);
+          addShake(isFinal ? 13 : 6);
+          spawnHitMark(cx, cy, ang, isFinal ? COLORS.goldBright : '#ffffff', isFinal ? 135 : 96, isFinal ? 9 : 7);
+          spawnParticles(cx, cy, isFinal ? 26 : 12, { color: COLORS.goldBright, speed: 320, spark: true, life: 0.38 });
+          if (isFinal) {
+            spawnShockwave(cx, cy, 160, u.augFrost ? '#bae6fd' : COLORS.goldBright, 5.2, 0.36);
+            spawnShockwave(cx, cy, 105, u.augGale ? '#7dd3fc' : COLORS.crimsonBright, 3.4, 0.28);
+            if (u.augFrost) {
+              audio.playFrostShatter();
+              [-1, 1].forEach(dir => {
+                G.projectiles.push({
+                  owner: 'player', kind: 'bellHoming',
+                  x: cx + dir * 20, y: cy, vx: dir * 520, vy: -90, speed: 520, r: 12,
+                  dmg: Math.round(u.cutDmg * 1.15), posture: 24, breaksShield: true, soulOnHit: 6,
+                  life: 0.95, maxLife: 0.95, facing: dir, hitIds: new Set()
+                });
+              });
+            }
+          }
+          if (u.augSpore && G.sporeClouds && G.sporeClouds.length > 0) {
+            for (let si = G.sporeClouds.length - 1; si >= 0; si--) {
+              if (Math.hypot(G.sporeClouds[si].x - cx, G.sporeClouds[si].y - cy) <= 165) {
+                G.sporeClouds.splice(si, 1);
+                audio.playSporePurify();
+              }
+            }
+          }
+          const cutR = isFinal ? 150 : 108;
+          for (const foe of getLivingFoes()) {
+            const fx = foe.x + foe.w * 0.5;
+            const fy = foe.y + foe.h * 0.45;
+            if (Math.hypot(fx - cx, fy - cy) <= cutR + Math.max(foe.w, foe.h) * 0.3) {
+              if ((foe.kind === 'golem' || foe.kind === 'warden_forest' || ((foe.kind === 'boss2' || foe.kind === 'dummy') && foe.shieldUp)) && foe.shieldBrokenTimer <= 0) {
+                foe.shieldBrokenTimer = 3.2;
+                if (foe.kind === 'boss2' || foe.kind === 'dummy') foe.shieldUp = false;
+                audio.playShieldBreak();
+              }
+              damageEnemyHP(foe, isFinal ? Math.round(u.cutDmg * 1.55) : u.cutDmg, true);
+              addPostureToEnemy(foe, isFinal ? Math.round(u.cutPosture * 1.45) : u.cutPosture);
+              if (u.augSpore && G.player) {
+                G.player.hp = Math.min(G.player.maxHp, G.player.hp + 4);
+                G.player.soul = Math.min(G.player.maxSoul, G.player.soul + 5);
+              }
+            }
+          }
+          for (const pr of G.projectiles) {
+            if (pr.owner === 'enemy' && pr.life > 0 && Math.hypot(pr.x - cx, pr.y - cy) <= cutR + pr.r) pr.life = 0;
+          }
+        }
+        for (let r = u.ribbons.length - 1; r >= 0; r--) {
+          u.ribbons[r].life -= dt;
+          if (u.ribbons[r].life <= 0) u.ribbons.splice(r, 1);
+        }
+      } else if (u.kind === 'hammer_bell') {
+        u.elapsed += dt;
+        const p = Math.min(1, u.elapsed / u.dropDur);
+        const eased = p * p * p;
+        u.y = u.startY + (u.groundY - u.startY) * eased;
+        if (!u.impacted && p >= 1) {
+          u.impacted = true;
+          audio.playBellQuake();
+          triggerHaptic('execution', 1.25);
+          triggerHitstop(0.065, true);
+          addShake(18);
+          punchZoom(1.06);
+          G.screenFlash = { alpha: 0.30, color: COLORS.goldBright };
+          const ix = u.x;
+          const iy = u.groundY - 12;
+          spawnShockwave(ix, iy, 260, COLORS.goldBright, 6.2, 0.45);
+          spawnShockwave(ix, iy, 170, '#fef9c3', 3.8, 0.32);
+          spawnParticles(ix, iy, 36, { color: COLORS.goldBright, speed: 360, spark: true, bounce: true, grav: 600, life: 0.55 });
+          spawnParticles(ix, iy, 18, { color: COLORS.parchment, speed: 260, grav: 440, life: 0.48 });
+          if (G.player) {
+            const healAmt = Math.round(G.player.maxHp * (u.augSpore ? 0.20 : 0.12));
+            G.player.hp = Math.min(G.player.maxHp, G.player.hp + healAmt);
+            G.player.grayHp = 0;
+          }
+          if (u.augFrost) {
+            audio.playFrostShatter();
+            spawnShockwave(ix, iy, 290, '#bae6fd', 4.6, 0.42);
+          }
+          if (u.augSpore && G.sporeClouds && G.sporeClouds.length > 0) {
+            for (let si = G.sporeClouds.length - 1; si >= 0; si--) {
+              if (Math.hypot(G.sporeClouds[si].x - ix, G.sporeClouds[si].y - iy) <= 320) {
+                spawnShockwave(G.sporeClouds[si].x, G.sporeClouds[si].y, 90, '#6ee7b7', 3.4, 0.28);
+                G.sporeClouds.splice(si, 1);
+                audio.playSporePurify();
+              }
+            }
+          }
+          if (u.augGale) {
+            audio.playWindBlade();
+            [-1, 1].forEach(dir => {
+              G.projectiles.push({
+                owner: 'player', kind: 'bellWave',
+                x: ix + dir * 28, y: iy - 28, vx: dir * 560, vy: -110, r: 22,
+                dmg: Math.round(u.waveDmg * 0.85), posture: 22, heavy: true, breaksShield: true, soulOnHit: 8,
+                life: 0.62, maxLife: 0.62, facing: dir, hitIds: new Set()
+              });
+            });
+          }
+          for (const foe of getLivingFoes()) {
+            const fx = foe.x + foe.w * 0.5;
+            const fy = foe.y + foe.h * 0.5;
+            if (Math.hypot(fx - ix, fy - iy) <= 260) {
+              if ((foe.kind === 'golem' || foe.kind === 'warden_forest' || ((foe.kind === 'boss2' || foe.kind === 'dummy') && foe.shieldUp)) && foe.shieldBrokenTimer <= 0) {
+                foe.shieldBrokenTimer = 4.2;
+                if (foe.kind === 'boss2' || foe.kind === 'dummy') foe.shieldUp = false;
+                audio.playShieldBreak();
+              }
+              damageEnemyHP(foe, u.dmg, true);
+              addPostureToEnemy(foe, u.posture);
+              if (!foe.isBoss && foe.state !== 'stagger') {
+                foe.vx = (fx >= ix ? 1 : -1) * 320;
+                if (foe.kind !== 'wraith' && foe.kind !== 'falcon') foe.vy = -260;
+              }
+            }
+          }
+          // Twin colossal seismic hammerWaves
+          [-1, 1].forEach(dir => {
+            G.projectiles.push({
+              owner: 'player', kind: 'hammerWave',
+              x: ix + dir * 40, y: iy, vx: dir * 560, vy: 0, r: 32,
+              dmg: u.waveDmg, posture: 36, heavy: true, breaksShield: true, soulOnHit: 10,
+              life: 0.72, maxLife: 0.72, facing: dir, hitIds: new Set()
+            });
+          });
+          // Shatter secret walls, clear enemy projectiles, ring lanterns & puzzle bells
+          if (G.worldState) {
+            for (const w of G.worldState.secretWalls) {
+              if (!w.broken && Math.hypot((w.x + w.w * 0.5) - ix, (w.y + w.h * 0.5) - iy) <= 265) damageSecretWall(w, 3);
+            }
+          }
+          for (const pr of G.projectiles) {
+            if (pr.owner === 'enemy' && pr.life > 0 && Math.hypot(pr.x - ix, pr.y - iy) <= 260) pr.life = 0;
+          }
+          for (const l of G.lanterns) {
+            const lx = l.x + Math.sin(l.angle) * l.len;
+            const ly = l.anchorY + Math.cos(l.angle) * l.len;
+            if (Math.hypot(lx - ix, ly - iy) <= 290) {
+              l.angVel += (lx >= ix ? 1 : -1) * 8.0;
+              l.ringFlash = 0.6;
+              tryQuellChapelTideByLantern(l, lx, ly);
+            }
+          }
+          if (G.resonancePuzzles) {
+            for (const pz of G.resonancePuzzles) {
+              for (const b of pz.bells) {
+                if (Math.hypot(b.x - ix, b.y - iy) <= 290) ringResonanceBell(pz, b, b.x >= ix ? 1 : -1);
+              }
+            }
+          }
+        }
+      } else if (u.kind === 'bell_sanctum') {
+        u.pulseTimer -= dt;
+        if (u.pulsesLeft > 0 && u.pulseTimer <= 0) {
+          u.pulsesLeft--;
+          u.pulseTimer = u.pulseInterval;
+          audio.playBellChimeCast(3);
+          addShake(4.5);
+          spawnShockwave(u.x, u.y, u.radius, COLORS.cyanBright, 3.6, 0.34);
+          spawnShockwave(u.x, u.y, u.radius * 0.62, COLORS.goldBright, 2.2, 0.26);
+          if (G.player && G.player.hp > 0) {
+            G.player.hp = Math.min(G.player.maxHp, G.player.hp + (u.augSpore ? 12 : 6));
+            G.player.soul = Math.min(G.player.maxSoul, G.player.soul + (u.augSpore ? 18 : 12));
+          }
+          if (u.augFrost) {
+            G.projectiles.push({
+              owner: 'player', kind: 'bellHoming',
+              x: u.x, y: u.y - 26, vx: 0, vy: -480, speed: 540, r: 12,
+              dmg: Math.round(u.dartDmg * 1.15), posture: 26, breaksShield: true, soulOnHit: 6,
+              life: 1.15, maxLife: 1.15, facing: 1, hitIds: new Set()
+            });
+          }
+          // Damage & stagger foes inside sanctum
+          for (const foe of getLivingFoes()) {
+            const fx = foe.x + foe.w * 0.5;
+            const fy = foe.y + foe.h * 0.45;
+            if (Math.hypot(fx - u.x, fy - u.y) <= u.radius + Math.max(foe.w, foe.h) * 0.35) {
+              damageEnemyHP(foe, u.pulseDmg, true);
+              addPostureToEnemy(foe, u.pulsePosture);
+              spawnParticles(fx, fy, 8, { color: COLORS.cyanBright, speed: 180, spark: true, life: 0.28 });
+            }
+          }
+          // Launch 2 homing Spirit Darts per pulse
+          for (let d = 0; d < 2; d++) {
+            const a = (d === 0 ? -0.65 : -Math.PI + 0.65) + (u.pulsesLeft * 0.35);
+            G.projectiles.push({
+              owner: 'player', kind: 'bellHoming',
+              x: u.x + Math.cos(a) * 32, y: u.y + Math.sin(a) * 32,
+              vx: Math.cos(a) * 510, vy: Math.sin(a) * 510, speed: 510, r: 11,
+              dmg: u.dartDmg, posture: 14, breaksShield: true, soulOnHit: 6,
+              life: 1.15, maxLife: 1.15, facing: Math.cos(a) >= 0 ? 1 : -1, hitIds: new Set()
+            });
+          }
+          // Disperse enemy orbs, purify toxic spore clouds & ring nearby lanterns/bells
+          for (const pr of G.projectiles) {
+            if (pr.owner === 'enemy' && pr.life > 0 && Math.hypot(pr.x - u.x, pr.y - u.y) <= u.radius + pr.r) {
+              pr.life = 0;
+              spawnParticles(pr.x, pr.y, 8, { color: COLORS.cyanBright, speed: 160, spark: true });
+            }
+          }
+          if (G.sporeClouds && G.sporeClouds.length > 0) {
+            for (let si = G.sporeClouds.length - 1; si >= 0; si--) {
+              const sc = G.sporeClouds[si];
+              if (Math.hypot(sc.x - u.x, sc.y - u.y) <= u.radius + sc.r) {
+                audio.playSporePurify();
+                spawnShockwave(sc.x, sc.y, sc.r * (u.augSpore ? 1.5 : 1.0), '#6ee7b7', 3.4, 0.28);
+                if (u.augSpore) {
+                  for (const foe of getLivingFoes()) {
+                    if (Math.hypot((foe.x + foe.w * 0.5) - sc.x, (foe.y + foe.h * 0.5) - sc.y) <= sc.r + 125) {
+                      damageEnemyHP(foe, 42, true);
+                      addPostureToEnemy(foe, 28);
+                    }
+                  }
+                }
+                G.sporeClouds.splice(si, 1);
+              }
+            }
+          }
+          for (const l of G.lanterns) {
+            const lx = l.x + Math.sin(l.angle) * l.len;
+            const ly = l.anchorY + Math.cos(l.angle) * l.len;
+            if (Math.hypot(lx - u.x, ly - u.y) <= u.radius + 40) {
+              l.angVel += (lx >= u.x ? 1 : -1) * 6.0;
+              l.ringFlash = 0.45;
+              tryQuellChapelTideByLantern(l, lx, ly);
+            }
+          }
+          if (G.resonancePuzzles) {
+            for (const pz of G.resonancePuzzles) {
+              for (const b of pz.bells) {
+                if (Math.hypot(b.x - u.x, b.y - u.y) <= u.radius + 45) ringResonanceBell(pz, b, b.x >= u.x ? 1 : -1);
+              }
+            }
+          }
+        }
+      }
+      if (u.life <= 0) G.weaponUltimates.splice(i, 1);
     }
   }
   for (let i = G.shockwaves.length - 1; i >= 0; i--) {
@@ -633,6 +1056,18 @@ export function updateWorldEffects(dt) {
   }
   updateAchievementBanner(dt);
   updateThemeAndWeather(dt);
+  if (G.wardenArenaFx) {
+    if (G.wardenArenaFx.bellPulseTimer > 0) G.wardenArenaFx.bellPulseTimer = Math.max(0, G.wardenArenaFx.bellPulseTimer - dt);
+    const hasBlizzWarden = G.enemies && G.enemies.some(e => e && e.alive && e.kind === 'warden_mountain' && e.awake && e.phase >= 2);
+    if (!hasBlizzWarden && G.wardenArenaFx.blizzardAlpha > 0) {
+      G.wardenArenaFx.blizzardAlpha = Math.max(0, G.wardenArenaFx.blizzardAlpha - dt * 1.4);
+    }
+    const hasWindWarden = G.enemies && G.enemies.some(e => e && e.alive && e.kind === 'warden_wind' && e.awake && e.phase >= 2);
+    if (!hasWindWarden && G.wardenArenaFx.windTimer > 0) {
+      G.wardenArenaFx.windTimer = 0;
+      G.wardenArenaFx.windDir = 0;
+    }
+  }
   if (G.screenFlash.alpha > 0) G.screenFlash.alpha = Math.max(0, G.screenFlash.alpha - dt * 1.2);
 }
 
@@ -750,28 +1185,239 @@ export function updateThemeAndWeather(dt) {
   }
 }
 
-export function updateCamera(dt) {
-  const activeBoss = getAwakeBoss();
-  const targetX = activeBoss
-    ? Math.max(activeBoss.arenaMinX - 28, Math.min(activeBoss.arenaMaxX + 42 - G.canvasW, (G.player.x + activeBoss.x) * 0.5 - G.canvasW * 0.5 + 30))
-    : G.player.x + G.player.facing * 95 - G.canvasW * 0.5;
-  const clampedX = Math.max(0, Math.min(Math.max(0, WORLD_W - G.canvasW), targetX));
-  G.cam.x += (clampedX - G.cam.x) * Math.min(1, dt * 6.5);
+function isSecretWallBroken(wallId) {
+  if (!G.worldState || !Array.isArray(G.worldState.secretWalls)) return false;
+  for (let i = 0; i < G.worldState.secretWalls.length; i++) {
+    if (G.worldState.secretWalls[i].id === wallId) return !!G.worldState.secretWalls[i].broken;
+  }
+  return true;
+}
 
-  let minCamY = -40;
-  let maxCamY = Math.max(0, WORLD_H - G.canvasH);
-  let focusY = G.player.y - G.canvasH * 0.54;
-  if (activeBoss) {
-    if (activeBoss.id === 'boss_hui' || activeBoss.id === 'boss_yuan') {
-      maxCamY = Math.max(0, 720 - G.canvasH);
-    } else {
-      minCamY = Math.max(0, activeBoss.arenaTopY - 40);
-      maxCamY = Math.max(minCamY, WORLD_H - G.canvasH);
-      focusY = (G.player.y * 0.65 + activeBoss.y * 0.35) - G.canvasH * 0.5;
+function roomsOverlapVertically(a, b) {
+  const ay0 = a.bounds.y, ay1 = a.bounds.y + a.bounds.h;
+  const by0 = b.bounds.y, by1 = b.bounds.y + b.bounds.h;
+  return Math.min(ay1, by1) - Math.max(ay0, by0) >= 80;
+}
+
+function roomsTouchHorizontally(a, b) {
+  const ax0 = a.bounds.x, ax1 = a.bounds.x + a.bounds.w;
+  const bx0 = b.bounds.x, bx1 = b.bounds.x + b.bounds.w;
+  return Math.abs(ax1 - bx0) <= 12 || Math.abs(bx1 - ax0) <= 12;
+}
+
+function roomsOverlapHorizontally(a, b) {
+  const ax0 = a.bounds.x, ax1 = a.bounds.x + a.bounds.w;
+  const bx0 = b.bounds.x, bx1 = b.bounds.x + b.bounds.w;
+  return Math.min(ax1, bx1) - Math.max(ax0, bx0) >= 60;
+}
+
+function roomsTouchVertically(a, b) {
+  const ay0 = a.bounds.y, ay1 = a.bounds.y + a.bounds.h;
+  const by0 = b.bounds.y, by1 = b.bounds.y + b.bounds.h;
+  return Math.abs(ay1 - by0) <= 24 || Math.abs(by1 - ay0) <= 24;
+}
+
+function isVerticalLinkOpen(fromRm, toRm) {
+  if (!fromRm || !toRm || fromRm.id === toRm.id) return false;
+  if (!Array.isArray(fromRm.connections) || !fromRm.connections.includes(toRm.id)) return false;
+  if (!roomsTouchVertically(fromRm, toRm) || !roomsOverlapHorizontally(fromRm, toRm)) return false;
+  const pair = `${fromRm.id}>${toRm.id}`;
+  if (pair === 'r01_sanctuary>r10_ink_woods' || pair === 'r10_ink_woods>r01_sanctuary') {
+    return isSecretWallBroken('wall_forest_shaft');
+  }
+  return true;
+}
+
+function isHorizontalLinkOpen(fromRm, toRm) {
+  if (!fromRm || !toRm || fromRm.id === toRm.id) return false;
+  if (!Array.isArray(fromRm.connections) || !fromRm.connections.includes(toRm.id)) return false;
+  if (!roomsTouchHorizontally(fromRm, toRm) || !roomsOverlapVertically(fromRm, toRm)) return false;
+
+  const pair = `${fromRm.id}>${toRm.id}`;
+  const ws = G.worldState;
+  if (!ws) return true;
+  if (pair === 'r04_bell_well>r09_wind_spire') return isSecretWallBroken('wall_wind_west');
+  if (pair === 'r04_bell_well>r06_crypt') return isSecretWallBroken('wall_crypt_east');
+  if (pair === 'r07_ascent>r11_frost_ridge') return isSecretWallBroken('wall_frost_entry');
+  if (pair === 'r06_crypt>r10_ink_woods') return !!(ws.abilities && ws.abilities.shadeDash);
+  if (pair === 'r04_bell_well>r05_foundry') return !!((ws.abilities && ws.abilities.doubleJump) || G.echoSession);
+  if (pair === 'r03_chapel>r04_bell_well') return !!ws.bossDefeated;
+  if (pair === 'r05_foundry>r07_ascent') return !!ws.boss2Defeated;
+  return true;
+}
+
+export function isRoomOccluded(roomId) {
+  if (!roomId || !G.roomOcclusion) return false;
+  const a = G.roomOcclusion[roomId];
+  return a !== undefined && a > 0.86;
+}
+
+export function updateRoomVisibility(dt, snap = false) {
+  if (!ROOMS.length) return null;
+  const fx = G.player ? (G.player.x + G.player.w * 0.5) : (G.cam.x + G.canvasW * 0.5);
+  const fy = G.player ? (G.player.y + G.player.h * 0.5) : (G.cam.y + G.canvasH * 0.5);
+  const curRoom = getRoomAt(fx, fy) || ROOMS[0];
+  if (!curRoom) return null;
+  G.currentRoomId = curRoom.id;
+
+  const vis = G.visibleRoomIds || (G.visibleRoomIds = new Set());
+  vis.clear();
+  vis.add(curRoom.id);
+
+  // Add horizontally & vertically connected unlocked rooms near the player's band
+  for (let i = 0; i < ROOMS.length; i++) {
+    const other = ROOMS[i];
+    if (isHorizontalLinkOpen(curRoom, other)) {
+      const ob = other.bounds;
+      if (curRoom.bounds.h <= 900 || (fy >= ob.y - 120 && fy <= ob.y + ob.h + 120)) {
+        vis.add(other.id);
+      }
+    } else if (isVerticalLinkOpen(curRoom, other)) {
+      const ob = other.bounds;
+      const nearSeamY = Math.abs(fy - ob.y) < 460 || Math.abs(fy - (ob.y + ob.h)) < 460;
+      if (nearSeamY && fx >= ob.x - 180 && fx <= ob.x + ob.w + 180) {
+        vis.add(other.id);
+      }
     }
   }
-  const targetY = Math.min(maxCamY, Math.max(minCamY, focusY));
-  G.cam.y += (targetY - G.cam.y) * Math.min(1, dt * 5.8);
+
+  const occ = G.roomOcclusion || (G.roomOcclusion = {});
+  const step = snap ? 1 : Math.min(1, dt * 11.5);
+  for (let i = 0; i < ROOMS.length; i++) {
+    const id = ROOMS[i].id;
+    const target = vis.has(id) ? 0 : 1;
+    if (snap || occ[id] === undefined) {
+      occ[id] = target;
+    } else {
+      occ[id] += (target - occ[id]) * step;
+      if (Math.abs(occ[id] - target) < 0.008) occ[id] = target;
+    }
+  }
+  return curRoom;
+}
+
+function computeCameraTargets(curRoom) {
+  const activeBoss = getAwakeBoss();
+  if (activeBoss) {
+    const bRoom = (activeBoss.roomId && ROOMS.find(r => r.id === activeBoss.roomId)) || curRoom;
+    const arenaMin = activeBoss.arenaMinX - 24;
+    const arenaMax = activeBoss.arenaMaxX + 24;
+    const arenaW = arenaMax - arenaMin;
+    let clampedX;
+    if (arenaW <= G.canvasW) {
+      clampedX = arenaMin - (G.canvasW - arenaW) * 0.5;
+    } else {
+      const wantX = (G.player.x + activeBoss.x) * 0.5 - G.canvasW * 0.5 + 24;
+      clampedX = Math.max(arenaMin, Math.min(arenaMax - G.canvasW, wantX));
+    }
+    const minY = bRoom ? bRoom.bounds.y : activeBoss.arenaTopY;
+    const maxY = bRoom
+      ? Math.max(minY, bRoom.bounds.y + bRoom.bounds.h - G.canvasH)
+      : Math.max(minY, WORLD_H - G.canvasH);
+    const focusY = (G.player.y * 0.65 + activeBoss.y * 0.35) - G.canvasH * 0.52;
+    return {
+      x: Math.max(WORLD_MIN_X, Math.min(Math.max(WORLD_MIN_X, WORLD_W - G.canvasW), clampedX)),
+      y: Math.min(maxY, Math.max(minY, focusY))
+    };
+  }
+
+  const rm = curRoom || (ROOMS[0] || { bounds: { x: 0, y: 0, w: WORLD_W, h: WORLD_H } });
+  const b = rm.bounds;
+  const px = G.player ? (G.player.x + G.player.w * 0.5) : (b.x + b.w * 0.5);
+  const py = G.player ? (G.player.y + G.player.h * 0.5) : (b.y + b.h * 0.5);
+
+  // Horizontal camera span: current room + open same-tier horizontal neighbors (up to 2 hops)
+  let spanMinX = b.x;
+  let spanMaxX = b.x + b.w;
+  const visited = new Set([rm.id]);
+  let frontier = [rm];
+  for (let hop = 0; hop < 2; hop++) {
+    const next = [];
+    for (let f = 0; f < frontier.length; f++) {
+      const cur = frontier[f];
+      for (let i = 0; i < ROOMS.length; i++) {
+        const nb = ROOMS[i];
+        if (visited.has(nb.id)) continue;
+        if (!isHorizontalLinkOpen(cur, nb)) continue;
+        // For tall shaft rooms, only expand horizontally on the side matching player's elevation
+        if (cur.bounds.h > 900 && (py < nb.bounds.y - 60 || py > nb.bounds.y + nb.bounds.h + 60)) continue;
+        visited.add(nb.id);
+        if (nb.bounds.x < spanMinX) spanMinX = nb.bounds.x;
+        if (nb.bounds.x + nb.bounds.w > spanMaxX) spanMaxX = nb.bounds.x + nb.bounds.w;
+        next.push(nb);
+      }
+    }
+    frontier = next;
+  }
+
+  const wantX = G.player ? (G.player.x + G.player.facing * 88 - G.canvasW * 0.5) : (px - G.canvasW * 0.5);
+  let clampedX;
+  if (spanMaxX - spanMinX <= G.canvasW) {
+    clampedX = spanMinX - (G.canvasW - (spanMaxX - spanMinX)) * 0.5;
+  } else {
+    clampedX = Math.max(spanMinX, Math.min(spanMaxX - G.canvasW, wantX));
+  }
+  clampedX = Math.max(WORLD_MIN_X, Math.min(Math.max(WORLD_MIN_X, WORLD_W - G.canvasW), clampedX));
+
+  // Vertical camera span: strictly clamped at solid floors/ceilings, but smoothly glides across open vertical shafts!
+  let minCamY = b.y;
+  let maxCamY = Math.max(minCamY, b.y + b.h - G.canvasH);
+  for (let i = 0; i < ROOMS.length; i++) {
+    const nb = ROOMS[i];
+    if (!isVerticalLinkOpen(rm, nb)) continue;
+    const ob = nb.bounds;
+    if (px < ob.x - 140 || px > ob.x + ob.w + 140) continue;
+    // Open room directly above current room (e.g., r09 -> r12, r15 -> r10, r14 -> r10, r10 -> r01)
+    if (Math.abs((ob.y + ob.h) - b.y) <= 24 && (py - b.y) < 310) {
+      minCamY = Math.min(minCamY, b.y - Math.min(220, ob.h * 0.36));
+    }
+    // Open room directly below current room (e.g., r10 -> r14, r12 -> r09)
+    if (Math.abs(ob.y - (b.y + b.h)) <= 24 && ((b.y + b.h) - py) < 310) {
+      maxCamY = Math.max(maxCamY, b.y + b.h + Math.min(220, ob.h * 0.36) - G.canvasH);
+    }
+  }
+  const vLook = G.cam.vLookY || 0;
+  const focusY = (G.player ? G.player.y : py) + vLook - G.canvasH * 0.56;
+  const clampedY = Math.min(maxCamY, Math.max(minCamY, focusY));
+
+  return { x: clampedX, y: clampedY };
+}
+
+export function snapCameraToPlayer(shake = 0) {
+  const curRoom = updateRoomVisibility(0, true);
+  G.cam.vLookY = 0;
+  G.cam.roomTransTimer = 0;
+  const tgt = computeCameraTargets(curRoom);
+  G.cam.x = tgt.x;
+  G.cam.y = tgt.y;
+  G.cam.shake = shake;
+  G.cam.kickX = 0;
+  G.cam.kickY = 0;
+  G.cam.zoom = 1;
+}
+
+export function updateCamera(dt) {
+  const prevRoomId = G.currentRoomId;
+  const curRoom = updateRoomVisibility(dt, false);
+
+  // Smooth vertical velocity lookahead for updraft ascents, spore bounces & deep cavern drops
+  let targetVLook = 0;
+  if (G.player && !G.player.grounded && Math.abs(G.player.vy) > 260) {
+    const sign = G.player.vy > 0 ? 1 : -1;
+    targetVLook = sign * Math.min(82, (Math.abs(G.player.vy) - 240) * 0.14);
+  }
+  G.cam.vLookY = (G.cam.vLookY || 0) + (targetVLook - (G.cam.vLookY || 0)) * Math.min(1, dt * 4.5);
+
+  const tgt = computeCameraTargets(curRoom);
+  const roomChanged = prevRoomId && curRoom && prevRoomId !== curRoom.id;
+  if (roomChanged) {
+    G.cam.roomTransTimer = 0.36;
+  } else if (G.cam.roomTransTimer > 0) {
+    G.cam.roomTransTimer = Math.max(0, G.cam.roomTransTimer - dt);
+  }
+  const fastBlend = G.cam.roomTransTimer > 0;
+  G.cam.x += (tgt.x - G.cam.x) * Math.min(1, dt * (fastBlend ? 8.8 : 6.8));
+  G.cam.y += (tgt.y - G.cam.y) * Math.min(1, dt * (fastBlend ? 9.6 : 6.8));
 
   if (G.cam.shake > 0) G.cam.shake = Math.max(0, G.cam.shake - dt * 36);
   const kickDecay = Math.exp(-18 * dt);

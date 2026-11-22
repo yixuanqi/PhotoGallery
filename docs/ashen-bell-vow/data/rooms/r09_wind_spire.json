@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "r09_wind_spire",
   "zoneName": "绝风断塔",
-  "name": "绝风断塔",
+  "name": "绝风断塔 · 风井下口",
   "theme": "wind",
   "bounds": {
     "x": 5560,
@@ -12,30 +12,31 @@
   },
   "subZones": [
     {
-      "name": "绝风断塔 · 西风廊桥",
+      "name": "绝风断塔 · 炉热排风井",
       "x": 0,
       "y": 0,
-      "w": 420,
+      "w": 455,
       "h": 780
     },
     {
-      "name": "绝风断塔 · 悬风钟井",
-      "x": 420,
+      "name": "绝风断塔 · 悬风断桥",
+      "x": 455,
       "y": 0,
-      "w": 400,
+      "w": 455,
       "h": 780
     },
     {
       "name": "绝风断塔 · 绝风祈坛",
-      "x": 820,
+      "x": 910,
       "y": 0,
-      "w": 360,
+      "w": 270,
       "h": 780
     }
   ],
   "connections": [
     "r04_bell_well",
-    "r07_ascent"
+    "r07_ascent",
+    "r12_wind_bridge"
   ],
   "solids": [
     {
@@ -115,29 +116,29 @@
     {
       "id": "wz_wind_1",
       "x": 265,
-      "y": 210,
+      "y": -20,
       "w": 170,
-      "h": 525,
-      "vx": 18,
-      "vy": -1520
+      "h": 758,
+      "vx": 14,
+      "vy": -1560
     },
     {
       "id": "wz_wind_2",
       "x": 710,
-      "y": 185,
+      "y": -20,
       "w": 180,
-      "h": 550,
-      "vx": 22,
-      "vy": -1580
+      "h": 758,
+      "vx": 18,
+      "vy": -1600
     },
     {
       "id": "wz_wind_3",
-      "x": 520,
-      "y": 140,
-      "w": 155,
-      "h": 215,
+      "x": 510,
+      "y": 60,
+      "w": 165,
+      "h": 295,
       "vx": 0,
-      "vy": -1380
+      "vy": -1420
     }
   ],
   "bouncePads": [],
@@ -166,24 +167,22 @@
   "secretWalls": [],
   "pickups": [
     {
-      "id": "pickup_core_wind",
-      "kind": "statCore",
-      "bonusHp": 15,
-      "bonusSoul": 20,
-      "echoAmount": 220,
-      "x": 598,
-      "y": 205,
-      "name": "塔巅秘宝 · 绝风残核",
-      "desc": "生命上限 +15、魂火上限 +20，并获 +220 残响！"
-    },
-    {
       "id": "pickup_echo_wind",
       "kind": "echoCache",
-      "echoAmount": 200,
       "x": 935,
       "y": 390,
-      "name": "断塔古风残响匣",
-      "desc": "获得 +200 残响，可回铁砧淬锋！"
+      "echoAmount": 160,
+      "name": "残风余响",
+      "desc": "风井悬台间凝结的古钟残响"
+    },
+    {
+      "id": "pickup_echo_wind_top",
+      "kind": "echoCache",
+      "x": 598,
+      "y": 205,
+      "echoAmount": 180,
+      "name": "炉风残印",
+      "desc": "热浪卷上高台的熔金残响"
     }
   ],
   "resonancePuzzles": [],
@@ -257,16 +256,16 @@
   ],
   "enemies": [
     {
-      "id": "wraith_wind_1",
-      "kind": "wraith",
-      "x": 355,
-      "y": 300
+      "id": "falcon_wind_1",
+      "kind": "falcon",
+      "x": 350,
+      "y": 290
     },
     {
-      "id": "wraith_wind_2",
-      "kind": "wraith",
-      "x": 795,
-      "y": 270
+      "id": "falcon_wind_2",
+      "kind": "falcon",
+      "x": 790,
+      "y": 255
     },
     {
       "id": "priest_wind_1",
@@ -277,10 +276,10 @@
     {
       "id": "duelist_wind_1",
       "kind": "duelist",
-      "x": 620,
+      "x": 575,
       "y": 500,
-      "minX": 470,
-      "maxX": 675
+      "minX": 465,
+      "maxX": 685
     }
   ],
   "bosses": [],
@@ -294,6 +293,11 @@
       "x": 1075,
       "y": 510,
       "text": "「东出断塔 · 直抵初钟圣阶上层捷径 →」"
+    },
+    {
+      "x": 580,
+      "y": 515,
+      "text": "脚下铁栅连通沉渊古炉 — 千年熔金热浪化作永续罡风，乘风直上可抵「千铃悬桥」"
     }
   ],
   "props": {

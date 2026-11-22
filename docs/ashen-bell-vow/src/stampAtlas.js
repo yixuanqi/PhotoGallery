@@ -13,12 +13,15 @@ export const STAMP_DEFS = [
 
   // Wind (绝风断塔)
   { id: 'wind_buttress',    label: '断塔飞扶壁', cat: '风',   w: 200, h: 260, ax: 0.5, ay: 1.0, defaultLayer: 'bg' },
+  { id: 'wind_pillar',      label: '断塔风蚀柱', cat: '风',   w: 140, h: 260, ax: 0.5, ay: 1.0, defaultLayer: 'bg' },
   { id: 'tattered_pennant', label: '罡风破经幡', cat: '风',   w: 140, h: 210, ax: 0.25, ay: 1.0, defaultLayer: 'bg', animated: 'pennant' },
 
   // Forest (枯墨古林)
   { id: 'ink_tree',         label: '分形枯古木', cat: '林',   w: 250, h: 300, ax: 0.5, ay: 1.0, defaultLayer: 'bg' },
+  { id: 'gnarled_tree',     label: '盘根古树',   cat: '林',   w: 240, h: 290, ax: 0.5, ay: 1.0, defaultLayer: 'bg' },
   { id: 'canopy_bough',     label: '墨染垂枝冠', cat: '林',   w: 260, h: 165, ax: 0.5, ay: 0.0, defaultLayer: 'fg' },
   { id: 'glow_spores',      label: '荧光孢菌簇', cat: '林',   w: 120, h: 110, ax: 0.5, ay: 1.0, defaultLayer: 'bg', animated: 'spores' },
+  { id: 'spore_cluster',    label: '荧光孢菌群', cat: '林',   w: 135, h: 118, ax: 0.5, ay: 1.0, defaultLayer: 'bg', animated: 'spores' },
 
   // Fire (沉渊古炉)
   { id: 'bronze_gear',      label: '巨型铜齿轮', cat: '火',   w: 190, h: 190, ax: 0.5, ay: 0.5, defaultLayer: 'bg', animated: 'gear' },
@@ -26,6 +29,7 @@ export const STAMP_DEFS = [
 
   // Mountain (霜骸圣脊)
   { id: 'ice_spire',        label: '寒霜冰晶簇', cat: '山',   w: 150, h: 185, ax: 0.5, ay: 1.0, defaultLayer: 'bg' },
+  { id: 'frost_spike',      label: '寒脊冰棱柱', cat: '山',   w: 155, h: 195, ax: 0.5, ay: 1.0, defaultLayer: 'bg' },
   { id: 'sword_mound',      label: '风雪残刃冢', cat: '山',   w: 185, h: 150, ax: 0.5, ay: 1.0, defaultLayer: 'bg' }
 ];
 
@@ -570,6 +574,165 @@ const STAMP_PAINTERS = {
     c.closePath();
     c.fill();
     c.stroke();
+  },
+
+  wind_pillar(c, w, h, rng) {
+    const cx = w * 0.5;
+    // Tall wind-carved gothic tower column with jagged fractured crown & bronze chime ring
+    c.fillStyle = '#121b2a';
+    c.strokeStyle = 'rgba(186, 230, 253, 0.42)';
+    c.lineWidth = 1.9;
+    c.beginPath();
+    c.moveTo(cx - 32, h);
+    c.lineTo(cx - 26, h - 20);
+    c.lineTo(cx - 21, 56);
+    c.lineTo(cx - 27, 44);
+    c.lineTo(cx - 10, 18 + rng() * 14);
+    c.lineTo(cx + 6, 36 + rng() * 10);
+    c.lineTo(cx + 22, 26 + rng() * 14);
+    c.lineTo(cx + 21, h - 20);
+    c.lineTo(cx + 32, h);
+    c.closePath();
+    c.fill();
+    c.stroke();
+
+    // Eroded horizontal stone courses & wind-swept flutings
+    c.strokeStyle = 'rgba(186, 230, 253, 0.18)';
+    c.lineWidth = 1.2;
+    for (let y = 74; y < h - 28; y += 34) {
+      handStrokeLine(c, cx - 21, y, cx + 21, y - 3, rng, 0.9, 3);
+    }
+    drawHatchLines(c, cx - 20, 62, 38, h - 86, 9, rng);
+
+    // Side bronze wind-bell bracket
+    c.strokeStyle = 'rgba(245, 158, 11, 0.58)';
+    c.lineWidth = 1.8;
+    c.beginPath();
+    c.moveTo(cx + 20, 96); c.lineTo(cx + 42, 92); c.lineTo(cx + 42, 108);
+    c.stroke();
+    c.fillStyle = '#2d2216';
+    c.beginPath();
+    c.moveTo(cx + 36, 108); c.lineTo(cx + 48, 108); c.lineTo(cx + 51, 122); c.lineTo(cx + 33, 122);
+    c.closePath(); c.fill(); c.stroke();
+  },
+
+  gnarled_tree(c, w, h, rng) {
+    const cx = w * 0.5;
+    // Deep forest mist halo behind twisted boughs
+    for (let i = 0; i < 5; i++) {
+      const fx = cx + (rng() - 0.5) * 140;
+      const fy = 56 + rng() * 90;
+      const fr = 36 + rng() * 30;
+      const g = c.createRadialGradient(fx, fy, 4, fx, fy, fr);
+      g.addColorStop(0, 'rgba(12, 34, 28, 0.52)');
+      g.addColorStop(1, 'transparent');
+      c.fillStyle = g;
+      c.beginPath(); c.arc(fx, fy, fr, 0, Math.PI * 2); c.fill();
+    }
+    // Wide arching cavern buttress roots
+    for (let r = -3; r <= 3; r++) {
+      c.strokeStyle = '#0d1915';
+      c.lineWidth = 6.5 - Math.abs(r) * 1.1;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(cx + r * 6, h - 36);
+      c.quadraticCurveTo(cx + r * 26, h - 18, cx + r * 36 + (rng() - 0.5) * 10, h);
+      c.stroke();
+    }
+    // Twisted twin main trunks & fractal boughs
+    drawFractalBranch(c, cx - 6, h - 18, 84, -Math.PI * 0.54 + (rng() - 0.5) * 0.14, 5, 13.5, rng);
+    drawFractalBranch(c, cx + 8, h - 22, 74, -Math.PI * 0.42 + (rng() - 0.5) * 0.14, 4, 10.5, rng);
+    // Bioluminescent hanging moss tendrils
+    drawHangingVines(c, cx - 86, 84, cx + 86, 11, 82, rng, 'rgba(110, 231, 183, 0.42)');
+  },
+
+  spore_cluster(c, w, h, rng) {
+    const cx = w * 0.5;
+    c.fillStyle = '#0f221d';
+    c.beginPath();
+    c.ellipse(cx, h - 7, 48, 13, 0, 0, Math.PI * 2);
+    c.fill();
+    const caps = [
+      { x: cx - 32, sh: 34, r: 15 },
+      { x: cx - 10, sh: 64, r: 24 },
+      { x: cx + 18, sh: 52, r: 20 },
+      { x: cx + 36, sh: 32, r: 13 },
+      { x: cx + 2,  sh: 30, r: 12 }
+    ];
+    for (const sp of caps) {
+      const bend = (rng() - 0.5) * 12;
+      c.strokeStyle = '#9ec4b8';
+      c.lineWidth = 3.2;
+      c.beginPath();
+      c.moveTo(sp.x, h - 6);
+      c.quadraticCurveTo(sp.x + bend, h - sp.sh * 0.52, sp.x + bend * 0.65, h - sp.sh);
+      c.stroke();
+      const capX = sp.x + bend * 0.65;
+      const capY = h - sp.sh;
+      const g = c.createRadialGradient(capX, capY, 2, capX, capY, sp.r * 2.0);
+      g.addColorStop(0, 'rgba(110, 231, 183, 0.52)');
+      g.addColorStop(1, 'transparent');
+      c.fillStyle = g;
+      c.beginPath(); c.arc(capX, capY, sp.r * 2.0, 0, Math.PI * 2); c.fill();
+
+      c.fillStyle = '#11342c';
+      c.strokeStyle = '#6ee7b7';
+      c.lineWidth = 1.6;
+      c.beginPath();
+      c.arc(capX, capY + 2, sp.r, Math.PI, 0);
+      c.quadraticCurveTo(capX, capY + 8, capX - sp.r, capY + 2);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      c.fillStyle = '#a7f3d0';
+      c.beginPath();
+      c.arc(capX - sp.r * 0.35, capY - sp.r * 0.32, 2.2, 0, Math.PI * 2);
+      c.arc(capX + sp.r * 0.28, capY - sp.r * 0.42, 2.6, 0, Math.PI * 2);
+      c.fill();
+    }
+  },
+
+  frost_spike(c, w, h, rng) {
+    const cx = w * 0.5;
+    const spikes = [
+      { ox: -38, bw: 24, sh: 112, lean: -22 },
+      { ox: -12, bw: 32, sh: 156, lean: -6 },
+      { ox: 12,  bw: 36, sh: 180, lean: 10 + (rng() - 0.5) * 10 },
+      { ox: 38,  bw: 22, sh: 102, lean: 24 }
+    ];
+    for (const s of spikes) {
+      const bx = cx + s.ox;
+      const tipX = bx + s.lean;
+      const tipY = h - s.sh;
+      const gr = c.createLinearGradient(tipX, tipY, bx, h);
+      gr.addColorStop(0, 'rgba(224, 242, 254, 0.78)');
+      gr.addColorStop(0.5, 'rgba(56, 108, 152, 0.72)');
+      gr.addColorStop(1, 'rgba(13, 24, 42, 0.92)');
+      c.fillStyle = gr;
+      c.strokeStyle = 'rgba(224, 242, 254, 0.75)';
+      c.lineWidth = 1.6;
+      c.beginPath();
+      c.moveTo(bx - s.bw * 0.5, h);
+      c.lineTo(bx - s.bw * 0.32, h - s.sh * 0.58);
+      c.lineTo(tipX, tipY);
+      c.lineTo(bx + s.bw * 0.36, h - s.sh * 0.52);
+      c.lineTo(bx + s.bw * 0.5, h);
+      c.closePath();
+      c.fill();
+      c.stroke();
+
+      c.strokeStyle = 'rgba(255, 255, 255, 0.44)';
+      c.lineWidth = 1.2;
+      c.beginPath();
+      c.moveTo(tipX, tipY);
+      c.lineTo(bx - 1, h - 8);
+      c.stroke();
+    }
+    // Snow drift base
+    c.fillStyle = 'rgba(224, 242, 254, 0.36)';
+    c.beginPath();
+    c.ellipse(cx, h - 4, w * 0.4, 9, 0, 0, Math.PI * 2);
+    c.fill();
   }
 };
 
@@ -610,7 +773,9 @@ function drawStampInstance(ctx, st, wx, wy, liveTime = 0) {
 
   const scale = Number(st.scale) || 1;
   const flip = st.flip ? -1 : 1;
-  const alpha = st.alpha !== undefined ? st.alpha : (st.layer === 'fg' ? 0.84 : 0.92);
+  const baseAlpha = st.alpha !== undefined ? st.alpha : (st.layer === 'fg' ? 0.82 : 0.88);
+  const isBgGame = ctx === G.ctx && (st.layer || def.defaultLayer || 'bg') === 'bg';
+  const alpha = isBgGame ? baseAlpha * 0.62 : baseAlpha;
 
   ctx.save();
   ctx.globalAlpha *= alpha;
@@ -665,6 +830,7 @@ export function drawStampsLayer(layer = 'bg') {
     const st = STAMPS[i];
     const stLayer = st.layer || (STAMP_DEF_MAP[st.type] ? STAMP_DEF_MAP[st.type].defaultLayer : 'bg');
     if (stLayer !== layer) continue;
+    if (st.roomId && G.roomOcclusion && G.roomOcclusion[st.roomId] > 0.86) continue;
     const def = STAMP_DEF_MAP[st.type];
     if (!def) continue;
     const sc = Number(st.scale) || 1;

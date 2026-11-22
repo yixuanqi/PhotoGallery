@@ -4,8 +4,10 @@ import { COLORS, FLOOR_Y, WORLD_W } from './config.js';
 import { G, hooks, addShake, punchZoom } from './state.js';
 import { audio } from './audio.js';
 import { prof } from './profiler.js';
-import { createPlayer, makeSentinel, makeDuelist, makeWraith, createBoss } from './entities.js';
+import { createPlayer, makeDuelist, makeFalcon, makeFungus, makeFrostguard, createBoss } from './entities.js';
 import { spawnParticles, spawnShockwave, spawnImpactBurst, spawnHitMark, spawnFloatText } from './vfx.js';
+import { getGlyphAtlasStats } from './render/glyphAtlas.js';
+import { getBackdropCacheStats } from './render/backdropCache.js';
 
 const GROUPS = [
   { id: 'A', name: 'A · 标准光影 + 音效开', lighting: true, muted: false },
@@ -52,6 +54,7 @@ function captureSnapshot() {
     boss: G.boss,
     boss2: G.boss2,
     boss3: G.boss3,
+    boss4: G.boss4,
     cam: { ...G.cam },
     stats: { ...G.stats },
     chapelTide: G.chapelTide,
@@ -75,6 +78,7 @@ function restoreSnapshot(snap) {
   G.boss = snap.boss;
   G.boss2 = snap.boss2;
   G.boss3 = snap.boss3;
+  G.boss4 = snap.boss4;
   G.cam = { ...snap.cam };
   G.stats = { ...snap.stats };
   G.chapelTide = snap.chapelTide;
@@ -88,6 +92,9 @@ function restoreSnapshot(snap) {
   G.afterimages = [];
   G.projectiles = [];
   G.groundWaves = [];
+  G.sporeClouds = [];
+  G.weaponUltimates = [];
+  G.delayedStrikes = [];
   G.hitstopTimer = 0;
   G.invertTimer = 0;
   G.screenFlash = { alpha: 0, color: '#fff' };
@@ -120,17 +127,20 @@ function setupDeterministicArena() {
   boss.stateTimer = 0.55;
   boss.windupDuration = 0.65;
 
-  const e1 = makeSentinel('bench_s1', 2980, FLOOR_Y - 62, 2740, 3550);
+  const e1 = makeFrostguard('bench_fg1', 2960, FLOOR_Y - 68, 2740, 3550);
   const e2 = makeDuelist('bench_d1', 3390, FLOOR_Y - 60, 2780, 3620);
-  const e3 = makeWraith('bench_w1', 3240, FLOOR_Y - 220);
-  e1.state = 'windup'; e1.attackKind = 'redLunge'; e1.stateTimer = 0.5;
+  const e3 = makeFalcon('bench_fal1', 3240, FLOOR_Y - 220);
+  const e4 = makeFungus('bench_fun1', 3480, FLOOR_Y - 58, 2820, 3640);
+  e1.state = 'windup'; e1.attackKind = 'frostLunge'; e1.stateTimer = 0.5;
   e2.state = 'windup'; e2.attackKind = 'redDash'; e2.stateTimer = 0.5;
   e3.state = 'windup'; e3.stateTimer = 0.45;
+  e4.state = 'windup'; e4.attackKind = 'sporeBurst'; e4.stateTimer = 0.5;
 
-  G.enemies = [e1, e2, e3];
+  G.enemies = [e1, e2, e3, e4];
   G.boss = boss;
   if (G.boss2) G.boss2.alive = false;
   if (G.boss3) G.boss3.alive = false;
+  if (G.boss4) G.boss4.alive = false;
   G.echoSession = null;
   G.particles = [];
   G.slashes = [];
@@ -141,6 +151,9 @@ function setupDeterministicArena() {
   G.afterimages = [];
   G.projectiles = [];
   G.groundWaves = [];
+  G.sporeClouds = [];
+  G.weaponUltimates = [];
+  G.delayedStrikes = [];
   G.chapelTide = null;
   G.bossBanner = null;
   G.hitstopTimer = 0;
@@ -248,22 +261,28 @@ function driveDeterministicCombatPulse(step) {
     e.posture = (step * 13 + i * 19) % Math.max(1, e.maxPosture - 10);
   }
 
-  const mode = step % 4;
+  const mode = step % 5;
   if (mode === 0) {
-    // Monster heavy red attack telegraph ('危' Chinese glyph + danger alert SFX + crimson slash)
+    // Crimson peril + Wind Falcon cry & wind-blade projectile
     b.state = 'windup';
     b.moveKind = 'redLeap';
     b.stateTimer = 0.50;
     b.windupDuration = 0.60;
-    if (G.enemies[0]) { G.enemies[0].state = 'windup'; G.enemies[0].attackKind = 'redLunge'; G.enemies[0].stateTimer = 0.45; }
+    if (G.enemies[0]) { G.enemies[0].state = 'windup'; G.enemies[0].attackKind = 'frostLunge'; G.enemies[0].stateTimer = 0.45; }
     if (G.enemies[1]) { G.enemies[1].state = 'windup'; G.enemies[1].attackKind = 'redDash'; G.enemies[1].stateTimer = 0.45; }
     audio.playDangerAlert();
-    audio.playSlash(0.74, true);
+    audio.playFalconCry();
+    audio.playWindBlade();
     G.slashes.push({ x: bx - 44, y: by, facing: -1, type: 'bossRedSlam', life: 0.28, maxLife: 0.28 });
+    G.projectiles.push({
+      owner: 'enemy', source: G.enemies[2] || b, kind: 'windBlade',
+      x: bx - 10, y: FLOOR_Y - 180, vx: -320, vy: 85, r: 13, dmg: 16, posture: 22,
+      life: 1.1, maxLife: 1.1, reflected: false, hitIds: new Set()
+    });
     spawnParticles(bx - 24, by, 18, { color: COLORS.crimsonBright, speed: 260, spark: true, life: 0.38 });
-    spawnFloatText(bx, b.y - 34, '危 · 猩红斩', COLORS.crimsonBright, 20, 0.72);
+    spawnFloatText(bx, b.y - 34, '危 · 朔风猩红斩', COLORS.crimsonBright, 20, 0.72);
   } else if (mode === 1) {
-    // Perfect Parry Clash (Web Audio multi-oscillator clang + starburst + sparks + Chinese text + camera punchZoom!)
+    // Perfect Parry Clash (pre-baked clang + starburst + bouncing sparks + punchZoom)
     p.parryActive = true;
     p.parryElapsedMs = 45;
     audio.playParry(true, (step % 4) + 1);
@@ -278,38 +297,57 @@ function driveDeterministicCombatPulse(step) {
     spawnParticles(cx, py, 10, { color: COLORS.ink, speed: 210, grav: 320, life: 0.38 });
     spawnFloatText(px, p.y - 28, `铁鸣连弹 ×${(step % 4) + 1}！`, COLORS.goldBright, 22, 0.75);
   } else if (mode === 2) {
-    // Player Counter Cross-Slash + Wraith Projectile + Hit VFX
+    // Three-Weapon Switch Strike & Heavy Hammer / Bell VFX
     p.parryActive = false;
-    audio.playCounterSlash();
+    const useBell = (step % 2) === 0;
+    audio.playWeaponSwap(useBell ? 'bell' : 'hammer');
+    if (useBell) {
+      audio.playUltimateBell();
+      if (G.weaponUltimates.length < 1) {
+        G.weaponUltimates.push({ kind: 'bell_sanctum', x: px, y: py, radius: 195, life: 1.2, maxLife: 1.2, pulseTimer: 9, pulseInterval: 1, pulsesLeft: 0, pulseDmg: 0, pulsePosture: 0, dartDmg: 0 });
+      }
+    } else {
+      audio.playUltimateBlade();
+      audio.playShieldBash(true);
+    }
     audio.playHit(true, 3);
-    audio.playWraithShot();
-    addShake(7.5);
-    punchZoom(1.030);
-    G.slashes.push({ x: px + 42, y: py, facing: 1, type: 'counter', life: 0.28, maxLife: 0.28 });
+    addShake(8.5);
+    punchZoom(1.034);
+    G.slashes.push({ x: px + 42, y: py, facing: 1, type: useBell ? 'bellCounter' : 'hammerQuake', life: 0.30, maxLife: 0.30 });
     spawnHitMark(bx, by, -0.6, COLORS.goldBright, 96, 8);
-    spawnHitMark(bx, by, 0.6, COLORS.crimsonBright, 86, 7);
-    spawnParticles(bx, by, 18, { color: COLORS.goldBright, speed: 290, spark: true, life: 0.36 });
-    spawnFloatText(px, p.y - 26, '断钟返!', COLORS.goldBright, 20, 0.72);
-    spawnFloatText(bx, b.y - 16, '48', COLORS.parchment, 16, 0.55);
-    G.projectiles.push({
-      owner: 'enemy', source: G.enemies[2] || b, kind: 'wraithOrb',
-      x: bx - 10, y: FLOOR_Y - 195, vx: -280, vy: 95, r: 12, dmg: 18, posture: 24,
-      life: 1.2, maxLife: 1.2, reflected: false, hitIds: new Set()
-    });
+    spawnHitMark(bx, by, 0.6, useBell ? COLORS.cyanBright : COLORS.crimsonBright, 86, 7);
+    spawnParticles(bx, by, 18, { color: useBell ? COLORS.cyanBright : COLORS.goldBright, speed: 290, spark: true, life: 0.36 });
+    spawnFloatText(px, p.y - 26, useBell ? '切刃 · 退步双鸣!' : '切刃 · 落钟破岳!', useBell ? COLORS.cyanBright : COLORS.goldBright, 20, 0.72);
+  } else if (mode === 3) {
+    // Forest Toxic Spore Cloud + Requiem Bell-Quake Purification
+    audio.playSporeBurst();
+    audio.playSporePurify();
+    if (G.sporeClouds.length < 2) {
+      G.sporeClouds.push({ x: bx - 36, y: FLOOR_Y - 26, r: 68, life: 1.4, maxLife: 1.4, dmg: 8 });
+    }
+    G.bellQuakes.push({ x: px + 24, y: py, radius: 135, life: 0.34, maxLife: 0.34 });
+    spawnShockwave(bx - 36, FLOOR_Y - 26, 118, '#6ee7b7', 4.0, 0.30);
+    spawnParticles(bx - 36, FLOOR_Y - 26, 20, { color: '#6ee7b7', speed: 220, spark: true, life: 0.38 });
+    spawnFloatText(px, p.y - 26, '镇魂净孢！', '#6ee7b7', 19, 0.72);
   } else {
-    // Boss Ground Wave + Heavy Cleave + Bell Toll + Ink Particles
+    // Boss Ground Wave + Frost Shatter + Glacial Shard Projectile
     b.state = 'strike';
     b.moveKind = 'delaySlam';
     b.stateTimer = 0.26;
     audio.playBellToll();
-    audio.playSlash(0.82, true);
+    audio.playFrostShatter();
     audio.playHit(false, 2);
     addShake(8);
     G.slashes.push({ x: px + 26, y: py, facing: 1, type: 'slash3', life: 0.23, maxLife: 0.23 });
-    G.groundWaves.push({ x: bx - 30, y: FLOOR_Y, minX: 2648, maxX: 3738, vx: -390, w: 36, h: 46, life: 1.1, hit: true });
-    spawnShockwave(bx - 24, FLOOR_Y - 8, 125, COLORS.crimsonBright, 3.8, 0.30);
-    spawnParticles(bx - 20, FLOOR_Y - 16, 20, { color: COLORS.crimsonBright, speed: 250, spark: true, life: 0.38 });
-    spawnFloatText(px, p.y - 24, '格挡 · 内伤', '#cbd5e1', 16, 0.68);
+    G.groundWaves.push({ x: bx - 30, y: FLOOR_Y, minX: 2648, maxX: 3738, vx: -390, w: 36, h: 46, life: 1.1, hit: true, theme: 'frost' });
+    G.projectiles.push({
+      owner: 'enemy', source: G.enemies[0] || b, kind: 'frostShard',
+      x: bx - 16, y: FLOOR_Y - 72, vx: -340, vy: 0, r: 12, dmg: 18, posture: 24,
+      life: 1.1, maxLife: 1.1, reflected: false, hitIds: new Set()
+    });
+    spawnShockwave(bx - 24, FLOOR_Y - 8, 125, '#7dd3fc', 3.8, 0.30);
+    spawnParticles(bx - 20, FLOOR_Y - 16, 20, { color: '#bae6fd', speed: 250, spark: true, life: 0.38 });
+    spawnFloatText(px, p.y - 24, '碎冰震荡', '#bae6fd', 17, 0.68);
   }
 }
 
@@ -424,8 +462,9 @@ function buildDiagnosis(report) {
 
 function formatPlainReport(report) {
   const lines = [
-    `=== 灰钟残誓 v18.2 10秒 A/B 战斗压测报告 ===`,
+    `=== 灰钟残誓 v32.0 10秒 A/B 战斗压测报告 (字形图集 + 静态背景缓存版) ===`,
     `屏幕实测刷频: ${report.refreshHz}Hz (1×预算 ${report.budgetMs.toFixed(2)}ms) | UA: ${report.uaShort}`,
+    `离屏缓存状态: 字形图集命中率 ${report.cacheSnap.glyphHitRate.toFixed(1)}% (${report.cacheSnap.glyphEntries}项) | 静态背景缓存 ${report.cacheSnap.backdropPanels}块`,
     ``
   ];
   for (const g of report.groups) {
@@ -463,6 +502,11 @@ function finishBenchmark() {
     refreshHz: hz,
     budgetMs: 1000 / hz,
     uaShort: (navigator.userAgent || '').replace(/^Mozilla\/5\.0\s*/, '').slice(0, 72),
+    cacheSnap: (() => {
+      const g = getGlyphAtlasStats();
+      const b = getBackdropCacheStats();
+      return { glyphHitRate: g.hitRate, glyphEntries: g.entries, backdropPanels: b.panels };
+    })(),
     groups: benchState.results
   };
   report.diagnosis = buildDiagnosis(report);
@@ -489,7 +533,7 @@ export function openBenchmarkReportModal() {
   }
 
   if (sub) {
-    sub.textContent = `实测屏幕刷频 ${report.refreshHz}Hz（单帧预算 ${report.budgetMs.toFixed(2)}ms · 掉帧红线 >${(report.budgetMs * 1.35).toFixed(1)}ms）· 采样时间 ${report.timestamp}`;
+    sub.textContent = `实测 ${report.refreshHz}Hz（预算 ${report.budgetMs.toFixed(2)}ms）· 字形图集命中 ${report.cacheSnap.glyphHitRate.toFixed(1)}%(${report.cacheSnap.glyphEntries}项) · 背景块 ${report.cacheSnap.backdropPanels} · ${report.timestamp}`;
   }
 
   let bestP99 = Infinity;

@@ -1,6 +1,6 @@
 // Chunked (1024x800) Offscreen Procedural Organic Terrain Renderer & Biome Auto-Overlays
 // 0 external PNGs, deterministic world-space hand-drawn ink rocks/masonry, 2-4 drawImage blits/frame at 144Hz.
-import { ROOMS, SOLIDS, PUDDLES, ABYSSAL_RIVERS, WORLD_W, FLOOR_Y } from './config.js';
+import { ROOMS, ROOM_THEMES, SOLIDS, PUDDLES, ABYSSAL_RIVERS, WORLD_W, FLOOR_Y } from './config.js';
 import { G } from './state.js';
 import { rgbStr } from './renderParallax.js';
 
@@ -8,7 +8,19 @@ const CHUNK_W = 1024;
 const CHUNK_H = 800;
 const CHUNK_PAD = 36; // Overhang bleed so snow/icicles/capitals/stalactites never clip at chunk borders
 
-const TERRAIN_STYLES = {
+export const TERRAIN_OVERLAY_OPTIONS = [
+  { value: 'auto',        label: '跟随生态默认' },
+  { value: 'none',        label: '无覆层 (素石)' },
+  { value: 'moss',        label: '古苔藓 (moss)' },
+  { value: 'forest_moss', label: '幽林浓苔 (forest_moss)' },
+  { value: 'snow',        label: '飞雪冰棱 (snow)' },
+  { value: 'molten',      label: '熔金锻铆 (molten)' },
+  { value: 'drip',        label: '渗水矿晶 (drip)' },
+  { value: 'filigree',    label: '圣堂金丝 (filigree)' },
+  { value: 'wind',        label: '罡风蚀纹 (wind)' }
+];
+
+export const TERRAIN_STYLES = {
   sanctuary: {
     deepFill: '#080c14', midFill: '#111826', topFill: '#1b2436',
     pillarFill: '#172030', pillarCap: '#222d42', platFill: '#1d273b',
@@ -83,6 +95,11 @@ function wHash(x, y) {
   return (v - Math.floor(v)) * 2 - 1;
 }
 
+function clampMod(val, fallback = 1) {
+  const n = Number(val);
+  return Number.isFinite(n) ? Math.max(0, Math.min(2, n)) : fallback;
+}
+
 function getRoomThemeMap() {
   const map = Object.create(null);
   for (let i = 0; i < ROOMS.length; i++) {
@@ -91,12 +108,54 @@ function getRoomThemeMap() {
   return map;
 }
 
-function getStyleForSolid(s, themeMap) {
-  const theme = (s.roomId && themeMap[s.roomId]) ? themeMap[s.roomId] : (s.y > 900 ? 'bell_well' : 'corridor');
-  return TERRAIN_STYLES[theme] || TERRAIN_STYLES.corridor;
+function getRoomModMap() {
+  const map = Object.create(null);
+  for (let i = 0; i < ROOMS.length; i++) {
+    if (ROOMS[i].terrainMod) map[ROOMS[i].id] = ROOMS[i].terrainMod;
+  }
+  return map;
 }
 
-function drawRockCracks(c, x0, y0, w, h, st, density = 140) {
+export function resolveTerrainStyle(theme, roomMod = null, solidMod = null) {
+  const base = TERRAIN_STYLES[theme] || TERRAIN_STYLES.corridor;
+  const rm = roomMod && typeof roomMod === 'object' ? roomMod : null;
+  const sm = solidMod && typeof solidMod === 'object' ? solidMod : null;
+
+  let overlay = base.overlay;
+  if (rm && rm.overlay && rm.overlay !== 'auto' && rm.overlay !== 'inherit') overlay = rm.overlay;
+  if (sm && sm.overlay && sm.overlay !== 'auto' && sm.overlay !== 'inherit') overlay = sm.overlay;
+
+  const weathering = (sm && sm.weathering !== undefined && sm.weathering !== null && sm.weathering !== '')
+    ? clampMod(sm.weathering, 1)
+    : (rm && rm.weathering !== undefined && rm.weathering !== null && rm.weathering !== '')
+      ? clampMod(rm.weathering, 1)
+      : 1;
+
+  const cracks = (sm && sm.cracks !== undefined && sm.cracks !== null && sm.cracks !== '')
+    ? clampMod(sm.cracks, 1)
+    : (rm && rm.cracks !== undefined && rm.cracks !== null && rm.cracks !== '')
+      ? clampMod(rm.cracks, 1)
+      : 1;
+
+  const overlayDensity = (sm && sm.overlayDensity !== undefined && sm.overlayDensity !== null && sm.overlayDensity !== '')
+    ? clampMod(sm.overlayDensity, 1)
+    : (rm && rm.overlayDensity !== undefined && rm.overlayDensity !== null && rm.overlayDensity !== '')
+      ? clampMod(rm.overlayDensity, 1)
+      : 1;
+
+  return { ...base, overlay, weathering, cracks, overlayDensity };
+}
+
+function getStyleForSolid(s, themeMap, modMap) {
+  const theme = (s.roomId && themeMap[s.roomId]) ? themeMap[s.roomId] : (s.y > 900 ? 'bell_well' : 'corridor');
+  const rmMod = (s.roomId && modMap && modMap[s.roomId]) ? modMap[s.roomId] : null;
+  return resolveTerrainStyle(theme, rmMod, s.mod || null);
+}
+
+function drawRockCracks(c, x0, y0, w, h, st, baseDensity = 140) {
+  const crackMult = st.cracks !== undefined ? st.cracks : 1;
+  if (crackMult <= 0.04) return;
+  const density = Math.max(46, Math.round(baseDensity / Math.max(0.25, crackMult)));
   const startCol = Math.floor(x0 / density) * density;
   const endCol = x0 + w;
   c.save();
@@ -135,7 +194,9 @@ function drawRockCracks(c, x0, y0, w, h, st, density = 140) {
 
 function drawTopBiomeOverlay(c, x, y, w, st, isPlatform = false) {
   const ov = st.overlay;
-  const step = 36;
+  const ovDen = st.overlayDensity !== undefined ? st.overlayDensity : 1;
+  if (!ov || ov === 'none' || ovDen <= 0.04) return;
+  const step = Math.max(18, Math.round(36 / Math.max(0.35, Math.min(1.8, ovDen))));
   const startX = Math.floor(x / step) * step;
 
   if (ov === 'moss' || ov === 'forest_moss') {
@@ -148,7 +209,7 @@ function drawTopBiomeOverlay(c, x, y, w, st, isPlatform = false) {
       const mx = Math.max(x + 3, gx + 2);
       const mw = Math.min(x + w - 3, gx + step - 4) - mx;
       if (mw < 10) continue;
-      const drop = dense ? (8 + Math.abs(wHash(gx + 7, y)) * 8) : (4 + Math.abs(wHash(gx + 7, y)) * 4.5);
+      const drop = (dense ? (8 + Math.abs(wHash(gx + 7, y)) * 8) : (4 + Math.abs(wHash(gx + 7, y)) * 4.5)) * (0.65 + ovDen * 0.35);
       c.beginPath();
       c.moveTo(mx, y);
       c.quadraticCurveTo(mx + mw * 0.5, y - (dense ? 3.5 : 1.5), mx + mw, y);
@@ -167,12 +228,12 @@ function drawTopBiomeOverlay(c, x, y, w, st, isPlatform = false) {
     c.moveTo(x + 1, y + 2);
     for (let px = x; px <= x + w; px += 22) {
       const cx = Math.min(x + w, px);
-      const lift = 3.5 + Math.abs(wHash(cx, y)) * 3.5;
+      const lift = (3.5 + Math.abs(wHash(cx, y)) * 3.5) * (0.55 + ovDen * 0.45);
       c.lineTo(cx, y - lift);
     }
     for (let px = x + w; px >= x; px -= 26) {
       const cx = Math.max(x, px);
-      const drape = 4 + Math.abs(wHash(cx + 13, y + 5)) * 6;
+      const drape = (4 + Math.abs(wHash(cx + 13, y + 5)) * 6) * (0.55 + ovDen * 0.45);
       c.lineTo(cx, y + drape);
     }
     c.closePath();
@@ -239,13 +300,14 @@ function drawTopBiomeOverlay(c, x, y, w, st, isPlatform = false) {
 function paintGroundSolid(c, s, st) {
   const stepX = 28;
   const stepY = 34;
+  const wf = st.weathering !== undefined ? st.weathering : 1;
 
   // Build world-aligned organic silhouette polygon
   c.beginPath();
   c.moveTo(s.x, s.y);
   const firstGridX = Math.ceil(s.x / stepX) * stepX;
   for (let px = firstGridX; px < s.x + s.w; px += stepX) {
-    const dy = wHash(px, s.y) * 2.4;
+    const dy = wHash(px, s.y) * 2.4 * wf;
     c.lineTo(px, s.y + dy);
   }
   c.lineTo(s.x + s.w, s.y);
@@ -253,7 +315,7 @@ function paintGroundSolid(c, s, st) {
   // Right edge: jagged organic cliff if exposed, flush if room-seamed
   if (s.x + s.w < WORLD_W && !s.seamRight) {
     for (let py = s.y + stepY; py < s.y + s.h; py += stepY) {
-      const dx = wHash(s.x + s.w, py) * 4.5 - 1.5;
+      const dx = (wHash(s.x + s.w, py) * 4.5 - 1.5) * wf;
       c.lineTo(s.x + s.w + dx, py);
     }
   }
@@ -263,7 +325,7 @@ function paintGroundSolid(c, s, st) {
   // Left edge: jagged organic cliff if exposed, flush if room-seamed
   if (s.x > 0 && !s.seamLeft) {
     for (let py = s.y + s.h - stepY; py > s.y; py -= stepY) {
-      const dx = wHash(s.x, py) * 4.5 + 1.5;
+      const dx = (wHash(s.x, py) * 4.5 + 1.5) * wf;
       c.lineTo(s.x + dx, py);
     }
   }
@@ -339,13 +401,23 @@ function paintGroundSolid(c, s, st) {
 
   c.restore(); // End clip
 
-  // Crisp hand-drawn top rim stroke
+  // Crisp hand-drawn top rim highlight (clear walkable edge vs dark atmospheric backdrop)
+  c.strokeStyle = 'rgba(4, 6, 10, 0.85)';
+  c.lineWidth = 4.4;
+  c.beginPath();
+  c.moveTo(s.x, s.y + 1);
+  for (let px = firstGridX; px < s.x + s.w; px += stepX) {
+    c.lineTo(px, s.y + 1 + wHash(px, s.y) * 2.4 * wf);
+  }
+  c.lineTo(s.x + s.w, s.y + 1);
+  c.stroke();
+
   c.strokeStyle = st.rimStroke;
-  c.lineWidth = 2.2;
+  c.lineWidth = 2.6;
   c.beginPath();
   c.moveTo(s.x, s.y);
   for (let px = firstGridX; px < s.x + s.w; px += stepX) {
-    c.lineTo(px, s.y + wHash(px, s.y) * 2.4);
+    c.lineTo(px, s.y + wHash(px, s.y) * 2.4 * wf);
   }
   c.lineTo(s.x + s.w, s.y);
   c.stroke();
@@ -358,14 +430,14 @@ function paintGroundSolid(c, s, st) {
     if (s.x > 0 && !s.seamLeft) {
       c.moveTo(s.x, s.y);
       for (let py = s.y + stepY; py < s.y + s.h; py += stepY) {
-        c.lineTo(s.x + wHash(s.x, py) * 4.5 + 1.5, py);
+        c.lineTo(s.x + (wHash(s.x, py) * 4.5 + 1.5) * wf, py);
       }
       c.lineTo(s.x, s.y + s.h);
     }
     if (s.x + s.w < WORLD_W && !s.seamRight) {
       c.moveTo(s.x + s.w, s.y);
       for (let py = s.y + stepY; py < s.y + s.h; py += stepY) {
-        c.lineTo(s.x + s.w + wHash(s.x + s.w, py) * 4.5 - 1.5, py);
+        c.lineTo(s.x + s.w + (wHash(s.x + s.w, py) * 4.5 - 1.5) * wf, py);
       }
       c.lineTo(s.x + s.w, s.y + s.h);
     }
@@ -379,6 +451,7 @@ function paintGroundSolid(c, s, st) {
 /* ==================== 2. CARVED STONE PILLAR / WALL PAINTER ==================== */
 function paintPillarSolid(c, s, st) {
   const stepY = 32;
+  const wf = st.weathering !== undefined ? st.weathering : 1;
   const isHorizontalBeam = s.w > s.h * 2 && s.h <= 46;
 
   // Organic chiseled outline
@@ -386,12 +459,12 @@ function paintPillarSolid(c, s, st) {
   c.moveTo(s.x, s.y);
   c.lineTo(s.x + s.w, s.y);
   for (let py = s.y + stepY; py < s.y + s.h; py += stepY) {
-    c.lineTo(s.x + s.w + wHash(s.x + s.w, py) * 2.2, py);
+    c.lineTo(s.x + s.w + wHash(s.x + s.w, py) * 2.2 * wf, py);
   }
   c.lineTo(s.x + s.w, s.y + s.h);
   c.lineTo(s.x, s.y + s.h);
   for (let py = s.y + s.h - stepY; py > s.y; py -= stepY) {
-    c.lineTo(s.x + wHash(s.x, py) * 2.2, py);
+    c.lineTo(s.x + wHash(s.x, py) * 2.2 * wf, py);
   }
   c.closePath();
   c.fillStyle = st.pillarFill;
@@ -425,6 +498,9 @@ function paintPillarSolid(c, s, st) {
   }
   c.stroke();
 
+  if ((st.cracks !== undefined ? st.cracks : 1) > 1.05 && s.h >= 48) {
+    drawRockCracks(c, s.x, s.y, s.w, s.h, st, 120);
+  }
   // Foundry / Ascent iron rivets on columns & beams
   if (st.overlay === 'molten') {
     c.fillStyle = 'rgba(245, 158, 11, 0.46)';
@@ -448,22 +524,25 @@ function paintPillarSolid(c, s, st) {
     c.strokeRect(s.x - 5, s.y + s.h - 14, s.w + 10, 14);
   }
 
-  // Outer chiseled ink contour
+  // Outer chiseled ink contour (subtly softer than walkable floors so platforms lead the eye)
+  c.save();
+  c.globalAlpha = 0.76;
   c.strokeStyle = st.rimStroke;
-  c.lineWidth = 1.9;
+  c.lineWidth = 1.65;
   c.beginPath();
   c.moveTo(s.x, s.y);
   c.lineTo(s.x + s.w, s.y);
   for (let py = s.y + stepY; py < s.y + s.h; py += stepY) {
-    c.lineTo(s.x + s.w + wHash(s.x + s.w, py) * 2.2, py);
+    c.lineTo(s.x + s.w + wHash(s.x + s.w, py) * 2.2 * wf, py);
   }
   c.lineTo(s.x + s.w, s.y + s.h);
   c.lineTo(s.x, s.y + s.h);
   for (let py = s.y + s.h - stepY; py > s.y; py -= stepY) {
-    c.lineTo(s.x + wHash(s.x, py) * 2.2, py);
+    c.lineTo(s.x + wHash(s.x, py) * 2.2 * wf, py);
   }
   c.closePath();
   c.stroke();
+  c.restore();
 
   if (isHorizontalBeam) {
     drawTopBiomeOverlay(c, s.x, s.y, s.w, st, true);
@@ -473,6 +552,8 @@ function paintPillarSolid(c, s, st) {
 /* ==================== 3. FLOATING ORGANIC LEDGE PAINTER ==================== */
 function paintPlatformSolid(c, s, st) {
   const segW = 24;
+  const wf = st.weathering !== undefined ? st.weathering : 1;
+  const ovDen = st.overlayDensity !== undefined ? st.overlayDensity : 1;
   const steps = Math.max(4, Math.round(s.w / segW));
 
   // Hand-hewn stone body with organic rocky underside
@@ -480,14 +561,14 @@ function paintPlatformSolid(c, s, st) {
   c.moveTo(s.x, s.y);
   for (let k = 1; k < steps; k++) {
     const px = s.x + (s.w * k) / steps;
-    c.lineTo(px, s.y + wHash(px, s.y) * 1.8);
+    c.lineTo(px, s.y + wHash(px, s.y) * 1.8 * wf);
   }
   c.lineTo(s.x + s.w, s.y);
   c.lineTo(s.x + s.w - 4, s.y + s.h);
   for (let k = steps - 1; k >= 1; k--) {
     const jx = s.x + (s.w * k) / steps;
     const hVar = Math.abs(wHash(jx, s.y + s.h));
-    const drop = st.overlay === 'drip' ? (4 + hVar * 14) : (2 + hVar * 10);
+    const drop = (st.overlay === 'drip' ? (4 + hVar * 14) : (2 + hVar * 10)) * (0.25 + wf * 0.75);
     c.lineTo(jx, s.y + s.h + drop);
   }
   c.lineTo(s.x + 4, s.y + s.h);
@@ -522,12 +603,12 @@ function paintPlatformSolid(c, s, st) {
   c.restore();
 
   // Biome-specific underside ornaments (icicles / iron brackets / gothic corbels)
-  if (st.overlay === 'snow') {
+  if (st.overlay === 'snow' && ovDen > 0.04) {
     c.fillStyle = 'rgba(186, 230, 253, 0.56)';
     c.strokeStyle = 'rgba(224, 242, 254, 0.65)';
     c.lineWidth = 1.0;
     for (let ix = s.x + 14; ix < s.x + s.w - 14; ix += 28) {
-      const iLen = 10 + Math.abs(wHash(ix, s.y + 3)) * 18;
+      const iLen = (10 + Math.abs(wHash(ix, s.y + 3)) * 18) * (0.55 + ovDen * 0.45);
       c.beginPath();
       c.moveTo(ix - 4, s.y + s.h + 2);
       c.lineTo(ix, s.y + s.h + 2 + iLen);
@@ -553,14 +634,24 @@ function paintPlatformSolid(c, s, st) {
     }
   }
 
-  // Crisp hand-inked outline
+  // Crisp hand-inked walkable ledge outline (pop cleanly above background stamps)
+  c.strokeStyle = 'rgba(4, 6, 11, 0.82)';
+  c.lineWidth = 4.0;
+  c.beginPath();
+  c.moveTo(s.x, s.y + 1);
+  for (let k = 1; k < steps; k++) {
+    const px = s.x + (s.w * k) / steps;
+    c.lineTo(px, s.y + 1 + wHash(px, s.y) * 1.8 * wf);
+  }
+  c.lineTo(s.x + s.w, s.y + 1);
+  c.stroke();
   c.strokeStyle = st.rimStroke;
-  c.lineWidth = 2.0;
+  c.lineWidth = 2.4;
   c.beginPath();
   c.moveTo(s.x, s.y);
   for (let k = 1; k < steps; k++) {
     const px = s.x + (s.w * k) / steps;
-    c.lineTo(px, s.y + wHash(px, s.y) * 1.8);
+    c.lineTo(px, s.y + wHash(px, s.y) * 1.8 * wf);
   }
   c.lineTo(s.x + s.w, s.y);
   c.lineTo(s.x + s.w - 4, s.y + s.h);
@@ -574,10 +665,12 @@ function paintPlatformSolid(c, s, st) {
 /* ==================== 1024x800 CHUNKED OFFSCREEN CACHE ==================== */
 const _chunkCache = new Map();
 let _cachedThemeMap = null;
+let _cachedModMap = null;
 
 export function invalidateTerrainCache() {
   _chunkCache.clear();
   _cachedThemeMap = null;
+  _cachedModMap = null;
 }
 
 function getOrBakeChunk(cx, cy) {
@@ -605,6 +698,7 @@ function getOrBakeChunk(cx, cy) {
   }
 
   if (!_cachedThemeMap) _cachedThemeMap = getRoomThemeMap();
+  if (!_cachedModMap) _cachedModMap = getRoomModMap();
 
   const canvas = document.createElement('canvas');
   canvas.width = CHUNK_W;
@@ -616,14 +710,14 @@ function getOrBakeChunk(cx, cy) {
 
   // Layer order: grounds first, then pillars, then floating platforms cleanly on top
   for (let i = 0; i < hit.length; i++) {
-    if (hit[i].type === 'ground') paintGroundSolid(c, hit[i], getStyleForSolid(hit[i], _cachedThemeMap));
+    if (hit[i].type === 'ground') paintGroundSolid(c, hit[i], getStyleForSolid(hit[i], _cachedThemeMap, _cachedModMap));
   }
   for (let i = 0; i < hit.length; i++) {
-    if (hit[i].type === 'pillar') paintPillarSolid(c, hit[i], getStyleForSolid(hit[i], _cachedThemeMap));
+    if (hit[i].type === 'pillar') paintPillarSolid(c, hit[i], getStyleForSolid(hit[i], _cachedThemeMap, _cachedModMap));
   }
   for (let i = 0; i < hit.length; i++) {
     if (hit[i].type !== 'ground' && hit[i].type !== 'pillar') {
-      paintPlatformSolid(c, hit[i], getStyleForSolid(hit[i], _cachedThemeMap));
+      paintPlatformSolid(c, hit[i], getStyleForSolid(hit[i], _cachedThemeMap, _cachedModMap));
     }
   }
   c.restore();
@@ -771,4 +865,96 @@ export function drawWorldArchitecture() {
   }
 
   ctx.restore();
+}
+
+
+/* ==================== v27.0 EDITOR WYSIWYG SKY & PROCEDURAL TERRAIN HELPERS ==================== */
+export function drawEditorRoomBackdrop(c, rm) {
+  const ox = rm.bounds.x;
+  const oy = rm.bounds.y;
+  const rw = rm.bounds.w;
+  const rh = rm.bounds.h;
+  const th = ROOM_THEMES[rm.theme] || ROOM_THEMES.corridor;
+
+  c.save();
+  const bg = c.createLinearGradient(ox, oy, ox, oy + rh);
+  bg.addColorStop(0, rgbStr(th.skyTop));
+  bg.addColorStop(0.58, rgbStr(th.skyMid));
+  bg.addColorStop(1, rgbStr(th.skyBot));
+  c.fillStyle = bg;
+  c.fillRect(ox, oy, rw, rh);
+
+  // Atmospheric radial accent glow matching live sky cache
+  const gx = ox + rw * 0.5;
+  const gy = oy + rh * 0.22;
+  const rad = Math.max(rw, rh) * 0.55;
+  const wash = c.createRadialGradient(gx, gy, 16, gx, gy, rad);
+  wash.addColorStop(0, rgbStr(th.accent, 0.14));
+  wash.addColorStop(1, 'rgba(0,0,0,0)');
+  c.fillStyle = wash;
+  c.fillRect(ox, oy, rw, rh);
+
+  // Subtle distant silhouette band along lower third for depth cues
+  c.fillStyle = rgbStr(th.mist, 0.22);
+  c.beginPath();
+  c.moveTo(ox, oy + rh);
+  for (let x = ox; x <= ox + rw; x += 64) {
+    const ridge = rh * 0.68 + wHash(x, oy + 17) * 34;
+    c.lineTo(Math.min(ox + rw, x), oy + ridge);
+  }
+  c.lineTo(ox + rw, oy + rh);
+  c.closePath();
+  c.fill();
+  c.restore();
+}
+
+export function drawEditorRoomSolids(c, rm) {
+  const ox = rm.bounds.x;
+  const oy = rm.bounds.y;
+  const theme = rm.theme || 'corridor';
+  const roomMod = rm.terrainMod || null;
+  const rawSolids = rm.solids || [];
+  if (rawSolids.length === 0) return;
+
+  // Build world-space view objects and detect flush ground seams cleanly
+  const worldSolids = rawSolids.map(s => ({
+    x: ox + s.x,
+    y: oy + s.y,
+    w: s.w,
+    h: s.h,
+    type: s.type || 'platform',
+    mod: s.mod || null,
+    seamLeft: false,
+    seamRight: false
+  }));
+
+  for (let i = 0; i < worldSolids.length; i++) {
+    const a = worldSolids[i];
+    if (a.type !== 'ground') continue;
+    for (let j = 0; j < worldSolids.length; j++) {
+      if (i === j) continue;
+      const b = worldSolids[j];
+      if (b.type !== 'ground') continue;
+      const overlapY = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+      if (overlapY < 16) continue;
+      if (Math.abs((a.x + a.w) - b.x) <= 4) a.seamRight = true;
+      if (Math.abs(a.x - (b.x + b.w)) <= 4) a.seamLeft = true;
+    }
+  }
+
+  // Paint in exact runtime layer order: grounds -> pillars -> floating platforms
+  for (let i = 0; i < worldSolids.length; i++) {
+    const ws = worldSolids[i];
+    if (ws.type === 'ground') paintGroundSolid(c, ws, resolveTerrainStyle(theme, roomMod, ws.mod));
+  }
+  for (let i = 0; i < worldSolids.length; i++) {
+    const ws = worldSolids[i];
+    if (ws.type === 'pillar') paintPillarSolid(c, ws, resolveTerrainStyle(theme, roomMod, ws.mod));
+  }
+  for (let i = 0; i < worldSolids.length; i++) {
+    const ws = worldSolids[i];
+    if (ws.type !== 'ground' && ws.type !== 'pillar') {
+      paintPlatformSolid(c, ws, resolveTerrainStyle(theme, roomMod, ws.mod));
+    }
+  }
 }

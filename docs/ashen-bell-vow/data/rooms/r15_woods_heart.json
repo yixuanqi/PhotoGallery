@@ -1,0 +1,226 @@
+{
+  "schemaVersion": 1,
+  "id": "r15_woods_heart",
+  "zoneName": "枯墨古林",
+  "name": "枯墨古林 · 古钟树窟",
+  "theme": "forest",
+  "bounds": {
+    "x": 0,
+    "y": 1520,
+    "w": 1080,
+    "h": 740
+  },
+  "connections": [
+    "r14_woods_cavern",
+    "r10_ink_woods"
+  ],
+  "subZones": [
+    {
+      "name": "枯墨古林 · 千年古钟树窟",
+      "x": 0,
+      "y": 0,
+      "w": 1080,
+      "h": 740
+    }
+  ],
+  "solids": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 30,
+      "h": 740,
+      "type": "pillar"
+    },
+    {
+      "x": 0,
+      "y": 600,
+      "w": 1080,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 70,
+      "y": 410,
+      "w": 180,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 285,
+      "y": 310,
+      "w": 155,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 300,
+      "y": 120,
+      "w": 145,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 780,
+      "y": 430,
+      "w": 185,
+      "h": 22,
+      "type": "platform"
+    }
+  ],
+  "crumblePlatforms": [],
+  "altars": [],
+  "npcs": [],
+  "secretWalls": [],
+  "voidBarriers": [],
+  "gates": [],
+  "pickups": [
+    {
+      "id": "pickup_core_forest",
+      "kind": "statCore",
+      "x": 150,
+      "y": 410,
+      "bonusHp": 15,
+      "bonusSoul": 15,
+      "name": "古根生息核",
+      "desc": "枯木树窟深处凝结的生机魂核（生命上限 +15 · 魂火上限 +15）"
+    }
+  ],
+  "pendulums": [],
+  "windZones": [],
+  "bouncePads": [
+    {
+      "id": "bp_wh_exit",
+      "x": 360,
+      "y": 600,
+      "w": 86,
+      "h": 28,
+      "boostVy": -940
+    },
+    {
+      "id": "bp_wh_mid",
+      "x": 360,
+      "y": 310,
+      "w": 78,
+      "h": 24,
+      "boostVy": -890
+    },
+    {
+      "id": "bp_wh_east",
+      "x": 865,
+      "y": 600,
+      "w": 78,
+      "h": 26,
+      "boostVy": -800
+    },
+    {
+      "id": "bp_wh_top",
+      "x": 372,
+      "y": 120,
+      "w": 78,
+      "h": 24,
+      "boostVy": -900
+    }
+  ],
+  "grappleAnchors": [
+    {
+      "id": "anc_wh_1",
+      "x": 540,
+      "y": 235,
+      "topY": 0
+    },
+    {
+      "id": "anc_wh_2",
+      "x": 825,
+      "y": 245,
+      "topY": 0
+    }
+  ],
+  "lanterns": [
+    {
+      "id": "lan_wh_1",
+      "x": 640,
+      "anchorY": 165,
+      "topY": 0,
+      "len": 145,
+      "angle": 0.04
+    }
+  ],
+  "enemies": [
+    {
+      "id": "warden_forest_boss",
+      "kind": "warden_forest",
+      "x": 640,
+      "y": 502,
+      "minX": 220,
+      "maxX": 960
+    }
+  ],
+  "bosses": [],
+  "props": {
+    "puddles": [],
+    "banners": [],
+    "candles": [
+      {
+        "x": 110,
+        "y": 410
+      },
+      {
+        "x": 195,
+        "y": 410
+      }
+    ],
+    "stamps": [
+      {
+        "type": "gnarled_tree",
+        "x": 140,
+        "y": 600,
+        "scale": 1.42,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.8,
+        "seed": 1
+      },
+      {
+        "type": "spore_cluster",
+        "x": 265,
+        "y": 600,
+        "scale": 1.15,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.85,
+        "seed": 0
+      },
+      {
+        "type": "spore_cluster",
+        "x": 885,
+        "y": 600,
+        "scale": 1.15,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.85,
+        "seed": 2
+      },
+      {
+        "type": "gnarled_tree",
+        "x": 965,
+        "y": 600,
+        "scale": 1.38,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.8,
+        "seed": 0
+      }
+    ],
+    "boneCairns": []
+  },
+  "loreTablets": [],
+  "resonancePuzzles": [],
+  "rivers": [],
+  "inscriptions": [
+    {
+      "x": 360,
+      "y": 540,
+      "text": "踏荧光巨孢伞连跃而上，可直返上层古林与起点圣所捷径"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 // Player, enemy & boss entity factories
 import { FLOOR_Y, WELL_BOTTOM_Y, ENEMIES_DEF, BOSSES_DEF } from './config.js';
-import { getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks, getPlayerMaxSeals, getCombatScaling } from './state.js';
+import { G, getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks, getPlayerMaxSeals, getCombatScaling } from './state.js';
 import { createCloak } from './vfx.js';
 
 export function createPlayer(x = 340, y = FLOOR_Y - 56) {
@@ -58,6 +58,8 @@ export function createPlayer(x = 340, y = FLOOR_Y - 56) {
     shieldArmorMult: 1.0,
     weaponSwapCd: 0,
     bellSwing: 0,
+    bellSealHits: 0,
+    bellSealCd: 0,
 
     // 3-Tier Parry
     parryActive: false,
@@ -95,6 +97,12 @@ export function createPlayer(x = 340, y = FLOOR_Y - 56) {
     lastSafeX: x,
     lastSafeY: y,
     riverCd: 0,
+    frostMeter: 0,
+    frostChilledTimer: 0,
+    wetTimer: 0,
+    wetHintCd: 0,
+    sporeDmgCd: 0,
+    galeSurgeTimer: 0,
     iframeTimer: 0,
     hurtTimer: 0,
     deathTimer: 0,
@@ -324,7 +332,9 @@ export function makeDummy(id, x, y, minX, maxX) {
     didHit: false,
     hurtFlash: 0,
     bellShake: 0,
-    walkCycle: 0
+    walkCycle: 0,
+    inflictsFrost: 0,
+    meter: { hits: [], totalDmg: 0, totalPosture: 0, maxHit: 0, dps: 0, pps: 0, lastHitTime: -99 }
   };
 }
 
@@ -337,9 +347,220 @@ function applyFoeScaling(ent) {
   return ent;
 }
 
+export function makeFalcon(id, x, y) {
+  return {
+    id,
+    name: '衔铃风隼',
+    kind: 'falcon',
+    isBoss: false,
+    x, y,
+    homeX: x,
+    homeY: y,
+    w: 44,
+    h: 34,
+    vx: 0,
+    vy: 0,
+    facing: -1,
+    hp: 84,
+    maxHp: 84,
+    posture: 0,
+    maxPosture: 52,
+    postureDecayDelay: 0,
+    alive: true,
+    state: 'hover', // hover, windup, dive, recover, stagger
+    stateTimer: 1.0 + Math.random() * 0.6,
+    diveTx: x,
+    diveTy: y,
+    didHit: false,
+    hurtFlash: 0,
+    wingPhase: Math.random() * Math.PI * 2
+  };
+}
+
+export function makeFungus(id, x, y, minX, maxX) {
+  return {
+    id,
+    name: '孢蚀菌傀',
+    kind: 'fungus',
+    isBoss: false,
+    x, y,
+    w: 40,
+    h: 58,
+    vx: 0,
+    vy: 0,
+    facing: -1,
+    minX, maxX,
+    hp: 124,
+    maxHp: 124,
+    posture: 0,
+    maxPosture: 68,
+    postureDecayDelay: 0,
+    alive: true,
+    state: 'patrol', // patrol, chase, windup, attack, recover, stagger
+    stateTimer: 0,
+    attackKind: 'slam', // slam (parryable), sporeBurst (toxic cloud)
+    didHit: false,
+    hurtFlash: 0,
+    sporeCd: 0,
+    walkCycle: 0
+  };
+}
+
+export function makeFrostguard(id, x, y, minX, maxX) {
+  return {
+    id,
+    name: '寒戟骸卫',
+    kind: 'frostguard',
+    isBoss: false,
+    inflictsFrost: 38,
+    x, y,
+    w: 40,
+    h: 68,
+    vx: 0,
+    vy: 0,
+    facing: -1,
+    minX, maxX,
+    hp: 152,
+    maxHp: 152,
+    posture: 0,
+    maxPosture: 86,
+    postureDecayDelay: 0,
+    alive: true,
+    state: 'patrol', // patrol, chase, windup, attack, recover, stagger
+    stateTimer: 0,
+    attackKind: 'halberd', // halberd (parryable), frostLunge (crimson peril)
+    didHit: false,
+    hurtFlash: 0,
+    walkCycle: 0,
+    cloak: createCloak(x, y + 20, 6, 9)
+  };
+}
+
+export function makeWardenWind(id, x, y, minX, maxX) {
+  return {
+    id,
+    name: '截风巡塔使 · 朔',
+    phase1Title: '绝风守誓 · 乘风双刃',
+    phase2Title: '绝风狂澜 · 断塔追魂',
+    kind: 'warden_wind',
+    isBoss: false,
+    isMiniBoss: true,
+    awake: false,
+    phase: 1,
+    x, y,
+    homeX: x,
+    homeY: y,
+    minX, maxX,
+    w: 44,
+    h: 72,
+    vx: 0,
+    vy: 0,
+    facing: -1,
+    hp: 360,
+    maxHp: 360,
+    posture: 0,
+    maxPosture: 120,
+    postureDecayDelay: 0,
+    alive: true,
+    state: 'idle', // idle, stalk, windup, strike, recover, stagger
+    stateTimer: 0.7,
+    moveKind: 'galeCombo', // galeCombo, windDashCut, updraftBarrage
+    comboIdx: 0,
+    comboTotal: 2,
+    isDelayedHit: false,
+    windupDuration: 0.5,
+    didHit: false,
+    hurtFlash: 0,
+    walkCycle: 0,
+    cloak: createCloak(x, y + 20, 7, 10)
+  };
+}
+
+export function makeWardenForest(id, x, y, minX, maxX) {
+  return {
+    id,
+    name: '盘根古钟精 · 枯',
+    phase1Title: '古林守誓 · 盘根钟铠',
+    phase2Title: '古林狂孢 · 万藤噬魂',
+    kind: 'warden_forest',
+    isBoss: false,
+    isMiniBoss: true,
+    awake: false,
+    phase: 1,
+    x, y,
+    homeX: x,
+    homeY: y,
+    minX, maxX,
+    w: 64,
+    h: 98,
+    vx: 0,
+    vy: 0,
+    facing: -1,
+    hp: 430,
+    maxHp: 430,
+    posture: 0,
+    maxPosture: 145,
+    postureDecayDelay: 0,
+    alive: true,
+    barkArmor: true,
+    shieldBrokenTimer: 0,
+    state: 'idle', // idle, stalk, windup, strike, recover, stagger
+    stateTimer: 0.8,
+    moveKind: 'rootSlam', // rootSlam, vineWave, sporeEruption
+    isDelayedHit: false,
+    windupDuration: 0.62,
+    didHit: false,
+    hurtFlash: 0,
+    pulsePhase: 0
+  };
+}
+
+export function makeWardenMountain(id, x, y, minX, maxX) {
+  return {
+    id,
+    name: '断剑霜侯 · 凛',
+    phase1Title: '霜脊守誓 · 寒刃居合',
+    phase2Title: '霜脊寂灭 · 冰髓绝斩',
+    kind: 'warden_mountain',
+    isBoss: false,
+    isMiniBoss: true,
+    inflictsFrost: 34,
+    awake: false,
+    phase: 1,
+    x, y,
+    homeX: x,
+    homeY: y,
+    minX, maxX,
+    w: 42,
+    h: 74,
+    vx: 0,
+    vy: 0,
+    facing: -1,
+    hp: 460,
+    maxHp: 460,
+    posture: 0,
+    maxPosture: 155,
+    postureDecayDelay: 0,
+    alive: true,
+    state: 'idle', // idle, stalk, windup, strike, recover, stagger
+    stateTimer: 0.7,
+    moveKind: 'frostCombo', // frostCombo, frostIai, glacialThrust
+    comboIdx: 0,
+    comboTotal: 3,
+    isDelayedHit: false,
+    windupDuration: 0.46,
+    didHit: false,
+    hurtFlash: 0,
+    walkCycle: 0,
+    cloak: createCloak(x, y + 20, 7, 10)
+  };
+}
+
 export function createSentinels() {
   const list = [];
+  const slainMinis = G.worldState && G.worldState.defeatedMiniBosses ? G.worldState.defeatedMiniBosses : null;
   for (const e of ENEMIES_DEF) {
+    if (slainMinis && slainMinis.has(e.id)) continue;
     let ent;
     if (e.kind === 'dummy') {
       ent = makeDummy(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 110, e.maxX !== undefined ? e.maxX : e.x + 130);
@@ -353,9 +574,24 @@ export function createSentinels() {
       ent = makeDuelist(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 170, e.maxX !== undefined ? e.maxX : e.x + 170);
     } else if (e.kind === 'leech') {
       ent = makeLeech(e.id, e.x, e.y);
+    } else if (e.kind === 'falcon') {
+      ent = makeFalcon(e.id, e.x, e.y);
+    } else if (e.kind === 'fungus') {
+      ent = makeFungus(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 150, e.maxX !== undefined ? e.maxX : e.x + 150);
+    } else if (e.kind === 'frostguard') {
+      ent = makeFrostguard(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 160, e.maxX !== undefined ? e.maxX : e.x + 160);
+    } else if (e.kind === 'warden_wind') {
+      ent = makeWardenWind(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 220, e.maxX !== undefined ? e.maxX : e.x + 220);
+    } else if (e.kind === 'warden_forest') {
+      ent = makeWardenForest(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 150, e.maxX !== undefined ? e.maxX : e.x + 150);
+    } else if (e.kind === 'warden_mountain') {
+      ent = makeWardenMountain(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 200, e.maxX !== undefined ? e.maxX : e.x + 200);
     } else {
       ent = makeSentinel(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 160, e.maxX !== undefined ? e.maxX : e.x + 160);
     }
+    ent.roomId = e.roomId || null;
+    ent.bounceCd = 0;
+    ent.windLiftedTimer = 0;
     list.push(applyFoeScaling(ent));
   }
   return list;
@@ -367,6 +603,7 @@ export function createBoss() {
   const by = cfg ? cfg.y : (FLOOR_Y - 104);
   return applyFoeScaling({
     id: 'boss_hui',
+    roomId: cfg ? cfg.roomId : 'r03_chapel',
     name: '断钟骑士 · 晦',
     phase1Title: '第一幕 · 寂静守誓',
     phase2Title: '第二幕 · 墨钟长鸣',
@@ -417,6 +654,7 @@ export function createBoss2() {
   const by = cfg ? cfg.y : (WELL_BOTTOM_Y - 142);
   return applyFoeScaling({
     id: 'boss_ji',
+    roomId: cfg ? cfg.roomId : 'r05_foundry',
     name: '沉渊铸钟师 · 寂',
     phase1Title: '第一幕 · 铸魂悬丝',
     phase2Title: '第二幕 · 万钟齐喑',
@@ -469,6 +707,7 @@ export function createBoss3() {
   const by = cfg ? cfg.y : (FLOOR_Y - 116);
   return applyFoeScaling({
     id: 'boss_yuan',
+    roomId: cfg ? cfg.roomId : 'r08_heart',
     name: '初钟圣骸 · 渊',
     phase1Title: '第一幕 · 初钟苏醒',
     phase2Title: '第二幕 · 碎钟双影',
@@ -513,5 +752,64 @@ export function createBoss3() {
     haloAngle: 0,
     walkCycle: 0,
     cloak: createCloak(bx + 30, by + 30, 9, 13)
+  });
+}
+
+
+export function createBoss4() {
+  const cfg = BOSSES_DEF.boss_yuan;
+  const bx = cfg ? cfg.x : 9220;
+  const by = cfg ? cfg.y + 8 : (FLOOR_Y - 108);
+  return applyFoeScaling({
+    id: 'boss_zhu',
+    roomId: cfg ? cfg.roomId : 'r08_heart',
+    name: '初铸残影 · 铸',
+    phase1Title: '第一幕 · 三刃初鸣',
+    phase2Title: '第二幕 · 铃阵双映',
+    phase3Title: '终幕 · 初铸归寂',
+    kind: 'boss4',
+    isBoss: true,
+    arenaMinX: cfg ? cfg.arenaMinX : 8378,
+    arenaMaxX: cfg ? cfg.arenaMaxX : 9632,
+    arenaFloorY: cfg ? cfg.arenaFloorY : FLOOR_Y,
+    arenaTopY: cfg ? cfg.arenaTopY : 0,
+    x: bx,
+    y: by,
+    w: 56,
+    h: 108,
+    vx: 0,
+    vy: 0,
+    facing: -1,
+    hp: 1220,
+    maxHp: 1220,
+    posture: 0,
+    maxPosture: 260,
+    postureDecayDelay: 0,
+    phase: 1,
+    awake: false,
+    alive: false,
+    state: 'idle',
+    stateTimer: 0.55,
+    stance: 'blade',
+    nextStance: 'blade',
+    stanceFlash: 0,
+    movesInStance: 0,
+    ultimateReactCd: 0,
+    moveKind: 'bladeFlurry',
+    lastMoveKind: '',
+    comboIdx: 0,
+    comboTotal: 3,
+    isDelayedHit: false,
+    glintPlayed: false,
+    finisherParried: false,
+    apexHangTimer: 0,
+    windupDuration: 0.44,
+    didHit: false,
+    leapAirborne: false,
+    blinkAlpha: 1,
+    hurtFlash: 0,
+    haloAngle: 0,
+    walkCycle: 0,
+    cloak: createCloak(bx + 28, by + 26, 9, 12)
   });
 }

@@ -330,7 +330,60 @@ export class SoundEngine {
 
   setBackgroundDuck(hidden) {
     this.bgDucked = !!hidden;
-    this._applyMixGains(0.1);
+    this._applyMixGains(0.08);
+    if (this.ctx) {
+      if (this.bgDucked) {
+        try { if (this.ctx.state === 'running') this.ctx.suspend().catch(() => {}); } catch {}
+      } else if (!this.muted) {
+        try { if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {}); } catch {}
+      }
+    }
+  }
+
+  emergencySuspend() {
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      if (this.masterGain) {
+        this.masterGain.gain.cancelScheduledValues(now);
+        this.masterGain.gain.setTargetAtTime(0.0001, now, 0.03);
+      }
+      if (this.ctx.state === 'running') this.ctx.suspend().catch(() => {});
+    } catch {}
+  }
+
+  resetToExplore(themeKey = 'sanctuary') {
+    const key = BIOME_AMBIENCE_PROFILES[themeKey] ? themeKey : 'sanctuary';
+    this.activeBiome = key;
+    this._appliedBiomeKey = '';
+    this.musicLayer = 'explore';
+    this.musicStep = 0;
+    this.musicAccum = 0;
+    this.heartbeatTimer = 0.6;
+    if (!this.ctx || !this.biomeGains) return;
+    const p = BIOME_AMBIENCE_PROFILES[key];
+    const now = this.ctx.currentTime;
+    const fastRamp = (node, target) => {
+      if (!node) return;
+      node.gain.cancelScheduledValues(now);
+      node.gain.setTargetAtTime(Math.max(0.0001, target), now, 0.14);
+    };
+    fastRamp(this.biomeGains.wind, p.wind);
+    fastRamp(this.biomeGains.rain, p.rain);
+    fastRamp(this.biomeGains.well, p.well);
+    fastRamp(this.biomeGains.foundry, p.foundry);
+    fastRamp(this.biomeGains.drone, p.drone);
+    if (this.windFilter) {
+      this._windFreqTarget = p.windHz;
+      this.windFilter.frequency.cancelScheduledValues(now);
+      this.windFilter.frequency.setTargetAtTime(p.windHz, now, 0.16);
+    }
+    if (this.droneFilter) {
+      this._droneFreqTarget = p.droneHz;
+      this.droneFilter.frequency.cancelScheduledValues(now);
+      this.droneFilter.frequency.setTargetAtTime(p.droneHz, now, 0.16);
+    }
+    this._appliedBiomeKey = `${key}|0`;
   }
 
   get sfxOut() {
@@ -837,6 +890,193 @@ export class SoundEngine {
         const g = c.createGain(); g.gain.setValueAtTime(0.18, 0); g.gain.exponentialRampToValueAtTime(0.001, 0.26);
         n.connect(lp); lp.connect(g); g.connect(out); n.start(0); n.stop(0.28);
       }],
+      ['falcon_cry', 0.36, (c, out) => {
+        const osc = c.createOscillator(); const g = c.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(1920, 0); osc.frequency.exponentialRampToValueAtTime(980, 0.28);
+        const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.setValueAtTime(1580, 0); bp.Q.value = 3.2;
+        g.gain.setValueAtTime(0.16, 0); g.gain.exponentialRampToValueAtTime(0.0008, 0.32);
+        osc.connect(bp); bp.connect(g); g.connect(out); osc.start(0); osc.stop(0.34);
+        const bell = c.createOscillator(); const bg = c.createGain();
+        bell.type = 'sine'; bell.frequency.setValueAtTime(2640, 0.03);
+        bg.gain.setValueAtTime(0.09, 0.03); bg.gain.exponentialRampToValueAtTime(0.0006, 0.34);
+        bell.connect(bg); bg.connect(out); bell.start(0.03); bell.stop(0.35);
+      }],
+      ['wind_blade', 0.26, (c, out) => {
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const bp = c.createBiquadFilter(); bp.type = 'bandpass';
+        bp.frequency.setValueAtTime(1850, 0); bp.frequency.exponentialRampToValueAtTime(620, 0.22); bp.Q.value = 2.4;
+        const g = c.createGain(); g.gain.setValueAtTime(0.20, 0); g.gain.exponentialRampToValueAtTime(0.0008, 0.24);
+        n.connect(bp); bp.connect(g); g.connect(out); n.start(0); n.stop(0.25);
+      }],
+      ['spore_bounce', 0.30, (c, out) => {
+        const osc = c.createOscillator(); const g = c.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(155, 0); osc.frequency.exponentialRampToValueAtTime(520, 0.14); osc.frequency.exponentialRampToValueAtTime(340, 0.26);
+        g.gain.setValueAtTime(0.24, 0); g.gain.exponentialRampToValueAtTime(0.0008, 0.28);
+        osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.29);
+        const ch = c.createOscillator(); const cg = c.createGain();
+        ch.type = 'triangle'; ch.frequency.setValueAtTime(659.25, 0.04);
+        cg.gain.setValueAtTime(0.08, 0.04); cg.gain.exponentialRampToValueAtTime(0.0006, 0.27);
+        ch.connect(cg); cg.connect(out); ch.start(0.04); ch.stop(0.28);
+      }],
+      ['spore_burst', 0.42, (c, out) => {
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const bp = c.createBiquadFilter(); bp.type = 'bandpass';
+        bp.frequency.setValueAtTime(920, 0); bp.frequency.exponentialRampToValueAtTime(280, 0.38); bp.Q.value = 1.6;
+        const g = c.createGain(); g.gain.setValueAtTime(0.22, 0); g.gain.exponentialRampToValueAtTime(0.0008, 0.40);
+        n.connect(bp); bp.connect(g); g.connect(out); n.start(0); n.stop(0.41);
+        const sub = c.createOscillator(); const sg = c.createGain();
+        sub.type = 'triangle'; sub.frequency.setValueAtTime(140, 0); sub.frequency.exponentialRampToValueAtTime(62, 0.26);
+        sg.gain.setValueAtTime(0.14, 0); sg.gain.exponentialRampToValueAtTime(0.001, 0.28);
+        sub.connect(sg); sg.connect(out); sub.start(0); sub.stop(0.30);
+      }],
+      ['spore_purify', 0.46, (c, out) => {
+        const freqs = [587.33, 880.0, 1318.5];
+        for (let i = 0; i < freqs.length; i++) {
+          const t0 = i * 0.035;
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = 'sine'; osc.frequency.setValueAtTime(freqs[i], t0);
+          osc.frequency.exponentialRampToValueAtTime(freqs[i] * 1.06, t0 + 0.36);
+          g.gain.setValueAtTime(0.11 / (i * 0.5 + 1), t0); g.gain.exponentialRampToValueAtTime(0.0006, t0 + 0.38);
+          osc.connect(g); g.connect(out); osc.start(t0); osc.stop(t0 + 0.40);
+        }
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.setValueAtTime(2200, 0);
+        const ng = c.createGain(); ng.gain.setValueAtTime(0.12, 0); ng.gain.exponentialRampToValueAtTime(0.001, 0.26);
+        n.connect(hp); hp.connect(ng); ng.connect(out); n.start(0); n.stop(0.28);
+      }],
+      ['bark_crack', 0.38, (c, out) => {
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.setValueAtTime(640, 0); bp.Q.value = 1.9;
+        const ng = c.createGain(); ng.gain.setValueAtTime(0.28, 0); ng.gain.exponentialRampToValueAtTime(0.001, 0.24);
+        n.connect(bp); bp.connect(ng); ng.connect(out); n.start(0); n.stop(0.26);
+        const osc = c.createOscillator(); const g = c.createGain();
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(175, 0); osc.frequency.exponentialRampToValueAtTime(52, 0.32);
+        g.gain.setValueAtTime(0.22, 0); g.gain.exponentialRampToValueAtTime(0.0008, 0.35);
+        osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.36);
+      }],
+      ['frost_build', 0.22, (c, out) => {
+        const freqs = [1567.98, 2349.32];
+        for (let i = 0; i < 2; i++) {
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = 'sine'; osc.frequency.setValueAtTime(freqs[i], i * 0.02);
+          g.gain.setValueAtTime(0.08, i * 0.02); g.gain.exponentialRampToValueAtTime(0.0006, 0.20);
+          osc.connect(g); g.connect(out); osc.start(i * 0.02); osc.stop(0.21);
+        }
+      }],
+      ['ult_blade', 0.62, (c, out) => {
+        const cuts = [0, 0.08, 0.16, 0.24, 0.34];
+        for (let i = 0; i < cuts.length; i++) {
+          const t0 = cuts[i];
+          const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+          const bp = c.createBiquadFilter(); bp.type = 'bandpass';
+          bp.frequency.setValueAtTime(2200 + i * 240, t0); bp.frequency.exponentialRampToValueAtTime(520, t0 + 0.14); bp.Q.value = 1.6;
+          const ng = c.createGain(); ng.gain.setValueAtTime(0.18, t0); ng.gain.exponentialRampToValueAtTime(0.0008, t0 + 0.16);
+          n.connect(bp); bp.connect(ng); ng.connect(out); n.start(t0); n.stop(t0 + 0.17);
+          const osc = c.createOscillator(); const og = c.createGain();
+          osc.type = i === cuts.length - 1 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(1174.66 * (1 + i * 0.12), t0);
+          osc.frequency.exponentialRampToValueAtTime(587.33, t0 + 0.22);
+          og.gain.setValueAtTime(i === cuts.length - 1 ? 0.20 : 0.12, t0);
+          og.gain.exponentialRampToValueAtTime(0.0008, t0 + 0.24);
+          osc.connect(og); og.connect(out); osc.start(t0); osc.stop(t0 + 0.26);
+        }
+      }],
+      ['ult_hammer', 1.18, (c, out) => {
+        const sub = c.createOscillator(); const sg = c.createGain();
+        sub.type = 'triangle'; sub.frequency.setValueAtTime(125, 0); sub.frequency.exponentialRampToValueAtTime(28, 0.55);
+        sg.gain.setValueAtTime(0.46, 0); sg.gain.exponentialRampToValueAtTime(0.0008, 0.62);
+        sub.connect(sg); sg.connect(out); sub.start(0); sub.stop(0.65);
+        const freqs = [110, 146.83, 220, 329.63, 587.33];
+        for (let i = 0; i < freqs.length; i++) {
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = i < 2 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(freqs[i], 0.02); osc.frequency.exponentialRampToValueAtTime(freqs[i] * 0.96, 1.08);
+          g.gain.setValueAtTime(0.24 / (i * 0.55 + 1), 0.02); g.gain.exponentialRampToValueAtTime(0.0006, 1.12);
+          osc.connect(g); g.connect(out); osc.start(0.02); osc.stop(1.15);
+        }
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(640, 0); lp.frequency.exponentialRampToValueAtTime(120, 0.45);
+        const ng = c.createGain(); ng.gain.setValueAtTime(0.26, 0); ng.gain.exponentialRampToValueAtTime(0.001, 0.48);
+        n.connect(lp); lp.connect(ng); ng.connect(out); n.start(0); n.stop(0.50);
+      }],
+      ['ult_bell', 1.10, (c, out) => {
+        const notes = [293.66, 349.23, 440.0, 587.33, 880.0, 1174.66];
+        for (let i = 0; i < notes.length; i++) {
+          const t0 = i * 0.055;
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = i % 2 === 0 ? 'sine' : 'triangle';
+          osc.frequency.setValueAtTime(notes[i], t0);
+          g.gain.setValueAtTime(0.0006, t0);
+          g.gain.linearRampToValueAtTime(0.14 / (i * 0.35 + 1), t0 + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0006, t0 + 0.72);
+          osc.connect(g); g.connect(out); osc.start(t0); osc.stop(t0 + 0.75);
+        }
+      }],
+      ['boss4_swap', 0.42, (c, out) => {
+        const freqs = [392.0, 587.33, 880.0, 1174.66];
+        for (let i = 0; i < freqs.length; i++) {
+          const t0 = i * 0.025;
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = i % 2 === 0 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(freqs[i], t0);
+          osc.frequency.exponentialRampToValueAtTime(freqs[i] * 1.06, t0 + 0.24);
+          g.gain.setValueAtTime(0.14 / (i * 0.4 + 1), t0);
+          g.gain.exponentialRampToValueAtTime(0.0006, t0 + 0.30);
+          osc.connect(g); g.connect(out); osc.start(t0); osc.stop(t0 + 0.32);
+        }
+      }],
+      ['boss4_iai', 0.40, (c, out) => {
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const bp = c.createBiquadFilter(); bp.type = 'bandpass';
+        bp.frequency.setValueAtTime(2800, 0); bp.frequency.exponentialRampToValueAtTime(480, 0.22); bp.Q.value = 1.9;
+        const ng = c.createGain(); ng.gain.setValueAtTime(0.24, 0); ng.gain.exponentialRampToValueAtTime(0.0008, 0.24);
+        n.connect(bp); bp.connect(ng); ng.connect(out); n.start(0); n.stop(0.25);
+        const osc = c.createOscillator(); const g = c.createGain();
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(1480, 0); osc.frequency.exponentialRampToValueAtTime(340, 0.26);
+        g.gain.setValueAtTime(0.13, 0); g.gain.exponentialRampToValueAtTime(0.0007, 0.28);
+        osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.30);
+      }],
+      ['boss4_counter', 0.65, (c, out) => {
+        const freqs = [146.83, 293.66, 440.0, 739.99, 1174.66];
+        for (let i = 0; i < freqs.length; i++) {
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = i < 2 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(freqs[i], 0);
+          osc.frequency.exponentialRampToValueAtTime(freqs[i] * 0.985, 0.58);
+          g.gain.setValueAtTime(0.22 / (i * 0.55 + 1), 0);
+          g.gain.exponentialRampToValueAtTime(0.0006, 0.60);
+          osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.62);
+        }
+      }],
+      ['forge_trait', 0.68, (c, out) => {
+        const freqs = [587.33, 880.0, 1318.5, 1760.0];
+        for (let i = 0; i < freqs.length; i++) {
+          const t0 = i * 0.04;
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = i === 0 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(freqs[i], t0);
+          g.gain.setValueAtTime(0.15 / (i * 0.45 + 1), t0);
+          g.gain.exponentialRampToValueAtTime(0.0006, t0 + 0.48);
+          osc.connect(g); g.connect(out); osc.start(t0); osc.stop(t0 + 0.50);
+        }
+      }],
+      ['frost_shatter', 0.44, (c, out) => {
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.setValueAtTime(3100, 0);
+        const ng = c.createGain(); ng.gain.setValueAtTime(0.24, 0); ng.gain.exponentialRampToValueAtTime(0.0008, 0.34);
+        n.connect(hp); hp.connect(ng); ng.connect(out); n.start(0); n.stop(0.36);
+        const freqs = [2637, 2093, 1568, 1175];
+        for (let i = 0; i < freqs.length; i++) {
+          const t0 = i * 0.028;
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = 'triangle'; osc.frequency.setValueAtTime(freqs[i], t0);
+          osc.frequency.exponentialRampToValueAtTime(freqs[i] * 0.68, t0 + 0.26);
+          g.gain.setValueAtTime(0.10, t0); g.gain.exponentialRampToValueAtTime(0.0006, t0 + 0.28);
+          osc.connect(g); g.connect(out); osc.start(t0); osc.stop(t0 + 0.30);
+        }
+      }],
       // 5. BGM Instrument Voices (pre-baked at D4/D3, pitched via playbackRate -> 1 node per note!)
       ['bgm_pluck', 0.58, (c, out) => {
         const freq = 293.66;
@@ -1025,7 +1265,8 @@ export class SoundEngine {
     if (!this.musicEnabled || !this.musicGain) return;
     const layer = bossPhase3 ? 'boss3' : bossPhase2 ? 'boss2' : bossAwake ? 'boss1' : inCombat ? 'combat' : 'explore';
     this.musicLayer = layer;
-    const bpm = layer === 'boss3' ? 142 : layer === 'boss2' ? 132 : layer === 'boss1' ? 114 : layer === 'combat' ? 98 : 72;
+    const isBoss4Climax = pNum >= 4;
+    const bpm = isBoss4Climax ? 148 : layer === 'boss3' ? 142 : layer === 'boss2' ? 132 : layer === 'boss1' ? 114 : layer === 'combat' ? 98 : 72;
     const stepDur = 60 / bpm / 4;
     this.musicAccum += dt;
     if (this.musicAccum < stepDur) return;
@@ -1267,6 +1508,74 @@ export class SoundEngine {
 
   playCrumble() {
     this._playBaked('crumble', 1.0);
+  }
+
+  playFalconCry() {
+    if (!this._canPlaySfx('falcon_cry', 0.08)) return;
+    this._playBaked('falcon_cry', 0.94 + Math.random() * 0.12);
+  }
+
+  playWindBlade() {
+    if (!this._canPlaySfx('wind_blade', 0.05)) return;
+    this._playBaked('wind_blade', 0.95 + Math.random() * 0.12);
+  }
+
+  playSporeBounce() {
+    if (!this._canPlaySfx('spore_bounce', 0.06)) return;
+    this._playBaked('spore_bounce', 0.96 + Math.random() * 0.08);
+  }
+
+  playSporeBurst() {
+    if (!this._canPlaySfx('spore_burst', 0.08)) return;
+    this._playBaked('spore_burst', 0.92 + Math.random() * 0.16);
+  }
+
+  playSporePurify() {
+    if (!this._canPlaySfx('spore_purify', 0.08)) return;
+    this._playBaked('spore_purify', 1.0);
+  }
+
+  playBarkCrack() {
+    if (!this._canPlaySfx('bark_crack', 0.06)) return;
+    this._playBaked('bark_crack', 1.0);
+  }
+
+  playFrostBuild() {
+    if (!this._canPlaySfx('frost_build', 0.08)) return;
+    this._playBaked('frost_build', 0.95 + Math.random() * 0.12);
+  }
+
+  playFrostShatter() {
+    if (!this._canPlaySfx('frost_shatter', 0.06)) return;
+    this._playBaked('frost_shatter', 1.0);
+  }
+
+  playUltimateBlade() {
+    this._playBaked('ult_blade', 1.0);
+  }
+
+  playUltimateHammer() {
+    this._playBaked('ult_hammer', 1.0);
+  }
+
+  playUltimateBell() {
+    this._playBaked('ult_bell', 1.0);
+  }
+
+  playForgeTrait() {
+    this._playBaked('forge_trait', 1.0);
+  }
+
+  playBoss4Swap() {
+    this._playBaked('boss4_swap', 1.0);
+  }
+
+  playBoss4Iai() {
+    this._playBaked('boss4_iai', 1.0);
+  }
+
+  playBoss4Counter() {
+    this._playBaked('boss4_counter', 1.0);
   }
 }
 

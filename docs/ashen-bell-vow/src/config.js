@@ -168,28 +168,97 @@ export const RELICS = [
     shadeBurstMult: 1.55,
     shadePassHeal: 8,
     hidden: true
+  },
+  {
+    id: 'galefather',
+    name: '朔风铃羽',
+    tag: '御风凌空',
+    effect: '移速 +12% · 空中/上挑/下劈伤害 +30%',
+    usage: '借罡风、二段跳或钩索升空连劈，居高临下压制强敌',
+    hint: '绝风断塔 · 击败守誓精英「截风巡塔使 · 朔」后赐予',
+    desc: '移动速度 +12%，空中攻击、上挑斩与下劈伤害 +30%。',
+    parryWindowMs: 140,
+    blockWindowMs: 260,
+    parryPostureMult: 1.05,
+    parryReflectDmg: 0,
+    grayDuration: 3.5,
+    rallyMult: 1.05,
+    maxFlasks: 3,
+    execHealPct: 0.14,
+    moveSpeedBonus: 0.12,
+    aerialDmgMult: 1.30,
+    hidden: true
+  },
+  {
+    id: 'sporeseal',
+    name: '枯根菌印',
+    tag: '净孢反噬',
+    effect: '免疫毒孢侵蚀 · 钟鸣净孢回魂 +22 并回血 8',
+    usage: '穿行古林毒雾零伤，施放「镇魂钟鸣」净孢回魂续战',
+    hint: '枯墨古林 · 击败守誓精英「盘根古钟精 · 枯」后赐予',
+    desc: '完全免疫毒孢云侵蚀；镇魂钟鸣每净化一团毒孢云回复 22 魂火与 8 气血。',
+    parryWindowMs: 140,
+    blockWindowMs: 260,
+    parryPostureMult: 1.1,
+    parryReflectDmg: 0,
+    grayDuration: 4.0,
+    rallyMult: 1.2,
+    maxFlasks: 3,
+    execHealPct: 0.16,
+    sporeImmune: true,
+    sporePurifySoul: 22,
+    sporePurifyHeal: 8,
+    hidden: true
+  },
+  {
+    id: 'frostcore',
+    name: '霜脊断魄',
+    tag: '凝霜碎势',
+    effect: '寒霜积蓄 -70% · 重击/居合/反击附加碎冰削势 +18',
+    usage: '直面霜脊寒流不惧冻伤，以重击与居合引爆冰晶碎裂',
+    hint: '霜骸圣脊 · 击败守誓精英「断剑霜侯 · 凛」后赐予',
+    desc: '寒霜积蓄速度降低 70%；重击、居合与断钟返触发碎冰震荡额外削势 +18。',
+    parryWindowMs: 140,
+    blockWindowMs: 260,
+    parryPostureMult: 1.15,
+    parryReflectDmg: 6,
+    grayDuration: 3.6,
+    rallyMult: 1.05,
+    maxFlasks: 3,
+    execHealPct: 0.15,
+    frostResistMult: 0.30,
+    frostShatterPosture: 18,
+    hidden: true
   }
 ];
 
 export const GRAVITY = 1580;
-export const MAP_COLS = 44;
-export const MAP_ROWS = 10;
+export const MAP_COLS = 52;
+export const MAP_ROWS = 16;
 
 // Live ES Module bindings updated automatically when levelLoader.js hydrates data/world.json + data/rooms/*.json
-export let WORLD_W = 6740;
-export let WORLD_H = 1520;
+export let WORLD_MIN_X = 0;
+export let WORLD_MIN_Y = 0;
+export let WORLD_W = 11180;
+export let WORLD_H = 2260;
+export let WORLD_SPAN_W = WORLD_W - WORLD_MIN_X;
+export let WORLD_SPAN_H = WORLD_H - WORLD_MIN_Y;
 export let FLOOR_Y = 580;
 export let WELL_BOTTOM_Y = 1380;
-export let MAP_CELL_W = WORLD_W / MAP_COLS;
-export let MAP_CELL_H = WORLD_H / MAP_ROWS;
+export let MAP_CELL_W = WORLD_SPAN_W / MAP_COLS;
+export let MAP_CELL_H = WORLD_SPAN_H / MAP_ROWS;
 
-export function setWorldMetrics(w, h, floorY, wellBottomY) {
-  WORLD_W = Math.max(960, Number(w) || 6740);
-  WORLD_H = Math.max(720, Number(h) || 1520);
+export function setWorldMetrics(w, h, floorY, wellBottomY, minX = 0, minY = 0) {
+  WORLD_MIN_X = Number.isFinite(Number(minX)) ? Number(minX) : 0;
+  WORLD_MIN_Y = Number.isFinite(Number(minY)) ? Number(minY) : 0;
+  WORLD_W = Math.max(WORLD_MIN_X + 960, Number(w) || 11180);
+  WORLD_H = Math.max(WORLD_MIN_Y + 720, Number(h) || 2260);
+  WORLD_SPAN_W = Math.max(960, WORLD_W - WORLD_MIN_X);
+  WORLD_SPAN_H = Math.max(720, WORLD_H - WORLD_MIN_Y);
   FLOOR_Y = Number(floorY) || 580;
   WELL_BOTTOM_Y = Number(wellBottomY) || 1380;
-  MAP_CELL_W = WORLD_W / MAP_COLS;
-  MAP_CELL_H = WORLD_H / MAP_ROWS;
+  MAP_CELL_W = WORLD_SPAN_W / MAP_COLS;
+  MAP_CELL_H = WORLD_SPAN_H / MAP_ROWS;
 }
 
 // Live mutable world registries hydrated from data/rooms/*.json
@@ -260,6 +329,27 @@ export const RELIC_SYNERGIES = [
     name: '墨影断鸣',
     flag: 'synShadeThread',
     desc: '幽影穿敌立刻刷新钩索冷却，2.2s 内下次钩袭双倍破势并大幅回魂。'
+  },
+  {
+    id: 'gale_thread',
+    relics: ['galefather', 'bellthread'],
+    name: '朔风幽丝',
+    flag: 'synGaleThread',
+    desc: '钩索或二段跳后蓄满 2.6s「朔风锐势」，下次攻击伤害 +30% 且附带罡风破势。'
+  },
+  {
+    id: 'spore_clapper',
+    relics: ['sporeseal', 'clapper'],
+    name: '净孢回响',
+    flag: 'synSporeClapper',
+    desc: '镇魂钟鸣或灵刃净化毒孢云时引爆翡翠共振波，对周围敌兵造成 38 伤害并额外回血 10。'
+  },
+  {
+    id: 'frost_iron',
+    relics: ['frostcore', 'ironheart'],
+    name: '冰铁碎骨',
+    flag: 'synFrostIron',
+    desc: '居合一闪与重击终结技释放凛霜碎骨波，削势 +35% 并直接击碎重盾与盘根树铠。'
   }
 ];
 
@@ -464,7 +554,10 @@ export const DUMMY_MODES = [
   { id: 'cycle', label: '全招式循环', tip: '轮流演练：金芒斩 → 快慢二连 → 猩红危刺 → 青铜重盾' },
   { id: 'parryOnly', label: '打铁弹反专练', tip: '循环金芒单斩与快慢二连，专注练习弹反与断钟返' },
   { id: 'redOnly', label: '危技见切专练', tip: '循环猩红「危」突刺，专注练习 Shift 见切闪避' },
-  { id: 'dormant', label: '静立木桩', tip: '静立承受伤害与连招，测试圣物羁绊、居合与法术爆发' }
+  { id: 'dormant', label: '静立木桩', tip: '静立承受伤害与连招，实时统计 DPS / 削势，测试构筑爆发' },
+  { id: 'biomeWind', label: '绝风模拟 · 风刃', tip: '间歇发射可弹反朔风双刃，专练远距弹反归元与空中走位' },
+  { id: 'biomeForest', label: '古林模拟 · 孢甲', tip: '举盾护甲并间歇喷吐毒孢云，专练重劈破甲与镇魂净孢' },
+  { id: 'biomeMountain', label: '霜脊模拟 · 寒戟', tip: '施放附带寒霜积蓄的寒戟连斩与冰晶弹，专练霜压打铁' }
 ];
 
 export const ENEMY_ECHO_REWARDS = {
@@ -472,12 +565,21 @@ export const ENEMY_ECHO_REWARDS = {
   leech: 22,
   wraith: 28,
   sentinel: 32,
+  falcon: 40,
   priest: 42,
+  fungus: 48,
   duelist: 52,
   golem: 58,
+  frostguard: 64,
+  warden_wind: 220,
+  warden_forest: 260,
+  warden_mountain: 320,
   boss: 180,
   boss2: 260,
-  boss3: 420
+  boss3: 420,
+  boss4: 600
 };
+
+export const SEVEN_BELLS_ORDER = ['hui', 'ji', 'warden_wind', 'warden_forest', 'warden_mountain', 'yuan', 'zhu'];
 
 export const ECHO_GRADE_ORDER = { 'B': 1, 'A': 2, 'S': 3, 'S+': 4 };

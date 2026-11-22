@@ -1,9 +1,9 @@
 // Central mutable game state container (G) and cross-module hook registry (hooks)
 import {
-  RELICS, RELIC_SYNERGIES, VOW_CONSTRAINTS, DEFAULT_KEYBINDS, ROOMS, ALTARS, FLOOR_Y, MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H,
+  RELICS, RELIC_SYNERGIES, VOW_CONSTRAINTS, DEFAULT_KEYBINDS, ROOMS, ALTARS, FLOOR_Y, WORLD_MIN_X, WORLD_MIN_Y, MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H,
   SECRET_WALLS_DEF, PICKUPS_DEF, RESONANCE_PUZZLES_DEF, CRUMBLE_PLATFORMS_DEF, LANTERNS_DEF
 } from './config.js';
-import { WEAPON_ORDER, normalizeWeaponId, getWeaponById } from './weapons.js';
+import { WEAPON_ORDER, normalizeWeaponId, getWeaponById, getForgeTraitById } from './weapons.js';
 
 export const G = {
   currentRelic: RELICS[0],
@@ -14,6 +14,7 @@ export const G = {
   canvas: null,
   ctx: null,
   canvasW: 1280,
+  renderScale: 1,
   canvasH: 720,
   globalTime: 0,
   boilFrame: 0,
@@ -23,6 +24,8 @@ export const G = {
   levelBundle: null,
   isEditorPreview: false,
   currentRoomId: null,
+  roomOcclusion: {},
+  visibleRoomIds: new Set(),
 
   // Persistent world & exploration state
   worldState: null,
@@ -67,6 +70,11 @@ export const G = {
   chapelTide: null,
   projectiles: [],
   bellQuakes: [],
+  sporeClouds: [],
+  weaponUltimates: [],
+  delayedStrikes: [],
+  dummyAutoFullSeals: false,
+  dummyRefillTimer: 0,
   crumblePlatforms: [],
   resonancePuzzles: [],
   ambientMotes: [],
@@ -89,7 +97,9 @@ export const G = {
   hitstopTimer: 0,
   invertTimer: 0,
   screenFlash: { alpha: 0, color: '#fff' },
-  cam: { x: 0, y: 0, shake: 0, kickX: 0, kickY: 0, zoom: 1 },
+  cam: { x: 0, y: 0, shake: 0, kickX: 0, kickY: 0, zoom: 1, vLookY: 0, roomTransTimer: 0 },
+  wardenArenaFx: { windDir: 0, windTimer: 0, blizzardAlpha: 0, bellPulseTimer: 0 },
+  causalityNotified: { foundryCooled: false },
   stats: { parries: 0, executions: 0, damageTaken: 0, startTime: 0 },
 
   // Actors
@@ -98,6 +108,7 @@ export const G = {
   boss: null,
   boss2: null,
   boss3: null,
+  boss4: null,
   bossBanner: null,
   achievementBanner: null,
   achievementQueue: [],
@@ -159,10 +170,12 @@ export function createFreshWorldState() {
     bossDefeated: false,
     boss2Defeated: false,
     boss3Defeated: false,
+    boss4Defeated: false,
+    defeatedMiniBosses: new Set(),
     chapelExitAnim: 0,
     foundryGateAnim: 0,
     foundryExitAnim: 0,
-    echoRecords: { hui: null, ji: null, yuan: null, rush: null },
+    echoRecords: { hui: null, ji: null, yuan: null, rush: null, warden_wind: null, warden_forest: null, warden_mountain: null, warden_rush: null, zhu: null, seven_bells: null },
     keyItems: { dawnSigil: false },
     endingsUnlocked: [],
     shortcutOpen: false,
@@ -187,6 +200,8 @@ export function createFreshWorldState() {
     abilities: { doubleJump: false, shadeDash: false },
     equippedWeapon: 'blade',
     unlockedWeapons: new Set(['blade']),
+    weaponTraits: { blade: null, hammer: null, bell: null },
+    unlockedWeaponTraits: new Set(),
     unlockedRelics: new Set(['thorn', 'mirror', 'ember']),
     explored: Array.from({ length: MAP_ROWS }, () => new Array(MAP_COLS).fill(false))
   };
@@ -221,6 +236,48 @@ export function getActiveWeapon() {
   return getWeaponById(getActiveWeaponId());
 }
 
+export function isWeaponTraitUnlocked(traitId) {
+  return !!(traitId && G.worldState && G.worldState.unlockedWeaponTraits && G.worldState.unlockedWeaponTraits.has(traitId));
+}
+
+export function getActiveWeaponTraitId(weaponId = getActiveWeaponId()) {
+  const norm = normalizeWeaponId(weaponId);
+  if (!G.worldState || !G.worldState.weaponTraits) return null;
+  const tid = G.worldState.weaponTraits[norm] || null;
+  return (tid && isWeaponTraitUnlocked(tid)) ? tid : null;
+}
+
+export function hasActiveWeaponTrait(traitId) {
+  const tr = getForgeTraitById(traitId);
+  if (!tr) return false;
+  return getActiveWeaponId() === tr.weaponId && getActiveWeaponTraitId(tr.weaponId) === traitId;
+}
+
+export function unlockWeaponTrait(traitId) {
+  const tr = getForgeTraitById(traitId);
+  if (!tr || !G.worldState) return false;
+  if (!G.worldState.unlockedWeaponTraits) G.worldState.unlockedWeaponTraits = new Set();
+  if (!G.worldState.weaponTraits) G.worldState.weaponTraits = { blade: null, hammer: null, bell: null };
+  const isNew = !G.worldState.unlockedWeaponTraits.has(traitId);
+  G.worldState.unlockedWeaponTraits.add(traitId);
+  G.worldState.weaponTraits[tr.weaponId] = traitId;
+  return isNew;
+}
+
+export function setActiveWeaponTrait(weaponId, traitId) {
+  const norm = normalizeWeaponId(weaponId);
+  if (!G.worldState) return false;
+  if (!G.worldState.weaponTraits) G.worldState.weaponTraits = { blade: null, hammer: null, bell: null };
+  if (traitId === null) {
+    G.worldState.weaponTraits[norm] = null;
+    return true;
+  }
+  const tr = getForgeTraitById(traitId);
+  if (!tr || tr.weaponId !== norm || !isWeaponTraitUnlocked(traitId)) return false;
+  G.worldState.weaponTraits[norm] = traitId;
+  return true;
+}
+
 export function getActiveAltar() {
   const id = G.worldState ? G.worldState.activeAltarId : 'altar_start';
   return ALTARS.find(a => a.id === id) || ALTARS[0];
@@ -236,7 +293,8 @@ function _ensureRelicCache() {
   const r1 = (eq && eq[1]) || null;
   const pMult = (G.settings && G.settings.parryWindowMult) ? G.settings.parryWindowMult : 1.0;
   const wId = getActiveWeaponId();
-  const key = `${r0 ? r0.id : ''}|${r1 ? r1.id : ''}|${pMult}|${wId}`;
+  const wTrait = getActiveWeaponTraitId(wId) || '';
+  const key = `${r0 ? r0.id : ''}|${r1 ? r1.id : ''}|${pMult}|${wId}|${wTrait}`;
   if (key === _relicCacheKey && _cachedRelicStats) return;
   _relicCacheKey = key;
 
@@ -254,7 +312,9 @@ function _ensureRelicCache() {
   _cachedSynergies = synergies;
 
   const wp = getWeaponById(wId).passives;
-  let parryWindowMs = Math.max(70, Math.round(((has('mirror') ? 100 : Math.max(...active.map(r => r.parryWindowMs || 140))) + (wp.parryWindowBonusMs || 0)) * pMult));
+  const traitParryBonus = wTrait === 'parry_seal' ? 15 : 0;
+  const traitSpellMult = wTrait === 'echo_ring' ? 1.18 : 1.0;
+  let parryWindowMs = Math.max(70, Math.round(((has('mirror') ? 100 : Math.max(...active.map(r => r.parryWindowMs || 140))) + (wp.parryWindowBonusMs || 0) + traitParryBonus) * pMult));
   let blockWindowMs = Math.max(parryWindowMs + 60, Math.round(((has('mirror') ? 225 : Math.max(...active.map(r => r.blockWindowMs || 260))) + (wp.blockWindowBonusMs || 0)) * (1 + (pMult - 1) * 0.65)));
   let blockChipMult = wp.blockChipMult || 1.0;
   let parryPostureMult = active.reduce((acc, r) => acc * (r.parryPostureMult || 1.0), 1.0) * (wp.parryPostureMult || 1.0);
@@ -273,11 +333,17 @@ function _ensureRelicCache() {
   let spellPostureBonus = active.reduce((acc, r) => acc + (r.spellPostureBonus || 0), 0);
   let heavySkillMult = active.reduce((acc, r) => acc * (r.heavySkillMult || 1.0), 1.0);
   let soulGainMult = active.reduce((acc, r) => acc * (r.soulGainMult || 1.0), 1.0) * (wp.soulGainMult || 1.0);
-  let spellDmgMult = active.reduce((acc, r) => acc * (r.spellDmgMult || 1.0), 1.0) * (wp.spellDmgMult || 1.0);
+  let spellDmgMult = active.reduce((acc, r) => acc * (r.spellDmgMult || 1.0), 1.0) * (wp.spellDmgMult || 1.0) * traitSpellMult;
   let spellRadiusMult = active.reduce((acc, r) => acc * (r.spellRadiusMult || 1.0), 1.0);
   let postureDmgMult = active.reduce((acc, r) => acc * (r.postureDmgMult || 1.0), 1.0) * (wp.postureDmgMult || 1.0);
   let iaiChargeTime = Math.max(0.24, Math.min(0.42, ...active.map(r => r.iaiChargeTime || 0.42)) * (wp.chargeTimeMult || 1.0));
-  let moveSpeedMult = wp.moveSpeedMult || 1.0;
+  let moveSpeedMult = (wp.moveSpeedMult || 1.0) * (1 + active.reduce((acc, r) => acc + (r.moveSpeedBonus || 0), 0));
+  let aerialDmgMult = active.reduce((acc, r) => acc * (r.aerialDmgMult || 1.0), 1.0);
+  let sporeImmune = active.some(r => !!r.sporeImmune);
+  let sporePurifySoul = active.reduce((acc, r) => acc + (r.sporePurifySoul || 0), 0);
+  let sporePurifyHeal = active.reduce((acc, r) => acc + (r.sporePurifyHeal || 0), 0);
+  let frostResistMult = active.reduce((acc, r) => acc * (r.frostResistMult || 1.0), 1.0);
+  let frostShatterPosture = active.reduce((acc, r) => acc + (r.frostShatterPosture || 0), 0);
   let bellTimerBonus = active.reduce((acc, r) => acc + (r.bellTimerBonus || 0), 0);
   let shadeDashCd = Math.min(1.6, ...active.map(r => r.shadeDashCd || 1.6));
   let shadeBurstMult = active.reduce((acc, r) => acc * (r.shadeBurstMult || 1.0), 1.0);
@@ -288,13 +354,20 @@ function _ensureRelicCache() {
     grayDuration, rallyMult, maxFlasks, maxSeals, execHealPct, execFullSoul,
     grappleCd, spellCost, quakeCost, spellPostureBonus, heavySkillMult,
     soulGainMult, spellDmgMult, spellRadiusMult, postureDmgMult,
-    iaiChargeTime, moveSpeedMult, bellTimerBonus, shadeDashCd, shadeBurstMult, shadePassHeal,
+    iaiChargeTime, moveSpeedMult, aerialDmgMult, sporeImmune, sporePurifySoul, sporePurifyHeal,
+    frostResistMult, frostShatterPosture, bellTimerBonus, shadeDashCd, shadeBurstMult, shadePassHeal,
     synergies,
     synGrappleQuake: !!synFlags.synGrappleQuake,
     synMirrorEmber: !!synFlags.synMirrorEmber,
     synBloodIai: !!synFlags.synBloodIai,
     synCoreCounter: !!synFlags.synCoreCounter,
-    synShadeThread: !!synFlags.synShadeThread
+    synShadeThread: !!synFlags.synShadeThread,
+    synGaleThread: !!synFlags.synGaleThread,
+    synSporeClapper: !!synFlags.synSporeClapper,
+    synFrostIron: !!synFlags.synFrostIron,
+    hasGalefather: has('galefather'),
+    hasSporeseal: has('sporeseal'),
+    hasFrostcore: has('frostcore')
   };
 }
 
@@ -461,8 +534,8 @@ export function createCrumblePlatforms() {
 
 export function markMapExplored(px, py = FLOOR_Y - 60) {
   if (!G.worldState) return;
-  const col = Math.floor(px / MAP_CELL_W);
-  const row = Math.floor(py / MAP_CELL_H);
+  const col = Math.floor((px - WORLD_MIN_X) / MAP_CELL_W);
+  const row = Math.floor((py - WORLD_MIN_Y) / MAP_CELL_H);
   let changed = false;
   for (let dr = -2; dr <= 2; dr++) {
     const r = row + dr;
@@ -484,21 +557,20 @@ export function markMapExplored(px, py = FLOOR_Y - 60) {
 
 export function isWorldPosExplored(x, y) {
   if (!G.worldState) return false;
-  const c = Math.max(0, Math.min(MAP_COLS - 1, Math.floor(x / MAP_CELL_W)));
-  const r = Math.max(0, Math.min(MAP_ROWS - 1, Math.floor(y / MAP_CELL_H)));
+  const c = Math.max(0, Math.min(MAP_COLS - 1, Math.floor((x - WORLD_MIN_X) / MAP_CELL_W)));
+  const r = Math.max(0, Math.min(MAP_ROWS - 1, Math.floor((y - WORLD_MIN_Y) / MAP_CELL_H)));
   return G.worldState.explored[r][c];
 }
 
 export function getExplorationPercent() {
   if (!G.worldState) return 0;
   if (!G.exploreDirty) return G.cachedExplorePct;
-  // Dynamically count cells inside any loaded room's bounds so custom rooms work automatically!
   let total = 0;
   let seen = 0;
   for (let r = 0; r < MAP_ROWS; r++) {
-    const cy = (r + 0.5) * MAP_CELL_H;
+    const cy = WORLD_MIN_Y + (r + 0.5) * MAP_CELL_H;
     for (let c = 0; c < MAP_COLS; c++) {
-      const cx = (c + 0.5) * MAP_CELL_W;
+      const cx = WORLD_MIN_X + (c + 0.5) * MAP_CELL_W;
       let playable = ROOMS.length === 0;
       for (let i = 0; i < ROOMS.length; i++) {
         const b = ROOMS[i].bounds;
@@ -531,10 +603,61 @@ export function triggerBossBanner(title, quote = '', color = '#fde047', duration
   G.bossBanner = { title, quote, color, life: duration, maxLife: duration };
 }
 
+export function isPlayerInRoomId(roomId, pad = 24) {
+  if (!roomId || !G.player) return true;
+  const px = G.player.x + G.player.w * 0.5;
+  const py = G.player.y + G.player.h * 0.5;
+  for (let i = 0; i < ROOMS.length; i++) {
+    const r = ROOMS[i];
+    if (r.id === roomId && r.bounds) {
+      const b = r.bounds;
+      return px >= b.x - pad && px <= b.x + b.w + pad && py >= b.y - pad && py <= b.y + b.h + pad;
+    }
+  }
+  return true;
+}
+
 export function getAwakeBoss() {
-  if (G.boss && G.boss.awake && G.boss.alive) return G.boss;
-  if (G.boss2 && G.boss2.awake && G.boss2.alive) return G.boss2;
-  if (G.boss3 && G.boss3.awake && G.boss3.alive) return G.boss3;
+  const list = [G.boss, G.boss2, G.boss3, G.boss4];
+  for (let i = 0; i < list.length; i++) {
+    const b = list[i];
+    if (!b || !b.awake || !b.alive) continue;
+    if (G.echoSession || !b.roomId || isPlayerInRoomId(b.roomId, 60)) return b;
+  }
+  return null;
+}
+
+export function isBoss4Unlocked() {
+  if (!G.worldState) return false;
+  const dm = G.worldState.defeatedMiniBosses;
+  return !!(
+    G.worldState.boss3Defeated &&
+    dm &&
+    dm.has('warden_wind_boss') &&
+    dm.has('warden_forest_boss') &&
+    dm.has('warden_mountain_boss')
+  );
+}
+
+export function getHudBoss() {
+  const main = getAwakeBoss();
+  if (main) return main;
+  if (G.enemies) {
+    const px = G.player ? (G.player.x + G.player.w * 0.5) : 0;
+    const py = G.player ? (G.player.y + G.player.h * 0.5) : 0;
+    for (let i = 0; i < G.enemies.length; i++) {
+      const e = G.enemies[i];
+      if (!e || !e.alive || !e.isMiniBoss || !e.awake) continue;
+      if (G.echoSession) return e;
+      if (e.roomId && !isPlayerInRoomId(e.roomId, 16)) continue;
+      if (G.player) {
+        const dx = Math.abs(px - (e.x + e.w * 0.5));
+        const dy = Math.abs(py - (e.y + e.h * 0.5));
+        if (dx > 760 || dy > 360) continue;
+      }
+      return e;
+    }
+  }
   return null;
 }
 
@@ -546,6 +669,7 @@ export function getLivingFoes() {
   if (G.boss && G.boss.alive) list.push(G.boss);
   if (G.boss2 && G.boss2.alive) list.push(G.boss2);
   if (G.boss3 && G.boss3.alive) list.push(G.boss3);
+  if (G.boss4 && G.boss4.alive) list.push(G.boss4);
   return list;
 }
 

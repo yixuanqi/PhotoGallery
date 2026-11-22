@@ -1,6 +1,7 @@
-// Zero-dependency Minimal Web Level Editor for Room-Based JSON Data Stream
-import { COLORS, PREVIEW_STORAGE_KEY } from './config.js';
+// Zero-dependency Web Level Editor v30.0 for Full-Biome Room-Based JSON Data Stream
+import { COLORS, GRAVITY, PREVIEW_STORAGE_KEY } from './config.js';
 import { STAMP_DEFS, getStampDef, drawStampPreview } from './stampAtlas.js';
+import { TERRAIN_OVERLAY_OPTIONS, drawEditorRoomBackdrop, drawEditorRoomSolids } from './renderTerrain.js';
 
 const canvas = document.getElementById('editorCanvas');
 const ctx = canvas.getContext('2d');
@@ -10,22 +11,49 @@ const inspectorEl = document.getElementById('obj-inspector');
 const statusPosEl = document.getElementById('status-pos');
 const statusInfoEl = document.getElementById('status-info');
 const toastEl = document.getElementById('ed-toast');
+const auditPanelEl = document.getElementById('audit-panel');
+const auditListEl = document.getElementById('audit-list');
+const auditSummaryEl = document.getElementById('audit-summary');
 
-const RECT_TOOLS = new Set(['ground', 'pillar', 'platform', 'crumble', 'secretWall', 'voidBarrier', 'river']);
+const RECT_TOOLS = new Set([
+  'ground', 'pillar', 'platform', 'crumble', 'secretWall', 'voidBarrier', 'river', 'windZone', 'bouncePad'
+]);
+
+const ENEMY_META = {
+  sentinel:        { w: 36, h: 62, glyph: '矛', color: 'rgba(220, 38, 38, 0.74)',  patrol: 160, label: '持矛哨兵' },
+  wraith:          { w: 36, h: 48, glyph: '灵', color: 'rgba(244, 63, 94, 0.76)',  patrol: 0,   label: '悬灯怨灵', flying: true },
+  golem:           { w: 46, h: 78, glyph: '铁', color: 'rgba(251, 146, 60, 0.78)', patrol: 160, label: '守钟铁卫' },
+  priest:          { w: 36, h: 66, glyph: '祭', color: 'rgba(192, 132, 252, 0.80)', patrol: 0,  label: '敲钟祭司' },
+  duelist:         { w: 34, h: 60, glyph: '刃', color: 'rgba(239, 68, 68, 0.84)',  patrol: 170, label: '连刃武者' },
+  leech:           { w: 34, h: 38, glyph: '蛭', color: 'rgba(56, 189, 248, 0.78)', patrol: 0,   label: '倒挂墨蛭', ceiling: true },
+  dummy:           { w: 38, h: 68, glyph: '偶', color: 'rgba(245, 158, 11, 0.80)', patrol: 120, label: '演武钟偶' },
+  falcon:          { w: 44, h: 34, glyph: '隼', color: 'rgba(56, 189, 248, 0.86)', patrol: 0,   label: '衔铃风隼', flying: true },
+  fungus:          { w: 40, h: 58, glyph: '菌', color: 'rgba(34, 197, 94, 0.82)',  patrol: 150, label: '孢蚀菌傀' },
+  frostguard:      { w: 40, h: 68, glyph: '寒', color: 'rgba(125, 211, 252, 0.84)', patrol: 160, label: '寒戟骸卫' },
+  warden_wind:     { w: 44, h: 72, glyph: '朔', color: 'rgba(14, 165, 233, 0.90)', patrol: 240, label: '截风巡塔使·朔', isWarden: true },
+  warden_forest:   { w: 64, h: 98, glyph: '枯', color: 'rgba(22, 163, 74, 0.90)',  patrol: 150, label: '盘根古钟精·枯', isWarden: true },
+  warden_mountain: { w: 42, h: 74, glyph: '凛', color: 'rgba(96, 165, 250, 0.90)', patrol: 210, label: '断剑霜侯·凛',   isWarden: true }
+};
+
+const ENEMY_KINDS = Object.keys(ENEMY_META);
+const STAMP_CATS = ['全部', '通用', '风', '林', '火', '山'];
 
 const state = {
   bundle: null, // { world, rooms: [...] }
   activeRoomIdx: 0,
   viewMode: 'room', // 'room' | 'world'
+  renderMode: 'ink', // 'ink' (WYSIWYG procedural terrain) | 'wireframe'
   tool: 'select',
   activeStampType: 'broken_arch',
+  stampCatFilter: '全部',
   gridSize: 10,
   cam: { x: -60, y: -40, zoom: 0.72 },
-  selection: null, // { kind, index, subIndex? }
+  selection: null, // { kind, idx, parentIdx? }
   undoStack: [],
   redoStack: [],
   drag: null,
   hoverWorld: { x: 0, y: 0 },
+  hoverInsideCanvas: false,
   toastTimer: null
 };
 
@@ -33,7 +61,7 @@ function showToast(msg) {
   toastEl.textContent = msg;
   toastEl.classList.add('show');
   if (state.toastTimer) clearTimeout(state.toastTimer);
-  state.toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2200);
+  state.toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2400);
 }
 
 function snap(v) {
@@ -72,13 +100,6 @@ function screenToWorld(sx, sy) {
   return {
     x: sx / state.cam.zoom + state.cam.x,
     y: sy / state.cam.zoom + state.cam.y
-  };
-}
-
-function worldToScreen(wx, wy) {
-  return {
-    x: (wx - state.cam.x) * state.cam.zoom,
-    y: (wy - state.cam.y) * state.cam.zoom
   };
 }
 
@@ -121,6 +142,16 @@ function fitView() {
   draw();
 }
 
+function centerCameraOn(wx, wy, targetZoom = null) {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const vw = Math.max(300, rect.width);
+  const vh = Math.max(240, rect.height);
+  if (targetZoom !== null) state.cam.zoom = targetZoom;
+  state.cam.x = wx - vw / (2 * state.cam.zoom);
+  state.cam.y = wy - vh / (2 * state.cam.zoom);
+  draw();
+}
+
 // ==================== OBJECT ACCESSORS & HIT TESTING ====================
 function getRoomObjects(rm) {
   const items = [];
@@ -141,16 +172,27 @@ function getRoomObjects(rm) {
     });
   };
 
+  // Large background volumes first so foreground platforms/entities win hit-testing
+  (rm.windZones || []).forEach((o, i) => addRect('windZone', rm.windZones, i, o, Number(o.w) || 120, Number(o.h) || 320, true));
   (rm.solids || []).forEach((o, i) => addRect('solid', rm.solids, i, o, o.w, o.h, true));
   (rm.crumblePlatforms || []).forEach((o, i) => addRect('crumble', rm.crumblePlatforms, i, o, o.w, o.h, true));
   (rm.secretWalls || []).forEach((o, i) => addRect('secretWall', rm.secretWalls, i, o, o.w, o.h, true));
   (rm.voidBarriers || []).forEach((o, i) => addRect('voidBarrier', rm.voidBarriers, i, o, o.w, o.h, true));
   (rm.gates || []).forEach((o, i) => addRect('gate', rm.gates, i, o, o.w, o.h, true));
   (rm.rivers || []).forEach((o, i) => addRect('river', rm.rivers, i, o, o.w, 22, true));
+  // BouncePads use bottom-center (x, y) in room JSON, matching player.js & renderer.js
+  (rm.bouncePads || []).forEach((o, i) => {
+    const bw = Number(o.w) || 78;
+    const bh = Number(o.h) || 26;
+    items.push({
+      kind: 'bouncePad', arr: rm.bouncePads, idx: i, obj: o, resizable: true, bottomCenter: true,
+      wx: ox + o.x - bw * 0.5, wy: oy + o.y - bh, w: bw, h: bh
+    });
+  });
+
   (rm.enemies || []).forEach((o, i) => {
-    const ew = o.kind === 'golem' ? 46 : o.kind === 'dummy' ? 38 : o.kind === 'duelist' || o.kind === 'leech' ? 34 : 36;
-    const eh = o.kind === 'golem' ? 78 : o.kind === 'dummy' ? 68 : o.kind === 'priest' ? 66 : o.kind === 'duelist' ? 60 : o.kind === 'wraith' ? 48 : o.kind === 'leech' ? 38 : 62;
-    addRect('enemy', rm.enemies, i, o, ew, eh, false);
+    const m = ENEMY_META[o.kind] || ENEMY_META.sentinel;
+    addRect('enemy', rm.enemies, i, o, m.w, m.h, false);
   });
   (rm.bosses || []).forEach((o, i) => addRect('boss', rm.bosses, i, o, 58, 102, false));
   (rm.altars || []).forEach((o, i) => addPoint('altar', rm.altars, i, o, 'x', 'y', 26));
@@ -239,7 +281,6 @@ function hitTestHandle(item, wx, wy) {
 
 function hitTestObject(rm, wx, wy) {
   const items = getRoomObjects(rm);
-  // Test top-layer points/entities first (reverse order so foreground wins over huge ground blocks)
   for (let i = items.length - 1; i >= 0; i--) {
     const it = items[i];
     if (wx >= it.wx && wx <= it.wx + it.w && wy >= it.wy && wy <= it.wy + it.h) {
@@ -250,15 +291,137 @@ function hitTestObject(rm, wx, wy) {
 }
 
 // ==================== RENDERING ====================
+function drawWindZonesInRoom(rm, ox, oy) {
+  for (const wz of (rm.windZones || [])) {
+    const x = ox + wz.x;
+    const y = oy + wz.y;
+    const w = Number(wz.w) || 120;
+    const h = Number(wz.h) || 320;
+    const vx = Number(wz.vx) || 0;
+    const vy = Number(wz.vy) || -1480;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.13)';
+    ctx.strokeStyle = 'rgba(125, 211, 252, 0.72)';
+    ctx.lineWidth = 1.6 / state.cam.zoom;
+    ctx.setLineDash([7 / state.cam.zoom, 5 / state.cam.zoom]);
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeRect(x, y, w, h);
+    ctx.setLineDash([]);
+
+    // Flow chevrons along wind vector
+    const mag = Math.max(1, Math.hypot(vx, vy));
+    const ux = vx / mag;
+    const uy = vy / mag;
+    const ang = Math.atan2(uy, ux);
+    const cols = Math.max(1, Math.min(4, Math.floor(w / 52)));
+    const rows = Math.max(2, Math.min(7, Math.floor(h / 72)));
+    ctx.strokeStyle = 'rgba(186, 230, 253, 0.56)';
+    ctx.lineWidth = 1.8 / state.cam.zoom;
+    for (let c = 0; c < cols; c++) {
+      for (let r = 0; r < rows; r++) {
+        const cx = x + ((c + 0.5) / cols) * w;
+        const cy = y + ((r + 0.5) / rows) * h;
+        const len = 14;
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(ang);
+        ctx.beginPath();
+        ctx.moveTo(-len * 0.6, 0);
+        ctx.lineTo(len * 0.6, 0);
+        ctx.moveTo(len * 0.12, -5.5);
+        ctx.lineTo(len * 0.6, 0);
+        ctx.lineTo(len * 0.12, 5.5);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // Label readout
+    ctx.fillStyle = '#bae6fd';
+    ctx.font = `bold ${Math.round(10.5 / Math.max(0.55, state.cam.zoom))}px ui-monospace, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(`风 (${vx}, ${vy})`, x + w * 0.5, y + 16 / Math.max(0.55, state.cam.zoom));
+    ctx.restore();
+  }
+}
+
+function drawBouncePadsInRoom(rm, ox, oy, isActiveRoom) {
+  const sel = isActiveRoom ? getSelectedItem() : null;
+  (rm.bouncePads || []).forEach((bp, idx) => {
+    const bx = ox + bp.x;
+    const by = oy + bp.y;
+    const w = Number(bp.w) || 78;
+    const h = Number(bp.h) || 26;
+    const boostVy = Number(bp.boostVy) || -790;
+    const hw = w * 0.5;
+    const isSel = sel && sel.kind === 'bouncePad' && sel.idx === idx;
+
+    ctx.save();
+    // Physics Jump-Apex Trajectory Preview (H = v^2 / (2g))
+    if (boostVy < 0) {
+      const apexH = (boostVy * boostVy) / (2 * GRAVITY);
+      const topY = by - h - apexH;
+      ctx.strokeStyle = isSel ? 'rgba(110, 231, 183, 0.92)' : 'rgba(110, 231, 183, 0.36)';
+      ctx.lineWidth = (isSel ? 2.0 : 1.3) / state.cam.zoom;
+      ctx.setLineDash([6 / state.cam.zoom, 5 / state.cam.zoom]);
+      ctx.beginPath();
+      ctx.moveTo(bx, by - h);
+      ctx.lineTo(bx, topY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Apex horizontal clearance bar
+      ctx.beginPath();
+      ctx.moveTo(bx - 18, topY);
+      ctx.lineTo(bx + 18, topY);
+      ctx.stroke();
+      ctx.fillStyle = isSel ? '#a7f3d0' : 'rgba(167, 243, 208, 0.72)';
+      ctx.font = `bold ${Math.round(10 / Math.max(0.55, state.cam.zoom))}px ui-monospace, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText(`↑${Math.round(apexH)}px`, bx, topY - 4 / state.cam.zoom);
+    }
+
+    // Stalk
+    ctx.fillStyle = '#142622';
+    ctx.strokeStyle = 'rgba(110, 231, 183, 0.65)';
+    ctx.lineWidth = 1.5 / state.cam.zoom;
+    ctx.fillRect(bx - 9, by - h * 0.6, 18, h * 0.6);
+    ctx.strokeRect(bx - 9, by - h * 0.6, 18, h * 0.6);
+
+    // Emerald Mushroom Bounce Dome
+    ctx.fillStyle = '#11332c';
+    ctx.strokeStyle = '#6ee7b7';
+    ctx.lineWidth = 2.0 / state.cam.zoom;
+    ctx.beginPath();
+    ctx.moveTo(bx - hw, by - h * 0.35);
+    ctx.quadraticCurveTo(bx - hw * 0.8, by - h * 1.15, bx, by - h * 1.12);
+    ctx.quadraticCurveTo(bx + hw * 0.8, by - h * 1.15, bx + hw, by - h * 0.35);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#a7f3d0';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('伞', bx, by - h * 0.45);
+    ctx.restore();
+  });
+}
+
 function drawRoomContents(rm, isGhost = false) {
   const ox = rm.bounds.x;
   const oy = rm.bounds.y;
   ctx.save();
   if (isGhost) ctx.globalAlpha = 0.24;
 
-  // Room Bounds Frame
-  ctx.fillStyle = isGhost ? 'rgba(14, 20, 32, 0.35)' : 'rgba(13, 19, 32, 0.55)';
-  ctx.fillRect(ox, oy, rm.bounds.w, rm.bounds.h);
+  // Room Bounds Frame / WYSIWYG Procedural Biome Sky Backdrop
+  const isInk = state.renderMode === 'ink';
+  if (isInk) {
+    drawEditorRoomBackdrop(ctx, rm);
+  } else {
+    ctx.fillStyle = isGhost ? 'rgba(14, 20, 32, 0.35)' : 'rgba(13, 19, 32, 0.55)';
+    ctx.fillRect(ox, oy, rm.bounds.w, rm.bounds.h);
+  }
 
   // Background Procedural Ink Stamps (WYSIWYG preview)
   const rmProps = rm.props || {};
@@ -268,21 +431,44 @@ function drawRoomContents(rm, isGhost = false) {
     if (ly === 'bg') drawStampPreview(ctx, st, ox, oy);
   }
 
-  // Solids
-  for (const s of (rm.solids || [])) {
-    if (s.type === 'ground') {
-      ctx.fillStyle = '#1b2436';
-      ctx.strokeStyle = 'rgba(216, 207, 184, 0.55)';
-    } else if (s.type === 'pillar') {
-      ctx.fillStyle = '#253147';
-      ctx.strokeStyle = 'rgba(148, 163, 184, 0.65)';
-    } else {
-      ctx.fillStyle = '#334155';
-      ctx.strokeStyle = '#d8cfb8';
+  // Wind Updraft Zones (behind solids/entities)
+  drawWindZonesInRoom(rm, ox, oy);
+
+  // Solids (WYSIWYG Procedural Organic Terrain vs Technical Wireframe)
+  if (isInk) {
+    ctx.save();
+    // Clip slightly padded around room bounds so snow/icicle overhangs stay crisp
+    ctx.beginPath();
+    ctx.rect(ox - 24, oy - 24, rm.bounds.w + 48, rm.bounds.h + 48);
+    ctx.clip();
+    drawEditorRoomSolids(ctx, rm);
+    ctx.restore();
+    // Subtle badge indicator on solids with custom per-block terrain modifiers
+    for (const s of (rm.solids || [])) {
+      if (s.mod && (s.mod.overlay || s.mod.weathering !== undefined || s.mod.cracks !== undefined || s.mod.overlayDensity !== undefined)) {
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.42)';
+        ctx.lineWidth = 1.1 / state.cam.zoom;
+        ctx.setLineDash([4 / state.cam.zoom, 4 / state.cam.zoom]);
+        ctx.strokeRect(ox + s.x + 1, oy + s.y + 1, Math.max(2, s.w - 2), Math.max(2, s.h - 2));
+        ctx.setLineDash([]);
+      }
     }
-    ctx.lineWidth = 1.6 / state.cam.zoom;
-    ctx.fillRect(ox + s.x, oy + s.y, s.w, s.h);
-    ctx.strokeRect(ox + s.x, oy + s.y, s.w, s.h);
+  } else {
+    for (const s of (rm.solids || [])) {
+      if (s.type === 'ground') {
+        ctx.fillStyle = '#1b2436';
+        ctx.strokeStyle = 'rgba(216, 207, 184, 0.55)';
+      } else if (s.type === 'pillar') {
+        ctx.fillStyle = '#253147';
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.65)';
+      } else {
+        ctx.fillStyle = '#334155';
+        ctx.strokeStyle = '#d8cfb8';
+      }
+      ctx.lineWidth = 1.6 / state.cam.zoom;
+      ctx.fillRect(ox + s.x, oy + s.y, s.w, s.h);
+      ctx.strokeRect(ox + s.x, oy + s.y, s.w, s.h);
+    }
   }
 
   // Crumble Platforms
@@ -338,6 +524,9 @@ function drawRoomContents(rm, isGhost = false) {
     ctx.fillRect(ox + rv.x, oy + rv.y, rv.w, 18);
     ctx.strokeRect(ox + rv.x, oy + rv.y, rv.w, 18);
   }
+
+  // Glowing Spore Bounce Pads + Apex Preview
+  drawBouncePadsInRoom(rm, ox, oy, !isGhost);
 
   // Props (Banners & Candles)
   const props = rm.props || {};
@@ -435,42 +624,39 @@ function drawRoomContents(rm, isGhost = false) {
     ctx.strokeRect(ox + lt.x - 14, oy + lt.y - 50, 28, 50);
   }
   for (const pk of (rm.pickups || [])) {
-    ctx.fillStyle = pk.kind === 'relic' ? COLORS.goldBright : COLORS.cyanBright;
+    ctx.fillStyle = pk.kind === 'weapon' ? '#38bdf8' : (pk.kind === 'relic' ? COLORS.goldBright : COLORS.cyanBright);
     ctx.beginPath(); ctx.arc(ox + pk.x, oy + pk.y - 24, 11, 0, Math.PI * 2); ctx.fill();
   }
 
-  // Enemies + Patrol Bars
-  const eColMap = {
-    dummy: 'rgba(245, 158, 11, 0.78)',
-    golem: 'rgba(251, 146, 60, 0.75)',
-    wraith: 'rgba(244, 63, 94, 0.75)',
-    priest: 'rgba(192, 132, 252, 0.78)',
-    duelist: 'rgba(239, 68, 68, 0.82)',
-    leech: 'rgba(56, 189, 248, 0.78)',
-    sentinel: 'rgba(220, 38, 38, 0.72)'
-  };
-  const eGlyph = { dummy: '偶', golem: '铁', wraith: '灵', priest: '祭', duelist: '刃', leech: '蛭', sentinel: '矛' };
+  // Enemies & Biome Wardens + Patrol Bars
   for (const e of (rm.enemies || [])) {
-    const ew = e.kind === 'golem' ? 46 : e.kind === 'dummy' ? 38 : e.kind === 'duelist' || e.kind === 'leech' ? 34 : 36;
-    const eh = e.kind === 'golem' ? 78 : e.kind === 'dummy' ? 68 : e.kind === 'priest' ? 66 : e.kind === 'duelist' ? 60 : e.kind === 'wraith' ? 48 : e.kind === 'leech' ? 38 : 62;
+    const m = ENEMY_META[e.kind] || ENEMY_META.sentinel;
+    const ew = m.w;
+    const eh = m.h;
     if (e.minX !== undefined && e.maxX !== undefined) {
-      ctx.strokeStyle = 'rgba(248, 113, 113, 0.35)';
+      ctx.strokeStyle = m.isWarden ? 'rgba(253, 224, 71, 0.55)' : 'rgba(248, 113, 113, 0.35)';
       ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.5 / state.cam.zoom;
       ctx.beginPath();
       ctx.moveTo(ox + e.minX, oy + e.y + eh - 4);
       ctx.lineTo(ox + e.maxX + ew, oy + e.y + eh - 4);
       ctx.stroke();
       ctx.setLineDash([]);
     }
-    ctx.fillStyle = eColMap[e.kind] || 'rgba(220, 38, 38, 0.72)';
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 1.4 / state.cam.zoom;
+    ctx.fillStyle = m.color;
+    ctx.strokeStyle = m.isWarden ? COLORS.goldBright : '#fff';
+    ctx.lineWidth = (m.isWarden ? 2.4 : 1.4) / state.cam.zoom;
     ctx.fillRect(ox + e.x, oy + e.y, ew, eh);
     ctx.strokeRect(ox + e.x, oy + e.y, ew, eh);
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 11px sans-serif';
+    if (m.isWarden) {
+      ctx.strokeStyle = 'rgba(253, 224, 71, 0.55)';
+      ctx.lineWidth = 1.2 / state.cam.zoom;
+      ctx.strokeRect(ox + e.x - 3, oy + e.y - 3, ew + 6, eh + 6);
+    }
+    ctx.fillStyle = m.isWarden ? '#fef9c3' : '#fff';
+    ctx.font = `bold ${m.isWarden ? 13 : 11}px sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText(eGlyph[e.kind] || '矛', ox + e.x + ew / 2, oy + e.y + eh / 2 + 4);
+    ctx.fillText(m.glyph, ox + e.x + ew / 2, oy + e.y + eh / 2 + 4);
   }
 
   // Bosses
@@ -547,7 +733,6 @@ function draw() {
     });
     drawWorldConnections();
   } else {
-    // Draw neighbor rooms ghosted so room exits align cleanly
     state.bundle.rooms.forEach((rm, idx) => {
       if (idx !== state.activeRoomIdx) drawRoomContents(rm, true);
     });
@@ -555,7 +740,7 @@ function draw() {
     if (active) drawRoomContents(active, false);
   }
 
-  // Active Selection Outline & Resize Handles
+  // Active Selection Outline, Resize Handles, Creation & Cursor Ghosts
   if (state.viewMode === 'room') {
     const sel = getSelectedItem();
     if (sel) {
@@ -587,12 +772,48 @@ function draw() {
       const rw = Math.abs(state.drag.curX - state.drag.startX);
       const rh = Math.abs(state.drag.curY - state.drag.startY);
       ctx.save();
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
-      ctx.strokeStyle = COLORS.cyanBright;
+      const isBounce = state.tool === 'bouncePad';
+      const isWind = state.tool === 'windZone';
+      ctx.fillStyle = isBounce ? 'rgba(110, 231, 183, 0.28)' : isWind ? 'rgba(125, 211, 252, 0.22)' : 'rgba(56, 189, 248, 0.25)';
+      ctx.strokeStyle = isBounce ? '#6ee7b7' : COLORS.cyanBright;
       ctx.lineWidth = 2 / state.cam.zoom;
       ctx.fillRect(rx, ry, rw, rh);
       ctx.strokeRect(rx, ry, rw, rh);
       ctx.restore();
+    }
+
+    // Live Ghost Preview for Stamp Placement or Pinpoint Playtest
+    if (!state.drag && state.hoverInsideCanvas) {
+      const rm = getActiveRoom();
+      if (rm && state.tool === 'stamp') {
+        const lx = snap(state.hoverWorld.x - rm.bounds.x);
+        const ly = snap(state.hoverWorld.y - rm.bounds.y);
+        const def = getStampDef(state.activeStampType);
+        if (def) {
+          ctx.save();
+          ctx.globalAlpha = 0.45;
+          drawStampPreview(ctx, { type: def.id, x: lx, y: ly, scale: 1, flip: false, layer: def.defaultLayer || 'bg', alpha: 0.9, seed: 0 }, rm.bounds.x, rm.bounds.y);
+          ctx.restore();
+        }
+      } else if (state.tool === 'playtestPin') {
+        const wx = snap(state.hoverWorld.x);
+        const wy = snap(state.hoverWorld.y);
+        ctx.save();
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.24)';
+        ctx.strokeStyle = COLORS.goldBright;
+        ctx.lineWidth = 2 / state.cam.zoom;
+        ctx.fillRect(wx - 14, wy - 54, 28, 54);
+        ctx.strokeRect(wx - 14, wy - 54, 28, 54);
+        ctx.beginPath();
+        ctx.moveTo(wx - 18, wy); ctx.lineTo(wx + 18, wy);
+        ctx.moveTo(wx, wy - 12); ctx.lineTo(wx, wy + 12);
+        ctx.stroke();
+        ctx.fillStyle = COLORS.goldBright;
+        ctx.font = `bold ${Math.round(11 / Math.max(0.5, state.cam.zoom))}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText('🎯 点击在此空降试玩', wx, wy - 60);
+        ctx.restore();
+      }
     }
   }
 
@@ -630,7 +851,6 @@ function drawWorldConnections() {
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Draw arrowhead(s) along the curve midpoint
       const drawArrow = (px, py, ang) => {
         const sz = 11 / state.cam.zoom;
         ctx.fillStyle = isSel ? COLORS.goldBright : COLORS.cyanBright;
@@ -663,10 +883,12 @@ function renderRoomList() {
   state.bundle.rooms.forEach((rm, idx) => {
     const btn = document.createElement('button');
     btn.className = `room-item${idx === state.activeRoomIdx ? ' active' : ''}`;
-    const count = (rm.solids || []).length + (rm.enemies || []).length + (rm.lanterns || []).length + (rm.pickups || []).length + ((rm.props && rm.props.stamps) ? rm.props.stamps.length : 0);
+    const count = (rm.solids || []).length + (rm.enemies || []).length + (rm.windZones || []).length +
+      (rm.bouncePads || []).length + (rm.lanterns || []).length + (rm.pickups || []).length +
+      ((rm.props && rm.props.stamps) ? rm.props.stamps.length : 0);
     btn.innerHTML = `
-      <div class="room-item-title"><span>${rm.name}</span><span style="font-size:10.5px;color:var(--dim);">${rm.id}</span></div>
-      <div class="room-item-meta">${rm.bounds.w}×${rm.bounds.h} · 偏移 (${rm.bounds.x}, ${rm.bounds.y}) · ${count} 物件</div>
+      <div class="room-item-title"><span>${rm.name}</span><span style="font-size:10px;color:var(--dim);">${rm.id}</span></div>
+      <div class="room-item-meta">${rm.bounds.w}×${rm.bounds.h} · (${rm.bounds.x}, ${rm.bounds.y}) · ${count} 物件</div>
     `;
     btn.addEventListener('click', () => {
       state.activeRoomIdx = idx;
@@ -698,9 +920,14 @@ function addField(parent, labelText, value, type, onChange) {
     inp.className = 'prop-input';
     for (const optVal of type) {
       const opt = document.createElement('option');
-      opt.value = optVal;
-      opt.textContent = optVal;
-      if (optVal === value) opt.selected = true;
+      if (typeof optVal === 'object') {
+        opt.value = optVal.value;
+        opt.textContent = optVal.label;
+      } else {
+        opt.value = optVal;
+        opt.textContent = optVal;
+      }
+      if (opt.value === value) opt.selected = true;
       inp.appendChild(opt);
     }
   } else {
@@ -715,9 +942,54 @@ function addField(parent, labelText, value, type, onChange) {
     onChange(val);
     syncManifestFromRooms();
     renderRoomList();
+    renderInspector();
     draw();
   });
   parent.append(lbl, inp);
+}
+
+
+function addRangeField(parent, labelText, value, min, max, step, onChange) {
+  const lbl = document.createElement('label');
+  lbl.textContent = labelText;
+  const wrap = document.createElement('div');
+  wrap.className = 'mod-range-wrap';
+  const rng = document.createElement('input');
+  rng.type = 'range';
+  rng.className = 'mod-range';
+  rng.min = String(min);
+  rng.max = String(max);
+  rng.step = String(step);
+  rng.value = String(value);
+  const valSpan = document.createElement('span');
+  valSpan.className = 'mod-range-val';
+  valSpan.textContent = Number(value).toFixed(1);
+  let pushed = false;
+  rng.addEventListener('input', () => {
+    if (!pushed) { pushUndo(); pushed = true; }
+    const v = Number(rng.value);
+    valSpan.textContent = v.toFixed(1);
+    onChange(v);
+    draw();
+  });
+  rng.addEventListener('change', () => {
+    pushed = false;
+    syncManifestFromRooms();
+    renderRoomList();
+    draw();
+  });
+  wrap.append(rng, valSpan);
+  parent.append(lbl, wrap);
+}
+
+function cleanModObj(mod) {
+  if (!mod || typeof mod !== 'object') return null;
+  const out = {};
+  if (mod.overlay && mod.overlay !== 'auto' && mod.overlay !== 'inherit') out.overlay = mod.overlay;
+  if (mod.weathering !== undefined && mod.weathering !== null && Math.abs(Number(mod.weathering) - 1) > 0.001) out.weathering = Number(mod.weathering);
+  if (mod.cracks !== undefined && mod.cracks !== null && Math.abs(Number(mod.cracks) - 1) > 0.001) out.cracks = Number(mod.cracks);
+  if (mod.overlayDensity !== undefined && mod.overlayDensity !== null && Math.abs(Number(mod.overlayDensity) - 1) > 0.001) out.overlayDensity = Number(mod.overlayDensity);
+  return Object.keys(out).length > 0 ? out : null;
 }
 
 function renderRoomProps() {
@@ -727,11 +999,43 @@ function renderRoomProps() {
   addField(roomPropsEl, '房间ID', rm.id, 'text', v => { rm.id = v.trim() || rm.id; });
   addField(roomPropsEl, '大区名', rm.zoneName, 'text', v => { rm.zoneName = v; });
   addField(roomPropsEl, '房间名', rm.name, 'text', v => { rm.name = v; });
-  addField(roomPropsEl, '生态主题', rm.theme || 'corridor', ['sanctuary', 'corridor', 'chapel', 'bell_well', 'foundry', 'crypt', 'ascent', 'heart', 'wind', 'forest', 'mountain'], v => { rm.theme = v; });
+  addField(roomPropsEl, '生态主题', rm.theme || 'corridor', [
+    'sanctuary', 'corridor', 'chapel', 'bell_well', 'foundry', 'crypt', 'ascent', 'heart', 'wind', 'forest', 'mountain'
+  ], v => { rm.theme = v; });
   addField(roomPropsEl, '世界 X', rm.bounds.x, 'number', v => { rm.bounds.x = v; });
   addField(roomPropsEl, '世界 Y', rm.bounds.y, 'number', v => { rm.bounds.y = v; });
   addField(roomPropsEl, '宽度 W', rm.bounds.w, 'number', v => { rm.bounds.w = Math.max(320, v); });
   addField(roomPropsEl, '高度 H', rm.bounds.h, 'number', v => { rm.bounds.h = Math.max(320, v); });
+
+  // v30.0 Room-Level Procedural Terrain Modifiers
+  const rmModDiv = document.createElement('div');
+  rmModDiv.className = 'mod-divider';
+  rmModDiv.innerHTML = '<span>房间默认地形修饰</span>';
+  const rmResetBtn = document.createElement('button');
+  rmResetBtn.type = 'button';
+  rmResetBtn.className = 'mod-reset-btn';
+  rmResetBtn.textContent = '重置默认';
+  rmResetBtn.addEventListener('click', () => {
+    pushUndo();
+    delete rm.terrainMod;
+    renderRoomProps();
+    draw();
+    showToast('已重置房间默认地形修饰器');
+  });
+  rmModDiv.appendChild(rmResetBtn);
+  roomPropsEl.appendChild(rmModDiv);
+
+  const curRmMod = rm.terrainMod || {};
+  const setRmMod = (k, v) => {
+    const next = { ...(rm.terrainMod || {}), [k]: v };
+    const cleaned = cleanModObj(next);
+    if (cleaned) rm.terrainMod = cleaned;
+    else delete rm.terrainMod;
+  };
+  addField(roomPropsEl, '默认覆层', curRmMod.overlay || 'auto', TERRAIN_OVERLAY_OPTIONS, v => setRmMod('overlay', v));
+  addRangeField(roomPropsEl, '风化度', curRmMod.weathering !== undefined ? curRmMod.weathering : 1.0, 0, 2, 0.1, v => setRmMod('weathering', v));
+  addRangeField(roomPropsEl, '裂隙密度', curRmMod.cracks !== undefined ? curRmMod.cracks : 1.0, 0, 2, 0.1, v => setRmMod('cracks', v));
+  addRangeField(roomPropsEl, '覆层浓度', curRmMod.overlayDensity !== undefined ? curRmMod.overlayDensity : 1.0, 0, 2, 0.1, v => setRmMod('overlayDensity', v));
 
   const connBox = document.getElementById('room-conn-pills');
   if (connBox && state.bundle) {
@@ -767,7 +1071,7 @@ function renderInspector() {
   const sel = getSelectedItem();
   inspectorEl.innerHTML = '';
   if (!sel) {
-    inspectorEl.textContent = '点击画布中的任意平台、敌兵或机关以编辑属性（均为房间内局部坐标）。';
+    inspectorEl.textContent = '点击画布中的任意平台、生态机关、敌兵或图章以编辑属性（均为房间内局部坐标）。';
     return;
   }
   const grid = document.createElement('div');
@@ -778,24 +1082,52 @@ function renderInspector() {
   grid.lastChild.disabled = true;
 
   if (o.id !== undefined) addField(grid, 'ID', o.id, 'text', v => { o.id = v; });
+
   if (sel.kind === 'stamp') {
-    addField(grid, '图章类型', o.type, STAMP_DEFS.map(d => d.id), v => { o.type = v; });
+    addField(grid, '图章类型', o.type, STAMP_DEFS.map(d => ({ value: d.id, label: `[${d.cat}] ${d.label}` })), v => { o.type = v; });
     addField(grid, '前后图层', o.layer || 'bg', ['bg', 'fg'], v => { o.layer = v; });
-    addField(grid, '缩放倍率', o.scale !== undefined ? o.scale : 1, 'number', v => { o.scale = Math.max(0.25, Math.min(3.0, v || 1)); });
+    addField(grid, '缩放倍率', o.scale !== undefined ? o.scale : 1, 'number', v => { o.scale = Math.max(0.25, Math.min(3.0, Number(v) || 1)); });
     addField(grid, '水平翻转', !!o.flip, 'checkbox', v => { o.flip = !!v; });
-    addField(grid, '变体种子', o.seed !== undefined ? o.seed : 0, 'number', v => { o.seed = Math.max(0, Math.floor(v || 0)); });
-    addField(grid, '透明度', o.alpha !== undefined ? o.alpha : 0.85, 'number', v => { o.alpha = Math.max(0.1, Math.min(1.0, v || 0.85)); });
+    addField(grid, '变体种子', o.seed !== undefined ? o.seed : 0, 'number', v => { o.seed = Math.max(0, Math.floor(v || 0)) % 3; });
+    addField(grid, '透明度', o.alpha !== undefined ? o.alpha : 0.85, 'number', v => { o.alpha = Math.max(0.1, Math.min(1.0, Number(v) || 0.85)); });
     addField(grid, '旋转弧度', o.rotate || 0, 'number', v => { o.rotate = Number(v) || 0; });
+  } else if (sel.kind === 'windZone') {
+    addField(grid, '水平风 vx', o.vx !== undefined ? o.vx : 0, 'number', v => { o.vx = Number(v) || 0; });
+    addField(grid, '升力 vy', o.vy !== undefined ? o.vy : -1480, 'number', v => { o.vy = Number(v) || -1480; });
+    const note = document.createElement('div');
+    note.className = 'prop-note';
+    note.textContent = `提示：负 vy 向上托举（标准值 -1380 ~ -1580），正/负 vx 提供侧向罡风偏移。`;
+    grid.appendChild(note);
+  } else if (sel.kind === 'bouncePad') {
+    addField(grid, '弹跳初速', o.boostVy !== undefined ? o.boostVy : -790, 'number', v => { o.boostVy = Number(v) || -790; });
+    const apex = Math.round(((Number(o.boostVy) || -790) ** 2) / (2 * GRAVITY));
+    const note = document.createElement('div');
+    note.className = 'prop-note';
+    note.textContent = `物理弹跳顶点 ≈ ${apex} px（按重力 g=${GRAVITY} 实时换算，画布虚线即最高落脚点）`;
+    grid.appendChild(note);
   } else if (o.type !== undefined) {
     addField(grid, '形态', o.type, ['ground', 'pillar', 'platform'], v => { o.type = v; });
   }
-  if (o.kind !== undefined && sel.kind === 'enemy') addField(grid, '兵种', o.kind, ['dummy', 'sentinel', 'wraith', 'golem', 'priest', 'duelist', 'leech'], v => { o.kind = v; });
+
+  if (o.kind !== undefined && sel.kind === 'enemy') {
+    addField(grid, '兵种', o.kind, ENEMY_KINDS.map(k => ({ value: k, label: `${ENEMY_META[k].label} (${k})` })), v => {
+      o.kind = v;
+      const m = ENEMY_META[v];
+      if (m && m.patrol > 0 && (o.minX === undefined || o.maxX === undefined)) {
+        o.minX = Math.round(o.x - m.patrol);
+        o.maxX = Math.round(o.x + m.patrol);
+      }
+    });
+  }
   if (o.kind !== undefined && sel.kind === 'npc') addField(grid, 'NPC类', o.kind, ['smith', 'chronicler', 'keeper'], v => { o.kind = v; });
-  if (o.kind !== undefined && sel.kind === 'pickup') addField(grid, '秘宝类', o.kind, ['flaskCore', 'relic', 'ability', 'echoCache', 'statCore', 'keyItem'], v => { o.kind = v; });
+  if (o.kind !== undefined && sel.kind === 'pickup') addField(grid, '秘宝类', o.kind, ['flaskCore', 'relic', 'ability', 'weapon', 'echoCache', 'statCore', 'keyItem'], v => { o.kind = v; });
+  if (o.weaponId !== undefined) addField(grid, '兵刃ID', o.weaponId, ['blade', 'hammer', 'bell'], v => { o.weaponId = v; });
+  if (o.relicId !== undefined) addField(grid, '圣物ID', o.relicId, 'text', v => { o.relicId = v; });
+  if (o.abilityId !== undefined) addField(grid, '能力ID', o.abilityId, ['doubleJump', 'shadeDash'], v => { o.abilityId = v; });
   if (o.echoAmount !== undefined) addField(grid, '残响量', o.echoAmount, 'number', v => { o.echoAmount = Math.max(10, v); });
 
-  if (o.x !== undefined) addField(grid, '局部 X', o.x, 'number', v => { o.x = v; });
-  if (o.y !== undefined) addField(grid, '局部 Y', o.y, 'number', v => { o.y = v; });
+  if (o.x !== undefined) addField(grid, sel.kind === 'bouncePad' ? '底心 X' : '局部 X', o.x, 'number', v => { o.x = v; });
+  if (o.y !== undefined) addField(grid, sel.kind === 'bouncePad' ? '底心 Y' : '局部 Y', o.y, 'number', v => { o.y = v; });
   if (o.cageX !== undefined) addField(grid, '钟笼 X', o.cageX, 'number', v => { o.cageX = v; });
   if (o.cageY !== undefined) addField(grid, '钟笼 Y', o.cageY, 'number', v => { o.cageY = v; });
   if (o.anchorY !== undefined) addField(grid, '挂点 Y', o.anchorY, 'number', v => { o.anchorY = v; });
@@ -812,7 +1144,91 @@ function renderInspector() {
   if (o.text !== undefined) addField(grid, '铭文', o.text, 'text', v => { o.text = v; });
   if (o.desc !== undefined) addField(grid, '描述', o.desc, 'textarea', v => { o.desc = v; });
 
+  if (sel.kind === 'solid') {
+    const rm = getActiveRoom();
+    const rmMod = (rm && rm.terrainMod) ? rm.terrainMod : {};
+    const curSMod = o.mod || {};
+    const solidModDiv = document.createElement('div');
+    solidModDiv.className = 'mod-divider';
+    solidModDiv.innerHTML = '<span>单块程序化地形修饰器</span>';
+    const sReset = document.createElement('button');
+    sReset.type = 'button';
+    sReset.className = 'mod-reset-btn';
+    sReset.textContent = '恢复继承';
+    sReset.addEventListener('click', () => {
+      pushUndo();
+      delete o.mod;
+      renderInspector();
+      draw();
+      showToast('该地形块已恢复继承房间默认样式');
+    });
+    solidModDiv.appendChild(sReset);
+    grid.appendChild(solidModDiv);
+
+    const setSMod = (k, v) => {
+      const next = { ...(o.mod || {}), [k]: v };
+      const cleaned = cleanModObj(next);
+      if (cleaned) o.mod = cleaned;
+      else delete o.mod;
+    };
+    const solidOvOpts = [
+      { value: 'inherit', label: '继承房间默认' },
+      ...TERRAIN_OVERLAY_OPTIONS.filter(op => op.value !== 'auto')
+    ];
+    addField(grid, '覆层覆盖', curSMod.overlay || 'inherit', solidOvOpts, v => setSMod('overlay', v));
+    addRangeField(grid, '边缘风化', curSMod.weathering !== undefined ? curSMod.weathering : (rmMod.weathering !== undefined ? rmMod.weathering : 1.0), 0, 2, 0.1, v => setSMod('weathering', v));
+    addRangeField(grid, '裂隙密度', curSMod.cracks !== undefined ? curSMod.cracks : (rmMod.cracks !== undefined ? rmMod.cracks : 1.0), 0, 2, 0.1, v => setSMod('cracks', v));
+    addRangeField(grid, '覆层浓度', curSMod.overlayDensity !== undefined ? curSMod.overlayDensity : (rmMod.overlayDensity !== undefined ? rmMod.overlayDensity : 1.0), 0, 2, 0.1, v => setSMod('overlayDensity', v));
+  }
+
   inspectorEl.appendChild(grid);
+
+  if (sel.kind === 'solid') {
+    const pbar = document.createElement('div');
+    pbar.className = 'mod-preset-bar';
+    const presets = [
+      ['素石精砌', { overlay: 'none', weathering: 0.2, cracks: 0.2, overlayDensity: 0 }],
+      ['风化崩岩', { overlay: 'wind', weathering: 1.8, cracks: 1.8, overlayDensity: 1.4 }],
+      ['厚雪冰棱', { overlay: 'snow', weathering: 1.1, cracks: 0.8, overlayDensity: 1.7 }],
+      ['熔金锻纹', { overlay: 'molten', weathering: 0.7, cracks: 1.6, overlayDensity: 1.6 }],
+      ['幽林浓苔', { overlay: 'forest_moss', weathering: 1.4, cracks: 1.2, overlayDensity: 1.8 }]
+    ];
+    presets.forEach(([label, modCfg]) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ed-btn';
+      b.textContent = label;
+      b.addEventListener('click', () => {
+        pushUndo();
+        o.mod = { ...modCfg };
+        if (state.renderMode !== 'ink') toggleRenderMode();
+        renderInspector();
+        draw();
+        showToast(`已应用地形修饰预设「${label}」`);
+      });
+      pbar.appendChild(b);
+    });
+    inspectorEl.appendChild(pbar);
+  }
+
+  if (sel.kind === 'stamp') {
+    const qbar = document.createElement('div');
+    qbar.className = 'prop-hotkey-bar';
+    [
+      ['缩小 [', () => mutateSelectedStamp(st => { st.scale = Math.max(0.25, +((Number(st.scale) || 1) - 0.1).toFixed(2)); })],
+      ['放大 ]', () => mutateSelectedStamp(st => { st.scale = Math.min(3.0, +((Number(st.scale) || 1) + 0.1).toFixed(2)); })],
+      ['镜像 H', () => mutateSelectedStamp(st => { st.flip = !st.flip; })],
+      ['切层 L', () => mutateSelectedStamp(st => { st.layer = (st.layer || 'bg') === 'bg' ? 'fg' : 'bg'; })],
+      ['换变体 R', () => mutateSelectedStamp(st => { st.seed = ((Number(st.seed) || 0) + 1) % 3; })]
+    ].forEach(([lbl, fn]) => {
+      const b = document.createElement('button');
+      b.className = 'ed-btn';
+      b.textContent = lbl;
+      b.addEventListener('click', fn);
+      qbar.appendChild(b);
+    });
+    inspectorEl.appendChild(qbar);
+  }
 
   const actions = document.createElement('div');
   actions.className = 'prop-actions';
@@ -830,13 +1246,57 @@ function renderInspector() {
   inspectorEl.appendChild(actions);
 }
 
+function mutateSelectedStamp(fn) {
+  const sel = getSelectedItem();
+  if (!sel || sel.kind !== 'stamp') return;
+  pushUndo();
+  fn(sel.obj);
+  renderInspector();
+  draw();
+}
+
+function renderStampPalette() {
+  const tabsEl = document.getElementById('stamp-cat-tabs');
+  const palEl = document.getElementById('stamp-palette');
+  if (tabsEl && !tabsEl.dataset.built) {
+    tabsEl.dataset.built = '1';
+    for (const cat of STAMP_CATS) {
+      const b = document.createElement('button');
+      b.className = `stamp-cat-btn${state.stampCatFilter === cat ? ' active' : ''}`;
+      b.textContent = cat;
+      b.addEventListener('click', () => {
+        state.stampCatFilter = cat;
+        tabsEl.querySelectorAll('.stamp-cat-btn').forEach(x => x.classList.toggle('active', x.textContent === cat));
+        renderStampPalette();
+      });
+      tabsEl.appendChild(b);
+    }
+  }
+  if (!palEl) return;
+  palEl.innerHTML = '';
+  for (const def of STAMP_DEFS) {
+    if (state.stampCatFilter !== '全部' && def.cat !== state.stampCatFilter) continue;
+    const btn = document.createElement('button');
+    btn.className = `tool-btn${state.tool === 'stamp' && state.activeStampType === def.id ? ' active' : ''}`;
+    btn.dataset.tool = 'stamp';
+    btn.dataset.stampType = def.id;
+    btn.title = `${def.cat} · ${def.label} (${def.w}×${def.h}, 默认层: ${def.defaultLayer})`;
+    btn.innerHTML = `<span class="stamp-cat-tag">${def.cat}</span><span>${def.label}</span>`;
+    btn.addEventListener('click', () => {
+      state.activeStampType = def.id;
+      setTool('stamp');
+    });
+    palEl.appendChild(btn);
+  }
+}
+
 function renderAllUI() {
   renderRoomList();
   renderRoomProps();
   renderInspector();
   const rm = getActiveRoom();
   statusInfoEl.textContent = rm
-    ? `房间 ${rm.id} (${rm.bounds.w}×${rm.bounds.h}) · 工具: ${state.tool} · 缩放: ${Math.round(state.cam.zoom * 100)}%`
+    ? `房间 ${rm.id} (${rm.bounds.w}×${rm.bounds.h}) · 视图: ${state.renderMode === 'ink' ? '实景水墨' : '线框'} · 工具: ${state.tool}${state.tool === 'stamp' ? ':' + state.activeStampType : ''} · 缩放: ${Math.round(state.cam.zoom * 100)}%`
     : '就绪';
 }
 
@@ -846,31 +1306,42 @@ function createPointObject(tool, lx, ly) {
   if (!rm) return;
   pushUndo();
   const uid = `${tool}_${Date.now().toString(36).slice(-4)}`;
-  if (tool === 'sentinel' || tool === 'wraith' || tool === 'golem' || tool === 'priest' || tool === 'duelist' || tool === 'leech') {
-    let obj;
-    if (tool === 'wraith') obj = { id: uid, kind: 'wraith', x: lx - 18, y: ly - 24 };
-    else if (tool === 'priest') obj = { id: uid, kind: 'priest', x: lx - 18, y: ly - 66 };
-    else if (tool === 'leech') obj = { id: uid, kind: 'leech', x: lx - 17, y: ly };
-    else if (tool === 'duelist') obj = { id: uid, kind: 'duelist', x: lx - 17, y: ly - 60, minX: lx - 170, maxX: lx + 170 };
-    else obj = { id: uid, kind: tool, x: lx - 20, y: ly - (tool === 'golem' ? 78 : 62), minX: lx - 160, maxX: lx + 160 };
+  if (ENEMY_META[tool]) {
+    if (!Array.isArray(rm.enemies)) rm.enemies = [];
+    const m = ENEMY_META[tool];
+    const obj = {
+      id: uid,
+      kind: tool,
+      x: Math.round(lx - m.w * 0.5),
+      y: Math.round(m.ceiling ? ly : (m.flying ? ly - m.h * 0.5 : ly - m.h))
+    };
+    if (m.patrol > 0) {
+      obj.minX = Math.round(lx - m.patrol);
+      obj.maxX = Math.round(lx + m.patrol);
+    }
     rm.enemies.push(obj);
     state.selection = { kind: 'enemy', idx: rm.enemies.length - 1 };
+    showToast(`已放置「${m.label}」`);
   } else if (tool === 'npc') {
     if (!Array.isArray(rm.npcs)) rm.npcs = [];
     rm.npcs.push({ id: uid, kind: 'smith', name: '老铸钟匠 · 砺', x: lx, y: ly });
     state.selection = { kind: 'npc', idx: rm.npcs.length - 1 };
   } else if (tool === 'lantern') {
+    if (!Array.isArray(rm.lanterns)) rm.lanterns = [];
     rm.lanterns.push({ id: uid, x: lx, anchorY: Math.max(0, ly - 150), len: 150, angle: 0.05 });
     state.selection = { kind: 'lantern', idx: rm.lanterns.length - 1 };
   } else if (tool === 'anchor') {
+    if (!Array.isArray(rm.grappleAnchors)) rm.grappleAnchors = [];
     rm.grappleAnchors.push({ id: uid, x: lx, y: ly, topY: 0 });
     state.selection = { kind: 'anchor', idx: rm.grappleAnchors.length - 1 };
   } else if (tool === 'pendulum') {
+    if (!Array.isArray(rm.pendulums)) rm.pendulums = [];
     rm.pendulums.push({ id: uid, x: lx, anchorY: Math.max(0, ly - 180), len: 180, amp: 0.65, speed: 1.7, phase: 0, r: 28 });
     state.selection = { kind: 'pendulum', idx: rm.pendulums.length - 1 };
   } else if (tool === 'resonancePuzzle') {
     const pzId = `puzzle_${Date.now().toString(36).slice(-4)}`;
     if (!Array.isArray(rm.resonancePuzzles)) rm.resonancePuzzles = [];
+    if (!Array.isArray(rm.pickups)) rm.pickups = [];
     rm.resonancePuzzles.push({
       id: pzId,
       name: `${rm.name} · 三钟共鸣`,
@@ -895,21 +1366,29 @@ function createPointObject(tool, lx, ly) {
     state.selection = { kind: 'puzzleCage', idx: rm.resonancePuzzles.length - 1 };
     showToast(`已放置三钟共鸣机关 ${pzId}（含封印钟笼与秘宝）`);
   } else if (tool === 'altar') {
+    if (!Array.isArray(rm.altars)) rm.altars = [];
     rm.altars.push({ id: uid, x: lx, y: ly, name: `${rm.name} · 祭坛`, shortName: `${rm.name}祭坛`, defaultLit: false });
     state.selection = { kind: 'altar', idx: rm.altars.length - 1 };
   } else if (tool === 'pickup') {
+    if (!Array.isArray(rm.pickups)) rm.pickups = [];
     rm.pickups.push({ id: uid, kind: 'flaskCore', x: lx, y: ly, name: '灯油残芯', desc: '灯油上限永久 +1！' });
     state.selection = { kind: 'pickup', idx: rm.pickups.length - 1 };
   } else if (tool === 'lore') {
+    if (!Array.isArray(rm.loreTablets)) rm.loreTablets = [];
     rm.loreTablets.push({ id: uid, x: lx, y: ly, title: '风化残碑', sub: rm.name, html: '“新刻的晦渊铭文……”' });
     state.selection = { kind: 'lore', idx: rm.loreTablets.length - 1 };
   } else if (tool === 'inscription') {
+    if (!Array.isArray(rm.inscriptions)) rm.inscriptions = [];
     rm.inscriptions.push({ x: lx, y: ly, text: '「在此镌刻指引」' });
     state.selection = { kind: 'inscription', idx: rm.inscriptions.length - 1 };
   } else if (tool === 'banner') {
+    if (!rm.props) rm.props = { puddles: [], banners: [], candles: [], boneCairns: [], stamps: [] };
+    if (!Array.isArray(rm.props.banners)) rm.props.banners = [];
     rm.props.banners.push({ x: lx, y: ly, len: 150, color: '#33151e' });
     state.selection = { kind: 'banner', idx: rm.props.banners.length - 1 };
   } else if (tool === 'candle') {
+    if (!rm.props) rm.props = { puddles: [], banners: [], candles: [], boneCairns: [], stamps: [] };
+    if (!Array.isArray(rm.props.candles)) rm.props.candles = [];
     rm.props.candles.push({ x: lx, y: ly, count: 3 });
     state.selection = { kind: 'candle', idx: rm.props.candles.length - 1 };
   } else if (tool === 'stamp') {
@@ -940,12 +1419,15 @@ function createRectObject(tool, lx, ly, w, h) {
   pushUndo();
   const uid = `${tool}_${Date.now().toString(36).slice(-4)}`;
   if (tool === 'ground' || tool === 'pillar' || tool === 'platform') {
+    if (!Array.isArray(rm.solids)) rm.solids = [];
     rm.solids.push({ x: lx, y: ly, w, h: tool === 'platform' ? Math.max(18, Math.min(28, h)) : h, type: tool });
     state.selection = { kind: 'solid', idx: rm.solids.length - 1 };
   } else if (tool === 'crumble') {
+    if (!Array.isArray(rm.crumblePlatforms)) rm.crumblePlatforms = [];
     rm.crumblePlatforms.push({ id: uid, x: lx, y: ly, w, h: 20 });
     state.selection = { kind: 'crumble', idx: rm.crumblePlatforms.length - 1 };
   } else if (tool === 'secretWall') {
+    if (!Array.isArray(rm.secretWalls)) rm.secretWalls = [];
     rm.secretWalls.push({ id: uid, x: lx, y: ly, w, h, maxHp: 3 });
     state.selection = { kind: 'secretWall', idx: rm.secretWalls.length - 1 };
   } else if (tool === 'voidBarrier') {
@@ -953,8 +1435,32 @@ function createRectObject(tool, lx, ly, w, h) {
     rm.voidBarriers.push({ id: uid, x: lx, y: ly, w: Math.max(18, w), h });
     state.selection = { kind: 'voidBarrier', idx: rm.voidBarriers.length - 1 };
   } else if (tool === 'river') {
+    if (!Array.isArray(rm.rivers)) rm.rivers = [];
     rm.rivers.push({ id: uid, x: lx, y: ly, w });
     state.selection = { kind: 'river', idx: rm.rivers.length - 1 };
+  } else if (tool === 'windZone') {
+    if (!Array.isArray(rm.windZones)) rm.windZones = [];
+    rm.windZones.push({
+      id: `wz_${Date.now().toString(36).slice(-4)}`,
+      x: lx, y: ly, w: Math.max(60, w), h: Math.max(80, h),
+      vx: 0, vy: -1480
+    });
+    state.selection = { kind: 'windZone', idx: rm.windZones.length - 1 };
+    showToast('已绘制罡风上升气流（右侧可微调 vx / vy）');
+  } else if (tool === 'bouncePad') {
+    if (!Array.isArray(rm.bouncePads)) rm.bouncePads = [];
+    const bw = Math.max(54, Math.min(140, w));
+    const bh = Math.max(22, Math.min(40, h));
+    rm.bouncePads.push({
+      id: `bp_${Date.now().toString(36).slice(-4)}`,
+      x: Math.round(lx + w * 0.5),
+      y: Math.round(ly + h),
+      w: Math.round(bw),
+      h: Math.round(bh),
+      boostVy: -800
+    });
+    state.selection = { kind: 'bouncePad', idx: rm.bouncePads.length - 1 };
+    showToast('已放置荧光弹性孢伞（虚线显示弹跳最高落脚点）');
   }
   renderAllUI();
   draw();
@@ -990,8 +1496,338 @@ function duplicateSelected() {
   draw();
 }
 
+// ==================== PLAYTEST LAUNCHERS ====================
+function launchPlaytest(pinWorldPt = null) {
+  if (!state.bundle) return;
+  syncManifestFromRooms();
+  try {
+    localStorage.setItem(PREVIEW_STORAGE_KEY, JSON.stringify(state.bundle));
+    let rm = getActiveRoom();
+    let q = rm ? `&room=${encodeURIComponent(rm.id)}` : '';
+    if (pinWorldPt && Number.isFinite(pinWorldPt.x) && Number.isFinite(pinWorldPt.y)) {
+      const hitRm = state.bundle.rooms.find(r =>
+        pinWorldPt.x >= r.bounds.x && pinWorldPt.x <= r.bounds.x + r.bounds.w &&
+        pinWorldPt.y >= r.bounds.y && pinWorldPt.y <= r.bounds.y + r.bounds.h
+      ) || rm;
+      if (hitRm) q = `&room=${encodeURIComponent(hitRm.id)}`;
+      q += `&sx=${Math.round(pinWorldPt.x)}&sy=${Math.round(pinWorldPt.y)}`;
+    }
+    window.location.href = `./index.html?preview=1${q}`;
+  } catch (err) {
+    showToast(`写入试玩缓存失败: ${err.message}`);
+  }
+}
+
+// ==================== WORLD INTEGRITY AUDIT ====================
+function runWorldAudit() {
+  if (!state.bundle) return [];
+  const rooms = state.bundle.rooms || [];
+  const byId = new Map(rooms.map((r, i) => [r.id, { rm: r, idx: i }]));
+  const issues = [];
+
+  // 1. Overlapping room bounds
+  for (let i = 0; i < rooms.length; i++) {
+    for (let j = i + 1; j < rooms.length; j++) {
+      const a = rooms[i].bounds;
+      const b = rooms[j].bounds;
+      const ox = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+      const oy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+      if (ox > 0 && oy > 0) {
+        issues.push({
+          sev: 'err',
+          title: `房间边界重叠：${rooms[i].id} ↔ ${rooms[j].id}`,
+          msg: `两房间世界区域重叠 ${Math.round(ox)}×${Math.round(oy)} px，可能导致镜头或房间归属抖动。`,
+          roomIdx: i
+        });
+      }
+    }
+  }
+
+  // 2. Connections validity, symmetry & adjacency gap (> 32px allows 20px floor thickness)
+  for (let i = 0; i < rooms.length; i++) {
+    const rm = rooms[i];
+    const b = rm.bounds;
+    for (const cid of (rm.connections || [])) {
+      const target = byId.get(cid);
+      if (!target) {
+        issues.push({
+          sev: 'err',
+          title: `无效跨房连接：${rm.id} → ${cid}`,
+          msg: `目标房间「${cid}」不存在，请重新配置跨房连接。`,
+          roomIdx: i
+        });
+        continue;
+      }
+      if (!Array.isArray(target.rm.connections) || !target.rm.connections.includes(rm.id)) {
+        issues.push({
+          sev: 'warn',
+          title: `单向跨房连接：${rm.id} → ${cid}`,
+          msg: `房间 ${cid} 未反向连接回 ${rm.id}，建议补齐双向连接。`,
+          roomIdx: i
+        });
+      }
+      const ob = target.rm.bounds;
+      const gx = Math.max(0, Math.max(b.x - (ob.x + ob.w), ob.x - (b.x + b.w)));
+      const gy = Math.max(0, Math.max(b.y - (ob.y + ob.h), ob.y - (b.y + b.h)));
+      if (gx > 32 || gy > 32) {
+        issues.push({
+          sev: 'warn',
+          title: `跨房缝隙过大：${rm.id} ↔ ${cid}`,
+          msg: `边界间隔 (${Math.round(gx)}, ${Math.round(gy)}) px 超过 32px，切房过渡可能出现断层。`,
+          roomIdx: i
+        });
+      }
+    }
+  }
+
+  // 3. Graph reachability from start room
+  const startAltarId = state.bundle.world.startAltarId || 'altar_start';
+  let startIdx = rooms.findIndex(r => (r.altars || []).some(a => a.id === startAltarId));
+  if (startIdx < 0) startIdx = 0;
+  if (rooms.length > 0) {
+    const visited = new Set([rooms[startIdx].id]);
+    const queue = [rooms[startIdx]];
+    while (queue.length > 0) {
+      const cur = queue.shift();
+      for (const cid of (cur.connections || [])) {
+        if (!visited.has(cid) && byId.has(cid)) {
+          visited.add(cid);
+          queue.push(byId.get(cid).rm);
+        }
+      }
+    }
+    rooms.forEach((rm, idx) => {
+      if (!visited.has(rm.id)) {
+        issues.push({
+          sev: 'err',
+          title: `孤立不可达房间：${rm.name} (${rm.id})`,
+          msg: `从起点房间无法经由 connections 到达此房间。`,
+          roomIdx: idx
+        });
+      }
+    });
+  }
+
+  // 4. Duplicate IDs, Start Altar check & Per-Object Sanity Checks
+  const seenIds = new Map();
+  let totalAltars = 0;
+  let hasStartAltar = false;
+  const trackId = (scope, id, roomIdx, sel) => {
+    if (!id) return;
+    const key = `${scope}:${id}`;
+    if (seenIds.has(key)) {
+      issues.push({
+        sev: 'warn',
+        title: `重复 ID (${scope})：${id}`,
+        msg: `与房间 ${seenIds.get(key)} 存在重复 ID，可能引起存档/击杀状态冲突。`,
+        roomIdx,
+        sel
+      });
+    } else {
+      seenIds.set(key, rooms[roomIdx].id);
+    }
+  };
+
+  rooms.forEach((rm, ri) => {
+    const rw = rm.bounds.w;
+    const rh = rm.bounds.h;
+    (rm.altars || []).forEach((a, ai) => {
+      totalAltars++;
+      if (a.id === startAltarId) hasStartAltar = true;
+      trackId('altar', a.id, ri, { kind: 'altar', idx: ai });
+    });
+    (rm.pickups || []).forEach((pk, pi) => {
+      trackId('pickup', pk.id, ri, { kind: 'pickup', idx: pi });
+    });
+    (rm.windZones || []).forEach((wz, wi) => {
+      trackId('windZone', wz.id, ri, { kind: 'windZone', idx: wi });
+      if ((Number(wz.vy) || 0) > 0) {
+        issues.push({
+          sev: 'warn',
+          title: `罡风方向向下：${rm.id} · ${wz.id || wi}`,
+          msg: `当前 vy=${wz.vy} 为正值（向下吹），上升气流通常应为负值（如 -1480）。`,
+          roomIdx: ri,
+          sel: { kind: 'windZone', idx: wi },
+          wx: rm.bounds.x + wz.x + (wz.w || 100) * 0.5,
+          wy: rm.bounds.y + wz.y + (wz.h || 100) * 0.5
+        });
+      }
+    });
+    (rm.bouncePads || []).forEach((bp, bi) => {
+      trackId('bouncePad', bp.id, ri, { kind: 'bouncePad', idx: bi });
+      if ((Number(bp.boostVy) || 0) >= -100) {
+        issues.push({
+          sev: 'warn',
+          title: `孢伞弹力异常：${rm.id} · ${bp.id || bi}`,
+          msg: `当前 boostVy=${bp.boostVy} 过弱或为正值，建议设为 -760 ~ -860。`,
+          roomIdx: ri,
+          sel: { kind: 'bouncePad', idx: bi },
+          wx: rm.bounds.x + bp.x,
+          wy: rm.bounds.y + bp.y
+        });
+      }
+    });
+    if (rm.terrainMod) {
+      for (const mk of ['weathering', 'cracks', 'overlayDensity']) {
+        const mv = rm.terrainMod[mk];
+        if (mv !== undefined && (Number(mv) < 0 || Number(mv) > 2 || !Number.isFinite(Number(mv)))) {
+          issues.push({
+            sev: 'warn',
+            title: `房间地形修饰越界：${rm.id} · ${mk}`,
+            msg: `当前 ${mk}=${mv} 超出建议区间 [0, 2]。`,
+            roomIdx: ri
+          });
+        }
+      }
+    }
+    (rm.solids || []).forEach((s, si) => {
+      if (!s.mod) return;
+      for (const mk of ['weathering', 'cracks', 'overlayDensity']) {
+        const mv = s.mod[mk];
+        if (mv !== undefined && (Number(mv) < 0 || Number(mv) > 2 || !Number.isFinite(Number(mv)))) {
+          issues.push({
+            sev: 'warn',
+            title: `地形块修饰越界：${rm.id} · solid#${si} (${mk})`,
+            msg: `当前 ${mk}=${mv} 超出建议区间 [0, 2]。`,
+            roomIdx: ri,
+            sel: { kind: 'solid', idx: si },
+            wx: rm.bounds.x + s.x + s.w * 0.5,
+            wy: rm.bounds.y + s.y + s.h * 0.5
+          });
+        }
+      }
+    });
+    (rm.enemies || []).forEach((e, ei) => {
+      trackId('enemy', e.id, ri, { kind: 'enemy', idx: ei });
+      if (e.minX !== undefined && e.maxX !== undefined) {
+        if (e.minX > e.maxX) {
+          issues.push({
+            sev: 'err',
+            title: `巡逻区间倒置：${rm.id} · ${e.id}`,
+            msg: `minX (${e.minX}) 大于 maxX (${e.maxX})。`,
+            roomIdx: ri,
+            sel: { kind: 'enemy', idx: ei },
+            wx: rm.bounds.x + e.x,
+            wy: rm.bounds.y + e.y
+          });
+        }
+      }
+      if (e.x < -120 || e.x > rw + 120 || e.y < -120 || e.y > rh + 120) {
+        issues.push({
+          sev: 'warn',
+          title: `敌兵越出房间边界：${rm.id} · ${e.id}`,
+          msg: `局部坐标 (${e.x}, ${e.y}) 超出房间范围 ${rw}×${rh}。`,
+          roomIdx: ri,
+          sel: { kind: 'enemy', idx: ei },
+          wx: rm.bounds.x + e.x,
+          wy: rm.bounds.y + e.y
+        });
+      }
+    });
+  });
+
+  // 5. Unregistered stamp types & river blocking vertical drop seams
+  rooms.forEach((rm, ri) => {
+    const stamps = (rm.props && Array.isArray(rm.props.stamps)) ? rm.props.stamps : [];
+    stamps.forEach((st, si) => {
+      if (!getStampDef(st.type)) {
+        issues.push({
+          sev: 'err',
+          title: `未注册图章类型：${rm.id} · ${st.type}`,
+          msg: `图章类型「${st.type}」未在 stampAtlas.js 注册，运行时会被静默跳过。`,
+          roomIdx: ri,
+          sel: { kind: 'stamp', idx: si },
+          wx: rm.bounds.x + (Number(st.x) || 0),
+          wy: rm.bounds.y + (Number(st.y) || 0)
+        });
+      }
+    });
+    const b = rm.bounds;
+    const belowRooms = (rm.connections || [])
+      .map(cid => byId.get(cid))
+      .filter(x => x && Math.abs(x.rm.bounds.y - (b.y + b.h)) <= 24);
+    if (belowRooms.length > 0) {
+      (rm.rivers || []).forEach((rv, rvi) => {
+        const rx0 = b.x + rv.x;
+        const rx1 = rx0 + (rv.w || 0);
+        const ry = b.y + rv.y;
+        if (ry >= b.y + b.h - 190) {
+          for (const br of belowRooms) {
+            const ob = br.rm.bounds;
+            if (Math.min(rx1, ob.x + ob.w) - Math.max(rx0, ob.x) > 40) {
+              issues.push({
+                sev: 'warn',
+                title: `暗河覆盖下方垂直通道：${rm.id} → ${br.rm.id}`,
+                msg: `暗河 ${rv.id || rvi} 位于底部连通口上方，可能导致玩家落井前被暗河扣血传回。`,
+                roomIdx: ri,
+                sel: { kind: 'river', idx: rvi },
+                wx: (rx0 + rx1) * 0.5,
+                wy: ry
+              });
+            }
+          }
+        }
+      });
+    }
+  });
+
+  if (totalAltars === 0 || !hasStartAltar) {
+    issues.push({
+      sev: 'err',
+      title: `缺少起点祭坛 (${startAltarId})`,
+      msg: `全境未找到与 world.startAltarId 匹配的出生祭坛。`,
+      roomIdx: 0
+    });
+  }
+
+  return issues;
+}
+
+function showAuditPanel() {
+  const issues = runWorldAudit();
+  const errCnt = issues.filter(i => i.sev === 'err').length;
+  const warnCnt = issues.filter(i => i.sev === 'warn').length;
+  if (auditSummaryEl) {
+    auditSummaryEl.textContent = `${state.bundle.rooms.length} 房 · ${errCnt} 错误 · ${warnCnt} 警告`;
+  }
+  if (auditListEl) {
+    auditListEl.innerHTML = '';
+    if (issues.length === 0) {
+      auditListEl.innerHTML = `<div class="audit-ok">✦ 全境 ${state.bundle.rooms.length} 房间体检全部通过！<br>0 边界重叠 · 0 断链孤岛 · 0 生态参数异常</div>`;
+    } else {
+      for (const iss of issues) {
+        const btn = document.createElement('button');
+        btn.className = `audit-item ${iss.sev}`;
+        btn.innerHTML = `
+          <div class="audit-item-head"><span>${iss.sev === 'err' ? '✖' : '⚠'} ${iss.title}</span><span>定位 →</span></div>
+          <div class="audit-item-msg">${iss.msg}</div>
+        `;
+        btn.addEventListener('click', () => {
+          state.viewMode = 'room';
+          document.getElementById('btn-view-room').classList.add('active');
+          document.getElementById('btn-view-world').classList.remove('active');
+          state.activeRoomIdx = iss.roomIdx;
+          state.selection = iss.sel || null;
+          renderAllUI();
+          if (iss.wx !== undefined && iss.wy !== undefined) {
+            centerCameraOn(iss.wx, iss.wy, Math.max(0.85, state.cam.zoom));
+          } else {
+            fitView();
+          }
+        });
+        auditListEl.appendChild(btn);
+      }
+    }
+  }
+  if (auditPanelEl) auditPanelEl.classList.remove('hidden');
+}
+
 // ==================== MOUSE & KEYBOARD INTERACTION ====================
 canvas.addEventListener('contextmenu', e => e.preventDefault());
+canvas.addEventListener('mouseleave', () => {
+  state.hoverInsideCanvas = false;
+  draw();
+});
 
 canvas.addEventListener('mousedown', e => {
   const rect = canvas.getBoundingClientRect();
@@ -1027,6 +1863,12 @@ canvas.addEventListener('mousedown', e => {
         return;
       }
     }
+    return;
+  }
+
+  // Pinpoint Playtest click
+  if (state.tool === 'playtestPin') {
+    launchPlaytest({ x: snap(wpt.x), y: snap(wpt.y) });
     return;
   }
 
@@ -1096,6 +1938,8 @@ window.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect();
   const sx = e.clientX - rect.left;
   const sy = e.clientY - rect.top;
+  const inside = sx >= 0 && sy >= 0 && sx <= rect.width && sy <= rect.height;
+  state.hoverInsideCanvas = inside;
   const wpt = screenToWorld(sx, sy);
   state.hoverWorld = wpt;
   const rm = getActiveRoom();
@@ -1103,7 +1947,10 @@ window.addEventListener('mousemove', e => {
     statusPosEl.textContent = `房间坐标: (${Math.round(wpt.x - rm.bounds.x)}, ${Math.round(wpt.y - rm.bounds.y)}) | 世界坐标: (${Math.round(wpt.x)}, ${Math.round(wpt.y)})`;
   }
 
-  if (!state.drag) return;
+  if (!state.drag) {
+    if (inside && (state.tool === 'stamp' || state.tool === 'playtestPin')) draw();
+    return;
+  }
   if (state.drag.mode === 'pan') {
     state.cam.x = state.drag.origCamX - (sx - state.drag.startSx) / state.cam.zoom;
     state.cam.y = state.drag.origCamY - (sy - state.drag.startSy) / state.cam.zoom;
@@ -1131,20 +1978,37 @@ window.addEventListener('mousemove', e => {
     if (!state.drag.pushed) { pushUndo(); state.drag.pushed = true; }
     const dx = snap(wpt.x - state.drag.startWx);
     const dy = snap(wpt.y - state.drag.startWy);
-    const o = state.drag.item.obj;
+    const item = state.drag.item;
+    const o = item.obj;
     const orig = state.drag.orig;
     const h = state.drag.handle;
-    if (h.includes('e')) o.w = Math.max(20, orig.w + dx);
-    if (h.includes('s') && o.h !== undefined) o.h = Math.max(14, orig.h + dy);
-    if (h.includes('w')) {
-      const nw = Math.max(20, orig.w - dx);
-      o.x = orig.x + (orig.w - nw);
-      o.w = nw;
-    }
-    if (h.includes('n') && o.h !== undefined) {
-      const nh = Math.max(14, orig.h - dy);
-      o.y = orig.y + (orig.h - nh);
-      o.h = nh;
+    if (item.bottomCenter) {
+      // BouncePad uses bottom-center (x, y)
+      let L = orig.x - orig.w * 0.5;
+      let R = orig.x + orig.w * 0.5;
+      let T = orig.y - orig.h;
+      let B = orig.y;
+      if (h.includes('e')) R = Math.max(L + 36, R + dx);
+      if (h.includes('w')) L = Math.min(R - 36, L + dx);
+      if (h.includes('s')) B = Math.max(T + 16, B + dy);
+      if (h.includes('n')) T = Math.min(B - 16, T + dy);
+      o.w = Math.round(R - L);
+      o.h = Math.round(B - T);
+      o.x = Math.round((L + R) * 0.5);
+      o.y = Math.round(B);
+    } else {
+      if (h.includes('e')) o.w = Math.max(20, orig.w + dx);
+      if (h.includes('s') && o.h !== undefined) o.h = Math.max(14, orig.h + dy);
+      if (h.includes('w')) {
+        const nw = Math.max(20, orig.w - dx);
+        o.x = orig.x + (orig.w - nw);
+        o.w = nw;
+      }
+      if (h.includes('n') && o.h !== undefined) {
+        const nh = Math.max(14, orig.h - dy);
+        o.y = orig.y + (orig.h - nh);
+        o.h = nh;
+      }
     }
     draw();
   } else if (state.drag.mode === 'createRect') {
@@ -1189,9 +2053,34 @@ canvas.addEventListener('wheel', e => {
 
 window.addEventListener('keydown', e => {
   if (document.activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
-  if (e.code === 'KeyV') setTool('select');
+  if (e.code === 'Escape') {
+    if (auditPanelEl && !auditPanelEl.classList.contains('hidden')) {
+      auditPanelEl.classList.add('hidden');
+      return;
+    }
+    setTool('select');
+  } else if (e.code === 'KeyV') setTool('select');
   else if (e.code === 'KeyF') fitView();
-  else if (e.code === 'Delete' || e.code === 'Backspace') { e.preventDefault(); deleteSelected(); }
+  else if (e.code === 'KeyM') toggleRenderMode();
+  else if (e.code === 'KeyP') {
+    e.preventDefault();
+    if (state.hoverInsideCanvas) {
+      launchPlaytest({ x: snap(state.hoverWorld.x), y: snap(state.hoverWorld.y) });
+    } else {
+      setTool('playtestPin');
+      showToast('定点试玩模式：在画布任意位置点击即可空降试玩');
+    }
+  } else if (e.code === 'BracketLeft') {
+    mutateSelectedStamp(st => { st.scale = Math.max(0.25, +((Number(st.scale) || 1) - 0.1).toFixed(2)); });
+  } else if (e.code === 'BracketRight') {
+    mutateSelectedStamp(st => { st.scale = Math.min(3.0, +((Number(st.scale) || 1) + 0.1).toFixed(2)); });
+  } else if (e.code === 'KeyH') {
+    mutateSelectedStamp(st => { st.flip = !st.flip; });
+  } else if (e.code === 'KeyL') {
+    mutateSelectedStamp(st => { st.layer = (st.layer || 'bg') === 'bg' ? 'fg' : 'bg'; });
+  } else if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey) {
+    mutateSelectedStamp(st => { st.seed = ((Number(st.seed) || 0) + 1) % 3; });
+  } else if (e.code === 'Delete' || e.code === 'Backspace') { e.preventDefault(); deleteSelected(); }
   else if ((e.ctrlKey || e.metaKey) && e.code === 'KeyD') { e.preventDefault(); duplicateSelected(); }
   else if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') { e.preventDefault(); doUndo(); }
   else if ((e.ctrlKey || e.metaKey) && e.code === 'KeyY') { e.preventDefault(); doRedo(); }
@@ -1206,7 +2095,10 @@ function setTool(tool) {
       b.classList.toggle('active', b.dataset.tool === tool);
     }
   });
+  const pinBtn = document.getElementById('btn-playtest-pin');
+  if (pinBtn) pinBtn.classList.toggle('active', tool === 'playtestPin');
   renderAllUI();
+  draw();
 }
 
 function doUndo() {
@@ -1245,23 +2137,8 @@ document.querySelectorAll('.tool-btn').forEach(btn => {
   btn.addEventListener('click', () => setTool(btn.dataset.tool));
 });
 
-// Dynamically build Procedural Ink Stamp Palette from STAMP_DEFS
-const stampPaletteEl = document.getElementById('stamp-palette');
-if (stampPaletteEl) {
-  for (const def of STAMP_DEFS) {
-    const btn = document.createElement('button');
-    btn.className = 'tool-btn';
-    btn.dataset.tool = 'stamp';
-    btn.dataset.stampType = def.id;
-    btn.title = `${def.cat} · ${def.label} (${def.w}×${def.h}, 默认层: ${def.defaultLayer})`;
-    btn.innerHTML = `<span class="stamp-cat-tag">${def.cat}</span><span>${def.label}</span>`;
-    btn.addEventListener('click', () => {
-      state.activeStampType = def.id;
-      setTool('stamp');
-    });
-    stampPaletteEl.appendChild(btn);
-  }
-}
+renderStampPalette();
+
 document.getElementById('sel-grid').addEventListener('change', e => {
   state.gridSize = Number(e.target.value) || 10;
   draw();
@@ -1278,9 +2155,28 @@ document.getElementById('btn-view-world').addEventListener('click', () => {
   document.getElementById('btn-view-room').classList.remove('active');
   fitView();
 });
+function toggleRenderMode() {
+  state.renderMode = state.renderMode === 'ink' ? 'wireframe' : 'ink';
+  const btn = document.getElementById('btn-render-ink');
+  if (btn) {
+    const isInk = state.renderMode === 'ink';
+    btn.classList.toggle('active', isInk);
+    btn.classList.toggle('gold', isInk);
+    btn.textContent = isInk ? '🎨 实景水墨 [M]' : '📐 工程线框 [M]';
+  }
+  renderAllUI();
+  draw();
+  showToast(state.renderMode === 'ink' ? '已切换至 WYSIWYG 实景水墨预览' : '已切换至工程线框模式');
+}
+document.getElementById('btn-render-ink').addEventListener('click', toggleRenderMode);
 document.getElementById('btn-fit').addEventListener('click', fitView);
 document.getElementById('btn-undo').addEventListener('click', doUndo);
 document.getElementById('btn-redo').addEventListener('click', doRedo);
+document.getElementById('btn-audit').addEventListener('click', showAuditPanel);
+document.getElementById('btn-audit-rerun').addEventListener('click', showAuditPanel);
+document.getElementById('btn-audit-close').addEventListener('click', () => {
+  if (auditPanelEl) auditPanelEl.classList.add('hidden');
+});
 
 document.getElementById('btn-add-room').addEventListener('click', () => {
   if (!state.bundle) return;
@@ -1303,11 +2199,14 @@ document.getElementById('btn-add-room').addEventListener('click', () => {
       { x: 480, y: 430, w: 200, h: 22, type: 'platform' }
     ],
     crumblePlatforms: [],
+    windZones: [],
+    bouncePads: [],
     altars: [],
     npcs: [],
     loreTablets: [],
     gates: [],
     secretWalls: [],
+    voidBarriers: [],
     pickups: [],
     resonancePuzzles: [],
     pendulums: [],
@@ -1355,16 +2254,16 @@ if (delRoomBtn) {
   });
 }
 
-document.getElementById('btn-playtest').addEventListener('click', () => {
-  if (!state.bundle) return;
-  syncManifestFromRooms();
-  try {
-    localStorage.setItem(PREVIEW_STORAGE_KEY, JSON.stringify(state.bundle));
-    const rm = getActiveRoom();
-    const q = rm ? `&room=${encodeURIComponent(rm.id)}` : '';
-    window.location.href = `./index.html?preview=1${q}`;
-  } catch (err) {
-    showToast(`写入试玩缓存失败: ${err.message}`);
+document.getElementById('btn-playtest').addEventListener('click', () => launchPlaytest(null));
+document.getElementById('btn-playtest-pin').addEventListener('click', () => {
+  if (state.tool === 'playtestPin') {
+    setTool('select');
+  } else {
+    state.viewMode = 'room';
+    document.getElementById('btn-view-room').classList.add('active');
+    document.getElementById('btn-view-world').classList.remove('active');
+    setTool('playtestPin');
+    showToast('点击画布任意位置即可在此空降试玩（Esc 取消）');
   }
 });
 
@@ -1439,7 +2338,6 @@ document.getElementById('file-import').addEventListener('change', async e => {
 // ==================== BOOTSTRAP EDITOR ====================
 async function bootEditor() {
   try {
-    // Load live preview draft if returning from playtest, otherwise load disk JSON
     let loaded = null;
     try {
       const raw = localStorage.getItem(PREVIEW_STORAGE_KEY);
@@ -1472,7 +2370,7 @@ async function bootEditor() {
     resizeCanvas();
     renderAllUI();
     fitView();
-    showToast(`已载入 ${state.bundle.rooms.length} 个房间 JSON`);
+    showToast(`v30.0 已载入 ${state.bundle.rooms.length} 个全境房间 JSON`);
   } catch (err) {
     showToast(`加载失败: ${err.message}（请通过 serve_local.py 启动）`);
   }

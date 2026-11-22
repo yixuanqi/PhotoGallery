@@ -146,3 +146,126 @@ export function getWeaponMoveDef(weaponId, moveType) {
   const w = getWeaponById(weaponId);
   return w.moves[moveType] || WEAPONS.blade.moves[moveType] || WEAPONS.blade.moves.slash1;
 }
+
+
+// ==================== v25.0 WEAPON FORGE SPECIALIZATIONS (2-choose-1 per weapon) ====================
+export const WEAPON_FORGE_TRAIT_COST = 140;
+
+export const WEAPON_FORGE_TRAITS = {
+  blade: [
+    {
+      id: 'shadow_twin',
+      weaponId: 'blade',
+      name: '影闪双斩',
+      nameEn: 'Phantom Twin-Cut',
+      tag: '残影追击 · 广域终斩',
+      tagEn: 'Afterimage Cut · Wide Cleave',
+      desc: '居合一闪与切刃技在落点留下墨影残锋，0.24s 后自动补发二次斩击（命中回魂 +10）；三连终结斩范围 +16%。',
+      descEn: 'Iai Flash & Switch Strike leave an ink-shadow blade that strikes again 0.24s later (+10 Soul on hit); 3rd combo cleave reach +16%.'
+    },
+    {
+      id: 'parry_seal',
+      weaponId: 'blade',
+      name: '见切回印',
+      nameEn: 'Riposte Seal-Flow',
+      tag: '弹反延窗 · 断钟返印',
+      tagEn: '+15ms Parry · Seal Refund',
+      desc: '完美弹反判定窗口 +15ms；「断钟返」反击命中时额外返还 1 枚墨印并回复 18 点魂火，极速蓄满奥义。',
+      descEn: 'Perfect Parry window +15ms; landing Bell-Breaker Riposte refunds +1 Ink Seal and restores +18 Soul for rapid ultimates.'
+    }
+  ],
+  hammer: [
+    {
+      id: 'quake_echo',
+      weaponId: 'hammer',
+      name: '震岳余波',
+      nameEn: 'Seismic Aftershock',
+      tag: '双向裂地 · 破势强化',
+      tagEn: 'Twin Waves · +22% Posture',
+      desc: '二段重拍、陨钟碎岳与切刃落钟破岳额外向正反双向震出裂地余波，击飞敌兵并使破盾削势再 +22%。',
+      descEn: '2nd Slam, Abyssal Sundering & Switch Strike unleash twin bidirectional ground shockwaves and deal +22% bonus posture damage.'
+    },
+    {
+      id: 'iron_bulwark',
+      weaponId: 'hammer',
+      name: '铁壁反震',
+      nameEn: 'Iron-Bell Bulwark',
+      tag: '霸体延长 · 硬抗反震',
+      tagEn: 'Longer Armor · Counter Pulse',
+      desc: '霸体减伤窗口 +0.16s 且霸体受创再降 35%；霸体期间硬抗攻击立刻震出 150px 反震钟波（28伤/34削势）并获 1 枚墨印。',
+      descEn: 'Hyper-armor window +0.16s & -35% armored damage taken; absorbing a hit triggers a 150px bronze counter-pulse (28 DMG / 34 posture) +1 Ink Seal.'
+    }
+  ],
+  bell: [
+    {
+      id: 'echo_ring',
+      weaponId: 'bell',
+      name: '回响连环',
+      nameEn: 'Resonant Volley',
+      tag: '音环分裂 · 法伤增幅',
+      tagEn: 'Split Darts · +18% Spell DMG',
+      desc: '法术伤害再 +18%，音环飞速 +20%；二段与三段音环命中敌兵时自动分裂 1 枚追踪小铃矢追击。',
+      descEn: '+18% Spell DMG & +20% harmonic ring speed; 2nd & 3rd ring hits split off a bonus homing Spirit Dart.'
+    },
+    {
+      id: 'soul_gather',
+      weaponId: 'bell',
+      name: '摄魂聚印',
+      nameEn: 'Soul-Harvest Seal',
+      tag: '四矢齐发 · 远距凝印',
+      tagEn: '4-Dart Volley · Ranged Seals',
+      desc: '长按「摄魂三鸣」升级为 4 枚追踪铃矢齐射；每以音环或铃矢命中敌兵 3 次自动凝聚 1 枚墨印（1.8s 冷却）。',
+      descEn: 'Charged volley fires 4 homing Spirit Darts; every 3 ring/dart hits automatically condenses +1 Ink Seal (1.8s cooldown).'
+    }
+  ]
+};
+
+// ==================== v25.0 FULL-SEAL WEAPON RESONANCE ULTIMATES ====================
+export const WEAPON_ULTIMATES = {
+  blade: {
+    id: 'ult_blade',
+    weaponId: 'blade',
+    name: '灰钟 · 次元十闪',
+    nameEn: 'Ashen Blade · Dimensional Cuts',
+    shortDesc: '满印按 [C/L]：锁定周身强敌斩出 5 段次元交叉极闪，破盾满吸灰血',
+    shortDescEn: 'Full Seals [C/L]: Unleash 5 dimensional cross-cuts across nearby foes, shattering shields & rallying all Gray HP',
+    color: '#fde047'
+  },
+  hammer: {
+    id: 'ult_hammer',
+    weaponId: 'hammer',
+    name: '镇渊 · 巨钟镇岳',
+    nameEn: 'Bell-Maul · Colossal Bell Drop',
+    shortDesc: '满印按 [C/L]：唤落青铜巨钟砸裂大地，双向震波破全盾并回血 12%',
+    shortDescEn: 'Full Seals [C/L]: Summon a colossal bronze bell slam with twin seismic waves, shattering all guards & healing 12% HP',
+    color: '#f59e0b'
+  },
+  bell: {
+    id: 'ult_bell',
+    weaponId: 'bell',
+    name: '引魂 · 万铃镇魂域',
+    nameEn: 'Bell Staff · Sanctum of Chimes',
+    shortDesc: '满印按 [C/L]：展开 4.2s 镇魂结界，5 次脉冲轰击/寻敌/净孢并持续回血回魂',
+    shortDescEn: 'Full Seals [C/L]: Conjure a 4.2s harmonic sanctum pulsing 5 times with homing darts, spore purge & HP/Soul regen',
+    color: '#38bdf8'
+  }
+};
+
+const FORGE_TRAIT_MAP = Object.create(null);
+for (const wid of WEAPON_ORDER) {
+  for (const tr of (WEAPON_FORGE_TRAITS[wid] || [])) {
+    FORGE_TRAIT_MAP[tr.id] = tr;
+  }
+}
+
+export function getWeaponForgeTraits(weaponId) {
+  return WEAPON_FORGE_TRAITS[normalizeWeaponId(weaponId)] || [];
+}
+
+export function getForgeTraitById(traitId) {
+  return FORGE_TRAIT_MAP[traitId] || null;
+}
+
+export function getWeaponUltimateDef(weaponId) {
+  return WEAPON_ULTIMATES[normalizeWeaponId(weaponId)] || WEAPON_ULTIMATES.blade;
+}

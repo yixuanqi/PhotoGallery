@@ -790,7 +790,7 @@ export function initInputListeners() {
           if (Math.abs(dx) > 4) moved = true;
           if (moved && card.scrollHeight > card.clientHeight) {
             card.scrollTop += dx;
-            lastX = t.clientX;
+            lastX = tch.clientX;
             e.preventDefault();
           }
           break;

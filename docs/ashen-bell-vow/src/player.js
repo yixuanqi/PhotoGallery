@@ -14,7 +14,7 @@ import {
   findBestGrappleTarget, performExecution, updatePlayerActiveAttack,
   evaluatePlayerSealLunge, triggerPlayerAttack, openSkywayShortcut,
   collectPickup, isPickupUnlocked, ringResonanceBell, castBellQuake, triggerMiniBellQuake,
-  damageEnemyHP, addPostureToEnemy, reclaimLostEchoes
+  damageEnemyHP, addPostureToEnemy, reclaimLostEchoes, triggerWeaponResonanceUltimate
 } from './combat.js';
 import { recordBestiaryEvent } from './codex.js';
 import { t, locDummyMode, locBoss } from './i18n.js';
@@ -82,6 +82,7 @@ export function updatePlayer(dt) {
   if (G.player.switchStrikeWindow > 0) G.player.switchStrikeWindow = Math.max(0, G.player.switchStrikeWindow - dt);
   if (G.player.shieldArmorTimer > 0) G.player.shieldArmorTimer = Math.max(0, G.player.shieldArmorTimer - dt);
   if (G.player.weaponSwapCd > 0) G.player.weaponSwapCd = Math.max(0, G.player.weaponSwapCd - dt);
+  if (G.player.bellSealCd > 0) G.player.bellSealCd = Math.max(0, G.player.bellSealCd - dt);
   if (G.player.parryCooldown > 0) G.player.parryCooldown -= dt;
   if (G.player.parryStreakTimer > 0) {
     G.player.parryStreakTimer -= dt;
@@ -91,6 +92,7 @@ export function updatePlayer(dt) {
   if (G.player.shadeDashCd > 0) G.player.shadeDashCd = Math.max(0, G.player.shadeDashCd - dt);
   if (G.player.shadePassTimer > 0) G.player.shadePassTimer = Math.max(0, G.player.shadePassTimer - dt);
   if (G.player.shadeGrappleBoostTimer > 0) G.player.shadeGrappleBoostTimer = Math.max(0, G.player.shadeGrappleBoostTimer - dt);
+  if (G.player.galeSurgeTimer > 0) G.player.galeSurgeTimer = Math.max(0, G.player.galeSurgeTimer - dt);
   if (G.player.barrierHintCd > 0) G.player.barrierHintCd = Math.max(0, G.player.barrierHintCd - dt);
   if (G.player.iframeTimer > 0) G.player.iframeTimer -= dt;
   if (G.player.hurtTimer > 0) {
@@ -156,19 +158,9 @@ export function updatePlayer(dt) {
 
     for (const e of G.enemies) {
       if (e && e.alive && e.isDummy && Math.hypot(px - (e.x + e.w * 0.5), py - (e.y + e.h)) < 94) {
-        e.modeIdx = (e.modeIdx + 1) % DUMMY_MODES.length;
-        const m = DUMMY_MODES[e.modeIdx];
-        e.active = m.id !== 'dormant';
-        e.state = e.active ? 'stalk' : 'idle';
-        e.stateTimer = 0.65;
-        e.drillStep = 0;
-        e.shieldUp = false;
-        e.hp = e.maxHp;
-        e.posture = 0;
-        e.bellShake = 0.35;
-        audio.playResonanceBell(440 + e.modeIdx * 66, false);
-        spawnShockwave(e.x + e.w * 0.5, e.y + 28, 66, COLORS.goldBright, 2.8, 0.25);
-        spawnFloatText(e.x + e.w * 0.5, e.y - 36, t('combat.dummyModeSwitch', locDummyMode(m, 'label')), COLORS.goldBright, 18, 1.35);
+        if (hooks.openDummyModal) {
+          hooks.openDummyModal(e);
+        }
         return;
       }
     }
@@ -341,21 +333,25 @@ export function updatePlayer(dt) {
     audio.playSlash(1.5);
   }
 
-  // Ink Seal Detonation Thrust [L] (buffered + multi-frame sweep)
+  // Full-Seal Weapon Resonance Ultimate OR Standard Ink Seal Detonation Thrust [C / L]
   if (G.player.sealBufTimer > 0 && G.player.seals > 0 && G.player.dashTimer <= 0 && G.player.detonateLungeTimer <= 0 && G.player.iaiLungeTimer <= 0 && G.player.grappleState === 'none' && G.player.healTimer <= 0) {
     G.player.sealBufTimer = 0;
     if (moveDir !== 0) G.player.facing = moveDir;
-    G.player.detonateLungeTimer = 0.18;
-    G.player.iframeTimer = Math.max(G.player.iframeTimer, 0.16);
-    G.player.parryActive = false;
-    G.player.activeAttack = null;
-    G.player.isCharging = false;
-    G.player.chargeTime = 0;
-    const usedSeals = G.player.seals;
-    G.player.seals = 0;
-    G.player.sealLunge = { usedSeals, stuck: false };
-    audio.playIaiSlash();
-    evaluatePlayerSealLunge();
+    if (G.player.seals >= G.player.maxSeals) {
+      triggerWeaponResonanceUltimate();
+    } else {
+      G.player.detonateLungeTimer = 0.18;
+      G.player.iframeTimer = Math.max(G.player.iframeTimer, 0.16);
+      G.player.parryActive = false;
+      G.player.activeAttack = null;
+      G.player.isCharging = false;
+      G.player.chargeTime = 0;
+      const usedSeals = G.player.seals;
+      G.player.seals = 0;
+      G.player.sealLunge = { usedSeals, stuck: false };
+      audio.playIaiSlash();
+      evaluatePlayerSealLunge();
+    }
   }
 
   // Attack / Execution / Charged Iai [J] (buffered)
@@ -483,6 +479,7 @@ export function updatePlayer(dt) {
         G.player.dashCd = 0;
         G.player.airJumpsLeft = 1;
         G.player.coyoteTimer = 0.08;
+        if (getRelicStats().synGaleThread) G.player.galeSurgeTimer = 2.6;
         G.player.squashX = 0.78;
         G.player.squashY = 1.28;
         const naturalVx = (dx / Math.max(1, dist)) * 280;
@@ -561,8 +558,9 @@ export function updatePlayer(dt) {
       G.player.shadeHitIds = null;
     }
   } else {
-    // Standard Run & Air Control
-    const spdMult = getRelicStats().moveSpeedMult || 1.0;
+    // Standard Run & Air Control (Frostbite Chill reduces speed by 28%)
+    const chillMult = (G.player.frostChilledTimer > 0) ? 0.72 : 1.0;
+    const spdMult = (getRelicStats().moveSpeedMult || 1.0) * chillMult;
     const maxSpd = (G.player.isCharging && G.player.chargeTime > 0.16 ? 130 : G.player.parryActive ? 95 : 310) * spdMult;
     if (G.player.wallJumpLock <= 0 && G.player.hurtTimer <= 0 && G.player.healTimer <= 0) {
       const targetVx = moveDir * maxSpd;
@@ -588,9 +586,26 @@ export function updatePlayer(dt) {
         const wz = WIND_ZONES[wi];
         if (pCx >= wz.x && pCx <= wz.x + wz.w && pCy >= wz.y && pCy <= wz.y + wz.h) {
           if (wz.vy < 0) {
-            const lift = wz.vy * (isActionHeld('down') ? 0.25 : 1.0);
-            G.player.vy += lift * dt;
-            if (G.player.vy < -435) G.player.vy = -435;
+            const strength = Math.max(0.65, Math.min(1.6, Math.abs(wz.vy) / 1450));
+            if (isActionHeld('down')) {
+              // Controlled descent through updraft when holding Down
+              G.player.vy -= GRAVITY * 0.62 * dt;
+              if (G.player.vy > 280) G.player.vy = 280;
+            } else {
+              // Cancel gravity and smoothly buoy player upward into the stream
+              const targetVy = -Math.min(460, Math.round(345 * strength));
+              G.player.vy -= GRAVITY * dt;
+              const liftAccel = 1180 + 520 * strength;
+              if (G.player.vy > targetVy) {
+                G.player.vy = Math.max(targetVy, G.player.vy - liftAccel * dt);
+              } else {
+                G.player.vy += (targetVy - G.player.vy) * Math.min(1, dt * 3.5);
+              }
+              if (G.player.grounded) {
+                G.player.y -= 2;
+                G.player.grounded = false;
+              }
+            }
             if (!G.player.grounded) G.player.airJumpsLeft = Math.max(G.player.airJumpsLeft, 1);
           }
           if (wz.vx) {
@@ -646,6 +661,7 @@ export function updatePlayer(dt) {
         G.player.squashX = 0.74;
         G.player.squashY = 1.32;
         audio.playWingJump();
+        if (getRelicStats().synGaleThread) G.player.galeSurgeTimer = 2.6;
         const wx = G.player.x + G.player.w / 2;
         const wy = G.player.y + G.player.h - 4;
         spawnShockwave(wx, wy, 56, COLORS.cyanBright, 3.2, 0.24);
@@ -681,14 +697,65 @@ export function updatePlayer(dt) {
         G.player.dashCd = 0;
         G.player.squashX = 0.72;
         G.player.squashY = 1.34;
-        audio.playWingJump();
-        audio.playResonanceBell(523.25, false);
+        audio.playSporeBounce();
         spawnShockwave(bp.x, bp.y - bp.h * 0.6, 68, '#6ee7b7', 3.4, 0.28);
         spawnParticles(bp.x, bp.y - bp.h * 0.7, 16, { color: '#6ee7b7', speed: 210, spark: true, grav: -40, life: 0.42 });
         spawnParticles(bp.x, bp.y - bp.h * 0.7, 8, { color: COLORS.cyanBright, speed: 150, grav: 80, life: 0.36 });
         break;
       }
     }
+  }
+
+  // Biome Status Decay & Ecological Causality: Snowmelt Waterfalls (Wet), Frostbite & Spores
+  if (G.player.sporeDmgCd > 0) G.player.sporeDmgCd = Math.max(0, G.player.sporeDmgCd - dt);
+  if (G.player.wetHintCd > 0) G.player.wetHintCd = Math.max(0, G.player.wetHintCd - dt);
+  if (G.player.wetTimer > 0) {
+    G.player.wetTimer = Math.max(0, G.player.wetTimer - dt);
+    if (Math.random() < 8 * dt) {
+      spawnParticles(G.player.x + Math.random() * G.player.w, G.player.y + G.player.h * 0.4, 1, {
+        color: '#7dd3fc', speed: 35, grav: 280, life: 0.30
+      });
+    }
+  }
+  // Check contact with Glacial Snowmelt Waterfalls (r16_frost_tomb & r11_frost_ridge)
+  const pMidX = G.player.x + G.player.w * 0.5;
+  const pMidY = G.player.y + G.player.h * 0.5;
+  if (pMidX > 9200 && pMidX < 10820 && pMidY > -140 && pMidY < 1180) {
+    const inFall =
+      (pMidX >= 9818 && pMidX <= 9864 && pMidY >= -120 && pMidY <= 1160) ||
+      (pMidX >= 10748 && pMidX <= 10790 && pMidY >= 40 && pMidY <= 1160) ||
+      (pMidX >= 9228 && pMidX <= 9268 && pMidY >= 740 && pMidY <= 1160);
+    if (inFall) {
+      const wasWet = G.player.wetTimer > 0.5;
+      G.player.wetTimer = 5.5;
+      if (!wasWet && G.player.wetHintCd <= 0) {
+        G.player.wetHintCd = 8.0;
+        spawnFloatText(pMidX, G.player.y - 30, t('combat.wetApplied'), '#38bdf8', 16, 1.2);
+      }
+      if (Math.random() < 16 * dt) {
+        spawnParticles(pMidX + (Math.random() - 0.5) * 18, G.player.y + 12, 1, {
+          color: '#bae6fd', speed: 95, grav: 260, life: 0.28
+        });
+      }
+    }
+  }
+  // Foundry-to-Spire Ecological Causality Notice after felling Boss 2 (Ji)
+  if (G.worldState && G.worldState.boss2Defeated && G.causalityNotified && !G.causalityNotified.foundryCooled) {
+    if (G.currentRoomId === 'r09_wind_spire' && pMidX > 5780 && pMidX < 6520) {
+      G.causalityNotified.foundryCooled = true;
+      spawnFloatText(pMidX, G.player.y - 44, t('combat.foundryCooled'), '#7dd3fc', 18, 1.8);
+    }
+  }
+  if (G.player.frostChilledTimer > 0) {
+    G.player.frostChilledTimer = Math.max(0, G.player.frostChilledTimer - dt);
+    if (Math.random() < 12 * dt) {
+      spawnParticles(G.player.x + Math.random() * G.player.w, G.player.y + Math.random() * G.player.h, 1, {
+        color: '#bae6fd', speed: 45, grav: 40, life: 0.32
+      });
+    }
+  }
+  if (G.player.frostMeter > 0) {
+    G.player.frostMeter = Math.max(0, G.player.frostMeter - (G.player.frostChilledTimer > 0 ? 22 : 12) * dt);
   }
 
   // Track safe grounding point outside the corrosive Abyssal Ink River
@@ -846,7 +913,7 @@ export function updatePlayer(dt) {
   }
 
   // Trigger Boss 1 Awakening upon entering Chapel of the Broken Bell
-  if (G.boss && G.boss.alive && !G.boss.awake && G.player.x > 2740 && G.player.x < 3760 && G.player.y < 700) {
+  if (G.boss && G.boss.alive && !G.boss.awake && G.player.x > 2740 && G.player.x < 3760 && G.player.y >= 0 && G.player.y < 700) {
     G.boss.awake = true;
     recordBestiaryEvent('boss', 'seen');
     audio.playBellToll();
@@ -854,7 +921,7 @@ export function updatePlayer(dt) {
     triggerBossBanner(locBoss(G.boss, 'name'), t('boss.hui.awakeQuote'), COLORS.parchment, 2.6);
   }
   // Trigger Boss 2 Awakening upon entering Abyssal Bell Foundry
-  if (G.boss2 && G.boss2.alive && !G.boss2.awake && G.player.x > 5650 && G.player.x < 6720 && G.player.y > 880) {
+  if (G.boss2 && G.boss2.alive && !G.boss2.awake && G.player.x > 5650 && G.player.x < 6720 && G.player.y > 880 && G.player.y < 1520) {
     G.boss2.awake = true;
     recordBestiaryEvent('boss2', 'seen');
     audio.playBellToll();
@@ -862,7 +929,7 @@ export function updatePlayer(dt) {
     triggerBossBanner(locBoss(G.boss2, 'name'), t('boss.ji.awakeQuote'), COLORS.goldBright, 2.6);
   }
   // Trigger Final Boss Awakening upon entering Heart of the First Bell
-  if (G.boss3 && G.boss3.alive && !G.boss3.awake && G.player.x > 8450 && G.player.y < 700) {
+  if (G.boss3 && G.boss3.alive && !G.boss3.awake && G.player.x > 8450 && G.player.x < 9660 && G.player.y >= 0 && G.player.y < 700) {
     G.boss3.awake = true;
     recordBestiaryEvent('boss3', 'seen');
     audio.playBellToll();

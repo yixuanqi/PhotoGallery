@@ -1,6 +1,6 @@
 // Versioned 3-slot persistence built on StorageAdapter (ready for Electron FS / Steam Cloud)
 import {
-  COLORS, RELICS, DEFAULT_KEYBINDS, ALTARS, MAP_COLS, MAP_ROWS,
+  COLORS, RELICS, DEFAULT_KEYBINDS, ALTARS, WORLD_MIN_X, WORLD_MIN_Y, MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H,
   SAVE_KEY, LEGACY_SAVE_KEY_V9, LEGACY_SAVE_KEY_V8, SETTINGS_KEY
 } from './config.js';
 import { G, hooks, createFreshWorldState, getExplorationPercent } from './state.js';
@@ -87,7 +87,7 @@ export function loadUserSettings() {
 export function readSaveSlot(slot = G.activeSaveSlot) {
   migrateLegacySaveIfNeeded();
   const data = storage.getJSON(slotKey(slot));
-  if (!data || ![8, 9, 10, 11, 12, 15, 17, 18, 19, 20].includes(data.v)) return null;
+  if (!data || ![8, 9, 10, 11, 12, 15, 17, 18, 19, 20, 25, 26, 30].includes(data.v)) return null;
   return data;
 }
 
@@ -121,7 +121,7 @@ export function saveProgress(showToast = false) {
   const rawCodex = G.worldState.codex || { readTablets: [], bestiary: {}, achievements: [], discoveredSynergies: [] };
   const rawNq = G.worldState.npcQuests || { metChronicler: false, chroniclerClaims: [], metKeeper: false, keeperWickGifted: false, keeperBlessingActive: false };
   const payload = {
-    v: 20,
+    v: 30,
     npcQuests: {
       metChronicler: !!rawNq.metChronicler,
       chroniclerClaims: Array.isArray(rawNq.chroniclerClaims) ? [...new Set(rawNq.chroniclerClaims)] : [],
@@ -150,9 +150,11 @@ export function saveProgress(showToast = false) {
     bossDefeated: !!G.worldState.bossDefeated,
     boss2Defeated: !!G.worldState.boss2Defeated,
     boss3Defeated: !!G.worldState.boss3Defeated,
+    boss4Defeated: !!G.worldState.boss4Defeated,
+    defeatedMiniBosses: G.worldState.defeatedMiniBosses ? [...G.worldState.defeatedMiniBosses] : [],
     keyItems: { dawnSigil: !!(G.worldState.keyItems && G.worldState.keyItems.dawnSigil) },
     endingsUnlocked: Array.isArray(G.worldState.endingsUnlocked) ? [...G.worldState.endingsUnlocked] : [],
-    echoRecords: G.worldState.echoRecords || { hui: null, ji: null, yuan: null, rush: null },
+    echoRecords: G.worldState.echoRecords || { hui: null, ji: null, yuan: null, rush: null, warden_wind: null, warden_forest: null, warden_mountain: null, warden_rush: null, zhu: null, seven_bells: null },
     shortcutOpen: !!G.worldState.shortcutOpen,
     solvedPuzzles: [...(G.worldState.solvedPuzzles || [])],
     brokenWalls: G.worldState.secretWalls.filter(w => w.broken).map(w => w.id),
@@ -166,6 +168,8 @@ export function saveProgress(showToast = false) {
     abilities: { doubleJump: !!G.worldState.abilities.doubleJump, shadeDash: !!G.worldState.abilities.shadeDash },
     equippedWeapon: normalizeWeaponId(G.worldState.equippedWeapon || 'blade'),
     unlockedWeapons: G.worldState.unlockedWeapons ? [...G.worldState.unlockedWeapons] : ['blade'],
+    weaponTraits: G.worldState.weaponTraits ? { ...G.worldState.weaponTraits } : { blade: null, hammer: null, bell: null },
+    unlockedWeaponTraits: G.worldState.unlockedWeaponTraits ? [...G.worldState.unlockedWeaponTraits] : [],
     unlockedRelics: [...G.worldState.unlockedRelics],
     exploredStr,
     explorePct: getExplorationPercent()
@@ -212,6 +216,8 @@ export function applySaveData(data) {
   G.worldState.bossDefeated = !!data.bossDefeated;
   G.worldState.boss2Defeated = !!data.boss2Defeated;
   G.worldState.boss3Defeated = !!data.boss3Defeated;
+  G.worldState.boss4Defeated = !!data.boss4Defeated;
+  G.worldState.defeatedMiniBosses = new Set(Array.isArray(data.defeatedMiniBosses) ? data.defeatedMiniBosses : []);
   G.worldState.chapelExitAnim = G.worldState.bossDefeated ? 1 : 0;
   G.worldState.foundryGateAnim = (data.abilities && data.abilities.doubleJump) ? 1 : 0;
   G.worldState.foundryExitAnim = G.worldState.boss2Defeated ? 1 : 0;
@@ -221,7 +227,13 @@ export function applySaveData(data) {
     hui: data.echoRecords && data.echoRecords.hui ? data.echoRecords.hui : null,
     ji: data.echoRecords && data.echoRecords.ji ? data.echoRecords.ji : null,
     yuan: data.echoRecords && data.echoRecords.yuan ? data.echoRecords.yuan : null,
-    rush: data.echoRecords && data.echoRecords.rush ? data.echoRecords.rush : null
+    rush: data.echoRecords && data.echoRecords.rush ? data.echoRecords.rush : null,
+    warden_wind: data.echoRecords && data.echoRecords.warden_wind ? data.echoRecords.warden_wind : null,
+    warden_forest: data.echoRecords && data.echoRecords.warden_forest ? data.echoRecords.warden_forest : null,
+    warden_mountain: data.echoRecords && data.echoRecords.warden_mountain ? data.echoRecords.warden_mountain : null,
+    warden_rush: data.echoRecords && data.echoRecords.warden_rush ? data.echoRecords.warden_rush : null,
+    zhu: data.echoRecords && data.echoRecords.zhu ? data.echoRecords.zhu : null,
+    seven_bells: data.echoRecords && data.echoRecords.seven_bells ? data.echoRecords.seven_bells : null
   };
   G.worldState.shortcutOpen = !!data.shortcutOpen;
   G.worldState.shortcutAnim = G.worldState.shortcutOpen ? 1 : 0;
@@ -265,6 +277,14 @@ export function applySaveData(data) {
   const eqNorm = normalizeWeaponId(data.equippedWeapon || 'blade');
   if (data.equippedWeapon === 'shield') G.worldState.unlockedWeapons.add('hammer');
   G.worldState.equippedWeapon = G.worldState.unlockedWeapons.has(eqNorm) ? eqNorm : 'blade';
+  const rawTraits = Array.isArray(data.unlockedWeaponTraits) ? data.unlockedWeaponTraits.filter(x => typeof x === 'string') : [];
+  G.worldState.unlockedWeaponTraits = new Set(rawTraits);
+  const wtObj = data.weaponTraits && typeof data.weaponTraits === 'object' ? data.weaponTraits : {};
+  G.worldState.weaponTraits = {
+    blade: (wtObj.blade && G.worldState.unlockedWeaponTraits.has(wtObj.blade)) ? wtObj.blade : null,
+    hammer: (wtObj.hammer && G.worldState.unlockedWeaponTraits.has(wtObj.hammer)) ? wtObj.hammer : null,
+    bell: (wtObj.bell && G.worldState.unlockedWeaponTraits.has(wtObj.bell)) ? wtObj.bell : null
+  };
   G.worldState.unlockedRelics = new Set(Array.isArray(data.unlockedRelics) && data.unlockedRelics.length ? data.unlockedRelics : ['thorn', 'mirror', 'ember']);
 
   const brokenSet = new Set(Array.isArray(data.brokenWalls) ? data.brokenWalls : []);
@@ -278,9 +298,27 @@ export function applySaveData(data) {
 
   if (typeof data.exploredStr === 'string') {
     const rows = data.exploredStr.split('|');
-    for (let r = 0; r < Math.min(MAP_ROWS, rows.length); r++) {
-      for (let c = 0; c < Math.min(MAP_COLS, rows[r].length); c++) {
-        G.worldState.explored[r][c] = rows[r][c] === '1';
+    const oldR = rows.length;
+    const oldC = oldR > 0 ? rows[0].length : 0;
+    if (oldR === MAP_ROWS && oldC === MAP_COLS && data.v >= 30) {
+      for (let r = 0; r < MAP_ROWS; r++) {
+        for (let c = 0; c < MAP_COLS; c++) {
+          G.worldState.explored[r][c] = rows[r][c] === '1';
+        }
+      }
+    } else if (oldR > 0 && oldC > 0) {
+      // Seamless world-space reprojection for legacy v8-v26 saves (mapped 0..9680 x 0..1520)
+      const legacyW = oldC >= 44 ? 9680 : 6740;
+      const legacyH = 1520;
+      for (let r = 0; r < oldR; r++) {
+        const wy = ((r + 0.5) / oldR) * legacyH;
+        const nr = Math.max(0, Math.min(MAP_ROWS - 1, Math.floor((wy - WORLD_MIN_Y) / MAP_CELL_H)));
+        for (let c = 0; c < Math.min(oldC, rows[r].length); c++) {
+          if (rows[r][c] !== '1') continue;
+          const wx = ((c + 0.5) / oldC) * legacyW;
+          const nc = Math.max(0, Math.min(MAP_COLS - 1, Math.floor((wx - WORLD_MIN_X) / MAP_CELL_W)));
+          G.worldState.explored[nr][nc] = true;
+        }
       }
     }
   }
