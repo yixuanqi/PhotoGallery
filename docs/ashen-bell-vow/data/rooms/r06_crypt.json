@@ -35,7 +35,8 @@
   ],
   "connections": [
     "r04_bell_well",
-    "r02_corridor"
+    "r02_corridor",
+    "r10_ink_woods"
   ],
   "solids": [
     {
@@ -166,6 +167,15 @@
       "y": 410,
       "name": "绝技 · 幽影穿身",
       "desc": "闪避进化！可穿透「暗蚀结界」与敌人身躯并触发「幽影残爆」！"
+    },
+    {
+      "id": "pickup_weapon_bell",
+      "kind": "weapon",
+      "weaponId": "bell",
+      "x": 1640,
+      "y": 640,
+      "name": "兵刃 · 引魂摇铃",
+      "desc": "解锁中程法术兵刃「引魂摇铃」！挥铃发射穿透音环、长按三连追踪铃矢，按 [3] 或 [X] 随时切换！"
     }
   ],
   "resonancePuzzles": [],
@@ -272,6 +282,11 @@
       "y": 355,
       "text": "「习得幽影穿身 · Shift 穿破下方暗蚀结界」",
       "hideWhenShadeDash": true
+    },
+    {
+      "x": 92,
+      "y": 595,
+      "text": "「← 西入幽林 · 枯墨古林根窟」"
     }
   ],
   "props": {

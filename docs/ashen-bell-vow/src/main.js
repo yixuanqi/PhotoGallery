@@ -11,6 +11,7 @@ import {
   getActionKeyCode, isCapturingKey, resetDefaultKeybinds, triggerHaptic
 } from './input.js';
 import { capturePlayerInputBuffers, updatePlayer } from './player.js';
+import { equipWeapon, cycleWeapon } from './combat.js';
 import { updateEnemy, updateBoss, updateBoss2, updateBoss3 } from './ai.js';
 import { updateWorldEffects, updateCamera, updateAmbientOnly } from './world.js';
 import { render } from './renderer.js';
@@ -585,6 +586,11 @@ window.addEventListener('keydown', e => {
   if ((e.code === 'Tab' || e.code === mapCode) && (G.gameState === 'playing' || G.activeModal === 'map' || G.activeModal === 'codex')) {
     e.preventDefault();
     if (!e.repeat) openMapModal();
+  } else if (G.gameState === 'playing' && !e.repeat && (e.code === 'Digit1' || e.code === 'Digit2' || e.code === 'Digit3' || e.code === 'KeyX')) {
+    if (e.code === 'Digit1') equipWeapon('blade');
+    else if (e.code === 'Digit2') equipWeapon('hammer');
+    else if (e.code === 'Digit3') equipWeapon('bell');
+    else cycleWeapon(1);
   } else if (e.code === 'KeyB' && (G.gameState === 'playing' || G.activeModal === 'codex' || G.activeModal === 'map')) {
     e.preventDefault();
     if (!e.repeat) openCodexModal();

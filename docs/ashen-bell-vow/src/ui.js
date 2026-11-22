@@ -2,12 +2,12 @@
 import {
   COLORS, RELICS, RELIC_SYNERGIES, VOW_CONSTRAINTS, DUMMY_MODES, SMITH_UPGRADES, ACTION_META, ROOMS, SOLIDS, ALTARS, NPCS, LORE_TABLETS, PICKUPS_DEF,
   SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, FIRST_BELL_CORE_POS, VOID_BARRIERS,
-  ABYSSAL_RIVERS, WORLD_W, WORLD_H, FLOOR_Y, WELL_BOTTOM_Y,
+  ABYSSAL_RIVERS, WIND_ZONES, BOUNCE_PADS, WORLD_W, WORLD_H, FLOOR_Y, WELL_BOTTOM_Y,
   MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H, ECHO_GRADE_ORDER
 } from './config.js';
 import { getRoomAt, getZoneLabelAt, getPreviewSpawnRoomId, getRoomSpawnPoint } from './levelLoader.js';
 import {
-  G, createFreshWorldState, getActiveAltar, getActiveSynergies, getRelicStats, getActiveVowStats, getCombatScaling, getEquippedRelicLabel,
+  G, createFreshWorldState, getActiveAltar, getActiveSynergies, getRelicStats, getActiveVowStats, getCombatScaling, getEquippedRelicLabel, getActiveWeaponId, getActiveWeapon, isWeaponUnlocked, getUnlockedWeaponIds, unlockWeapon,
   ensureNpcQuests, hasKeeperBlessing,
   getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks, getPlayerMaxSeals,
   markMapExplored, getExplorationPercent, createLanterns,
@@ -17,7 +17,7 @@ import { audio } from './audio.js';
 import {
   isActionHeld, syncHelpModalText, getActionKeyLabel, startKeyCapture, cancelKeyCapture, triggerHaptic
 } from './input.js';
-import { isPickupUnlocked } from './combat.js';
+import { isPickupUnlocked, equipWeapon } from './combat.js';
 import { spawnParticles, spawnShockwave, spawnFloatText } from './vfx.js';
 import { createPlayer, createSentinels, createBoss, createBoss2, createBoss3 } from './entities.js';
 import { readSaveData, listSaveSlots, deleteSaveSlot, saveProgress, applySaveData, saveUserSettings } from './save.js';
@@ -27,7 +27,8 @@ import {
   locRelic, locSynergy, locSmithUpgrade, locVow, locBestiary, locAchievement,
   locPin, locBoss, locActionLabel, getEndingScript
 } from './i18n.js';
-import { SLOT_EMBLEMS, getRelicEmblemSvg, getBestiaryEmblemSvg } from './emblems.js';
+import { SLOT_EMBLEMS, getRelicEmblemSvg, getBestiaryEmblemSvg, getWeaponEmblemSvg } from './emblems.js';
+import { WEAPON_ORDER, WEAPONS } from './weapons.js';
 import { prof } from './profiler.js';
 import {
   BESTIARY_ENTRIES, ACHIEVEMENTS_DEF, MAP_PIN_TYPES, ensureCodexState,
@@ -64,10 +65,51 @@ export const HUD_DOM = {
   fanSpell: document.getElementById('fan-spell'),
   fanSpellSub: document.getElementById('fan-spell-sub'),
   fanGrapple: document.getElementById('fan-grapple'),
+  fanAttackSub: document.getElementById('fan-attack-sub'),
+  weaponHudBar: document.getElementById('weapon-hud-bar'),
   mobileInteract: document.getElementById('mobile-interact-btn')
 };
 const hudCache = {};
 let activeLoreTabletRef = null;
+
+function ensureWeaponHudBar() {
+  const bar = HUD_DOM.weaponHudBar;
+  if (!bar) return;
+  const unlocked = getUnlockedWeaponIds();
+  if (unlocked.length <= 1) {
+    bar.style.display = 'none';
+    bar.dataset.builtKey = '';
+    return;
+  }
+  bar.style.display = 'flex';
+  const en = isEn();
+  const buildKey = `${en ? 'en' : 'zh'}|${unlocked.join(',')}`;
+  if (bar.dataset.builtKey !== buildKey) {
+    bar.dataset.builtKey = buildKey;
+    bar.innerHTML = '';
+    for (let i = 0; i < unlocked.length; i++) {
+      const id = unlocked[i];
+      const w = WEAPONS[id];
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'weapon-hud-slot';
+      btn.dataset.weapon = id;
+      btn.title = `${en ? w.nameEn : w.name} [${w.hotkey}] · ${en ? w.tagEn : w.tag}`;
+      btn.innerHTML = `<span class="weapon-hud-key">${w.hotkey}</span><span class="weapon-hud-ico">${getWeaponEmblemSvg(id)}</span><span class="weapon-hud-name">${en ? w.shortNameEn : w.shortName}</span>`;
+      const onSelect = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (G.gameState === 'playing') {
+          audio.init();
+          equipWeapon(id, false);
+        }
+      };
+      btn.addEventListener('click', onSelect);
+      btn.addEventListener('touchstart', onSelect, { passive: false });
+      bar.appendChild(btn);
+    }
+  }
+}
 
 function getLocalizedRelicLabel() {
   const active = (G.equippedRelics || [G.currentRelic]).filter(Boolean);
@@ -257,6 +299,25 @@ export function syncHUD(force = false) {
       hudCache.vcText = vcText;
       HUD_DOM.vowCycleTag.classList.toggle('unlocked', vcText.length > 0);
       if (vcText) setTextFast(HUD_DOM.vowCycleTag, vcText);
+    }
+  }
+
+  // Sync Three-Weapon Quick-Swap HUD Bar & Mobile Charge Label
+  const curWeaponId = getActiveWeaponId();
+  const unlWeaponCnt = G.worldState && G.worldState.unlockedWeapons ? G.worldState.unlockedWeapons.size : 1;
+  if (force || hudCache.weaponId !== curWeaponId || hudCache.unlWeaponCnt !== unlWeaponCnt) {
+    hudCache.weaponId = curWeaponId;
+    hudCache.unlWeaponCnt = unlWeaponCnt;
+    ensureWeaponHudBar();
+    if (HUD_DOM.weaponHudBar) {
+      const btns = HUD_DOM.weaponHudBar.children;
+      for (let i = 0; i < btns.length; i++) {
+        btns[i].classList.toggle('active', btns[i].dataset.weapon === curWeaponId);
+      }
+    }
+    if (HUD_DOM.fanAttackSub) {
+      const holdKey = curWeaponId === 'hammer' ? 'mob.attackHoldHammer' : curWeaponId === 'bell' ? 'mob.attackHoldBell' : 'mob.attackHold';
+      setTextFast(HUD_DOM.fanAttackSub, t(holdKey));
     }
   }
 
@@ -534,7 +595,7 @@ export function renderParchmentMap(targetCanvas, detailed = false, omitPlayer = 
   const h = targetCanvas.height;
   const padX = detailed ? 16 : 5;
   const padTop = detailed ? 22 : 4;
-  const padBot = detailed ? 16 : 4;
+  const padBot = detailed ? 20 : 4;
   const mapW = w - padX * 2;
   const mapH = h - padTop - padBot;
   const sx = mapW / WORLD_W;
@@ -551,7 +612,16 @@ export function renderParchmentMap(targetCanvas, detailed = false, omitPlayer = 
 
   const focusRoomId = detailed ? (mapFocusedRoomId || G.currentRoomId || (ROOMS[0] && ROOMS[0].id)) : null;
   if (detailed && ROOMS.length > 0) {
-    mctx.font = getCanvasFont(isEn() ? 9.5 : 10.5, false);
+    const BIOME_TINT = {
+      wind:     'rgba(186, 230, 253, 0.08)',
+      forest:   'rgba(110, 231, 183, 0.08)',
+      mountain: 'rgba(191, 219, 254, 0.09)',
+      foundry:  'rgba(245, 158, 11, 0.07)',
+      chapel:   'rgba(248, 113, 113, 0.06)',
+      crypt:    'rgba(167, 139, 250, 0.06)',
+      heart:    'rgba(253, 224, 71, 0.07)'
+    };
+    mctx.font = getCanvasFont(isEn() ? 8.8 : 9.8, false);
     mctx.textAlign = 'center';
     for (const rm of ROOMS) {
       const b = rm.bounds;
@@ -560,18 +630,25 @@ export function renderParchmentMap(targetCanvas, detailed = false, omitPlayer = 
       const rw = b.w * sx;
       const rh = b.h * sy;
       const isFocus = rm.id === focusRoomId;
-      if (isFocus) {
-        mctx.fillStyle = 'rgba(245, 158, 11, 0.08)';
+      const tint = BIOME_TINT[rm.theme];
+      if (tint) {
+        mctx.fillStyle = tint;
         mctx.fillRect(rx, ry, rw, rh);
       }
-      mctx.strokeStyle = isFocus ? 'rgba(253, 224, 71, 0.68)' : 'rgba(216, 207, 184, 0.16)';
+      if (isFocus) {
+        mctx.fillStyle = 'rgba(245, 158, 11, 0.11)';
+        mctx.fillRect(rx, ry, rw, rh);
+      }
+      mctx.strokeStyle = isFocus ? 'rgba(253, 224, 71, 0.72)' : 'rgba(216, 207, 184, 0.18)';
       mctx.lineWidth = isFocus ? 1.5 : 1;
       mctx.setLineDash(isFocus ? [] : [4, 4]);
       mctx.strokeRect(rx, ry, rw, rh);
-      mctx.fillStyle = isFocus ? COLORS.goldBright : 'rgba(216, 207, 184, 0.74)';
+      mctx.fillStyle = isFocus ? COLORS.goldBright : 'rgba(216, 207, 184, 0.76)';
       const rName = locRoomName(rm);
-      const shortLbl = isEn() && rName.length > 14 ? rName.slice(0, 13) + '…' : rName;
-      mctx.fillText(shortLbl, rx + rw * 0.5, 14);
+      const maxChars = rw < 78 ? (isEn() ? 10 : 5) : (isEn() ? 14 : 8);
+      const shortLbl = rName.length > maxChars ? rName.slice(0, maxChars - 1) + '…' : rName;
+      const isLowerTier = b.y >= 650;
+      mctx.fillText(shortLbl, rx + rw * 0.5, isLowerTier ? (h - 6) : 14);
     }
     mctx.setLineDash([]);
     mctx.lineWidth = 1;
@@ -604,11 +681,25 @@ export function renderParchmentMap(targetCanvas, detailed = false, omitPlayer = 
     mctx.fillRect(padX + s.x * sx, padTop + s.y * sy, Math.max(2, s.w * sx), Math.max(2, s.h * sy));
   }
 
-  // Abyssal Rivers Accent
+  // Abyssal Rivers, Wind Updrafts & Forest Spore Bounce Caps Accent
   mctx.fillStyle = 'rgba(56, 189, 248, 0.55)';
   for (const rv of ABYSSAL_RIVERS) {
     if (rv.w <= 0) continue;
     mctx.fillRect(padX + rv.x * sx, padTop + rv.y * sy, rv.w * sx, Math.max(2, 16 * sy));
+  }
+  if (detailed && WIND_ZONES.length > 0) {
+    mctx.fillStyle = 'rgba(186, 230, 253, 0.16)';
+    for (const wz of WIND_ZONES) {
+      mctx.fillRect(padX + wz.x * sx, padTop + wz.y * sy, Math.max(2, wz.w * sx), Math.max(3, wz.h * sy));
+    }
+  }
+  if (detailed && BOUNCE_PADS.length > 0) {
+    mctx.fillStyle = '#6ee7b7';
+    for (const bp of BOUNCE_PADS) {
+      mctx.beginPath();
+      mctx.arc(padX + bp.x * sx, padTop + (bp.y - 10) * sy, 2.5, 0, Math.PI * 2);
+      mctx.fill();
+    }
   }
 
   // Gates
@@ -967,7 +1058,7 @@ function mapEventToWorld(canvas, e) {
   const rect = canvas.getBoundingClientRect();
   const cx = (e.clientX - rect.left) * (canvas.width / Math.max(1, rect.width));
   const cy = (e.clientY - rect.top) * (canvas.height / Math.max(1, rect.height));
-  const padX = 16, padTop = 22, padBot = 16;
+  const padX = 16, padTop = 22, padBot = 20;
   const mapW = canvas.width - padX * 2;
   const mapH = canvas.height - padTop - padBot;
   const wx = ((cx - padX) / mapW) * WORLD_W;
@@ -1570,6 +1661,43 @@ export function renderSmithModal() {
   const list = document.getElementById('smith-upgrade-list');
   if (!list) return;
   list.innerHTML = '';
+
+  // Special Reforge Quest Card: Abyssal Bell-Maul (镇渊钟锤) after felling Boss 1 Hui!
+  const hasHammer = isWeaponUnlocked('hammer');
+  const canReforgeHammer = !!G.worldState.bossDefeated && !hasHammer;
+  const hCard = document.createElement('div');
+  hCard.className = `smith-card weapon-forge-card${hasHammer ? ' done' : canReforgeHammer ? ' ready' : ' locked'}`;
+  const hInfo = document.createElement('div');
+  hInfo.className = 'smith-card-info';
+  hInfo.innerHTML = `
+    <div class="smith-card-title">
+      <span>${hasHammer ? '✦ ' : ''}${t('smith.hammerTitle')}</span>
+      <span class="smith-lv-pill">${hasHammer ? t('smith.hammerDonePill') : canReforgeHammer ? t('smith.hammerReadyPill') : t('smith.hammerLockPill')}</span>
+    </div>
+    <div class="smith-card-desc">${t('smith.hammerDesc')}</div>
+  `;
+  const hBtn = document.createElement('button');
+  hBtn.type = 'button';
+  hBtn.className = 'smith-buy-btn';
+  hBtn.disabled = !canReforgeHammer;
+  hBtn.textContent = hasHammer ? t('smith.hammerBtnDone') : canReforgeHammer ? t('smith.hammerBtnForge') : t('smith.hammerBtnLock');
+  if (canReforgeHammer) {
+    hBtn.addEventListener('click', () => {
+      unlockWeapon('hammer');
+      G.worldState.equippedWeapon = 'hammer';
+      audio.playWeaponSwap('hammer');
+      audio.playBellToll();
+      triggerHaptic('execution', 0.95);
+      checkAchievements();
+      saveProgress(true);
+      renderSmithModal();
+      syncHUD(true);
+      const wDef = WEAPONS.hammer;
+      triggerBossBanner(t('combat.weaponUnlockBanner', isEn() ? wDef.nameEn : wDef.name), isEn() ? wDef.tagEn : wDef.tag, wDef.color, 3.0);
+    });
+  }
+  hCard.append(hInfo, hBtn);
+  list.appendChild(hCard);
   for (const upg of SMITH_UPGRADES) {
     const lv = G.worldState.smithUpgrades[upg.id] || 0;
     const maxLv = upg.costs.length;
@@ -1830,7 +1958,70 @@ export function renderSettingsModal() {
   }
 }
 
+export function renderAltarArmory() {
+  const sec = document.getElementById('altar-armory-section');
+  if (!sec) return;
+  const activeId = getActiveWeaponId();
+  const unlCount = getUnlockedWeaponIds().length;
+  const en = isEn();
+  sec.innerHTML = '';
+
+  const head = document.createElement('div');
+  head.className = 'armory-head';
+  head.innerHTML = `<span>${t('altar.armoryHeading', unlCount, WEAPON_ORDER.length)}</span><span class="armory-sub">${unlCount >= 2 ? t('altar.armorySubSwitch') : t('altar.armorySubLocked')}</span>`;
+  sec.appendChild(head);
+
+  const grid = document.createElement('div');
+  grid.className = 'armory-grid';
+  for (let i = 0; i < WEAPON_ORDER.length; i++) {
+    const id = WEAPON_ORDER[i];
+    const w = WEAPONS[id];
+    const unlocked = isWeaponUnlocked(id);
+    const isEq = unlocked && id === activeId;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `weapon-card${isEq ? ' equipped' : ''}${unlocked ? '' : ' locked'}`;
+    btn.dataset.weapon = id;
+    btn.disabled = !unlocked;
+    if (unlocked) {
+      const traits = en ? w.traitsEn : w.traits;
+      const traitItems = traits.map(tr => `<li>${tr}</li>`).join('');
+      btn.innerHTML = `
+        <div class="weapon-card-top">
+          <span class="weapon-card-ico">${getWeaponEmblemSvg(id)}</span>
+          <span class="weapon-card-title-wrap">
+            <span class="weapon-card-name"><span>[${w.hotkey}] ${en ? w.nameEn : w.name}</span><span class="weapon-card-pill">${isEq ? t('altar.weaponEquipped') : t('altar.weaponEquipBtn')}</span></span>
+            <span class="weapon-card-tag">${en ? w.tagEn : w.tag}</span>
+          </span>
+        </div>
+        <ul class="weapon-card-traits">${traitItems}</ul>
+      `;
+      btn.addEventListener('click', () => {
+        if (equipWeapon(id, true)) {
+          audio.playWeaponSwap(id);
+          saveProgress(false);
+          renderAltarArmory();
+        }
+      });
+    } else {
+      btn.innerHTML = `
+        <div class="weapon-card-top">
+          <span class="weapon-card-ico">${getWeaponEmblemSvg('locked')}</span>
+          <span class="weapon-card-title-wrap">
+            <span class="weapon-card-name"><span>${t('altar.relicUnknown')}</span><span class="weapon-card-pill">${t('altar.relicLocked')}</span></span>
+            <span class="weapon-card-tag">${en ? w.tagEn : w.tag}</span>
+          </span>
+        </div>
+        <div class="weapon-card-hint">${en ? w.unlockHintEn : w.unlockHint}</div>
+      `;
+    }
+    grid.appendChild(btn);
+  }
+  sec.appendChild(grid);
+}
+
 export function renderRelicChoices() {
+  renderAltarArmory();
   if (!Array.isArray(G.equippedRelics) || G.equippedRelics.length < 2) {
     G.equippedRelics = [G.currentRelic || RELICS[0], null];
   }
@@ -2531,6 +2722,8 @@ export function startNewGamePlus() {
   fresh.ngPlusCycle = nextCycle;
   fresh.activeVows = new Set(prev.activeVows ? [...prev.activeVows] : []);
   fresh.unlockedRelics = new Set(prev.unlockedRelics ? [...prev.unlockedRelics] : ['thorn', 'mirror', 'ember']);
+  fresh.unlockedWeapons = new Set(prev.unlockedWeapons ? [...prev.unlockedWeapons] : ['blade']);
+  fresh.equippedWeapon = prev.equippedWeapon || 'blade';
   fresh.smithUpgrades = { ...(prev.smithUpgrades || { blade: 0, posture: 0, forge: 0 }) };
   fresh.bonusFlasks = Math.min(3, Number(prev.bonusFlasks) || 0);
   fresh.bonusMaxHp = Number(prev.bonusMaxHp) || 0;

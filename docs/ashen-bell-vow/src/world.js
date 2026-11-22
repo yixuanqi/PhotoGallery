@@ -1,5 +1,5 @@
 // World hazards, pendulums, Abyssal River, projectiles, talismans, tides & camera
-import { COLORS, ROOM_THEMES, SOLIDS, VOID_BARRIERS, WORLD_W, WORLD_H, FLOOR_Y, PENDULUMS, ABYSSAL_RIVERS, PUDDLES } from './config.js';
+import { COLORS, ROOM_THEMES, SOLIDS, VOID_BARRIERS, WORLD_W, WORLD_H, FLOOR_Y, PENDULUMS, ABYSSAL_RIVERS, PUDDLES, BOUNCE_PADS } from './config.js';
 import {
   G, hooks, getLivingFoes, getAwakeBoss, getRelicStats, scheduleOutcome, addShake, punchZoom, triggerHitstop, damp
 } from './state.js';
@@ -86,6 +86,13 @@ export function updateWorldEffects(dt) {
     }
   }
 
+  // Decay Glowing Spore Bounce Pad squish & cooldown timers
+  for (let i = 0; i < BOUNCE_PADS.length; i++) {
+    const bp = BOUNCE_PADS[i];
+    if (bp.cd > 0) bp.cd = Math.max(0, bp.cd - dt);
+    if (bp.squish > 0) bp.squish = Math.max(0, bp.squish - dt * 3.8);
+  }
+
   // Swinging Bronze Pendulum Blades (Dodgeable, Pogoable, & Parryable!)
   for (const pd of PENDULUMS) {
     if (pd.hitCd > 0) pd.hitCd -= dt;
@@ -160,7 +167,124 @@ export function updateWorldEffects(dt) {
     pr.x += pr.vx * dt;
     pr.y += pr.vy * dt;
 
-    if (pr.kind === 'soulWave' || pr.kind === 'crimsonWave') {
+    if (pr.kind === 'bellHoming') {
+      // Smoothly steer toward nearest living enemy within 500px
+      const foes = getLivingFoes();
+      let bestFoe = null;
+      let bestDist = 500;
+      for (let fi = 0; fi < foes.length; fi++) {
+        const f = foes[fi];
+        const d = Math.hypot((f.x + f.w * 0.5) - pr.x, (f.y + f.h * 0.45) - pr.y);
+        if (d < bestDist) { bestDist = d; bestFoe = f; }
+      }
+      if (bestFoe) {
+        const wantA = Math.atan2((bestFoe.y + bestFoe.h * 0.45) - pr.y, (bestFoe.x + bestFoe.w * 0.5) - pr.x);
+        const curA = Math.atan2(pr.vy, pr.vx);
+        let diff = wantA - curA;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        const nextA = curA + Math.max(-7.8 * dt, Math.min(7.8 * dt, diff));
+        const spd = pr.speed || 480;
+        pr.vx = Math.cos(nextA) * spd;
+        pr.vy = Math.sin(nextA) * spd;
+      }
+      if (Math.random() < 34 * dt) {
+        spawnParticles(pr.x, pr.y, 1, { color: COLORS.cyanBright, speed: 45, grav: 0, life: 0.20 });
+      }
+      const hBox = { x: pr.x - pr.r, y: pr.y - pr.r, w: pr.r * 2, h: pr.r * 2 };
+      for (const foe of foes) {
+        if (aabbOverlap(hBox, foe)) {
+          audio.playHit(false, 2);
+          audio.playBellChimeCast(3);
+          triggerHaptic('lightHit', 0.7);
+          if ((foe.kind === 'golem' || ((foe.kind === 'boss2' || foe.kind === 'dummy') && foe.shieldUp)) && foe.shieldBrokenTimer <= 0 && pr.breaksShield) {
+            foe.shieldBrokenTimer = 2.4;
+            if (foe.kind === 'boss2' || foe.kind === 'dummy') foe.shieldUp = false;
+            audio.playShieldBreak();
+            spawnFloatText(foe.x + foe.w / 2, foe.y - 26, t('combat.bladeBreak'), COLORS.cyanBright, 19, 0.9);
+          }
+          damageEnemyHP(foe, pr.dmg, true);
+          addPostureToEnemy(foe, pr.posture);
+          if (G.player) {
+            G.player.soul = Math.min(G.player.maxSoul, G.player.soul + Math.round((pr.soulOnHit || 10) * getRelicStats().soulGainMult));
+            G.player.switchStrikeWindow = 0.44;
+          }
+          rallyPlayerGrayHp(8);
+          spawnShockwave(pr.x, pr.y, 48, COLORS.cyanBright, 2.8, 0.20);
+          spawnParticles(pr.x, pr.y, 12, { color: COLORS.cyanBright, speed: 210, spark: true, life: 0.28 });
+          pr.life = 0;
+          break;
+        }
+      }
+      if (pr.life > 0 && G.resonancePuzzles) {
+        for (const pz of G.resonancePuzzles) {
+          for (const b of pz.bells) {
+            if (Math.hypot(pr.x - b.x, pr.y - b.y) < pr.r + 22) {
+              ringResonanceBell(pz, b, pr.facing);
+              pr.life = 0;
+              break;
+            }
+          }
+          if (pr.life <= 0) break;
+        }
+      }
+    } else if (pr.kind === 'hammerWave') {
+      // Ground-hugging seismic shockwave from Charged Abyssal Bell-Maul
+      const surfY = getGroundSurfaceY(pr.x, pr.y - 24);
+      if (surfY < pr.y + 42 && surfY > pr.y - 36) pr.y = surfY - 12;
+      if (Math.random() < 48 * dt) {
+        spawnParticles(pr.x, pr.y + 6, 1, { color: COLORS.goldBright, speed: 120, grav: 260, spark: true, life: 0.24 });
+        spawnParticles(pr.x, pr.y + 10, 1, { color: COLORS.parchment, speed: 95, grav: 340, life: 0.28 });
+      }
+      const hBox = { x: pr.x - pr.r, y: pr.y - pr.r * 1.1, w: pr.r * 2, h: pr.r * 1.8 };
+      const targets = getLivingFoes();
+      for (const foe of targets) {
+        if (pr.hitIds.has(foe.id)) continue;
+        if (aabbOverlap(hBox, foe)) {
+          pr.hitIds.add(foe.id);
+          audio.playShieldBash(false);
+          triggerHaptic('heavyHit', 1.0);
+          triggerHitstop(0.036, true);
+          addShake(8);
+          const shielded = (foe.kind === 'golem' || ((foe.kind === 'boss2' || foe.kind === 'dummy') && foe.shieldUp)) && foe.shieldBrokenTimer <= 0;
+          if (shielded) {
+            foe.shieldBrokenTimer = 2.6;
+            if (foe.kind === 'boss2' || foe.kind === 'dummy') foe.shieldUp = false;
+            audio.playShieldBreak();
+            spawnFloatText(foe.x + foe.w / 2, foe.y - 26, t('combat.shieldBreak'), COLORS.goldBright, 20, 0.95);
+          }
+          damageEnemyHP(foe, pr.dmg, true);
+          addPostureToEnemy(foe, pr.posture);
+          if (!foe.isBoss && foe.state !== 'stagger') {
+            foe.vx = pr.facing * 260;
+            if (foe.kind !== 'wraith') foe.vy = Math.min(foe.vy, -210);
+          }
+          if (G.player) {
+            G.player.soul = Math.min(G.player.maxSoul, G.player.soul + Math.round((pr.soulOnHit || 12) * getRelicStats().soulGainMult));
+            G.player.switchStrikeWindow = 0.44;
+          }
+          rallyPlayerGrayHp(16);
+          spawnShockwave(foe.x + foe.w / 2, foe.y + foe.h * 0.55, 86, COLORS.goldBright, 3.8, 0.26);
+          spawnParticles(foe.x + foe.w / 2, foe.y + foe.h * 0.55, 18, { color: COLORS.goldBright, speed: 250, spark: true, life: 0.36 });
+        }
+      }
+      if (G.worldState) {
+        for (const w of G.worldState.secretWalls) {
+          if (w.broken || pr.hitIds.has(w.id)) continue;
+          if (aabbOverlap(hBox, w)) {
+            pr.hitIds.add(w.id);
+            damageSecretWall(w, 3);
+          }
+        }
+      }
+      for (let j = G.projectiles.length - 1; j >= 0; j--) {
+        const other = G.projectiles[j];
+        if (other.owner === 'enemy' && Math.hypot(pr.x - other.x, pr.y - other.y) < pr.r + other.r + 12) {
+          spawnParticles(other.x, other.y, 12, { color: COLORS.goldBright, speed: 190, spark: true });
+          other.life = 0;
+        }
+      }
+    } else if (pr.kind === 'bellWave' || pr.kind === 'soulWave' || pr.kind === 'crimsonWave') {
       const isCrimson = pr.kind === 'crimsonWave';
       const pCol = isCrimson ? COLORS.crimsonBright : COLORS.cyanBright;
       if (Math.random() < 38 * dt) {
@@ -176,16 +300,23 @@ export function updateWorldEffects(dt) {
           triggerHaptic(isCrimson ? 'heavyHit' : 'lightHit');
           triggerHitstop(0.032, true);
           addShake(isCrimson ? 7 : 5);
-          if ((foe.kind === 'golem' || ((foe.kind === 'boss2' || foe.kind === 'dummy') && foe.shieldUp)) && foe.shieldBrokenTimer <= 0) {
+          const canWaveBreak = pr.kind !== 'bellWave' || !!pr.breaksShield;
+          const shielded = (foe.kind === 'golem' || ((foe.kind === 'boss2' || foe.kind === 'dummy') && foe.shieldUp)) && foe.shieldBrokenTimer <= 0;
+          if (shielded && canWaveBreak) {
             foe.shieldBrokenTimer = 2.4;
             if (foe.kind === 'boss2' || foe.kind === 'dummy') foe.shieldUp = false;
             audio.playShieldBreak();
             triggerHaptic('shieldBreak');
             spawnFloatText(foe.x + foe.w / 2, foe.y - 26, isCrimson ? t('combat.crimsonBreak') : t('combat.bladeBreak'), pCol, 19, 0.95);
           }
-          damageEnemyHP(foe, pr.dmg, true);
-          addPostureToEnemy(foe, pr.posture);
-          rallyPlayerGrayHp(isCrimson ? 18 : 10);
+          const hitDmg = (shielded && !canWaveBreak) ? Math.max(3, Math.round(pr.dmg * 0.35)) : pr.dmg;
+          damageEnemyHP(foe, hitDmg, true);
+          addPostureToEnemy(foe, (shielded && !canWaveBreak) ? 4 : pr.posture);
+          if (pr.soulOnHit && G.player) {
+            G.player.soul = Math.min(G.player.maxSoul, G.player.soul + Math.round(pr.soulOnHit * getRelicStats().soulGainMult));
+            G.player.switchStrikeWindow = 0.44;
+          }
+          rallyPlayerGrayHp(isCrimson ? 18 : pr.kind === 'bellWave' ? 7 : 10);
           spawnParticles(foe.x + foe.w / 2, foe.y + foe.h * 0.45, 16, { color: pCol, speed: 240, spark: true, life: 0.34 });
           spawnShockwave(foe.x + foe.w / 2, foe.y + foe.h * 0.45, isCrimson ? 70 : 58, pCol, 2.8, 0.22);
         }

@@ -10,7 +10,10 @@ export const WORLD_EN = {
     '沉渊钟井': 'Abyssal Bell Well',
     '初钟圣顶': 'Spire of the First Bell',
     '晦渊': 'The Dim Abyss',
-    '残钟地窖': 'Crypt of Shards'
+    '残钟地窖': 'Crypt of Shards',
+    '绝风断塔': 'Gale-Shattered Spire',
+    '枯墨古林': 'Withered Ink Woods',
+    '霜骸圣脊': 'Frost-Bone Ridge'
   },
 
   rooms: {
@@ -21,7 +24,10 @@ export const WORLD_EN = {
     r05_foundry:   { zoneName: 'Abyssal Bell Well',    name: 'Abyssal Bell Foundry' },
     r06_crypt:     { zoneName: 'Sunken Bell Cloister', name: 'Crypt of Shards' },
     r07_ascent:    { zoneName: 'Spire of the First Bell', name: 'Ascent of the First Bell' },
-    r08_heart:     { zoneName: 'Spire of the First Bell', name: 'Heart of the First Bell' }
+    r08_heart:       { zoneName: 'Spire of the First Bell', name: 'Heart of the First Bell' },
+    r09_wind_spire:  { zoneName: 'Gale-Shattered Spire',    name: 'Gale-Shattered Spire' },
+    r10_ink_woods:   { zoneName: 'Withered Ink Woods',      name: 'Withered Ink Woods' },
+    r11_frost_ridge: { zoneName: 'Frost-Bone Ridge',        name: 'Frost-Bone Ridge' }
   },
 
   subZones: {
@@ -42,7 +48,15 @@ export const WORLD_EN = {
     '初钟圣顶 · 破晓密室': 'Spire of the First Bell · Chamber of Dawn',
     '初钟圣顶 · 墨翼天梯': 'Spire of the First Bell · Ink-Wing Ascent',
     '初钟圣顶 · 终誓圣门': 'Spire of the First Bell · Gate of the Final Vow',
-    '初钟圣顶 · 初钟圣心': 'Spire of the First Bell · Heart of the First Bell'
+    '初钟圣顶 · 初钟圣心': 'Spire of the First Bell · Heart of the First Bell',
+    '绝风断塔 · 西风廊桥': 'Gale-Shattered Spire · West Wind Bridge',
+    '绝风断塔 · 悬风钟井': 'Gale-Shattered Spire · Updraft Shaft',
+    '绝风断塔 · 绝风祈坛': 'Gale-Shattered Spire · Gale Altar',
+    '枯墨古林 · 归坛古根井': 'Withered Ink Woods · Sanctuary Root Shaft',
+    '枯墨古林 · 荧光孢伞林': 'Withered Ink Woods · Spore Canopy Grove',
+    '枯墨古林 · 沉根幽窟': 'Withered Ink Woods · Sunken Root Cavern',
+    '霜骸圣脊 · 寒崖冰廊': 'Frost-Bone Ridge · Glacial Cliff Gallery',
+    '霜骸圣脊 · 风雪残刃冢': 'Frost-Bone Ridge · Snowbound Blade Mound'
   },
 
   altars: {
@@ -50,7 +64,10 @@ export const WORLD_EN = {
     altar_chapel: { name: 'Chapel Forecourt · Severed-Cord Altar', shortName: 'Chapel · Severed-Cord Altar' },
     altar_well:   { name: 'Abyssal Bell Well · Suspended Well Altar', shortName: 'Well · Suspended Altar' },
     altar_ascent: { name: 'Spire of the First Bell · Base Altar', shortName: 'Ascent · Base Altar' },
-    altar_summit: { name: 'Spire of the First Bell · Final Vow Altar', shortName: 'Spire · Final Vow Altar' }
+    altar_summit:   { name: 'Spire of the First Bell · Final Vow Altar', shortName: 'Spire · Final Vow Altar' },
+    altar_wind:     { name: 'Gale-Shattered Spire · Gale Altar',         shortName: 'Spire · Gale Altar' },
+    altar_forest:   { name: 'Withered Ink Woods · Root Cavern Altar',    shortName: 'Woods · Root Altar' },
+    altar_mountain: { name: 'Frost-Bone Ridge · Blade Mound Altar',      shortName: 'Ridge · Frost Altar' }
   },
 
   npcs: {
@@ -84,6 +101,21 @@ export const WORLD_EN = {
       title: 'True Chronicle of the First Bell',
       sub: 'Spire of the First Bell · Gate of the Final Vow',
       html: '“The first Oath-Keeper never betrayed the sacred city—when he learned each toll of the First Bell burned the soulfire of countless slumbering dead beneath the stone as kindling, he severed the bell-cord himself.<br>Yet the Relic of the First Bell still tolls on its own within the eastern Heart, summoning lantern-bearing puppets generation after generation to feed its flame.<br><br>Once you enter the eastern hall and fell <strong>Yuan, Relic of the First Bell</strong>, the final choice awaits:<br><strong>Renew the Endless Toll</strong>, binding yourself to the eternal night—or bear the <strong>First Seal of Dawn</strong> hidden behind the ink-blight barrier below, and cleave the First Bell in two so morning may break over the Dim Abyss.”'
+    },
+    lore_wind: {
+      title: 'Gale-Spire Inscription',
+      sub: 'Gale-Shattered Spire · Central Ledge',
+      html: '“Seven wind towers once stood above the foundry, drawing roaring gales to disperse molten bronze fumes and linking the Bell Well to the Spire Ascent.<br>Though the tower snapped when the First Bell cracked, eternal <strong>rising updrafts</strong> still bear any lantern-bearer aloft.<br><br>Ride the gusts eastward to reach the <strong>upper Spire Ascent</strong> directly—and seek the wind-purified core sealed at the tower’s crest.”'
+    },
+    lore_forest: {
+      title: 'Root-Cavern Chronicle',
+      sub: 'Withered Ink Woods · Great Tree Stele',
+      html: '“The sacred city was built atop a thousand-fathom ancient forest. Though ink-blight drowned the roots, luminous <strong>spore bounce-caps</strong> still breathe faint spirit-qi to launch wanderers skyward.<br><br>Sever the tangled root barrier atop the western shaft to climb straight back into the <strong>Extinguished Altar Sanctuary</strong>—Bell-Smith Li’s anvil lies right overhead.”'
+    },
+    lore_mountain: {
+      title: 'Frost-Bone Blade Epitaph',
+      sub: 'Frost-Bone Ridge · High Blade Mound',
+      html: '“Beneath the Heart of the First Bell, permafrost buries over a hundred lantern-bearers who fell short of silencing the final bell.<br>With their dying breath they drove their broken steel into the frozen ridge, raising a silent <strong>Snowbound Blade Mound</strong> for whoever comes next.<br><br>If you have gathered the <strong>Broken Blade, Abyssal Bell-Maul, and Soul-Calling Bell Staff</strong>, claim the Frost-Bone Crystal and ascend to end the First Bell!”'
     }
   },
 
@@ -132,6 +164,10 @@ export const WORLD_EN = {
       name: 'Vault Ancient Echo Coffer',
       desc: 'Grants abundant Echoes—return to Bell-Smith Li to temper your blade!'
     },
+    pickup_weapon_bell: {
+      name: 'Weapon · Soul-Calling Bell Staff',
+      desc: 'Unlocked mid-range caster weapon! Fire piercing harmonic rings & 3-dart homing volleys; swap anytime with [3] or [X].'
+    },
     pickup_shade_dash: {
       name: 'Art · Shadow Phase',
       desc: 'Dash evolved! Phase through Ink-Blight Barriers & foes to trigger Shadow Burst!'
@@ -143,12 +179,37 @@ export const WORLD_EN = {
     pickup_echo_ascent: {
       name: 'Spire Ancient Echo Coffer',
       desc: 'Grants +260 Echoes—return to the anvil for final tempering!'
+    },
+    pickup_core_wind: {
+      name: 'Spire Crest · Gale Soul Core',
+      desc: 'Max Vitality +15, Max Soulfire +20, and +220 Echoes!'
+    },
+    pickup_echo_wind: {
+      name: 'Gale-Spire Echo Coffer',
+      desc: 'Grants +200 Echoes for tempering at the anvil!'
+    },
+    pickup_core_forest: {
+      name: 'Ancient Woods · Luminous Spore Fruit',
+      desc: 'Max Vitality +20, Max Soulfire +20, and +260 Echoes!'
+    },
+    pickup_echo_forest: {
+      name: 'Root-Cavern Echo Coffer',
+      desc: 'Abundant Echoes (+280) recovered behind the Ink-Blight Barrier!'
+    },
+    pickup_core_mountain: {
+      name: 'Blade Mound · Frost-Bone Soul Crystal',
+      desc: 'Max Vitality +25, Max Soulfire +25, and +360 Echoes!'
+    },
+    pickup_echo_mountain: {
+      name: 'Frost-Cliff Echo Coffer',
+      desc: 'Grants +240 Echoes for final blade tempering!'
     }
   },
 
   puzzles: {
     puzzle_corridor: 'Bone Corridor · Three-Bell Resonance',
-    puzzle_well: 'Abyssal Belfry · Three-Bell Resonance'
+    puzzle_well: 'Abyssal Belfry · Three-Bell Resonance',
+    puzzle_forest: 'Withered Ink Woods · Three-Bell Resonance'
   },
 
   inscriptions: {
@@ -174,7 +235,16 @@ export const WORLD_EN = {
     '「习得幽影穿身 · Shift 穿破下方暗蚀结界」': '“Shadow Phase Learned · Dash Through the Barrier Below”',
     '「初钟圣阶 · 沿东侧天梯登临圣心」': '“Ascent of the First Bell · Climb East Toward the Heart”',
     '「破晓密室 · 幽影穿身可取真结局之印」': '“Chamber of Dawn · Phase Through to Claim the True Ending Seal”',
-    '「前方 · 初钟圣心 · 最终决战 →」': '“Ahead · Heart of the First Bell · The Final Vigil →”'
+    '「前方 · 初钟圣心 · 最终决战 →」': '“Ahead · Heart of the First Bell · The Final Vigil →”',
+    '「东壁风隙 · 疑通绝风断塔 →」': '“Eastern Wind Fissure · Leads Toward Gale-Shattered Spire →”',
+    '「← 西入幽林 · 枯墨古林根窟」': '“← West Into Withered Ink Woods · Root Caverns”',
+    '「寒霜暗壁 · 破冰踏入霜骸圣脊 →」': '“Frosted Secret Wall · Break Through to Frost-Bone Ridge →”',
+    '「绝风断塔 · 踏入青白罡风即可御风浮升」': '“Gale-Shattered Spire · Ride Azure Updrafts Aloft”',
+    '「东出断塔 · 直抵初钟圣阶上层捷径 →」': '“East Exit · High Shortcut to Upper Spire Ascent →”',
+    '「枯墨古林 · 踩踏荧光孢伞可借势腾跃」': '“Withered Ink Woods · Bounce Off Luminous Spore Caps”',
+    '「斩断上方枯根封壁 · 直返起点熄灯祭坛 ↑」': '“Sever Overhead Root Seal · Direct Shortcut to Sanctuary ↑”',
+    '「霜骸圣脊 · 逆风寒崖，钟锤与摇铃可破严阵」': '“Frost-Bone Ridge · Howling Cliff—Bell-Maul & Staff Shine Here”',
+    '「风雪残刃冢 · 历代提灯者折戟之所」': '“Snowbound Blade Mound · Resting Place of Fallen Keepers”'
   },
 
   biomes: {

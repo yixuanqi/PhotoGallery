@@ -153,3 +153,37 @@ const BESTIARY_SVG_MAP = {
 export function getBestiaryEmblemSvg(kind) {
   return BESTIARY_SVG_MAP[kind] || BESTIARY_SVG_MAP.unknown;
 }
+
+const WEAPON_SVG_MAP = {
+  blade: `<svg viewBox="0 0 36 36" class="weapon-svg" aria-hidden="true">
+    <circle cx="18" cy="18" r="15.5" fill="rgba(22,26,38,0.85)" stroke="rgba(230,222,200,0.65)" stroke-width="1.4"/>
+    <path d="M8 27 Q16 18 28 8 Q25 16 14 27 Z" fill="#e6dec8" stroke="#090c12" stroke-width="1.1" stroke-linejoin="round"/>
+    <path d="M7 28 L12 23" stroke="#9f1239" stroke-width="2.8" stroke-linecap="round"/>
+    <path d="M10.5 20.5 L15.5 25.5" stroke="#fde047" stroke-width="2.0" stroke-linecap="round"/>
+    <path d="M13 11 Q21 9 27 14" fill="none" stroke="rgba(253,224,71,0.72)" stroke-width="1.3" stroke-linecap="round"/>
+  </svg>`,
+  hammer: `<svg viewBox="0 0 36 36" class="weapon-svg" aria-hidden="true">
+    <circle cx="18" cy="18" r="15.5" fill="rgba(42,22,10,0.88)" stroke="rgba(245,158,11,0.80)" stroke-width="1.4"/>
+    <path d="M8 29 L21 16" stroke="#854d0e" stroke-width="3.2" stroke-linecap="round"/>
+    <path d="M9 28 L13 24" stroke="#9f1239" stroke-width="3.2" stroke-linecap="round"/>
+    <path d="M15 11 L23 7 L30 15 L25 23 L17 19 Z" fill="#291d12" stroke="#fde047" stroke-width="1.6" stroke-linejoin="round"/>
+    <path d="M20 11 L23 15 L20 18 L24 20" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="24" cy="13" r="1.6" fill="#fef08a"/>
+  </svg>`,
+  locked: `<svg viewBox="0 0 36 36" class="weapon-svg locked" aria-hidden="true">
+    <circle cx="18" cy="18" r="15" fill="rgba(14,18,28,0.65)" stroke="rgba(148,163,184,0.38)" stroke-width="1.3" stroke-dasharray="3 3"/>
+    <text x="18" y="23.5" text-anchor="middle" fill="rgba(148,163,184,0.68)" font-size="15" font-weight="bold">?</text>
+  </svg>`,
+  bell: `<svg viewBox="0 0 36 36" class="weapon-svg" aria-hidden="true">
+    <circle cx="18" cy="18" r="15.5" fill="rgba(12,30,48,0.85)" stroke="rgba(56,189,248,0.75)" stroke-width="1.4"/>
+    <path d="M9 28 L22 14" stroke="#6b4c30" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M19 10 Q25 9 26 15" fill="none" stroke="#fde047" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M21 13 H27 L29 21 H19 Z" fill="#2a2016" stroke="#7dd3fc" stroke-width="1.5" stroke-linejoin="round"/>
+    <circle cx="24" cy="23.2" r="2.1" fill="#e0f2fe"/>
+    <path d="M12 12 A9 9 0 0 1 17 8 M28 24 A9 9 0 0 1 22 29" fill="none" stroke="#38bdf8" stroke-width="1.4" stroke-linecap="round"/>
+  </svg>`
+};
+
+export function getWeaponEmblemSvg(id) {
+  return WEAPON_SVG_MAP[id] || WEAPON_SVG_MAP.locked;
+}

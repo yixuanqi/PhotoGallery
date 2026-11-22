@@ -222,6 +222,8 @@ export const BANNERS = [];
 export const CANDLE_CLUSTERS = [];
 export const BONE_CAIRNS = [];
 export const STAMPS = [];
+export const WIND_ZONES = [];
+export const BOUNCE_PADS = [];
 
 export const RELIC_SYNERGIES = [
   {

@@ -4,6 +4,7 @@ import {
   SAVE_KEY, LEGACY_SAVE_KEY_V9, LEGACY_SAVE_KEY_V8, SETTINGS_KEY
 } from './config.js';
 import { G, hooks, createFreshWorldState, getExplorationPercent } from './state.js';
+import { WEAPON_ORDER, normalizeWeaponId, getWeaponById } from './weapons.js';
 import { storage } from './storage.js';
 import { audio } from './audio.js';
 import { syncControlModeUI, rebuildActionCodesCache } from './input.js';
@@ -163,6 +164,8 @@ export function saveProgress(showToast = false) {
     lostEchoes: G.worldState.lostEchoes ? { ...G.worldState.lostEchoes } : null,
     smithUpgrades: { ...(G.worldState.smithUpgrades || { blade: 0, posture: 0, forge: 0 }) },
     abilities: { doubleJump: !!G.worldState.abilities.doubleJump, shadeDash: !!G.worldState.abilities.shadeDash },
+    equippedWeapon: normalizeWeaponId(G.worldState.equippedWeapon || 'blade'),
+    unlockedWeapons: G.worldState.unlockedWeapons ? [...G.worldState.unlockedWeapons] : ['blade'],
     unlockedRelics: [...G.worldState.unlockedRelics],
     exploredStr,
     explorePct: getExplorationPercent()
@@ -253,6 +256,15 @@ export function applySaveData(data) {
     doubleJump: !!(data.abilities && data.abilities.doubleJump),
     shadeDash: !!(data.abilities && data.abilities.shadeDash)
   };
+  const rawUnlW = Array.isArray(data.unlockedWeapons) && data.unlockedWeapons.length
+    ? data.unlockedWeapons.map(normalizeWeaponId)
+    : ['blade'];
+  G.worldState.unlockedWeapons = new Set(['blade', ...rawUnlW]);
+  const pickedListForW = Array.isArray(data.collectedPickups) ? data.collectedPickups : [];
+  if (pickedListForW.includes('pickup_weapon_bell')) G.worldState.unlockedWeapons.add('bell');
+  const eqNorm = normalizeWeaponId(data.equippedWeapon || 'blade');
+  if (data.equippedWeapon === 'shield') G.worldState.unlockedWeapons.add('hammer');
+  G.worldState.equippedWeapon = G.worldState.unlockedWeapons.has(eqNorm) ? eqNorm : 'blade';
   G.worldState.unlockedRelics = new Set(Array.isArray(data.unlockedRelics) && data.unlockedRelics.length ? data.unlockedRelics : ['thorn', 'mirror', 'ember']);
 
   const brokenSet = new Set(Array.isArray(data.brokenWalls) ? data.brokenWalls : []);

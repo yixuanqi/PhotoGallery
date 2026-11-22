@@ -4,7 +4,7 @@ import {
   SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF,
   SECRET_WALLS_DEF, VOID_BARRIERS, PICKUPS_DEF, RESONANCE_PUZZLES_DEF, CRUMBLE_PLATFORMS_DEF,
   PENDULUMS, ABYSSAL_RIVERS, ABYSSAL_RIVER, WALL_INSCRIPTIONS, GRAPPLE_ANCHORS,
-  LANTERNS_DEF, ENEMIES_DEF, BOSSES_DEF, PUDDLES, BANNERS, CANDLE_CLUSTERS, BONE_CAIRNS, STAMPS,
+  LANTERNS_DEF, ENEMIES_DEF, BOSSES_DEF, PUDDLES, BANNERS, CANDLE_CLUSTERS, BONE_CAIRNS, STAMPS, WIND_ZONES, BOUNCE_PADS,
   PREVIEW_STORAGE_KEY, setWorldMetrics
 } from './config.js';
 import { G } from './state.js';
@@ -59,6 +59,8 @@ export function hydrateWorldBundle(bundle) {
   resetArray(CANDLE_CLUSTERS);
   resetArray(BONE_CAIRNS);
   resetArray(STAMPS);
+  resetArray(WIND_ZONES);
+  resetArray(BOUNCE_PADS);
 
   // Reset gate widths so removed gates do not leave phantom collisions
   SHORTCUT_GATE_DEF.w = 0;
@@ -229,6 +231,33 @@ export function hydrateWorldBundle(bundle) {
     for (const rv of (room.rivers || [])) {
       const worldRv = { id: rv.id || `rv_${room.id}`, x: ox + rv.x, y: oy + rv.y, w: rv.w, roomId: room.id };
       ABYSSAL_RIVERS.push(worldRv);
+    }
+
+    for (const wz of (room.windZones || [])) {
+      WIND_ZONES.push({
+        id: wz.id || `wz_${room.id}_${WIND_ZONES.length}`,
+        x: ox + (Number(wz.x) || 0),
+        y: oy + (Number(wz.y) || 0),
+        w: Number(wz.w) || 120,
+        h: Number(wz.h) || 320,
+        vx: Number(wz.vx) || 0,
+        vy: Number(wz.vy) || -980,
+        roomId: room.id
+      });
+    }
+
+    for (const bp of (room.bouncePads || [])) {
+      BOUNCE_PADS.push({
+        id: bp.id || `bp_${room.id}_${BOUNCE_PADS.length}`,
+        x: ox + (Number(bp.x) || 0),
+        y: oy + (Number(bp.y) || 0),
+        w: Number(bp.w) || 74,
+        h: Number(bp.h) || 26,
+        boostVy: Number(bp.boostVy) || -790,
+        squish: 0,
+        cd: 0,
+        roomId: room.id
+      });
     }
 
     for (const anc of (room.grappleAnchors || [])) {

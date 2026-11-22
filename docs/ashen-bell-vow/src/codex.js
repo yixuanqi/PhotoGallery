@@ -1,9 +1,10 @@
 // Codex (晦渊残卷): Bestiary stats, Lore Tablet archive, Achievements + Ink Unlock Banner, and Room Map Stats
 import {
-  COLORS, RELICS, LORE_TABLETS, PICKUPS_DEF, ALTARS, VOID_BARRIERS,
+  COLORS, ROOMS, RELICS, LORE_TABLETS, PICKUPS_DEF, ALTARS, VOID_BARRIERS,
   MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H
 } from './config.js';
 import { G } from './state.js';
+import { WEAPON_ORDER } from './weapons.js';
 import { audio } from './audio.js';
 import { t, isEn, locAchievement, getCanvasFont } from './i18n.js';
 
@@ -113,14 +114,16 @@ export const ACHIEVEMENTS_DEF = [
   { id: 'boss_hui', name: '断钟寂灭', desc: '于断钟礼拜堂斩落「断钟骑士 · 晦」。' },
   { id: 'boss_ji', name: '沉渊熄炉', desc: '于沉渊铸钟殿斩落「沉渊铸钟师 · 寂」。' },
   { id: 'boss_yuan', name: '初钟终末', desc: '于初钟圣心斩落最终首领「初钟圣骸 · 渊」。' },
-  { id: 'all_tablets', name: '晦渊拾碑人', desc: '寻得并研读晦渊全境全部 5 座风化残碑。' },
+  { id: 'all_tablets', name: '晦渊拾碑人', desc: '寻得并研读晦渊全境全部 8 座风化残碑。' },
   { id: 'all_relics', name: '八印归灯', desc: '寻得并解锁全部 8 枚晦渊圣物。' },
   { id: 'synergy_awakened', name: '双印共鸣', desc: '在祭坛同时铭刻特定双圣物，激活隐藏机制羁绊。' },
   { id: 'no_hit_echo', name: '无伤断誓', desc: '在任意残誓回响中零受创通关，夺得 S+ 评级。' },
   { id: 'rush_clear', name: '三钟宗师', desc: '在祭坛残誓回响中通关「三钟终试（晦→寂→渊）」。' },
   { id: 'vow_or_ngplus', name: '绝誓轮回', desc: '踏入残誓轮回（二周目 NG+）或在 4 誓制约下破除回响。' },
   { id: 'chronicler_complete', name: '拾碑知己', desc: '助沉渊钟井的游方拾碑客 · 墨尘完成全部三卷《晦渊全史》拓录。' },
-  { id: 'keeper_dawn_wick', name: '残灯赴晓', desc: '携「破晓初印」回访初钟圣顶的旧誓守灯人 · 汐，承接终誓灯芯。' }
+  { id: 'keeper_dawn_wick', name: '残灯赴晓', desc: '携「破晓初印」回访初钟圣顶的旧誓守灯人 · 汐，承接终誓灯芯。' },
+  { id: 'three_weapons', name: '三刃齐鸣', desc: '集齐灰钟断刃、镇渊钟锤与引魂摇铃全部三系兵刃。' },
+  { id: 'three_biomes', name: '三境踏破', desc: '踏足绝风断塔、枯墨古林与霜骸圣脊全部三大秘境生态。' }
 ];
 
 export function createFreshCodex() {
@@ -262,6 +265,14 @@ export function checkAchievements(ctx = null) {
   const nq = ws.npcQuests || {};
   tryUnlock(Array.isArray(nq.chroniclerClaims) && nq.chroniclerClaims.includes('vol3'), 'chronicler_complete');
   tryUnlock(!!nq.keeperWickGifted, 'keeper_dawn_wick');
+  tryUnlock(ws.unlockedWeapons && ws.unlockedWeapons.size >= WEAPON_ORDER.length, 'three_weapons');
+  const biomeIds = ['r09_wind_spire', 'r10_ink_woods', 'r11_frost_ridge'];
+  const allThreeBiomesVisited = biomeIds.every(rid => {
+    const rm = ROOMS.find(r => r.id === rid);
+    const st = rm ? getRoomCollectibleStats(rm) : null;
+    return !!(st && st.explorePct > 0);
+  });
+  tryUnlock(allThreeBiomesVisited, 'three_biomes');
 
   if (newly.length > 0 && !G.achievementBanner) {
     G.achievementBanner = G.achievementQueue.shift();

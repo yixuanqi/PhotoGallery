@@ -43,7 +43,8 @@
   "connections": [
     "r03_chapel",
     "r05_foundry",
-    "r06_crypt"
+    "r06_crypt",
+    "r09_wind_spire"
   ],
   "solids": [
     {
@@ -162,7 +163,14 @@
       "x": 1760,
       "y": 0,
       "w": 40,
-      "h": 1240,
+      "h": 420,
+      "type": "pillar"
+    },
+    {
+      "x": 1760,
+      "y": 580,
+      "w": 40,
+      "h": 660,
       "type": "pillar"
     }
   ],
@@ -234,6 +242,14 @@
       "y": 740,
       "w": 34,
       "h": 280,
+      "maxHp": 3
+    },
+    {
+      "id": "wall_wind_west",
+      "x": 1762,
+      "y": 420,
+      "w": 36,
+      "h": 160,
       "maxHp": 3
     }
   ],
@@ -518,6 +534,11 @@
       "y": 1200,
       "text": "「沉渊秘龛 · 需幽影穿身」",
       "hideWhenShadeDash": true
+    },
+    {
+      "x": 1620,
+      "y": 510,
+      "text": "「东壁风隙 · 疑通绝风断塔 →」"
     }
   ],
   "props": {

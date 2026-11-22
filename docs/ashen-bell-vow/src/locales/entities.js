@@ -222,14 +222,16 @@ export const ENTITIES_EN = {
     boss_hui:            { name: 'Broken Bell Silenced',  desc: 'Fell Hui, Knight of the Broken Bell in the Chapel.' },
     boss_ji:             { name: 'Foundry Extinguished',  desc: 'Fell Ji, Abyssal Bell-Founder in the Abyssal Bell Foundry.' },
     boss_yuan:           { name: 'End of the First Toll', desc: 'Fell the final boss, Yuan, Relic of the First Bell.' },
-    all_tablets:         { name: 'Chronicler of the Abyss', desc: 'Find and inspect all 5 weathered steles across the Dim Abyss.' },
+    all_tablets:         { name: 'Chronicler of the Abyss', desc: 'Find and inspect all 8 weathered steles across the Dim Abyss.' },
     all_relics:          { name: 'Eight Seals Attuned',   desc: 'Discover and unlock all 8 Relics of the Dim Abyss.' },
     synergy_awakened:    { name: 'Twin-Seal Resonance',   desc: 'Attune two paired relics at an Altar to awaken a hidden synergy.' },
     no_hit_echo:         { name: 'Unscathed Oath',        desc: 'Clear any Vow Echo without taking damage to earn an S+ rank.' },
     rush_clear:          { name: 'Master of Three Bells', desc: 'Clear the “Trial of Three Bells (Hui → Ji → Yuan)” Boss Rush.' },
     vow_or_ngplus:       { name: 'Cycle of Severe Vows',  desc: 'Enter NG+ Cycle of Vows or clear an Echo with all 4 Vows active.' },
     chronicler_complete: { name: 'Kindred Scribe',        desc: 'Help Mochen complete all three volumes of the Annals of the Dim Abyss.' },
-    keeper_dawn_wick:    { name: 'Last Wick to Dawn',     desc: 'Bring the First Seal of Dawn to Keeper Xi at the Spire and claim her wick.' }
+    keeper_dawn_wick:    { name: 'Last Wick to Dawn',     desc: 'Bring the First Seal of Dawn to Keeper Xi at the Spire and claim her wick.' },
+    three_weapons:       { name: 'Three-Bell Arsenal',    desc: 'Unlock all three weapons: Broken Blade, Abyssal Bell-Maul, and Soul-Calling Bell Staff.' },
+    three_biomes:        { name: 'Wanderer of Three Realms', desc: 'Set foot in all three hidden biomes: Gale-Shattered Spire, Withered Ink Woods, and Frost-Bone Ridge.' }
   },
 
   bosses: {

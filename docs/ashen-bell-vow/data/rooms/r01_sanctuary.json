@@ -34,7 +34,8 @@
     }
   ],
   "connections": [
-    "r02_corridor"
+    "r02_corridor",
+    "r10_ink_woods"
   ],
   "solids": [
     {
@@ -47,8 +48,22 @@
     {
       "x": 0,
       "y": 580,
-      "w": 940,
-      "h": 980,
+      "w": 150,
+      "h": 160,
+      "type": "ground"
+    },
+    {
+      "x": 150,
+      "y": 580,
+      "w": 105,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 255,
+      "y": 580,
+      "w": 685,
+      "h": 160,
       "type": "ground"
     },
     {

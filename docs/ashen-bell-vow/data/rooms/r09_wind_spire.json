@@ -1,0 +1,421 @@
+{
+  "schemaVersion": 1,
+  "id": "r09_wind_spire",
+  "zoneName": "绝风断塔",
+  "name": "绝风断塔",
+  "theme": "wind",
+  "bounds": {
+    "x": 5560,
+    "y": 0,
+    "w": 1180,
+    "h": 780
+  },
+  "subZones": [
+    {
+      "name": "绝风断塔 · 西风廊桥",
+      "x": 0,
+      "y": 0,
+      "w": 420,
+      "h": 780
+    },
+    {
+      "name": "绝风断塔 · 悬风钟井",
+      "x": 420,
+      "y": 0,
+      "w": 400,
+      "h": 780
+    },
+    {
+      "name": "绝风断塔 · 绝风祈坛",
+      "x": 820,
+      "y": 0,
+      "w": 360,
+      "h": 780
+    }
+  ],
+  "connections": [
+    "r04_bell_well",
+    "r07_ascent"
+  ],
+  "solids": [
+    {
+      "x": 0,
+      "y": 580,
+      "w": 245,
+      "h": 200,
+      "type": "ground"
+    },
+    {
+      "x": 455,
+      "y": 560,
+      "w": 240,
+      "h": 220,
+      "type": "ground"
+    },
+    {
+      "x": 910,
+      "y": 580,
+      "w": 270,
+      "h": 200,
+      "type": "ground"
+    },
+    {
+      "x": 165,
+      "y": 420,
+      "w": 150,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 475,
+      "y": 360,
+      "w": 185,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 850,
+      "y": 390,
+      "w": 170,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 510,
+      "y": 205,
+      "w": 175,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 245,
+      "y": 738,
+      "w": 665,
+      "h": 42,
+      "type": "ground"
+    }
+  ],
+  "crumblePlatforms": [
+    {
+      "id": "crumble_wind_1",
+      "x": 325,
+      "y": 470,
+      "w": 105,
+      "h": 20
+    },
+    {
+      "id": "crumble_wind_2",
+      "x": 730,
+      "y": 465,
+      "w": 105,
+      "h": 20
+    }
+  ],
+  "windZones": [
+    {
+      "id": "wz_wind_1",
+      "x": 265,
+      "y": 210,
+      "w": 170,
+      "h": 525,
+      "vx": 18,
+      "vy": -1520
+    },
+    {
+      "id": "wz_wind_2",
+      "x": 710,
+      "y": 185,
+      "w": 180,
+      "h": 550,
+      "vx": 22,
+      "vy": -1580
+    },
+    {
+      "id": "wz_wind_3",
+      "x": 520,
+      "y": 140,
+      "w": 155,
+      "h": 215,
+      "vx": 0,
+      "vy": -1380
+    }
+  ],
+  "bouncePads": [],
+  "altars": [
+    {
+      "id": "altar_wind",
+      "x": 1030,
+      "y": 580,
+      "name": "绝风断塔 · 绝风祈坛",
+      "shortName": "断塔 · 绝风坛",
+      "defaultLit": false
+    }
+  ],
+  "npcs": [],
+  "loreTablets": [
+    {
+      "id": "lore_wind",
+      "x": 570,
+      "y": 560,
+      "title": "绝风塔铭",
+      "sub": "绝风断塔 · 悬风中台",
+      "html": "“古炉之上曾立七重风塔，借罡风吹散熔铜毒烟，亦为守誓者往返钟井与初钟圣阶之天桥。<br>自初钟裂鸣后，风塔腰折，唯有不息的<strong>上升罡风</strong>仍托举着坠落的羽客。<br><br>顺风乘流而上，东门可直抵<strong>初钟圣阶中上层</strong>；塔巅高台尚封存着一枚被罡风淬净的魂核。”"
+    }
+  ],
+  "gates": [],
+  "secretWalls": [],
+  "pickups": [
+    {
+      "id": "pickup_core_wind",
+      "kind": "statCore",
+      "bonusHp": 15,
+      "bonusSoul": 20,
+      "echoAmount": 220,
+      "x": 598,
+      "y": 205,
+      "name": "塔巅秘宝 · 绝风残核",
+      "desc": "生命上限 +15、魂火上限 +20，并获 +220 残响！"
+    },
+    {
+      "id": "pickup_echo_wind",
+      "kind": "echoCache",
+      "echoAmount": 200,
+      "x": 935,
+      "y": 390,
+      "name": "断塔古风残响匣",
+      "desc": "获得 +200 残响，可回铁砧淬锋！"
+    }
+  ],
+  "resonancePuzzles": [],
+  "pendulums": [
+    {
+      "id": "pend_wind_1",
+      "x": 385,
+      "anchorY": 60,
+      "len": 250,
+      "amp": 0.62,
+      "speed": 1.85,
+      "phase": 0.4,
+      "r": 24
+    },
+    {
+      "id": "pend_wind_2",
+      "x": 790,
+      "anchorY": 55,
+      "len": 265,
+      "amp": 0.6,
+      "speed": 2.05,
+      "phase": 2.1,
+      "r": 24
+    }
+  ],
+  "rivers": [
+    {
+      "id": "river_wind_chasm",
+      "x": 255,
+      "y": 726,
+      "w": 645
+    }
+  ],
+  "grappleAnchors": [
+    {
+      "id": "anc_wind_1",
+      "x": 350,
+      "y": 260,
+      "topY": 0
+    },
+    {
+      "id": "anc_wind_2",
+      "x": 595,
+      "y": 115,
+      "topY": 0
+    },
+    {
+      "id": "anc_wind_3",
+      "x": 805,
+      "y": 240,
+      "topY": 0
+    }
+  ],
+  "lanterns": [
+    {
+      "id": "lan_wind_1",
+      "x": 455,
+      "anchorY": 165,
+      "topY": 0,
+      "len": 150,
+      "angle": 0.14
+    },
+    {
+      "id": "lan_wind_2",
+      "x": 725,
+      "anchorY": 155,
+      "topY": 0,
+      "len": 155,
+      "angle": -0.14
+    }
+  ],
+  "enemies": [
+    {
+      "id": "wraith_wind_1",
+      "kind": "wraith",
+      "x": 355,
+      "y": 300
+    },
+    {
+      "id": "wraith_wind_2",
+      "kind": "wraith",
+      "x": 795,
+      "y": 270
+    },
+    {
+      "id": "priest_wind_1",
+      "kind": "priest",
+      "x": 520,
+      "y": 294
+    },
+    {
+      "id": "duelist_wind_1",
+      "kind": "duelist",
+      "x": 620,
+      "y": 500,
+      "minX": 470,
+      "maxX": 675
+    }
+  ],
+  "bosses": [],
+  "inscriptions": [
+    {
+      "x": 155,
+      "y": 510,
+      "text": "「绝风断塔 · 踏入青白罡风即可御风浮升」"
+    },
+    {
+      "x": 1075,
+      "y": 510,
+      "text": "「东出断塔 · 直抵初钟圣阶上层捷径 →」"
+    }
+  ],
+  "props": {
+    "puddles": [],
+    "banners": [
+      {
+        "x": 120,
+        "y": 30,
+        "len": 175,
+        "color": "#163046"
+      },
+      {
+        "x": 590,
+        "y": 25,
+        "len": 165,
+        "color": "#163046"
+      },
+      {
+        "x": 1060,
+        "y": 30,
+        "len": 185,
+        "color": "#163046"
+      }
+    ],
+    "candles": [
+      {
+        "x": 1005,
+        "y": 580,
+        "count": 4
+      },
+      {
+        "x": 540,
+        "y": 560,
+        "count": 3
+      }
+    ],
+    "boneCairns": [
+      180,
+      960
+    ],
+    "stamps": [
+      {
+        "type": "wind_buttress",
+        "x": 130,
+        "y": 580,
+        "scale": 1.05,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.78,
+        "seed": 0
+      },
+      {
+        "type": "tattered_pennant",
+        "x": 225,
+        "y": 580,
+        "scale": 0.95,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.9,
+        "seed": 1
+      },
+      {
+        "type": "wind_buttress",
+        "x": 575,
+        "y": 560,
+        "scale": 1.12,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.72,
+        "seed": 2
+      },
+      {
+        "type": "tattered_pennant",
+        "x": 670,
+        "y": 560,
+        "scale": 1.02,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.92,
+        "seed": 0
+      },
+      {
+        "type": "fallen_bell",
+        "x": 500,
+        "y": 560,
+        "scale": 0.84,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.74,
+        "seed": 1
+      },
+      {
+        "type": "wind_buttress",
+        "x": 1035,
+        "y": 580,
+        "scale": 1.08,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.76,
+        "seed": 1
+      },
+      {
+        "type": "tattered_pennant",
+        "x": 945,
+        "y": 580,
+        "scale": 0.96,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.9,
+        "seed": 2
+      },
+      {
+        "type": "hanging_chains",
+        "x": 450,
+        "y": 0,
+        "scale": 1.0,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.44,
+        "seed": 1
+      }
+    ]
+  },
+  "voidBarriers": []
+}

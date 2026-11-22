@@ -38,7 +38,10 @@ const BIOME_AMBIENCE_PROFILES = {
   foundry:   { label: '沉渊古炉 · 熔金炽鸣', wind: 0.11, rain: 0.0001, well: 0.04,   foundry: 0.31,   drone: 0.12, windHz: 175, droneHz: 190, accent: 'ember' },
   crypt:     { label: '残钟地窖 · 阴窖滴墨', wind: 0.05, rain: 0.0001, well: 0.12,   foundry: 0.0001, drone: 0.17, windHz: 135, droneHz: 180, accent: 'drip' },
   ascent:    { label: '初钟圣阶 · 罡风余烬', wind: 0.26, rain: 0.0001, well: 0.0001, foundry: 0.15,   drone: 0.11, windHz: 310, droneHz: 175, accent: 'ember' },
-  heart:     { label: '初钟圣心 · 圣钟共鸣', wind: 0.18, rain: 0.0001, well: 0.0001, foundry: 0.06,   drone: 0.21, windHz: 205, droneHz: 245, accent: 'choir' }
+  heart:     { label: '初钟圣心 · 圣钟共鸣', wind: 0.18, rain: 0.0001, well: 0.0001, foundry: 0.06,   drone: 0.21, windHz: 205, droneHz: 245, accent: 'choir' },
+  wind:      { label: '绝风断塔 · 罡风呼啸', wind: 0.36, rain: 0.0001, well: 0.0001, foundry: 0.0001, drone: 0.07, windHz: 370, droneHz: 185, accent: 'bell' },
+  forest:    { label: '枯墨古林 · 幽林孢鸣', wind: 0.14, rain: 0.08,   well: 0.16,   foundry: 0.0001, drone: 0.12, windHz: 195, droneHz: 165, accent: 'drip' },
+  mountain:  { label: '霜骸圣脊 · 凛雪寒吟', wind: 0.32, rain: 0.0001, well: 0.0001, foundry: 0.0001, drone: 0.16, windHz: 420, droneHz: 225, accent: 'choir' }
 };
 
 export class SoundEngine {
@@ -787,6 +790,46 @@ export class SoundEngine {
           osc.connect(g); g.connect(out); osc.start(t0); osc.stop(t0 + 0.28);
         }
       }],
+      ['shield_bash', 0.36, (c, out) => {
+        const sub = c.createOscillator(); const sg = c.createGain();
+        sub.type = 'triangle';
+        sub.frequency.setValueAtTime(165, 0); sub.frequency.exponentialRampToValueAtTime(42, 0.24);
+        sg.gain.setValueAtTime(0.42, 0); sg.gain.exponentialRampToValueAtTime(0.001, 0.26);
+        sub.connect(sg); sg.connect(out); sub.start(0); sub.stop(0.28);
+        const freqs = [310, 642, 1180];
+        for (let i = 0; i < 3; i++) {
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = i === 0 ? 'sawtooth' : 'triangle';
+          osc.frequency.setValueAtTime(freqs[i], 0); osc.frequency.exponentialRampToValueAtTime(freqs[i] * 0.88, 0.30);
+          g.gain.setValueAtTime(0.16 / (i + 1), 0); g.gain.exponentialRampToValueAtTime(0.0008, 0.32);
+          osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.34);
+        }
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.setValueAtTime(980, 0); bp.Q.value = 1.4;
+        const ng = c.createGain(); ng.gain.setValueAtTime(0.22, 0); ng.gain.exponentialRampToValueAtTime(0.001, 0.12);
+        n.connect(bp); bp.connect(ng); ng.connect(out); n.start(0); n.stop(0.14);
+      }],
+      ['bell_chime_cast', 0.48, (c, out) => {
+        const freqs = [587.33, 1174.66, 1760.0, 2793.83];
+        for (let i = 0; i < freqs.length; i++) {
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = i === 0 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(freqs[i], 0); osc.frequency.exponentialRampToValueAtTime(freqs[i] * 0.992, 0.42);
+          g.gain.setValueAtTime(0.13 / (i * 0.72 + 1), 0); g.gain.exponentialRampToValueAtTime(0.0006, 0.44);
+          osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.46);
+        }
+      }],
+      ['weapon_swap', 0.22, (c, out) => {
+        const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
+        const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.setValueAtTime(2400, 0);
+        const ng = c.createGain(); ng.gain.setValueAtTime(0.14, 0); ng.gain.exponentialRampToValueAtTime(0.001, 0.08);
+        n.connect(hp); hp.connect(ng); ng.connect(out); n.start(0); n.stop(0.09);
+        const osc = c.createOscillator(); const g = c.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(740, 0.02); osc.frequency.exponentialRampToValueAtTime(1180, 0.16);
+        g.gain.setValueAtTime(0.12, 0.02); g.gain.exponentialRampToValueAtTime(0.0008, 0.19);
+        osc.connect(g); g.connect(out); osc.start(0.02); osc.stop(0.20);
+      }],
       ['crumble', 0.30, (c, out) => {
         const n = c.createBufferSource(); n.buffer = this._makeOfflineNoise(c);
         const lp = c.createBiquadFilter(); lp.type = 'lowpass';
@@ -1198,6 +1241,27 @@ export class SoundEngine {
       g.gain.exponentialRampToValueAtTime(0.0006, t + i * 0.09 + 3.2);
       osc.connect(g); g.connect(this.sfxOut);
       osc.start(t + i * 0.09); osc.stop(t + i * 0.09 + 3.3);
+    }
+  }
+
+  playShieldBash(heavy = false) {
+    if (!this._canPlaySfx('shield_bash', 0.04)) return;
+    this._playBaked('shield_bash', heavy ? 0.88 : 1.05);
+  }
+
+  playBellChimeCast(step = 1) {
+    if (!this._canPlaySfx('bell_chime', 0.03)) return;
+    const rate = step === 3 ? 1.18 : step === 2 ? 1.06 : 0.95;
+    this._playBaked('bell_chime_cast', rate);
+  }
+
+  playWeaponSwap(weaponId = 'blade') {
+    if (weaponId === 'bell') {
+      this._playBaked('bell_chime_cast', 1.12);
+    } else if (weaponId === 'hammer' || weaponId === 'shield') {
+      this._playBaked('shield_bash', 0.84);
+    } else {
+      this._playBaked('weapon_swap', 1.0);
     }
   }
 

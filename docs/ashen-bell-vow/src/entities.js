@@ -53,6 +53,11 @@ export function createPlayer(x = 340, y = FLOOR_Y - 56) {
     chargeReadyPlayed: false,
     iaiLungeTimer: 0,
     riposteWindow: 0,
+    switchStrikeWindow: 0,
+    shieldArmorTimer: 0,
+    shieldArmorMult: 1.0,
+    weaponSwapCd: 0,
+    bellSwing: 0,
 
     // 3-Tier Parry
     parryActive: false,

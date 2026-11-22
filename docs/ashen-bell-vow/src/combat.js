@@ -4,6 +4,7 @@ import {
 } from './config.js';
 import {
   G, hooks, getLivingFoes, getAwakeBoss, isWorldPosExplored, getRelicStats, getActiveVowStats, getCombatScaling, getBladeDamageMult, getSmithPostureMult,
+  getActiveWeaponId, getActiveWeapon, isWeaponUnlocked, getUnlockedWeaponIds, unlockWeapon,
   getBossBonusDamageMult, hasKeeperBlessing,
   getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks,
   scheduleOutcome, addShake, kickCamera, punchZoom, triggerBossBanner, triggerHitstop
@@ -16,7 +17,59 @@ import {
 } from './vfx.js';
 import { aabbOverlap, hasLineOfSight, getGroundSurfaceY } from './physics.js';
 import { recordBestiaryEvent, checkAchievements } from './codex.js';
-import { t, locDummyMode, locPickup, locPuzzleName } from './i18n.js';
+import { t, isEn, locDummyMode, locPickup, locPuzzleName } from './i18n.js';
+import { WEAPON_ORDER, normalizeWeaponId, getWeaponById, getWeaponMoveDef } from './weapons.js';
+
+// Three-Weapon Archetype Equip, Unlock Gate & Switch Strike (切刃派生技)
+export function equipWeapon(weaponId, silent = false) {
+  if (!G.worldState) return false;
+  const norm = normalizeWeaponId(weaponId);
+  if (!isWeaponUnlocked(norm)) return false;
+  const w = getWeaponById(norm);
+  if (!w) return false;
+  if (getActiveWeaponId() === w.id) return false;
+  let triggerSwitchStrike = false;
+  if (G.player && !silent) {
+    if (G.player.weaponSwapCd > 0 || G.player.execTimer > 0 || G.player.hp <= 0 || G.player.healTimer > 0 || G.player.grappleState !== 'none') return false;
+    triggerSwitchStrike = G.player.switchStrikeWindow > 0 && G.player.hurtTimer <= 0;
+    G.player.switchStrikeWindow = 0;
+    G.player.weaponSwapCd = triggerSwitchStrike ? 0.34 : 0.22;
+    G.player.comboStep = 0;
+    G.player.comboResetTimer = 0;
+    G.player.isCharging = false;
+    G.player.chargeTime = 0;
+    G.player.chargeReadyPlayed = false;
+    G.player.activeAttack = null;
+    G.player.attackTimer = 0;
+    G.player.attackCd = 0;
+    G.player.shieldArmorTimer = 0;
+  }
+  G.worldState.equippedWeapon = w.id;
+  if (!silent && G.player) {
+    const px = G.player.x + G.player.w * 0.5;
+    const py = G.player.y + 24;
+    audio.playWeaponSwap(w.id);
+    spawnShockwave(px, py, triggerSwitchStrike ? 66 : 44, w.color, triggerSwitchStrike ? 3.2 : 2.4, 0.24);
+    spawnParticles(px, py, triggerSwitchStrike ? 18 : 12, { color: w.color, speed: triggerSwitchStrike ? 220 : 170, spark: true, life: 0.32 });
+    if (triggerSwitchStrike) {
+      triggerPlayerAttack('switch');
+    } else {
+      spawnFloatText(px, G.player.y - 34, t('combat.weaponSwap', isEn() ? w.nameEn : w.name), w.color, 18, 0.95);
+    }
+  }
+  G.saveDirtyTimer = Math.min(G.saveDirtyTimer > 0 ? G.saveDirtyTimer : 2.0, 2.0);
+  hooks.syncHUD(true);
+  return true;
+}
+
+export function cycleWeapon(step = 1) {
+  const unlocked = getUnlockedWeaponIds();
+  if (unlocked.length <= 1) return false;
+  const cur = getActiveWeaponId();
+  const idx = Math.max(0, unlocked.indexOf(cur));
+  const next = unlocked[(idx + step + unlocked.length) % unlocked.length];
+  return equipWeapon(next, false);
+}
 
 // Soulslike Corpse-Run: Drop held Echoes as a retrievable spectral Lantern Shade on death
 export function dropPlayerEchoesOnDeath(fromRiver = false) {
@@ -322,6 +375,7 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
       G.player.parryActive = false;
       G.player.parryCooldown = isRapidMidHit ? 0.02 : 0.03;
       G.player.riposteWindow = isComboFinisher ? 0.68 : 0.56; // Opens K -> J Cross Counter Slash!
+      G.player.switchStrikeWindow = 0.56; // Also opens K -> 1/2/3/X Switch Strike!
       // Tighter brace slide during multi-hit Boss combos keeps both fighters in sweet-spot range
       G.player.vx = dir * (isBossMultiHit ? 92 : 135);
       G.player.squashX = 0.82;
@@ -417,9 +471,10 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
       G.player.squashY = 1.14;
       const bx = G.player.x + G.player.w / 2 + G.player.facing * 16;
       const by = G.player.y + 24;
+      const chipMult = rs.blockChipMult || 1.0;
       if (vowStats.noGrayBlock && !isDummyHit) {
-        // Vow「无暇之誓」: No gray-HP rally cushion on mistimed block — 75% real chip damage!
-        const realChip = Math.max(1, Math.round(scaledDamage * 0.75));
+        // Vow「无暇之誓」: No gray-HP rally cushion on mistimed block — real chip scaled by weapon guard!
+        const realChip = Math.max(1, Math.round(scaledDamage * 0.75 * chipMult));
         G.player.hp = Math.max(0, G.player.hp - realChip);
         G.stats.damageTaken += realChip;
         if (G.echoSession) G.echoSession.damageTaken += realChip;
@@ -439,7 +494,7 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
         return;
       }
       const floorHp = isDummyHit ? Math.max(15, Math.round(G.player.maxHp * 0.25)) : 1;
-      const chip = Math.max(0, Math.min(G.player.hp - floorHp, Math.round(scaledDamage * 0.62)));
+      const chip = Math.max(0, Math.min(G.player.hp - floorHp, Math.round(scaledDamage * 0.62 * chipMult)));
       if (chip > 0) {
         G.player.hp -= chip;
         G.player.grayHp = Math.min(G.player.maxHp - G.player.hp, G.player.grayHp + chip);
@@ -461,6 +516,37 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
     spawnFloatText(G.player.x + G.player.w / 2, G.player.y - 34, t('combat.guardBreak'), COLORS.crimsonBright, 16, 0.7);
   } else if (G.player.parryActive && isUnparryable) {
     spawnFloatText(G.player.x + G.player.w / 2, G.player.y - 34, t('combat.perilBreak'), COLORS.crimsonBright, 18, 0.75);
+  }
+
+  // Shield Bash / Shield Charge Armored Guard (reduces damage & resists knockback/cancel on parryable hits!)
+  if (G.player.shieldArmorTimer > 0 && !isUnparryable) {
+    const armDmg = Math.max(1, Math.round(scaledDamage * (G.player.shieldArmorMult || 0.5)));
+    audio.playParry(false);
+    triggerHaptic('block', 0.85);
+    addShake(6);
+    G.player.iframeTimer = Math.max(G.player.iframeTimer, 0.28);
+    if (isDummyHit) {
+      attacker.hitPlayerDuringDrill = true;
+      const minTrainHp = Math.max(15, Math.round(G.player.maxHp * 0.25));
+      G.player.hp = Math.max(minTrainHp, G.player.hp - armDmg);
+    } else {
+      G.player.hp = Math.max(0, G.player.hp - armDmg);
+      G.stats.damageTaken += armDmg;
+      if (G.echoSession) G.echoSession.damageTaken += armDmg;
+    }
+    spawnImpactBurst(G.player.x + G.player.w / 2 + G.player.facing * 16, G.player.y + 24, 'block', 1.05);
+    spawnParticles(G.player.x + G.player.w / 2, G.player.y + 24, 14, { color: COLORS.goldBright, speed: 220, spark: true, life: 0.34 });
+    spawnFloatText(G.player.x + G.player.w / 2, G.player.y - 24, t('combat.shieldArmor', armDmg), COLORS.goldBright, 17, 0.75);
+    if (G.player.hp <= 0) {
+      if (tryTriggerKeeperBlessingSave()) return;
+      G.player.hp = 0;
+      G.player.deathTimer = 0.65;
+      G.player.vx = dir * 90;
+      G.player.vy = -120;
+      dropPlayerEchoesOnDeath(false);
+      scheduleOutcome(hooks.showDeath, 650, false);
+    }
+    return;
   }
 
   // Full Hit
@@ -669,23 +755,28 @@ export function performExecution(target) {
   spawnFloatText(cx, target.y - 30, t('combat.execution'), COLORS.crimsonBright, 26, 1.15);
 }
 
-export function getPlayerAttackBox(type) {
+export function getPlayerAttackBox(type, weaponId = getActiveWeaponId()) {
   const px = G.player.x + G.player.w / 2;
   const py = G.player.y + 26;
-  if (type === 'counter') {
-    return { x: px + (G.player.facing > 0 ? -12 : -118), y: py - 38, w: 130, h: 72 };
-  } else if (type === 'iai') {
-    return { x: px + (G.player.facing > 0 ? -24 : -136), y: py - 30, w: 160, h: 56 };
-  } else if (type === 'pogo') {
-    return { x: px - 36, y: G.player.y + G.player.h - 10, w: 72, h: 56 };
-  } else if (type === 'up') {
-    return { x: px - 42 + G.player.facing * 18, y: G.player.y - 54, w: 84, h: 76 };
-  } else if (type === 'slash3') {
-    return { x: px + (G.player.facing > 0 ? -6 : -96), y: py - 36, w: 102, h: 68 };
-  } else if (type === 'slash2') {
-    return { x: px + (G.player.facing > 0 ? -4 : -86), y: py - 24, w: 90, h: 50 };
+  const move = getWeaponMoveDef(weaponId, type);
+  const b = move.box || { fwd: 82, back: 4, top: 28, h: 54 };
+  if (b.radial) {
+    const r = b.radial;
+    return { x: px - r, y: py - r, w: r * 2, h: r * 2 };
   }
-  return { x: px + (G.player.facing > 0 ? -4 : -82), y: py - 28, w: 86, h: 54 };
+  if (b.pogo) {
+    return { x: px - b.w * 0.5, y: G.player.y + G.player.h - 10, w: b.w, h: b.h };
+  }
+  if (b.up) {
+    return { x: px - b.w * 0.5 + G.player.facing * 16, y: G.player.y - (b.h - 22), w: b.w, h: b.h };
+  }
+  const w = b.fwd + b.back;
+  return {
+    x: px + (G.player.facing > 0 ? -b.back : -b.fwd),
+    y: py - b.top,
+    w,
+    h: b.h
+  };
 }
 
 export function evaluatePlayerActiveAttack() {
@@ -694,7 +785,7 @@ export function evaluatePlayerActiveAttack() {
   if (atk.elapsed < atk.activeStart || atk.elapsed > atk.activeEnd) return;
 
   const px = G.player.x + G.player.w / 2;
-  const box = getPlayerAttackBox(atk.type);
+  const box = getPlayerAttackBox(atk.type, atk.weaponId);
 
   // Hit Enemies & Bosses (multi-frame sweep, deduplicated per swing via hitIds)
   const targets = getLivingFoes();
@@ -706,6 +797,7 @@ export function evaluatePlayerActiveAttack() {
       hitAny = true;
       const stepIdx = atk.type === 'slash3' ? 3 : atk.type === 'slash2' ? 2 : 1;
       audio.playHit(atk.heavy, stepIdx);
+      G.player.switchStrikeWindow = 0.44;
       triggerHaptic(atk.type === 'iai' || atk.type === 'counter' ? 'iai' : atk.heavy ? 'heavyHit' : 'lightHit');
       triggerHitstop(atk.type === 'iai' || atk.type === 'counter' ? 0.042 : atk.heavy ? 0.032 : 0.018, true);
       addShake(atk.heavy ? 7.5 : 3.8);
@@ -721,7 +813,7 @@ export function evaluatePlayerActiveAttack() {
         (foe.state === 'patrol' || foe.state === 'chase' || foe.state === 'recover')) ||
         ((foe.kind === 'boss2' || foe.kind === 'dummy') && foe.shieldUp && foe.state !== 'stagger' && foe.shieldBrokenTimer <= 0));
       const hitFromFront = (G.player.x + G.player.w / 2 - (foe.x + foe.w / 2)) * foe.facing > 0;
-      const canBreakShield = atk.type === 'iai' || atk.type === 'slash3' || atk.type === 'counter';
+      const canBreakShield = !!atk.breaksShield || atk.type === 'iai' || atk.type === 'slash3' || atk.type === 'counter';
       const bypassShield = atk.type === 'pogo' || !hitFromFront;
 
       const rs = getRelicStats();
@@ -803,7 +895,8 @@ export function evaluatePlayerActiveAttack() {
       G.player.soul = Math.min(G.player.maxSoul, G.player.soul + Math.round((atk.heavy ? 24 : 14) * rs.soulGainMult));
 
       if (!foe.isBoss && foe.state !== 'stagger') {
-        foe.vx = G.player.facing * (atk.heavy ? 180 : 95);
+        foe.vx = G.player.facing * (atk.knockbackVx || (atk.heavy ? 180 : 95));
+        if (atk.knockupVy && foe.kind !== 'wraith') foe.vy = Math.min(foe.vy, atk.knockupVy);
       }
 
       const hx = foe.x + foe.w / 2;
@@ -821,6 +914,9 @@ export function evaluatePlayerActiveAttack() {
                 : 0.78 * G.player.facing;
 
       // Razor-sharp slash wound flash across enemy silhouette
+      if (atk.shockwaveR) {
+        spawnShockwave(hx, hy, atk.shockwaveR, COLORS.goldBright, 4.2, 0.26);
+      }
       if (atk.type === 'counter') {
         spawnHitMark(hx, hy, -0.68, COLORS.goldBright, 92, 8);
         spawnHitMark(hx, hy, 0.68, COLORS.crimsonBright, 86, 7);
@@ -960,7 +1056,7 @@ export function evaluatePlayerActiveAttack() {
       if (aabbOverlap(box, w)) {
         atk.hitIds.add(w.id);
         hitAny = true;
-        damageSecretWall(w, atk.heavy ? 2 : 1);
+        damageSecretWall(w, atk.wallDmg || (atk.heavy ? 2 : 1));
       }
     }
     if (!G.worldState.shortcutOpen && !atk.hitIds.has('lever_skyway')) {
@@ -1019,45 +1115,202 @@ export function evaluatePlayerSealLunge() {
   }
 }
 
+function spawnWeaponMoveProjectiles(weapon, move, px, py) {
+  const p = move.projectile;
+  if (!p) return;
+  const rs = getRelicStats();
+  const bladeMult = getBladeDamageMult();
+  const count = p.count || 1;
+  const dmg = Math.round(p.dmg * bladeMult * (p.kind === 'bellHoming' ? rs.heavySkillMult : 1));
+  if (p.kind === 'bellHoming') {
+    const angles = count === 3 ? [-0.42, 0, 0.42] : [0];
+    for (let i = 0; i < angles.length; i++) {
+      const baseA = (G.player.facing > 0 ? 0 : Math.PI) + angles[i];
+      G.projectiles.push({
+        owner: 'player',
+        kind: 'bellHoming',
+        x: px + G.player.facing * 22,
+        y: py - 4 + (i - 1) * 10,
+        vx: Math.cos(baseA) * p.speed,
+        vy: Math.sin(baseA) * p.speed,
+        speed: p.speed,
+        r: p.r || 12,
+        dmg,
+        posture: p.posture || 12,
+        breaksShield: !!p.breaksShield,
+        soulOnHit: p.soulOnHit || 10,
+        life: p.life || 1.05,
+        maxLife: p.life || 1.05,
+        facing: G.player.facing,
+        hitIds: new Set()
+      });
+    }
+    spawnShockwave(px + G.player.facing * 18, py, 64, COLORS.cyanBright, 3.2, 0.24);
+  } else if (p.kind === 'hammerWave') {
+    G.projectiles.push({
+      owner: 'player',
+      kind: 'hammerWave',
+      x: px + G.player.facing * 32,
+      y: G.player.y + G.player.h - 14,
+      vx: G.player.facing * p.speed,
+      vy: 0,
+      r: p.r || 28,
+      dmg,
+      posture: p.posture || 30,
+      heavy: true,
+      breaksShield: true,
+      soulOnHit: p.soulOnHit || 12,
+      life: p.life || 0.62,
+      maxLife: p.life || 0.62,
+      facing: G.player.facing,
+      hitIds: new Set()
+    });
+  } else if (p.kind === 'bellWave') {
+    for (let i = 0; i < count; i++) {
+      const offY = count > 1 ? (i === 0 ? -(p.spreadY || 14) : (p.spreadY || 14)) : 0;
+      const offX = count > 1 ? (i * 14) : 0;
+      G.projectiles.push({
+        owner: 'player',
+        kind: 'bellWave',
+        x: px + G.player.facing * (24 + offX),
+        y: py + offY,
+        vx: G.player.facing * p.speed,
+        vy: count > 1 ? (i === 0 ? -38 : 38) : 0,
+        r: Math.round((p.r || 16) * rs.spellRadiusMult),
+        dmg,
+        posture: p.posture || 10,
+        heavy: !!p.heavy,
+        breaksShield: !!p.breaksShield,
+        soulOnHit: p.soulOnHit || 8,
+        life: p.life || 0.45,
+        maxLife: p.life || 0.45,
+        facing: G.player.facing,
+        hitIds: new Set()
+      });
+    }
+  }
+}
+
 export function triggerPlayerAttack(type) {
+  const weapon = getActiveWeapon();
+  const weaponId = weapon.id;
+  const move = getWeaponMoveDef(weaponId, type);
+
   G.player.attackType = type;
-  G.player.attackDuration = type === 'iai' || type === 'counter' ? 0.24 : type === 'slash3' ? 0.26 : 0.19;
-  G.player.attackTimer = G.player.attackDuration;
-  G.player.attackCd = type === 'slash3' ? 0.28 : 0.17;
+  G.player.attackDuration = move.dur;
+  G.player.attackTimer = move.dur;
+  G.player.attackCd = move.cd;
   G.player.parryActive = false;
 
   const px = G.player.x + G.player.w / 2;
   const py = G.player.y + 26;
-  let dmg = 20;
-  let posture = 12;
-  let rally = 10;
-  let heavy = false;
-  let activeEnd = 0.11;
 
-  if (type === 'counter') {
-    audio.playCounterSlash();
-    G.player.vx = G.player.facing * 360;
-    G.player.iframeTimer = Math.max(G.player.iframeTimer, 0.16);
+  if (move.iframe) G.player.iframeTimer = Math.max(G.player.iframeTimer, move.iframe);
+  if (move.guardArmor) {
+    G.player.shieldArmorTimer = Math.max(G.player.shieldArmorTimer || 0, move.guardArmor);
+    G.player.shieldArmorMult = move.armorMult || 0.5;
+  }
+  if (move.lungeTimer) {
+    G.player.iaiLungeTimer = move.lungeTimer;
+  }
+  if (move.lungeVx) {
+    G.player.vx = G.player.facing * move.lungeVx;
+  }
+
+  // Tactile Audio, Squash, Camera & Special Effects per Archetype Move
+  if (type === 'switch') {
+    if (weaponId === 'hammer') {
+      audio.playShieldBash(true);
+      addShake(11);
+      punchZoom(1.036);
+      spawnShockwave(px + G.player.facing * 36, G.player.y + G.player.h - 4, move.shockwaveR || 120, COLORS.goldBright, 4.4, 0.30);
+      spawnParticles(px + G.player.facing * 40, G.player.y + G.player.h - 2, 16, { color: COLORS.goldBright, speed: 230, grav: 340, spark: true, life: 0.38 });
+    } else if (weaponId === 'bell') {
+      audio.playBellChimeCast(3);
+      addShake(6);
+      if (G.player.grounded) G.player.vy = -190;
+    } else {
+      audio.playIaiSlash();
+      addShake(7.5);
+      punchZoom(1.03);
+    }
+    if (move.bonusSoul) {
+      G.player.soul = Math.min(G.player.maxSoul, G.player.soul + Math.round(move.bonusSoul * getRelicStats().soulGainMult));
+    }
+    G.player.squashX = weaponId === 'bell' ? 0.84 : 1.26;
+    G.player.squashY = weaponId === 'bell' ? 1.20 : 0.80;
+    triggerHaptic('iai', 0.88);
+    if (move.floatKey) spawnFloatText(px, G.player.y - 34, t(move.floatKey), weapon.color, 20, 0.85);
+  } else if (type === 'counter') {
+    if (weaponId === 'bell') {
+      audio.playBellQuake();
+      spawnShockwave(px, py, 165, COLORS.cyanBright, 4.4, 0.32);
+      spawnShockwave(px, py, 110, COLORS.goldBright, 2.8, 0.24);
+    } else if (weaponId === 'hammer') {
+      audio.playShieldBash(true);
+      audio.playBellToll();
+      spawnShockwave(px + G.player.facing * 32, G.player.y + G.player.h - 4, move.shockwaveR || 148, COLORS.goldBright, 5.0, 0.34);
+      spawnParticles(px + G.player.facing * 42, G.player.y + G.player.h - 2, 22, { color: COLORS.goldBright, speed: 280, grav: 380, spark: true, life: 0.44 });
+    } else {
+      audio.playCounterSlash();
+    }
     G.player.squashX = 1.24;
     G.player.squashY = 0.84;
-    dmg = 42; posture = 36; rally = 26; heavy = true; activeEnd = 0.14;
-    addShake(8.5);
-    kickCamera(G.player.facing * 7, 0);
-    punchZoom(1.032);
-    spawnFloatText(px, G.player.y - 24, t('combat.riposte'), COLORS.goldBright, 20, 0.72);
+    addShake(weaponId === 'hammer' ? 13 : 8.5);
+    kickCamera(G.player.facing * (weaponId === 'hammer' ? 9 : 7), weaponId === 'hammer' ? 4 : 0);
+    punchZoom(weaponId === 'hammer' ? 1.044 : 1.034);
+    if (move.bonusSoul) {
+      G.player.soul = Math.min(G.player.maxSoul, G.player.soul + Math.round(move.bonusSoul * getRelicStats().soulGainMult));
+    }
+    if (move.disperseOrbs) {
+      const r = (move.box && move.box.radial) || 165;
+      for (const pr of G.projectiles) {
+        if (pr.owner === 'enemy' && pr.life > 0 && Math.hypot(pr.x - px, pr.y - py) <= r + pr.r) {
+          pr.life = 0;
+          spawnParticles(pr.x, pr.y, 12, { color: COLORS.cyanBright, speed: 200, spark: true });
+        }
+      }
+    }
+    if (move.ringProps) {
+      const r = (move.box && move.box.radial) || 165;
+      for (const l of G.lanterns) {
+        const lx = l.x + Math.sin(l.angle) * l.len;
+        const ly = l.anchorY + Math.cos(l.angle) * l.len;
+        if (Math.hypot(lx - px, ly - py) <= r + 35) {
+          l.angVel += (lx >= px ? 1 : -1) * 7.0;
+          l.ringFlash = 0.5;
+          tryQuellChapelTideByLantern(l, lx, ly);
+        }
+      }
+      if (G.resonancePuzzles) {
+        for (const pz of G.resonancePuzzles) {
+          for (const b of pz.bells) {
+            if (Math.hypot(b.x - px, b.y - py) <= r + 40) ringResonanceBell(pz, b, b.x >= px ? 1 : -1);
+          }
+        }
+      }
+    }
+    if (move.floatKey) spawnFloatText(px, G.player.y - 26, t(move.floatKey), weaponId === 'bell' ? COLORS.cyanBright : COLORS.goldBright, 20, 0.78);
   } else if (type === 'iai') {
-    audio.playIaiSlash();
-    G.player.iaiLungeTimer = 0.15;
-    G.player.iframeTimer = Math.max(G.player.iframeTimer, 0.16);
-    G.player.vx = G.player.facing * 720;
-    G.player.squashX = 1.32;
-    G.player.squashY = 0.78;
-    dmg = 48; posture = 32; rally = 20; heavy = true; activeEnd = 0.17;
-    addShake(9.5);
-    kickCamera(G.player.facing * 9, 0);
-    punchZoom(1.038);
-    triggerHaptic('iai');
-    spawnParticles(px, py, 16, { color: COLORS.goldBright, speed: 240, spark: true, angle: G.player.facing > 0 ? Math.PI : 0, spread: 0.65, life: 0.34 });
+    if (weaponId === 'bell') {
+      audio.playBellChimeCast(3);
+      audio.playSoulCast();
+    } else if (weaponId === 'hammer') {
+      audio.playShieldBash(true);
+      audio.playBellQuake();
+      spawnShockwave(px + G.player.facing * 42, G.player.y + G.player.h - 4, move.shockwaveR || 140, COLORS.goldBright, 5.2, 0.36);
+      spawnParticles(px + G.player.facing * 44, G.player.y + G.player.h - 2, 26, { color: COLORS.goldBright, speed: 300, grav: 420, spark: true, life: 0.48 });
+      spawnParticles(px + G.player.facing * 44, G.player.y + G.player.h - 2, 14, { color: COLORS.parchment, speed: 190, grav: 380, life: 0.42 });
+    } else {
+      audio.playIaiSlash();
+    }
+    G.player.squashX = weaponId === 'bell' ? 0.86 : 1.32;
+    G.player.squashY = weaponId === 'bell' ? 1.18 : 0.78;
+    addShake(weaponId === 'hammer' ? 14 : 9.5);
+    kickCamera(G.player.facing * (weaponId === 'bell' ? -5 : 9), weaponId === 'hammer' ? 5 : 0);
+    punchZoom(weaponId === 'hammer' ? 1.046 : 1.038);
+    triggerHaptic('iai', weaponId === 'hammer' ? 1.2 : 1.0);
+    spawnParticles(px, py, 16, { color: weapon.color, speed: 240, spark: true, angle: G.player.facing > 0 ? Math.PI : 0, spread: 0.65, life: 0.34 });
     const rsIai = getRelicStats();
     if (rsIai.synBloodIai && G.player.grayHp >= 1) {
       G.projectiles.push({
@@ -1077,45 +1330,63 @@ export function triggerPlayerAttack(type) {
       });
       spawnShockwave(px + G.player.facing * 18, py, 64, COLORS.crimsonBright, 3.6, 0.24);
       spawnFloatText(px, G.player.y - 26, t('combat.synBloodIai'), COLORS.crimsonBright, 22, 0.95);
-    } else {
-      spawnFloatText(px, G.player.y - 24, t('combat.iai'), COLORS.goldBright, 21, 0.78);
+    } else if (move.floatKey) {
+      spawnFloatText(px, G.player.y - 24, t(move.floatKey), weaponId === 'bell' ? COLORS.cyanBright : COLORS.goldBright, 21, 0.80);
     }
   } else if (type === 'pogo') {
-    audio.playSlash(1.22, false);
+    if (weaponId === 'bell') audio.playResonanceBell(493.88, false);
+    else if (weaponId === 'hammer') audio.playShieldBash(false);
+    else audio.playSlash(1.22, false);
     G.player.squashX = 0.88;
     G.player.squashY = 1.14;
-    dmg = 22; posture = 14; rally = 12; activeEnd = 0.16;
   } else if (type === 'up') {
-    audio.playSlash(1.18, false);
+    if (weaponId === 'bell') audio.playResonanceBell(587.33, false);
+    else if (weaponId === 'hammer') audio.playSlash(0.76, true);
+    else audio.playSlash(1.18, false);
     G.player.squashX = 0.88;
     G.player.squashY = 1.16;
-    dmg = 24; posture = 15; rally = 12; activeEnd = 0.12;
   } else if (type === 'slash3') {
-    audio.playSlash(0.84, true);
-    G.player.vx = G.player.facing * 240;
-    G.player.squashX = 1.18;
-    G.player.squashY = 0.86;
-    dmg = 30; posture = 22; rally = 15; heavy = true; activeEnd = 0.14;
+    if (weaponId === 'bell') {
+      audio.playBellChimeCast(3);
+    } else {
+      audio.playSlash(0.84, true);
+    }
+    G.player.squashX = weaponId === 'bell' ? 0.90 : 1.20;
+    G.player.squashY = weaponId === 'bell' ? 1.14 : 0.86;
     if (G.player.grounded) {
-      spawnParticles(px + G.player.facing * 42, G.player.y + G.player.h - 2, 10, { color: COLORS.parchment, speed: 150, grav: 320, angle: -Math.PI * 0.5, spread: 1.2, life: 0.32 });
+      spawnParticles(px + G.player.facing * 42, G.player.y + G.player.h - 2, 10, { color: weapon.color, speed: 150, grav: 320, angle: -Math.PI * 0.5, spread: 1.2, life: 0.32 });
     }
   } else if (type === 'slash2') {
-    audio.playSlash(1.08, false);
-    G.player.vx = G.player.facing * 130;
-    G.player.squashX = 1.10;
-    G.player.squashY = 0.92;
-    dmg = 21; posture = 12; rally = 11; activeEnd = 0.11;
+    if (weaponId === 'bell') {
+      audio.playBellChimeCast(2);
+    } else if (weaponId === 'hammer') {
+      audio.playShieldBash(true);
+      addShake(9.5);
+      kickCamera(G.player.facing * 5, 4);
+      spawnShockwave(px + G.player.facing * 44, G.player.y + G.player.h - 4, move.shockwaveR || 110, COLORS.goldBright, 4.2, 0.28);
+      spawnParticles(px + G.player.facing * 48, G.player.y + G.player.h - 2, 18, { color: COLORS.goldBright, speed: 220, grav: 360, spark: true, life: 0.38 });
+      if (move.floatKey) spawnFloatText(px, G.player.y - 24, t(move.floatKey), COLORS.goldBright, 18, 0.65);
+    } else {
+      audio.playSlash(1.08, false);
+    }
+    G.player.squashX = weaponId === 'hammer' ? 1.26 : 1.10;
+    G.player.squashY = weaponId === 'hammer' ? 0.78 : 0.92;
   } else {
-    audio.playSlash(0.98, false);
-    G.player.vx = G.player.facing * 105;
-    G.player.squashX = 1.08;
-    G.player.squashY = 0.94;
-    dmg = 19; posture = 11; rally = 10; activeEnd = 0.11;
+    if (weaponId === 'bell') audio.playBellChimeCast(1);
+    else if (weaponId === 'hammer') {
+      audio.playSlash(0.72, true);
+      addShake(4.5);
+    } else audio.playSlash(0.98, false);
+    G.player.squashX = weaponId === 'hammer' ? 1.18 : 1.08;
+    G.player.squashY = weaponId === 'hammer' ? 0.86 : 0.94;
   }
 
-  const slashOffX = type === 'pogo' ? 0 : type === 'iai' ? 0 : G.player.facing * 26;
+  // Spawn Bell Staff harmonic rings / homing darts if defined on this move
+  spawnWeaponMoveProjectiles(weapon, move, px, py);
+
+  const slashOffX = type === 'pogo' ? 0 : (type === 'iai' && weaponId === 'blade') ? 0 : (move.box && move.box.radial) ? 0 : G.player.facing * 26;
   const slashOffY = type === 'pogo' ? 40 : type === 'up' ? -34 : 0;
-  const slashLife = type === 'iai' ? 0.34 : type === 'counter' ? 0.28 : type === 'slash3' ? 0.23 : 0.19;
+  const slashLife = move.slashLife || 0.20;
   G.slashes.push({
     x: px + slashOffX,
     y: py + slashOffY,
@@ -1123,23 +1394,30 @@ export function triggerPlayerAttack(type) {
     x1: px + G.player.facing * 135,
     offX: slashOffX,
     offY: slashOffY,
-    followPlayer: type !== 'iai' && type !== 'counter',
-    isIaiTrack: type === 'iai',
+    followPlayer: type !== 'iai' && type !== 'counter' && type !== 'switch',
+    isIaiTrack: (type === 'iai' || type === 'switch') && weaponId === 'blade',
     facing: G.player.facing,
-    type,
+    type: move.slashType || type,
+    weaponId,
     life: slashLife,
     maxLife: slashLife
   });
 
   G.player.activeAttack = {
     type,
-    dmg,
-    posture,
-    rally,
-    heavy,
+    weaponId,
+    dmg: move.dmg,
+    posture: move.posture,
+    rally: move.rally,
+    heavy: !!move.heavy,
+    breaksShield: !!move.breaksShield,
+    shockwaveR: move.shockwaveR || 0,
+    knockbackVx: move.knockbackVx || 0,
+    knockupVy: move.knockupVy || 0,
+    wallDmg: move.wallDmg || 0,
     elapsed: 0,
     activeStart: 0,
-    activeEnd,
+    activeEnd: move.activeEnd,
     hitIds: new Set(),
     pogoBounced: false,
     recoiled: false
@@ -1495,6 +1773,22 @@ export function collectPickup(p) {
     spawnShockwave(p.x, p.y - 26, 175, COLORS.goldBright, 5.5, 0.55);
     triggerBossBanner(t('combat.dawnBannerTitle'), t('combat.dawnBannerQuote'), COLORS.goldBright, 3.0);
     spawnFloatText(p.x, p.y - 58, `${pkName} · ${pkDesc}`, COLORS.goldBright, 20, 2.3);
+  } else if (p.kind === 'weapon') {
+    const wDef = getWeaponById(p.weaponId || 'bell');
+    const isNewW = unlockWeapon(wDef.id);
+    if (!isNewW) {
+      const ngEcho = Math.round(260 * getCombatScaling(false).echoMult);
+      G.worldState.echoes = (G.worldState.echoes || 0) + ngEcho;
+      spawnFloatText(p.x, p.y - 54, t('combat.ngWeaponDup', ngEcho), COLORS.goldBright, 19, 1.95);
+    } else {
+      G.worldState.equippedWeapon = wDef.id;
+      audio.playWeaponSwap(wDef.id);
+      punchZoom(1.05);
+      spawnShockwave(p.x, p.y - 26, 170, wDef.color, 5.2, 0.52);
+      const wName = isEn() ? wDef.nameEn : wDef.name;
+      triggerBossBanner(t('combat.weaponUnlockBanner', wName), isEn() ? wDef.tagEn : wDef.tag, wDef.color, 3.0);
+      spawnFloatText(p.x, p.y - 58, `${pkName} · ${pkDesc}`, wDef.color, 20, 2.3);
+    }
   } else if (p.kind === 'relic') {
     if (G.worldState.unlockedRelics.has(p.relicId)) {
       const ngEcho = Math.round(220 * getCombatScaling(false).echoMult);

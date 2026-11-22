@@ -2937,3 +2937,283 @@
   body.lang-en .aux-btn {
     font-size: 10px;
   }
+
+  /* ==================== v20.0 THREE-WEAPON HUD & ALTAR ARMORY ==================== */
+  .weapon-hud-bar {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 4px;
+    pointer-events: auto;
+  }
+
+  .weapon-hud-slot {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 7px 3px 5px;
+    border-radius: 5px;
+    background: rgba(10, 14, 22, 0.78);
+    border: 1px solid rgba(216, 207, 184, 0.24);
+    color: var(--parchment-dim);
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.14s ease;
+    pointer-events: auto;
+    user-select: none;
+  }
+
+  .weapon-hud-slot:hover {
+    border-color: rgba(245, 158, 11, 0.65);
+    color: var(--parchment);
+  }
+
+  .weapon-hud-slot.active {
+    background: linear-gradient(135deg, rgba(44, 32, 16, 0.90), rgba(14, 18, 28, 0.92));
+    border-color: var(--gold-bright);
+    color: var(--gold-bright);
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.28);
+  }
+
+  .weapon-hud-slot.active[data-weapon="bell"] {
+    background: linear-gradient(135deg, rgba(12, 42, 62, 0.90), rgba(12, 18, 30, 0.92));
+    border-color: var(--cyan-bright);
+    color: var(--cyan-bright);
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.30);
+  }
+
+  .weapon-hud-slot.active[data-weapon="blade"] {
+    background: linear-gradient(135deg, rgba(36, 32, 26, 0.90), rgba(14, 18, 28, 0.92));
+    border-color: var(--parchment);
+    color: #fef9c3;
+    box-shadow: 0 0 10px rgba(230, 222, 200, 0.26);
+  }
+
+  .weapon-hud-key {
+    font-family: ui-monospace, monospace;
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 0 3.5px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    color: inherit;
+    opacity: 0.85;
+  }
+
+  .weapon-hud-ico {
+    width: 17px;
+    height: 17px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .weapon-hud-ico .weapon-svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  .weapon-hud-name {
+    letter-spacing: 0.5px;
+    font-weight: 600;
+  }
+
+  body.is-mobile .weapon-hud-bar {
+    gap: 4px;
+    margin-top: 3px;
+  }
+
+  body.is-mobile .weapon-hud-slot {
+    padding: 3px 6px 3px 4px;
+    font-size: 10px;
+  }
+
+  body.is-mobile .weapon-hud-key {
+    display: none;
+  }
+
+  /* Altar Armory Section */
+  .armory-section {
+    margin: 2px 0 14px;
+    padding: 10px 12px;
+    border-radius: 9px;
+    background: rgba(10, 14, 22, 0.68);
+    border: 1px solid rgba(216, 207, 184, 0.22);
+    text-align: left;
+  }
+
+  .armory-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    letter-spacing: 1.6px;
+    color: var(--gold-bright);
+  }
+
+  .armory-sub {
+    font-size: 11px;
+    letter-spacing: 0.4px;
+    color: var(--parchment-dim);
+  }
+
+  .armory-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  @media (max-width: 680px) {
+    .armory-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .weapon-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: left;
+    padding: 10px 11px;
+    border-radius: 8px;
+    background: linear-gradient(150deg, rgba(18, 22, 34, 0.90), rgba(10, 13, 20, 0.95));
+    border: 1px solid rgba(216, 207, 184, 0.26);
+    color: var(--parchment);
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.16s ease;
+  }
+
+  .weapon-card:hover {
+    border-color: var(--gold);
+    transform: translateY(-1px);
+  }
+
+  .weapon-card.equipped {
+    border-color: var(--gold-bright);
+    background: linear-gradient(150deg, rgba(46, 32, 16, 0.88), rgba(16, 18, 28, 0.96));
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.24);
+  }
+
+  .weapon-card.equipped[data-weapon="bell"] {
+    border-color: var(--cyan-bright);
+    background: linear-gradient(150deg, rgba(12, 42, 62, 0.88), rgba(12, 18, 30, 0.96));
+    box-shadow: 0 0 14px rgba(56, 189, 248, 0.24);
+  }
+
+  .weapon-card-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .weapon-card-ico {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+  }
+
+  .weapon-card-ico .weapon-svg {
+    width: 34px;
+    height: 34px;
+  }
+
+  .weapon-card-title-wrap {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .weapon-card-name {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--parchment);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+  }
+
+  .weapon-card.equipped .weapon-card-name {
+    color: var(--gold-bright);
+  }
+
+  .weapon-card.equipped[data-weapon="bell"] .weapon-card-name {
+    color: var(--cyan-bright);
+  }
+
+  .weapon-card-tag {
+    font-size: 11px;
+    color: var(--parchment-dim);
+    margin-top: 1px;
+  }
+
+  .weapon-card-pill {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(216, 207, 184, 0.35);
+    color: var(--parchment-dim);
+    white-space: nowrap;
+  }
+
+  .weapon-card.equipped .weapon-card-pill {
+    background: rgba(245, 158, 11, 0.22);
+    border-color: var(--gold-bright);
+    color: var(--gold-bright);
+  }
+
+  .weapon-card.equipped[data-weapon="bell"] .weapon-card-pill {
+    background: rgba(56, 189, 248, 0.20);
+    border-color: var(--cyan-bright);
+    color: var(--cyan-bright);
+  }
+
+  .weapon-card-traits {
+    margin: 0;
+    padding-left: 14px;
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--parchment-dim);
+  }
+
+  .weapon-card-traits li {
+    margin: 1px 0;
+  }
+
+  .weapon-card.locked {
+    opacity: 0.60;
+    cursor: default;
+    border-style: dashed;
+    border-color: rgba(148, 163, 184, 0.30);
+  }
+
+  .weapon-card.locked:hover {
+    border-color: rgba(148, 163, 184, 0.30);
+    transform: none;
+  }
+
+  .weapon-card-hint {
+    font-size: 11px;
+    line-height: 1.48;
+    color: var(--parchment-dim);
+  }
+
+  .smith-card.weapon-forge-card.ready {
+    border-color: rgba(253, 224, 71, 0.78);
+    background: linear-gradient(145deg, rgba(64, 38, 12, 0.62), rgba(16, 16, 26, 0.94));
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.25);
+  }
+
+  .smith-card.weapon-forge-card.done {
+    border-color: rgba(56, 189, 248, 0.42);
+    background: rgba(10, 18, 28, 0.78);
+  }
+
+  .smith-card.weapon-forge-card.locked {
+    opacity: 0.68;
+    border-style: dashed;
+  }

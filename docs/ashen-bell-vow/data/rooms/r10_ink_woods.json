@@ -1,0 +1,508 @@
+{
+  "schemaVersion": 1,
+  "id": "r10_ink_woods",
+  "zoneName": "枯墨古林",
+  "name": "枯墨古林",
+  "theme": "forest",
+  "bounds": {
+    "x": 0,
+    "y": 740,
+    "w": 1980,
+    "h": 780
+  },
+  "subZones": [
+    {
+      "name": "枯墨古林 · 归坛古根井",
+      "x": 0,
+      "y": 0,
+      "w": 640,
+      "h": 780
+    },
+    {
+      "name": "枯墨古林 · 荧光孢伞林",
+      "x": 640,
+      "y": 0,
+      "w": 720,
+      "h": 780
+    },
+    {
+      "name": "枯墨古林 · 沉根幽窟",
+      "x": 1360,
+      "y": 0,
+      "w": 620,
+      "h": 780
+    }
+  ],
+  "connections": [
+    "r06_crypt",
+    "r01_sanctuary"
+  ],
+  "solids": [
+    {
+      "x": 0,
+      "y": 640,
+      "w": 1980,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 20,
+      "y": 470,
+      "w": 230,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 145,
+      "y": 310,
+      "w": 180,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 150,
+      "y": 150,
+      "w": 140,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 470,
+      "y": 510,
+      "w": 185,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 740,
+      "y": 420,
+      "w": 200,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1030,
+      "y": 320,
+      "w": 210,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1350,
+      "y": 475,
+      "w": 195,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1580,
+      "y": 360,
+      "w": 225,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 720,
+      "y": 195,
+      "w": 250,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 20,
+      "y": 510,
+      "w": 220,
+      "h": 22,
+      "type": "pillar"
+    }
+  ],
+  "crumblePlatforms": [
+    {
+      "id": "crumble_forest_1",
+      "x": 1150,
+      "y": 515,
+      "w": 115,
+      "h": 20
+    }
+  ],
+  "windZones": [],
+  "bouncePads": [
+    {
+      "id": "bp_forest_1",
+      "x": 1650,
+      "y": 640,
+      "w": 78,
+      "h": 26,
+      "boostVy": -790
+    },
+    {
+      "id": "bp_forest_2",
+      "x": 965,
+      "y": 640,
+      "w": 82,
+      "h": 28,
+      "boostVy": -840
+    },
+    {
+      "id": "bp_forest_3",
+      "x": 635,
+      "y": 640,
+      "w": 78,
+      "h": 26,
+      "boostVy": -780
+    },
+    {
+      "id": "bp_forest_4",
+      "x": 355,
+      "y": 640,
+      "w": 78,
+      "h": 26,
+      "boostVy": -820
+    }
+  ],
+  "altars": [
+    {
+      "id": "altar_forest",
+      "x": 1125,
+      "y": 320,
+      "name": "枯墨古林 · 根窟祭坛",
+      "shortName": "古林 · 根窟坛",
+      "defaultLit": false
+    }
+  ],
+  "npcs": [],
+  "loreTablets": [
+    {
+      "id": "lore_forest",
+      "x": 540,
+      "y": 510,
+      "title": "古林根录",
+      "sub": "枯墨古林 · 巨木残碑",
+      "html": "“圣城筑于千丈古林之上。地脉浸染墨蚀后，枯木仍以荧光孢伞吐纳微薄灵气，托举迷途旅人。<br><br>顺着最西侧盘根暗井破开树根封壁，便可径直攀回<strong>起点熄灯祭坛</strong>——老铸钟匠的铁砧就在咫尺之上。”"
+    }
+  ],
+  "gates": [],
+  "secretWalls": [
+    {
+      "id": "wall_forest_shaft",
+      "x": 150,
+      "y": 0,
+      "w": 105,
+      "h": 34,
+      "maxHp": 2
+    }
+  ],
+  "pickups": [
+    {
+      "id": "pickup_core_forest",
+      "kind": "statCore",
+      "requiresPuzzle": "puzzle_forest",
+      "bonusHp": 20,
+      "bonusSoul": 20,
+      "echoAmount": 260,
+      "x": 845,
+      "y": 195,
+      "name": "古林秘宝 · 莹孢灵实",
+      "desc": "生命上限 +20、魂火上限 +20，并获 +260 残响！"
+    },
+    {
+      "id": "pickup_echo_forest",
+      "kind": "echoCache",
+      "echoAmount": 280,
+      "x": 92,
+      "y": 640,
+      "name": "根窟古钟残响匣",
+      "desc": "穿过暗蚀结界寻得的巨量残响（+280）！"
+    }
+  ],
+  "resonancePuzzles": [
+    {
+      "id": "puzzle_forest",
+      "name": "枯墨古林 · 三钟共鸣",
+      "timeLimit": 7.5,
+      "cageX": 845,
+      "cageY": 195,
+      "bells": [
+        {
+          "id": "rb_f1",
+          "x": 620,
+          "y": 290,
+          "topY": 0,
+          "noteFreq": 329.63
+        },
+        {
+          "id": "rb_f2",
+          "x": 845,
+          "y": 335,
+          "topY": 0,
+          "noteFreq": 440.0
+        },
+        {
+          "id": "rb_f3",
+          "x": 1065,
+          "y": 215,
+          "topY": 0,
+          "noteFreq": 523.25
+        }
+      ]
+    }
+  ],
+  "pendulums": [],
+  "rivers": [
+    {
+      "id": "river_forest_1",
+      "x": 1220,
+      "y": 628,
+      "w": 240
+    }
+  ],
+  "grappleAnchors": [
+    {
+      "id": "anc_forest_1",
+      "x": 1445,
+      "y": 240,
+      "topY": 0
+    },
+    {
+      "id": "anc_forest_2",
+      "x": 850,
+      "y": 90,
+      "topY": 0
+    },
+    {
+      "id": "anc_forest_3",
+      "x": 205,
+      "y": 85,
+      "topY": 0
+    }
+  ],
+  "lanterns": [
+    {
+      "id": "lan_forest_1",
+      "x": 1335,
+      "anchorY": 165,
+      "topY": 0,
+      "len": 165,
+      "angle": 0.06
+    },
+    {
+      "id": "lan_forest_2",
+      "x": 455,
+      "anchorY": 140,
+      "topY": 0,
+      "len": 150,
+      "angle": -0.06
+    }
+  ],
+  "enemies": [
+    {
+      "id": "leech_forest_1",
+      "kind": "leech",
+      "x": 1520,
+      "y": 8
+    },
+    {
+      "id": "leech_forest_2",
+      "kind": "leech",
+      "x": 1295,
+      "y": 8
+    },
+    {
+      "id": "leech_forest_3",
+      "kind": "leech",
+      "x": 580,
+      "y": 8
+    },
+    {
+      "id": "priest_forest_1",
+      "kind": "priest",
+      "x": 1695,
+      "y": 294
+    },
+    {
+      "id": "duelist_forest_1",
+      "kind": "duelist",
+      "x": 1760,
+      "y": 580,
+      "minX": 1500,
+      "maxX": 1920
+    },
+    {
+      "id": "golem_forest_1",
+      "kind": "golem",
+      "x": 780,
+      "y": 562,
+      "minX": 670,
+      "maxX": 930
+    },
+    {
+      "id": "duelist_forest_2",
+      "kind": "duelist",
+      "x": 460,
+      "y": 580,
+      "minX": 295,
+      "maxX": 605
+    }
+  ],
+  "bosses": [],
+  "inscriptions": [
+    {
+      "x": 1825,
+      "y": 555,
+      "text": "「枯墨古林 · 踩踏荧光孢伞可借势腾跃」"
+    },
+    {
+      "x": 845,
+      "y": 385,
+      "text": "「限时齐鸣三口青铜悬钟 · 可用 W+法 镇魂钟鸣」",
+      "dynamicKey": "bellPuzzle",
+      "hideWhenPuzzleSolved": "puzzle_forest"
+    },
+    {
+      "x": 205,
+      "y": 92,
+      "text": "「斩断上方枯根封壁 · 直返起点熄灯祭坛 ↑」"
+    }
+  ],
+  "props": {
+    "puddles": [],
+    "banners": [],
+    "candles": [
+      {
+        "x": 1095,
+        "y": 320,
+        "count": 4
+      },
+      {
+        "x": 510,
+        "y": 510,
+        "count": 3
+      }
+    ],
+    "boneCairns": [
+      420,
+      1520
+    ],
+    "stamps": [
+      {
+        "type": "ink_tree",
+        "x": 290,
+        "y": 640,
+        "scale": 1.15,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.82,
+        "seed": 0
+      },
+      {
+        "type": "canopy_bough",
+        "x": 440,
+        "y": 0,
+        "scale": 1.1,
+        "flip": false,
+        "layer": "fg",
+        "alpha": 0.56,
+        "seed": 1
+      },
+      {
+        "type": "glow_spores",
+        "x": 520,
+        "y": 640,
+        "scale": 0.92,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.9,
+        "seed": 0
+      },
+      {
+        "type": "ink_tree",
+        "x": 760,
+        "y": 640,
+        "scale": 1.24,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.8,
+        "seed": 2
+      },
+      {
+        "type": "glow_spores",
+        "x": 860,
+        "y": 640,
+        "scale": 1.05,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.92,
+        "seed": 1
+      },
+      {
+        "type": "canopy_bough",
+        "x": 1010,
+        "y": 0,
+        "scale": 1.15,
+        "flip": true,
+        "layer": "fg",
+        "alpha": 0.54,
+        "seed": 2
+      },
+      {
+        "type": "ink_tree",
+        "x": 1180,
+        "y": 640,
+        "scale": 1.18,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.78,
+        "seed": 1
+      },
+      {
+        "type": "glow_spores",
+        "x": 1495,
+        "y": 640,
+        "scale": 0.96,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.9,
+        "seed": 2
+      },
+      {
+        "type": "ink_tree",
+        "x": 1740,
+        "y": 640,
+        "scale": 1.12,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.8,
+        "seed": 0
+      },
+      {
+        "type": "canopy_bough",
+        "x": 1680,
+        "y": 0,
+        "scale": 1.05,
+        "flip": false,
+        "layer": "fg",
+        "alpha": 0.54,
+        "seed": 0
+      },
+      {
+        "type": "fallen_bell",
+        "x": 105,
+        "y": 640,
+        "scale": 0.88,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.78,
+        "seed": 2
+      }
+    ]
+  },
+  "voidBarriers": [
+    {
+      "id": "vb_forest",
+      "x": 215,
+      "y": 532,
+      "w": 22,
+      "h": 108
+    }
+  ]
+}

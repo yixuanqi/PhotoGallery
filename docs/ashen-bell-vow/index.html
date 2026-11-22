@@ -6,8 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="screen-orientation" content="landscape" />
 <meta name="x5-orientation" content="landscape" />
-<title>灰钟残誓 v19.0 — 纯程序化水墨画质升级版 · 暗黑手绘魂系类银河恶魔城</title>
-<link rel="stylesheet" href="./styles.css?v=19.0.1" />
+<title>灰钟残誓 v21.0 — 风林山三大生态扩展版 · 暗黑手绘魂系类银河恶魔城</title>
+<link rel="stylesheet" href="./styles.css?v=21.0.0" />
 </head>
 <body>
 <div id="game-root">
@@ -51,6 +51,7 @@
             <span class="echoes-dot">✦</span><span id="echoes-text">0</span>
           </div>
         </div>
+        <div id="weapon-hud-bar" class="weapon-hud-bar" data-i18n-title="hud.weaponTip" title="三系兵刃快捷切换：按 1/2/3 或 X，或直接点击切换"></div>
       </div>
 
       <div class="hud-right">
@@ -129,6 +130,7 @@
         <div class="ctrl-item"><span data-i18n="ctrl.grappleRelic">幽丝钩索 / 双圣物槽</span><span><span class="keycap cyan" data-i18n="ctrl.grappleKey">F · 中键 · I</span> / <span class="keycap gold" data-i18n="ctrl.altarKey">祭坛</span></span></div>
         <div class="ctrl-item"><span data-i18n="ctrl.dashSeal">墨影闪避 / 墨印引爆斩</span><span><span class="keycap">Shift</span> / <span class="keycap gold">C · L</span></span></div>
         <div class="ctrl-item"><span data-i18n="ctrl.healInteractMap">灯油回血 / 交互 / 舆图</span><span><span class="keycap cyan">Q · H</span> <span class="keycap">E</span> <span class="keycap">M</span></span></div>
+        <div class="ctrl-item"><span data-i18n="ctrl.weaponSwap">三系兵刃即时切换</span><span><span class="keycap gold" data-i18n="ctrl.weaponSwapKey">1 · 2 · 3 / X</span></span></div>
         <div class="ctrl-item"><span data-i18n="ctrl.gamepad">原生手柄支持</span><span><span class="keycap gold" data-i18n="ctrl.gamepadKey">Xbox / PS 即插即用</span></span></div>
       </div>
       <div id="file-protocol-warning" class="file-protocol-warning" style="display:none;">
@@ -156,7 +158,8 @@
         <button type="button" class="modal-top-close" data-close-modal="altar" data-i18n="modal.backGame">✕ 返回游戏</button>
       </div>
       <div id="altar-modal-title" class="modal-title">熄灯祭坛</div>
-      <div class="modal-sub" data-i18n="altar.sub">灯油与魂火已回满 · 提灯可同时铭刻「主印 + 副印」两枚圣物</div>
+      <div class="modal-sub" data-i18n="altar.sub">灯油与魂火已回满 · 提灯可自由切换三系兵刃并铭刻「主印 + 副印」</div>
+      <div id="altar-armory-section" class="armory-section"></div>
       <div id="relic-slots-bar" class="relic-slots-bar"></div>
       <div id="relic-synergy-box" class="relic-synergy-box"></div>
       <div id="relic-list" class="relic-list"></div>
@@ -202,7 +205,7 @@
         <button type="button" class="modal-top-close" data-close-modal="codex" data-i18n="modal.back">✕ 返回</button>
       </div>
       <div class="modal-title" style="letter-spacing: 6px;" data-i18n="codex.title">晦 渊 残 卷</div>
-      <div id="codex-modal-sub" class="modal-sub">残碑 0/5 · 图鉴 0/10 · 成就 0/14 · 羁绊 0/5</div>
+      <div id="codex-modal-sub" class="modal-sub">残碑 0/8 · 图鉴 0/10 · 成就 0/16 · 羁绊 0/5</div>
       <div id="codex-tabs" class="codex-tabs"></div>
       <div id="codex-body" class="codex-body"></div>
       <button id="btn-close-codex" class="primary-btn" style="margin-top: 14px;" data-i18n="codex.close">合上残卷 [B]</button>
@@ -482,7 +485,7 @@
       </button>
       <button id="fan-attack" class="t-btn fan-btn fan-attack" data-key="KeyJ">
         <span class="fan-label" data-i18n="mob.attack">普攻</span>
-        <span class="fan-sub" data-i18n="mob.attackHold">长按居合</span>
+        <span id="fan-attack-sub" class="fan-sub" data-i18n="mob.attackHold">长按居合</span>
       </button>
     </div>
   </div>
@@ -557,6 +560,6 @@
   }, 8000);
 })();
 </script>
-<script type="module" src="./src/main.js?v=19.0.1"></script>
+<script type="module" src="./src/main.js?v=21.0.0"></script>
 </body>
 </html>

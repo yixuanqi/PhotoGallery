@@ -1,8 +1,8 @@
 // Player movement, buffering, combo/iai/parry/grapple/spell state machine
 import {
-  COLORS, GRAVITY, FLOOR_Y, ALTARS, NPCS, LORE_TABLETS, SHORTCUT_GATE_DEF, VOID_BARRIERS, FIRST_BELL_CORE_POS, ABYSSAL_RIVERS, PUDDLES, DUMMY_MODES
+  COLORS, GRAVITY, FLOOR_Y, ALTARS, NPCS, LORE_TABLETS, SHORTCUT_GATE_DEF, VOID_BARRIERS, FIRST_BELL_CORE_POS, ABYSSAL_RIVERS, PUDDLES, DUMMY_MODES, WIND_ZONES, BOUNCE_PADS
 } from './config.js';
-import { G, hooks, getLivingFoes, getRelicStats, getFlaskHealPct, hasKeeperBlessing, markMapExplored, addShake, punchZoom, triggerBossBanner, triggerHitstop, damp } from './state.js';
+import { G, hooks, getLivingFoes, getRelicStats, getActiveWeapon, getFlaskHealPct, hasKeeperBlessing, markMapExplored, addShake, punchZoom, triggerBossBanner, triggerHitstop, damp } from './state.js';
 import { audio } from './audio.js';
 import { isActionHeld, consumeActionPress, consumeActionRelease } from './input.js';
 import {
@@ -79,6 +79,9 @@ export function updatePlayer(dt) {
   if (G.player.comboResetTimer > 0) G.player.comboResetTimer -= dt;
   else G.player.comboStep = 0;
   if (G.player.riposteWindow > 0) G.player.riposteWindow -= dt;
+  if (G.player.switchStrikeWindow > 0) G.player.switchStrikeWindow = Math.max(0, G.player.switchStrikeWindow - dt);
+  if (G.player.shieldArmorTimer > 0) G.player.shieldArmorTimer = Math.max(0, G.player.shieldArmorTimer - dt);
+  if (G.player.weaponSwapCd > 0) G.player.weaponSwapCd = Math.max(0, G.player.weaponSwapCd - dt);
   if (G.player.parryCooldown > 0) G.player.parryCooldown -= dt;
   if (G.player.parryStreakTimer > 0) {
     G.player.parryStreakTimer -= dt;
@@ -378,8 +381,9 @@ export function updatePlayer(dt) {
       } else if (isActionHeld('up')) {
         triggerPlayerAttack('up');
       } else {
-        G.player.comboStep = (G.player.comboStep % 3) + 1;
-        G.player.comboResetTimer = 0.56;
+        const maxCombo = (getActiveWeapon().comboCount) || 3;
+        G.player.comboStep = (G.player.comboStep % maxCombo) + 1;
+        G.player.comboResetTimer = maxCombo === 2 ? 0.72 : 0.56;
         triggerPlayerAttack('slash' + G.player.comboStep);
       }
       // Begin watching hold for Iai charge
@@ -558,7 +562,8 @@ export function updatePlayer(dt) {
     }
   } else {
     // Standard Run & Air Control
-    const maxSpd = G.player.isCharging && G.player.chargeTime > 0.16 ? 130 : G.player.parryActive ? 95 : 310;
+    const spdMult = getRelicStats().moveSpeedMult || 1.0;
+    const maxSpd = (G.player.isCharging && G.player.chargeTime > 0.16 ? 130 : G.player.parryActive ? 95 : 310) * spdMult;
     if (G.player.wallJumpLock <= 0 && G.player.hurtTimer <= 0 && G.player.healTimer <= 0) {
       const targetVx = moveDir * maxSpd;
       const accel = G.player.grounded ? 2600 : 1700;
@@ -573,6 +578,31 @@ export function updatePlayer(dt) {
       G.player.vy = 115;
       if (Math.random() < 15 * dt) {
         spawnParticles(G.player.x + (G.player.wallDir > 0 ? G.player.w : 0), G.player.y + 20, 1, { color: COLORS.parchment, speed: 40, grav: 80, life: 0.25 });
+      }
+    }
+    // Biome Wind Updrafts & Gale Streams (绝风断塔 / 霜骸圣脊)
+    if (WIND_ZONES.length > 0 && G.player.grappleState === 'none') {
+      const pCx = G.player.x + G.player.w * 0.5;
+      const pCy = G.player.y + G.player.h * 0.5;
+      for (let wi = 0; wi < WIND_ZONES.length; wi++) {
+        const wz = WIND_ZONES[wi];
+        if (pCx >= wz.x && pCx <= wz.x + wz.w && pCy >= wz.y && pCy <= wz.y + wz.h) {
+          if (wz.vy < 0) {
+            const lift = wz.vy * (isActionHeld('down') ? 0.25 : 1.0);
+            G.player.vy += lift * dt;
+            if (G.player.vy < -435) G.player.vy = -435;
+            if (!G.player.grounded) G.player.airJumpsLeft = Math.max(G.player.airJumpsLeft, 1);
+          }
+          if (wz.vx) {
+            G.player.vx += wz.vx * dt;
+          }
+          if (Math.random() < 18 * dt) {
+            spawnParticles(pCx + (Math.random() - 0.5) * 26, G.player.y + G.player.h - 6, 1, {
+              color: '#e0f2fe', speed: 80, grav: -240, life: 0.26
+            });
+          }
+          break;
+        }
       }
     }
     if (G.player.vy > 960) G.player.vy = 960;
@@ -633,6 +663,33 @@ export function updatePlayer(dt) {
   const preCollideVy = G.player.vy;
   const prevVx = G.player.prevVx || 0;
   moveAndCollide(G.player, dt, true);
+
+  // Biome Glowing Spore Bounce Caps (枯墨古林弹性孢伞)
+  if (BOUNCE_PADS.length > 0 && G.player.grappleState === 'none' && G.player.vy >= -40) {
+    const pBox = { x: G.player.x + 2, y: G.player.y + G.player.h - 14, w: G.player.w - 4, h: 18 };
+    for (let bi = 0; bi < BOUNCE_PADS.length; bi++) {
+      const bp = BOUNCE_PADS[bi];
+      if (bp.cd > 0) continue;
+      if (aabbOverlap(pBox, { x: bp.x - bp.w * 0.5, y: bp.y - bp.h, w: bp.w, h: bp.h })) {
+        bp.cd = 0.22;
+        bp.squish = 1.0;
+        G.player.y = bp.y - bp.h - G.player.h - 1;
+        G.player.vy = bp.boostVy || -790;
+        G.player.grounded = false;
+        G.player.coyoteTimer = 0;
+        G.player.airJumpsLeft = 1;
+        G.player.dashCd = 0;
+        G.player.squashX = 0.72;
+        G.player.squashY = 1.34;
+        audio.playWingJump();
+        audio.playResonanceBell(523.25, false);
+        spawnShockwave(bp.x, bp.y - bp.h * 0.6, 68, '#6ee7b7', 3.4, 0.28);
+        spawnParticles(bp.x, bp.y - bp.h * 0.7, 16, { color: '#6ee7b7', speed: 210, spark: true, grav: -40, life: 0.42 });
+        spawnParticles(bp.x, bp.y - bp.h * 0.7, 8, { color: COLORS.cyanBright, speed: 150, grav: 80, life: 0.36 });
+        break;
+      }
+    }
+  }
 
   // Track safe grounding point outside the corrosive Abyssal Ink River
   if (G.player.riverCd > 0) G.player.riverCd = Math.max(0, G.player.riverCd - dt);
@@ -719,6 +776,8 @@ export function updatePlayer(dt) {
   }
 
   G.player.lanternSwing += (((-G.player.vx * 0.0018) + brakeWhip * 0.0015) - G.player.lanternSwing) * Math.min(1, dt * 8);
+  const bellTarget = (-G.player.vx * 0.0022) + (G.player.attackTimer > 0 ? Math.sin(G.globalTime * 36) * 0.45 : Math.sin(G.globalTime * 4.5) * 0.08);
+  G.player.bellSwing = (G.player.bellSwing || 0) + (bellTarget - (G.player.bellSwing || 0)) * Math.min(1, dt * 11);
 
   updateCloak(G.player.cloak, footMidX - G.player.facing * 5, G.player.y + 18 + G.player.landCrouch * 5, G.player.facing, -G.player.vx * 0.45 + brakeWhip, dt);
   updateCloak(G.player.scarf, footMidX - G.player.facing * 3, G.player.y + 16 + G.player.landCrouch * 5, G.player.facing, -G.player.vx * 0.6 - G.player.facing * 60 + brakeWhip * 1.15, dt);

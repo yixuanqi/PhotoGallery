@@ -18,7 +18,8 @@
         "h": 720
       },
       "connections": [
-        "r02_corridor"
+        "r02_corridor",
+        "r10_ink_woods"
       ]
     },
     {
@@ -71,7 +72,8 @@
       "connections": [
         "r03_chapel",
         "r05_foundry",
-        "r06_crypt"
+        "r06_crypt",
+        "r09_wind_spire"
       ]
     },
     {
@@ -105,7 +107,8 @@
       },
       "connections": [
         "r04_bell_well",
-        "r02_corridor"
+        "r02_corridor",
+        "r10_ink_woods"
       ]
     },
     {
@@ -122,7 +125,9 @@
       },
       "connections": [
         "r05_foundry",
-        "r08_heart"
+        "r08_heart",
+        "r09_wind_spire",
+        "r11_frost_ridge"
       ]
     },
     {
@@ -136,6 +141,56 @@
         "y": 0,
         "w": 1320,
         "h": 720
+      },
+      "connections": [
+        "r07_ascent"
+      ]
+    },
+    {
+      "id": "r09_wind_spire",
+      "file": "./data/rooms/r09_wind_spire.json",
+      "zoneName": "绝风断塔",
+      "name": "绝风断塔",
+      "theme": "wind",
+      "bounds": {
+        "x": 5560,
+        "y": 0,
+        "w": 1180,
+        "h": 780
+      },
+      "connections": [
+        "r04_bell_well",
+        "r07_ascent"
+      ]
+    },
+    {
+      "id": "r10_ink_woods",
+      "file": "./data/rooms/r10_ink_woods.json",
+      "zoneName": "枯墨古林",
+      "name": "枯墨古林",
+      "theme": "forest",
+      "bounds": {
+        "x": 0,
+        "y": 740,
+        "w": 1980,
+        "h": 780
+      },
+      "connections": [
+        "r06_crypt",
+        "r01_sanctuary"
+      ]
+    },
+    {
+      "id": "r11_frost_ridge",
+      "file": "./data/rooms/r11_frost_ridge.json",
+      "zoneName": "霜骸圣脊",
+      "name": "霜骸圣脊",
+      "theme": "mountain",
+      "bounds": {
+        "x": 8360,
+        "y": 740,
+        "w": 1320,
+        "h": 780
       },
       "connections": [
         "r07_ascent"

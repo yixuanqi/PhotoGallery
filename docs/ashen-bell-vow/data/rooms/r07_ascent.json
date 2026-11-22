@@ -42,21 +42,37 @@
   ],
   "connections": [
     "r05_foundry",
-    "r08_heart"
+    "r08_heart",
+    "r09_wind_spire",
+    "r11_frost_ridge"
   ],
   "solids": [
     {
       "x": 0,
       "y": 0,
       "w": 40,
-      "h": 1240,
+      "h": 420,
       "type": "pillar"
+    },
+    {
+      "x": 0,
+      "y": 580,
+      "w": 40,
+      "h": 660,
+      "type": "pillar"
+    },
+    {
+      "x": 0,
+      "y": 580,
+      "w": 235,
+      "h": 45,
+      "type": "ground"
     },
     {
       "x": 1580,
       "y": 580,
       "w": 40,
-      "h": 940,
+      "h": 640,
       "type": "pillar"
     },
     {
@@ -212,7 +228,16 @@
     }
   ],
   "gates": [],
-  "secretWalls": [],
+  "secretWalls": [
+    {
+      "id": "wall_frost_entry",
+      "x": 1582,
+      "y": 1220,
+      "w": 36,
+      "h": 160,
+      "maxHp": 3
+    }
+  ],
   "voidBarriers": [
     {
       "id": "vb_ascent_dawn",
@@ -373,6 +398,11 @@
       "x": 1465,
       "y": 485,
       "text": "「前方 · 初钟圣心 · 最终决战 →」"
+    },
+    {
+      "x": 1465,
+      "y": 1315,
+      "text": "「寒霜暗壁 · 破冰踏入霜骸圣脊 →」"
     }
   ],
   "props": {

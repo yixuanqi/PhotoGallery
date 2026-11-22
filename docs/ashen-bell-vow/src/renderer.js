@@ -2,10 +2,10 @@
 import {
   COLORS, ALTARS, NPCS, ALTAR_POS, LORE_TABLETS,
   SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, FIRST_BELL_CORE_POS,
-  PENDULUMS, VOID_BARRIERS, WALL_INSCRIPTIONS, GRAPPLE_ANCHORS,
+  PENDULUMS, VOID_BARRIERS, WALL_INSCRIPTIONS, GRAPPLE_ANCHORS, WIND_ZONES, BOUNCE_PADS,
   BANNERS, CANDLE_CLUSTERS, BONE_CAIRNS, FLOOR_Y, WELL_BOTTOM_Y, DUMMY_MODES
 } from './config.js';
-import { G, getAwakeBoss, getRelicStats, hasKeeperBlessing, getExplorationPercent } from './state.js';
+import { G, getAwakeBoss, getRelicStats, hasKeeperBlessing, getExplorationPercent, getActiveWeaponId, isWeaponUnlocked } from './state.js';
 import { prof } from './profiler.js';
 import { getControlLabels, getActionKeyLabel } from './input.js';
 import {
@@ -100,8 +100,10 @@ export function render() {
   drawWorldArchitecture();
   drawWeatherRipples();
 
-  // 4. Diegetic Wall Inscriptions, Altars, Gates, Crumbling Stones, Puzzles, Pickups & Lore
+  // 4. Diegetic Wall Inscriptions, Wind Updrafts, Spore Bounce Caps, Altars, Gates, Crumbling Stones, Puzzles, Pickups & Lore
   drawWallInscriptions();
+  drawWindZones();
+  drawBouncePads();
   drawCrumblePlatforms();
   drawAltars();
   drawNpcs();
@@ -631,6 +633,8 @@ function hasNpcClaimableReward(npc) {
     if (!claims.includes('vol3') && readCnt >= LORE_TABLETS.length && expPct >= 80) return true;
   } else if (npc.kind === 'keeper') {
     if (!nq.keeperWickGifted && G.worldState.keyItems && G.worldState.keyItems.dawnSigil) return true;
+  } else {
+    if (G.worldState.bossDefeated && !isWeaponUnlocked('hammer')) return true;
   }
   return false;
 }
@@ -1129,12 +1133,14 @@ function drawPickups() {
     const py = p.y - 28 + bob;
     const isFlask = p.kind === 'flaskCore';
     const isAbility = p.kind === 'ability';
+    const isWeapon = p.kind === 'weapon';
     const isKey = p.kind === 'keyItem';
     const isShade = (isAbility && p.abilityId === 'shadeDash') || p.kind === 'statCore';
-    const col = isKey ? '#fef9c3' : (isShade ? COLORS.violetBright : (isFlask || isAbility ? COLORS.cyanBright : COLORS.goldBright));
+    const col = isKey ? '#fef9c3' : (isShade ? COLORS.violetBright : (isFlask || isAbility || isWeapon ? COLORS.cyanBright : COLORS.goldBright));
 
     G.ctx.save();
-    drawGlowSprite(isShade ? 'violet' : (isFlask || isAbility ? 'cyan' : 'gold'), p.x, py, isAbility ? 60 : 46, isAbility ? 0.54 : 0.42);
+    drawGlowSprite(isShade ? 'violet' : (isFlask || isAbility || isWeapon ? 'cyan' : 'gold'), p.x, py, (isAbility || isWeapon) ? 64 : 46, (isAbility || isWeapon) ? 0.58 : 0.42);
+    if (isWeapon) drawGlowSprite('gold', p.x, py, 36, 0.44);
 
     // Stone miniature shrine plinth
     G.ctx.fillStyle = '#182132';
@@ -1148,7 +1154,24 @@ function drawPickups() {
     G.ctx.fillStyle = col;
     G.ctx.strokeStyle = '#ffffff';
     G.ctx.lineWidth = 1.4;
-    if (isAbility) {
+    if (isWeapon) {
+      // Floating Hand-Drawn Soul-Calling Bell Staff Relic Shrine
+      G.ctx.rotate(-0.35 + Math.sin(G.globalTime * 2.8) * 0.14);
+      G.ctx.strokeStyle = '#6b4c30';
+      G.ctx.lineWidth = 3.0;
+      G.ctx.beginPath(); G.ctx.moveTo(-14, 14); G.ctx.lineTo(10, -10); G.ctx.stroke();
+      G.ctx.strokeStyle = COLORS.goldBright;
+      G.ctx.lineWidth = 1.8;
+      G.ctx.beginPath(); G.ctx.arc(11, -11, 6, -1.6, 1.4); G.ctx.stroke();
+      G.ctx.fillStyle = '#2a2016';
+      G.ctx.strokeStyle = COLORS.cyanBright;
+      G.ctx.lineWidth = 1.6;
+      G.ctx.beginPath();
+      G.ctx.moveTo(8, -11); G.ctx.lineTo(15, -11); G.ctx.lineTo(18, -1); G.ctx.lineTo(5, -1);
+      G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
+      G.ctx.fillStyle = '#e0f2fe';
+      G.ctx.beginPath(); G.ctx.arc(11.5, 1, 2.8, 0, Math.PI * 2); G.ctx.fill();
+    } else if (isAbility) {
       // Twin Ink-Wing Emblem
       const flap = Math.sin(G.globalTime * 5) * 0.16;
       [-1, 1].forEach(side => {
@@ -1186,6 +1209,90 @@ function drawPickups() {
       G.ctx.stroke();
     }
     G.ctx.restore();
+  }
+}
+
+function drawWindZones() {
+  if (!WIND_ZONES.length) return;
+  const ctx = G.ctx;
+  for (let i = 0; i < WIND_ZONES.length; i++) {
+    const wz = WIND_ZONES[i];
+    if (!isInView(wz.x, wz.y, wz.w, wz.h, 80)) continue;
+    ctx.save();
+    // Soft translucent azure-white ink draft column
+    ctx.fillStyle = 'rgba(186, 230, 253, 0.055)';
+    ctx.fillRect(wz.x, wz.y, wz.w, wz.h);
+    ctx.strokeStyle = 'rgba(186, 230, 253, 0.14)';
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([8, 12]);
+    ctx.strokeRect(wz.x + 2, wz.y + 2, wz.w - 4, wz.h - 4);
+    ctx.setLineDash([]);
+
+    // Rising hand-drawn calligraphic wind ribbons
+    const cols = Math.max(3, Math.floor(wz.w / 34));
+    for (let c = 0; c < cols; c++) {
+      const phase = ((G.globalTime * 1.35 + c * 0.31 + i * 0.17) % 1);
+      const rx = wz.x + ((c + 0.5) / cols) * wz.w + Math.sin(G.globalTime * 4 + c * 1.9) * 8;
+      const ry = wz.y + wz.h - phase * wz.h;
+      const ribLen = Math.min(72, wz.h * 0.28);
+      const alpha = Math.sin(phase * Math.PI) * 0.58;
+      ctx.strokeStyle = `rgba(224, 242, 254, ${alpha.toFixed(2)})`;
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(rx, ry);
+      ctx.quadraticCurveTo(rx + Math.sin(G.globalTime * 7 + c) * 9, ry - ribLen * 0.5, rx - 3, ry - ribLen);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+function drawBouncePads() {
+  if (!BOUNCE_PADS.length) return;
+  const ctx = G.ctx;
+  for (let i = 0; i < BOUNCE_PADS.length; i++) {
+    const bp = BOUNCE_PADS[i];
+    if (!isInView(bp.x - bp.w, bp.y - bp.h - 24, bp.w * 2, bp.h + 40, 80)) continue;
+    const sq = bp.squish || 0;
+    const scaleX = 1 + Math.sin(sq * Math.PI) * 0.24;
+    const scaleY = 1 - Math.sin(sq * Math.PI) * 0.34;
+    const pulse = 0.78 + Math.sin(G.globalTime * 4.5 + i * 1.7) * 0.22;
+    ctx.save();
+    drawGlowSprite('cyan', bp.x, bp.y - bp.h * 0.65, bp.w * 0.85, (0.34 + sq * 0.42) * pulse);
+    ctx.translate(bp.x, bp.y);
+    ctx.scale(scaleX, scaleY);
+
+    // Gnarled root-stem stalk
+    ctx.fillStyle = '#142622';
+    ctx.strokeStyle = 'rgba(110, 231, 183, 0.55)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(-10, 0); ctx.quadraticCurveTo(-7, -bp.h * 0.55, -13, -bp.h * 0.65);
+    ctx.lineTo(13, -bp.h * 0.65); ctx.quadraticCurveTo(7, -bp.h * 0.55, 10, 0);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+
+    // Glowing emerald-ink mushroom bounce dome
+    const hw = bp.w * 0.5;
+    ctx.fillStyle = '#11332c';
+    ctx.strokeStyle = '#6ee7b7';
+    ctx.lineWidth = 2.1;
+    ctx.beginPath();
+    ctx.moveTo(-hw, -bp.h * 0.42);
+    ctx.quadraticCurveTo(-hw * 0.82, -bp.h * 1.25, 0, -bp.h * 1.22);
+    ctx.quadraticCurveTo(hw * 0.82, -bp.h * 1.25, hw, -bp.h * 0.42);
+    ctx.quadraticCurveTo(0, -bp.h * 0.22, -hw, -bp.h * 0.42);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+
+    // Bioluminescent spore spots on cap
+    ctx.fillStyle = '#a7f3d0';
+    ctx.beginPath();
+    ctx.arc(-hw * 0.44, -bp.h * 0.74, 3.0, 0, Math.PI * 2);
+    ctx.arc(0, -bp.h * 0.92, 3.8, 0, Math.PI * 2);
+    ctx.arc(hw * 0.44, -bp.h * 0.74, 3.0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 }
 
@@ -1748,53 +1855,163 @@ function drawPuppet(x, y, facing, isGhost = false, ghostColor = null) {
   }
   G.ctx.restore();
 
-  // Articulated Arm & Wrapped Broken Odachi Blade
+  // Articulated Weapon Renderer (3 Distinct Hand-Drawn Silhouettes: Blade / Two-Handed Bell-Maul / Soul-Calling Bell Staff)
   if (!isGhost) {
+    const weaponId = getActiveWeaponId();
+    const bladeGold = G.player.chargeReadyPlayed || G.player.riposteWindow > 0;
+    const bladeSealProc = !!G.player.freeSealProc;
+
+    // Hyper-Armor Golden Bell-Aura during heavy Hammer swings
+    if (G.player.shieldArmorTimer > 0) {
+      drawGlowSprite('gold', 0, -28, 38, 0.62);
+      G.ctx.save();
+      G.ctx.strokeStyle = COLORS.goldBright;
+      G.ctx.lineWidth = 2.4;
+      boilCircle(G.ctx, 0, -28, 28, 7180, 1.4, 14);
+      G.ctx.stroke();
+      G.ctx.restore();
+    }
+
     G.ctx.save();
     G.ctx.translate(facing * 4, -30);
-    let bladeAng = facing > 0 ? -0.35 : Math.PI + 0.35;
+    let bladeAng = weaponId === 'hammer'
+      ? (facing > 0 ? -2.28 : Math.PI + 2.28) // Two-handed shoulder rest for the heavy Bell-Maul!
+      : (facing > 0 ? -0.35 : Math.PI + 0.35);
 
     if (G.player.parryActive) {
       bladeAng = facing > 0 ? -1.15 : Math.PI + 1.15;
     } else if (G.player.isCharging && G.player.chargeTime > 0.14) {
-      // Low sheathed Iai stance
-      bladeAng = facing > 0 ? 2.65 : 0.49;
+      if (weaponId === 'bell') bladeAng = facing > 0 ? -1.05 : Math.PI + 1.05;
+      else if (weaponId === 'hammer') bladeAng = facing > 0 ? -2.65 : Math.PI + 2.65; // Hoisted high overhead!
+      else bladeAng = facing > 0 ? 2.65 : 0.49;
     } else if (G.player.attackTimer > 0) {
       const p = 1 - G.player.attackTimer / G.player.attackDuration;
       if (G.player.attackType === 'pogo') bladeAng = Math.PI * 0.5;
       else if (G.player.attackType === 'up') bladeAng = facing > 0 ? -1.6 : -1.5;
-      else if (G.player.attackType === 'slash1') bladeAng = facing > 0 ? (1.2 - p * 2.6) : (Math.PI - 1.2 + p * 2.6);
-      else bladeAng = facing > 0 ? (-1.4 + p * 2.8) : (Math.PI + 1.4 - p * 2.8);
+      else if (weaponId === 'bell') {
+        const sw = Math.sin(p * Math.PI) * 1.15;
+        bladeAng = facing > 0 ? (-0.95 + sw) : (Math.PI + 0.95 - sw);
+      } else if (weaponId === 'hammer') {
+        if (G.player.attackType === 'slash1') {
+          bladeAng = facing > 0 ? (1.35 - p * 2.55) : (Math.PI - 1.35 + p * 2.55);
+        } else {
+          // Towering overhead crush down onto the ground!
+          const slamP = Math.min(1, p * 1.85);
+          bladeAng = facing > 0 ? (-2.45 + slamP * 2.95) : (Math.PI + 2.45 - slamP * 2.95);
+        }
+      } else if (G.player.attackType === 'slash1') {
+        bladeAng = facing > 0 ? (1.2 - p * 2.6) : (Math.PI - 1.2 + p * 2.6);
+      } else {
+        bladeAng = facing > 0 ? (-1.4 + p * 2.8) : (Math.PI + 1.4 - p * 2.8);
+      }
     }
 
-    G.ctx.rotate(bladeAng);
-    // Hilt & cloth wrap
-    G.ctx.strokeStyle = '#9f1239';
-    G.ctx.lineWidth = 3.2;
-    G.ctx.beginPath(); G.ctx.moveTo(-9, 0); G.ctx.lineTo(4, 0); G.ctx.stroke();
-    // Guard (tsuba)
-    G.ctx.strokeStyle = COLORS.gold;
-    G.ctx.lineWidth = 2.4;
-    G.ctx.beginPath(); G.ctx.moveTo(4, -5); G.ctx.lineTo(4, 5); G.ctx.stroke();
-    // Curved Ashen Blade (Golden Riposte Glint or Crimson Mirror-Ember Free-Seal Glow!)
-    const bladeGold = G.player.chargeReadyPlayed || G.player.riposteWindow > 0;
-    const bladeSealProc = !!G.player.freeSealProc;
-    if (bladeSealProc) {
-      drawGlowSprite('crimson', 24, 0, 22, 0.82);
-    } else if (bladeGold) {
-      drawGlowSprite('gold', 24, 0, 20, 0.72);
+    if (weaponId === 'bell') {
+      // === WEAPON 3: 引魂摇铃 (Soul-Calling Bronze Bell Staff) ===
+      G.ctx.rotate(bladeAng);
+      G.ctx.strokeStyle = '#3b2b1e';
+      G.ctx.lineWidth = 3.2;
+      G.ctx.beginPath(); G.ctx.moveTo(-14, 0); G.ctx.lineTo(30, 0); G.ctx.stroke();
+      G.ctx.strokeStyle = bladeGold ? COLORS.goldBright : COLORS.gold;
+      G.ctx.lineWidth = 2.0;
+      G.ctx.beginPath();
+      G.ctx.moveTo(8, -3.5); G.ctx.lineTo(8, 3.5);
+      G.ctx.moveTo(22, -4); G.ctx.lineTo(22, 4);
+      G.ctx.arc(33, 0, 7.5, -1.35, 1.35);
+      G.ctx.stroke();
+      const bellWob = (G.player.bellSwing || 0) * 0.6;
+      G.ctx.save();
+      G.ctx.translate(35, 0);
+      G.ctx.rotate(bellWob);
+      drawGlowSprite(bladeSealProc ? 'crimson' : (bladeGold ? 'gold' : 'cyan'), 4, 0, bladeGold ? 24 : 18, bladeGold ? 0.85 : 0.62);
+      G.ctx.fillStyle = '#2a2016';
+      G.ctx.strokeStyle = bladeGold ? COLORS.goldBright : COLORS.cyanBright;
+      G.ctx.lineWidth = 1.6;
+      G.ctx.beginPath();
+      G.ctx.moveTo(-4, -5); G.ctx.lineTo(4, -5);
+      G.ctx.quadraticCurveTo(9, 2, 10, 7);
+      G.ctx.lineTo(-10, 7);
+      G.ctx.quadraticCurveTo(-9, 2, -4, -5);
+      G.ctx.closePath();
+      G.ctx.fill(); G.ctx.stroke();
+      G.ctx.fillStyle = bladeGold ? '#fef08a' : '#e0f2fe';
+      G.ctx.beginPath(); G.ctx.arc(0, 8, 2.8, 0, Math.PI * 2); G.ctx.fill();
+      const rib = Math.sin(G.globalTime * 10) * 4;
+      G.ctx.strokeStyle = COLORS.cyanBright;
+      G.ctx.lineWidth = 1.4;
+      G.ctx.beginPath(); G.ctx.moveTo(-6, 7); G.ctx.quadraticCurveTo(-9, 14 + rib * 0.4, -5 + rib, 21); G.ctx.stroke();
+      G.ctx.restore();
+    } else if (weaponId === 'hammer') {
+      // === WEAPON 2: 镇渊钟锤 (Massive Two-Handed Cracked Bronze Bell-Maul) ===
+      G.ctx.rotate(bladeAng);
+      // Heavy iron-core long haft with crimson cloth binding
+      G.ctx.strokeStyle = '#3b2b1e';
+      G.ctx.lineWidth = 4.6;
+      G.ctx.beginPath(); G.ctx.moveTo(-16, 0); G.ctx.lineTo(36, 0); G.ctx.stroke();
+      G.ctx.strokeStyle = '#9f1239';
+      G.ctx.lineWidth = 4.2;
+      G.ctx.beginPath(); G.ctx.moveTo(-12, 0); G.ctx.lineTo(6, 0); G.ctx.stroke();
+      // Bronze pommel cap & neck collar
+      G.ctx.fillStyle = COLORS.gold;
+      G.ctx.beginPath(); G.ctx.arc(-17, 0, 3.4, 0, Math.PI * 2); G.ctx.fill();
+      G.ctx.strokeStyle = COLORS.goldBright;
+      G.ctx.lineWidth = 2.2;
+      G.ctx.beginPath(); G.ctx.moveTo(26, -5.5); G.ctx.lineTo(26, 5.5); G.ctx.stroke();
+
+      // Massive Cracked Bronze Bell-Head Hammer
+      const chargingH = G.player.isCharging && G.player.chargeTime > 0.14;
+      if (bladeSealProc) drawGlowSprite('crimson', 38, 0, 30, 0.85);
+      else if (bladeGold || chargingH || G.player.shieldArmorTimer > 0) drawGlowSprite('gold', 38, 0, 32, 0.82);
+
+      G.ctx.fillStyle = bladeSealProc ? '#7f1d1d' : '#2b1e12';
+      G.ctx.strokeStyle = (bladeGold || chargingH || G.player.shieldArmorTimer > 0) ? COLORS.goldBright : COLORS.gold;
+      G.ctx.lineWidth = 2.0;
+      G.ctx.beginPath();
+      G.ctx.moveTo(29, -11);
+      G.ctx.lineTo(44, -14.5);
+      G.ctx.lineTo(49, -7);
+      G.ctx.lineTo(49, 7);
+      G.ctx.lineTo(44, 14.5);
+      G.ctx.lineTo(29, 11);
+      G.ctx.closePath();
+      G.ctx.fill();
+      G.ctx.stroke();
+
+      // Molten golden resonance crack across bell-maul face
+      G.ctx.strokeStyle = (bladeGold || chargingH) ? '#fef9c3' : COLORS.goldBright;
+      G.ctx.lineWidth = 1.7;
+      G.ctx.beginPath();
+      G.ctx.moveTo(35, -9); G.ctx.lineTo(40, -2); G.ctx.lineTo(36, 3); G.ctx.lineTo(42, 10);
+      G.ctx.stroke();
+      // Heavy bronze rivet studs
+      G.ctx.fillStyle = '#fef08a';
+      G.ctx.beginPath();
+      G.ctx.arc(46, -6, 1.7, 0, Math.PI * 2);
+      G.ctx.arc(46, 6, 1.7, 0, Math.PI * 2);
+      G.ctx.fill();
+    } else {
+      // === WEAPON 1: 灰钟断刃 (Ashen Broken Odachi Blade) ===
+      G.ctx.rotate(bladeAng);
+      G.ctx.strokeStyle = '#9f1239';
+      G.ctx.lineWidth = 3.2;
+      G.ctx.beginPath(); G.ctx.moveTo(-9, 0); G.ctx.lineTo(4, 0); G.ctx.stroke();
+      G.ctx.strokeStyle = COLORS.gold;
+      G.ctx.lineWidth = 2.4;
+      G.ctx.beginPath(); G.ctx.moveTo(4, -5.5); G.ctx.lineTo(4, 5.5); G.ctx.stroke();
+      if (bladeSealProc) drawGlowSprite('crimson', 24, 0, 22, 0.82);
+      else if (bladeGold) drawGlowSprite('gold', 24, 0, 20, 0.72);
+      G.ctx.fillStyle = bladeSealProc ? COLORS.crimsonBright : (bladeGold ? COLORS.goldBright : '#d8d2c3');
+      G.ctx.strokeStyle = '#090c12';
+      G.ctx.lineWidth = 1.2;
+      G.ctx.beginPath();
+      G.ctx.moveTo(5, -2.6);
+      G.ctx.quadraticCurveTo(26, -4.5, 42, -1);
+      G.ctx.lineTo(36, 2.5);
+      G.ctx.quadraticCurveTo(22, 1.8, 5, 2.2);
+      G.ctx.closePath();
+      G.ctx.fill();
+      G.ctx.stroke();
     }
-    G.ctx.fillStyle = bladeSealProc ? COLORS.crimsonBright : (bladeGold ? COLORS.goldBright : '#d8d2c3');
-    G.ctx.strokeStyle = '#090c12';
-    G.ctx.lineWidth = 1.2;
-    G.ctx.beginPath();
-    G.ctx.moveTo(5, -2.6);
-    G.ctx.quadraticCurveTo(26, -4.5, 42, -1);
-    G.ctx.lineTo(36, 2.5);
-    G.ctx.quadraticCurveTo(22, 1.8, 5, 2.2);
-    G.ctx.closePath();
-    G.ctx.fill();
-    G.ctx.stroke();
     G.ctx.restore();
 
     // Calligraphic 3-Tier Parry Guard Stance Feedback
@@ -3050,7 +3267,67 @@ function drawProjectiles() {
   for (const pr of G.projectiles) {
     G.ctx.save();
     G.ctx.translate(pr.x, pr.y);
-    if (pr.kind === 'soulWave' || pr.kind === 'crimsonWave') {
+    if (pr.kind === 'hammerWave') {
+      const alpha = Math.min(1, pr.life * 3.2);
+      const h = (32 + Math.sin(G.globalTime * 28) * 6) * alpha;
+      G.ctx.globalAlpha = alpha;
+      G.ctx.scale(pr.facing, 1);
+      drawGlowSprite('gold', 6, -h * 0.35, 58, 0.85 * alpha);
+      // Dark stone-ink seismic breaker crest
+      G.ctx.fillStyle = 'rgba(18, 13, 8, 0.90)';
+      G.ctx.strokeStyle = COLORS.goldBright;
+      G.ctx.lineWidth = 2.6;
+      G.ctx.beginPath();
+      G.ctx.moveTo(-28, 14);
+      G.ctx.lineTo(-10, -h * 0.72);
+      G.ctx.lineTo(6, -h * 0.42);
+      G.ctx.lineTo(24, -h * 1.15);
+      G.ctx.lineTo(32, 14);
+      G.ctx.closePath();
+      G.ctx.fill();
+      G.ctx.stroke();
+      // White-gold molten fissure core
+      G.ctx.strokeStyle = '#fef9c3';
+      G.ctx.lineWidth = 2.0;
+      G.ctx.beginPath();
+      G.ctx.moveTo(-14, 10); G.ctx.lineTo(18, -h * 0.88);
+      G.ctx.stroke();
+    } else if (pr.kind === 'bellWave') {
+      const alpha = Math.min(1, pr.life * 4.0);
+      const isHeavy = !!pr.heavy;
+      G.ctx.globalAlpha = alpha;
+      G.ctx.scale(pr.facing, 1);
+      drawGlowSprite(isHeavy ? 'gold' : 'cyan', 4, 0, isHeavy ? 42 : 30, 0.78 * alpha);
+      // Outer dark-ink brush ring + glowing harmonic crescent waves
+      G.ctx.strokeStyle = 'rgba(8, 12, 20, 0.72)';
+      G.ctx.lineWidth = isHeavy ? 8 : 5.5;
+      G.ctx.beginPath(); G.ctx.arc(-6, 0, pr.r * 1.05, -1.18, 1.18); G.ctx.stroke();
+      G.ctx.strokeStyle = isHeavy ? COLORS.goldBright : COLORS.cyanBright;
+      G.ctx.lineWidth = isHeavy ? 4.2 : 3.0;
+      G.ctx.beginPath(); G.ctx.arc(-6, 0, pr.r * 1.05, -1.15, 1.15); G.ctx.stroke();
+      G.ctx.strokeStyle = '#ffffff';
+      G.ctx.lineWidth = 1.6;
+      G.ctx.beginPath(); G.ctx.arc(-13, 0, pr.r * 0.72, -0.95, 0.95); G.ctx.stroke();
+    } else if (pr.kind === 'bellHoming') {
+      const alpha = Math.min(1, pr.life * 3.5);
+      const ang = Math.atan2(pr.vy, pr.vx);
+      G.ctx.globalAlpha = alpha;
+      G.ctx.rotate(ang);
+      drawGlowSprite('cyan', 0, 0, 26, 0.85 * alpha);
+      drawGlowSprite('gold', 4, 0, 14, 0.65 * alpha);
+      // Trailing harmonic ribbon
+      G.ctx.strokeStyle = 'rgba(186, 230, 253, 0.65)';
+      G.ctx.lineWidth = 3.2;
+      G.ctx.beginPath(); G.ctx.moveTo(-26, 0); G.ctx.lineTo(0, 0); G.ctx.stroke();
+      // Sleek Spirit Bell Dart diamond head
+      G.ctx.fillStyle = '#e0f2fe';
+      G.ctx.strokeStyle = COLORS.goldBright;
+      G.ctx.lineWidth = 1.6;
+      G.ctx.beginPath();
+      G.ctx.moveTo(13, 0); G.ctx.lineTo(-2, -6.5); G.ctx.lineTo(-10, 0); G.ctx.lineTo(-2, 6.5);
+      G.ctx.closePath();
+      G.ctx.fill(); G.ctx.stroke();
+    } else if (pr.kind === 'soulWave' || pr.kind === 'crimsonWave') {
       const isCr = pr.kind === 'crimsonWave';
       const alpha = Math.min(1, pr.life * 3.5);
       G.ctx.globalAlpha = alpha;
@@ -3210,7 +3487,86 @@ function drawSlashes() {
     G.ctx.save();
     G.ctx.globalAlpha = Math.min(1, a * 1.35);
 
-    if (s.type === 'iai') {
+    if (s.type === 'hammerQuake' || s.type === 'hammerSlam' || s.type === 'hammerCounter') {
+      // Colossal Two-Handed Bell-Maul Overhead Ground-Shattering Impact!
+      const isBig = s.type === 'hammerQuake' || s.type === 'hammerCounter';
+      G.ctx.translate(s.x, s.y);
+      G.ctx.scale(s.facing, 1);
+      const r = isBig ? 94 : 78;
+      drawGlowSprite('gold', 38, 0, isBig ? 96 : 74, 0.92 * a);
+      // Heavy downward bronze-ink hammer arc
+      drawTaperedCrescent(r + 6, (isBig ? 42 : 34) * a, -2.05, 0.65, 'rgba(12, 9, 6, 0.88)', null);
+      drawTaperedCrescent(r, (isBig ? 30 : 24) * a, -1.95, 0.60, 'rgba(245, 158, 11, 0.94)', '#fef9c3');
+      // Rising shattered earth / golden bell-impact cone at strike floor
+      const ix = 46;
+      const iy = 24;
+      const spread = (isBig ? 56 : 42) * (0.45 + p * 0.75);
+      G.ctx.fillStyle = `rgba(253, 224, 71, ${(0.34 * a).toFixed(2)})`;
+      G.ctx.beginPath();
+      G.ctx.moveTo(ix - spread, iy);
+      G.ctx.lineTo(ix, iy - (isBig ? 76 : 52) * a);
+      G.ctx.lineTo(ix + spread, iy);
+      G.ctx.closePath();
+      G.ctx.fill();
+      if (a > 0.32) drawParryStarGlint(ix, iy - 12, (isBig ? 26 : 19) * a, COLORS.goldBright);
+    } else if (s.type === 'hammerSweep' || s.type === 'hammerUp' || s.type === 'hammerPogo') {
+      // Heavy Broad Bronze-Gold Two-Handed Hammer Arc
+      G.ctx.translate(s.x, s.y);
+      if (s.type === 'hammerUp') {
+        drawGlowSprite('gold', 0, -10, 68, 0.75 * a);
+        drawTaperedCrescent(64, 30 * a, -Math.PI + 0.25, -0.25, 'rgba(14, 11, 8, 0.84)', null);
+        drawTaperedCrescent(60, 22 * a, -Math.PI + 0.28, -0.28, 'rgba(245, 158, 11, 0.92)', '#fef9c3');
+      } else if (s.type === 'hammerPogo') {
+        drawGlowSprite('gold', 0, 8, 64, 0.75 * a);
+        drawTaperedCrescent(56, 28 * a, 0.18, Math.PI - 0.18, 'rgba(14, 11, 8, 0.84)', null);
+        drawTaperedCrescent(52, 20 * a, 0.22, Math.PI - 0.22, 'rgba(245, 158, 11, 0.92)', '#fef9c3');
+      } else {
+        G.ctx.scale(s.facing, 1);
+        const ang0 = -1.45 + tailEase * 1.45;
+        const ang1 = -1.45 + headEase * 2.75;
+        if (ang1 > ang0 + 0.08) {
+          drawGlowSprite('gold', 42, 0, 74, 0.76 * a);
+          drawTaperedCrescent(76, 36 * a, ang0, ang1, 'rgba(14, 11, 8, 0.86)', null);
+          drawTaperedCrescent(72, 26 * a, ang0, ang1, 'rgba(245, 158, 11, 0.92)', '#fef9c3');
+        }
+      }
+    } else if (s.type === 'bellCounter') {
+      // 360° Harmonic Requiem Pulse Mandala
+      G.ctx.translate(s.x, s.y);
+      const r = 162 * (0.35 + p * 0.72);
+      drawGlowSprite('cyan', 0, 0, r * 0.82, 0.72 * a);
+      G.ctx.strokeStyle = COLORS.cyanBright;
+      G.ctx.lineWidth = 6.5 * a;
+      boilCircle(G.ctx, 0, 0, r, 6420, 2.2, 20);
+      G.ctx.stroke();
+      G.ctx.strokeStyle = COLORS.goldBright;
+      G.ctx.lineWidth = 3.2 * a;
+      boilCircle(G.ctx, 0, 0, r * 0.68, 6450, 1.6, 16);
+      G.ctx.stroke();
+    } else if (s.type === 'bellRing1' || s.type === 'bellRing2' || s.type === 'bellRing3' || s.type === 'bellVolley' || s.type === 'bellUp' || s.type === 'bellPogo') {
+      // Crystalline Cyan-Gold Bell Harmonic Ripple Swing
+      G.ctx.translate(s.x, s.y);
+      const isVolley = s.type === 'bellVolley' || s.type === 'bellRing3';
+      const isUp = s.type === 'bellUp';
+      const isPogo = s.type === 'bellPogo';
+      if (isUp) {
+        drawGlowSprite('cyan', 0, 0, 56, 0.68 * a);
+        drawTaperedCrescent(52, 20 * a, -Math.PI + 0.25, -0.25, 'rgba(56, 189, 248, 0.88)', '#fef08a');
+      } else if (isPogo) {
+        drawGlowSprite('cyan', 0, 0, 52, 0.68 * a);
+        drawTaperedCrescent(46, 18 * a, 0.2, Math.PI - 0.2, 'rgba(56, 189, 248, 0.88)', '#fef08a');
+      } else {
+        G.ctx.scale(s.facing, s.type === 'bellRing2' ? -1 : 1);
+        const r = (isVolley ? 58 : 44) * (0.72 + p * 0.42);
+        drawGlowSprite(isVolley ? 'gold' : 'cyan', 18, 0, isVolley ? 56 : 42, 0.76 * a);
+        G.ctx.strokeStyle = isVolley ? COLORS.goldBright : COLORS.cyanBright;
+        G.ctx.lineWidth = (isVolley ? 5.2 : 3.6) * a;
+        G.ctx.beginPath(); G.ctx.arc(0, 0, r, -1.15, 1.15); G.ctx.stroke();
+        G.ctx.strokeStyle = '#ffffff';
+        G.ctx.lineWidth = 1.8 * a;
+        G.ctx.beginPath(); G.ctx.arc(0, 0, r * 0.72, -0.95, 0.95); G.ctx.stroke();
+      }
+    } else if (s.type === 'iai') {
       // Dimensional Ink-Gold Flash Cut spanning entire lunge path x0 -> x1
       const x0 = s.x0 !== undefined ? s.x0 : (s.x - s.facing * 45);
       const x1 = s.x1 !== undefined ? s.x1 : (s.x + s.facing * 145);

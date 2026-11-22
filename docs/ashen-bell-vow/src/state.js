@@ -3,6 +3,7 @@ import {
   RELICS, RELIC_SYNERGIES, VOW_CONSTRAINTS, DEFAULT_KEYBINDS, ROOMS, ALTARS, FLOOR_Y, MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H,
   SECRET_WALLS_DEF, PICKUPS_DEF, RESONANCE_PUZZLES_DEF, CRUMBLE_PLATFORMS_DEF, LANTERNS_DEF
 } from './config.js';
+import { WEAPON_ORDER, normalizeWeaponId, getWeaponById } from './weapons.js';
 
 export const G = {
   currentRelic: RELICS[0],
@@ -184,9 +185,40 @@ export function createFreshWorldState() {
       keeperBlessingActive: false
     },
     abilities: { doubleJump: false, shadeDash: false },
+    equippedWeapon: 'blade',
+    unlockedWeapons: new Set(['blade']),
     unlockedRelics: new Set(['thorn', 'mirror', 'ember']),
     explored: Array.from({ length: MAP_ROWS }, () => new Array(MAP_COLS).fill(false))
   };
+}
+
+export function isWeaponUnlocked(id) {
+  const norm = normalizeWeaponId(id);
+  if (norm === 'blade') return true;
+  return !!(G.worldState && G.worldState.unlockedWeapons && G.worldState.unlockedWeapons.has(norm));
+}
+
+export function getUnlockedWeaponIds() {
+  return WEAPON_ORDER.filter(id => isWeaponUnlocked(id));
+}
+
+export function unlockWeapon(id) {
+  const norm = normalizeWeaponId(id);
+  if (!G.worldState) return false;
+  if (!G.worldState.unlockedWeapons) G.worldState.unlockedWeapons = new Set(['blade']);
+  const isNew = !G.worldState.unlockedWeapons.has(norm);
+  G.worldState.unlockedWeapons.add(norm);
+  return isNew;
+}
+
+export function getActiveWeaponId() {
+  const raw = G.worldState && G.worldState.equippedWeapon ? G.worldState.equippedWeapon : 'blade';
+  const norm = normalizeWeaponId(raw);
+  return isWeaponUnlocked(norm) ? norm : 'blade';
+}
+
+export function getActiveWeapon() {
+  return getWeaponById(getActiveWeaponId());
 }
 
 export function getActiveAltar() {
@@ -203,7 +235,8 @@ function _ensureRelicCache() {
   const r0 = (eq && eq[0]) || G.currentRelic || RELICS[0];
   const r1 = (eq && eq[1]) || null;
   const pMult = (G.settings && G.settings.parryWindowMult) ? G.settings.parryWindowMult : 1.0;
-  const key = `${r0 ? r0.id : ''}|${r1 ? r1.id : ''}|${pMult}`;
+  const wId = getActiveWeaponId();
+  const key = `${r0 ? r0.id : ''}|${r1 ? r1.id : ''}|${pMult}|${wId}`;
   if (key === _relicCacheKey && _cachedRelicStats) return;
   _relicCacheKey = key;
 
@@ -220,9 +253,11 @@ function _ensureRelicCache() {
   }
   _cachedSynergies = synergies;
 
-  let parryWindowMs = Math.round((has('mirror') ? 100 : Math.max(...active.map(r => r.parryWindowMs || 140))) * pMult);
-  let blockWindowMs = Math.round((has('mirror') ? 225 : Math.max(...active.map(r => r.blockWindowMs || 260))) * (1 + (pMult - 1) * 0.65));
-  let parryPostureMult = active.reduce((acc, r) => acc * (r.parryPostureMult || 1.0), 1.0);
+  const wp = getWeaponById(wId).passives;
+  let parryWindowMs = Math.max(70, Math.round(((has('mirror') ? 100 : Math.max(...active.map(r => r.parryWindowMs || 140))) + (wp.parryWindowBonusMs || 0)) * pMult));
+  let blockWindowMs = Math.max(parryWindowMs + 60, Math.round(((has('mirror') ? 225 : Math.max(...active.map(r => r.blockWindowMs || 260))) + (wp.blockWindowBonusMs || 0)) * (1 + (pMult - 1) * 0.65)));
+  let blockChipMult = wp.blockChipMult || 1.0;
+  let parryPostureMult = active.reduce((acc, r) => acc * (r.parryPostureMult || 1.0), 1.0) * (wp.parryPostureMult || 1.0);
   let parryReflectDmg = active.reduce((acc, r) => acc + (r.parryReflectDmg || 0), 0);
   let parryHeal = active.reduce((acc, r) => acc + (r.parryHeal || 0), 0);
   let grayDuration = Math.max(...active.map(r => r.grayDuration || 3.4)) + active.reduce((acc, r) => acc + (r.grayDurationBonus || 0), 0);
@@ -233,26 +268,27 @@ function _ensureRelicCache() {
   let execHealPct = Math.max(...active.map(r => r.execHealPct || 0.12));
   let execFullSoul = has('ember');
   let grappleCd = Math.min(0.52, ...active.map(r => r.grappleCd || 0.52));
-  let spellCost = Math.min(30, ...active.map(r => r.spellCost || 30));
-  let quakeCost = Math.min(40, ...active.map(r => r.quakeCost || (r.id === 'bellthread' ? 32 : 40)));
+  let spellCost = Math.max(14, Math.round(Math.min(30, ...active.map(r => r.spellCost || 30)) * (wp.spellCostMult || 1.0)));
+  let quakeCost = Math.max(20, Math.round(Math.min(40, ...active.map(r => r.quakeCost || (r.id === 'bellthread' ? 32 : 40))) * (wp.spellCostMult || 1.0)));
   let spellPostureBonus = active.reduce((acc, r) => acc + (r.spellPostureBonus || 0), 0);
   let heavySkillMult = active.reduce((acc, r) => acc * (r.heavySkillMult || 1.0), 1.0);
-  let soulGainMult = active.reduce((acc, r) => acc * (r.soulGainMult || 1.0), 1.0);
-  let spellDmgMult = active.reduce((acc, r) => acc * (r.spellDmgMult || 1.0), 1.0);
+  let soulGainMult = active.reduce((acc, r) => acc * (r.soulGainMult || 1.0), 1.0) * (wp.soulGainMult || 1.0);
+  let spellDmgMult = active.reduce((acc, r) => acc * (r.spellDmgMult || 1.0), 1.0) * (wp.spellDmgMult || 1.0);
   let spellRadiusMult = active.reduce((acc, r) => acc * (r.spellRadiusMult || 1.0), 1.0);
-  let postureDmgMult = active.reduce((acc, r) => acc * (r.postureDmgMult || 1.0), 1.0);
-  let iaiChargeTime = Math.min(0.42, ...active.map(r => r.iaiChargeTime || 0.42));
+  let postureDmgMult = active.reduce((acc, r) => acc * (r.postureDmgMult || 1.0), 1.0) * (wp.postureDmgMult || 1.0);
+  let iaiChargeTime = Math.max(0.24, Math.min(0.42, ...active.map(r => r.iaiChargeTime || 0.42)) * (wp.chargeTimeMult || 1.0));
+  let moveSpeedMult = wp.moveSpeedMult || 1.0;
   let bellTimerBonus = active.reduce((acc, r) => acc + (r.bellTimerBonus || 0), 0);
   let shadeDashCd = Math.min(1.6, ...active.map(r => r.shadeDashCd || 1.6));
   let shadeBurstMult = active.reduce((acc, r) => acc * (r.shadeBurstMult || 1.0), 1.0);
   let shadePassHeal = active.reduce((acc, r) => acc + (r.shadePassHeal || 0), 0);
 
   _cachedRelicStats = {
-    parryWindowMs, blockWindowMs, parryPostureMult, parryReflectDmg, parryHeal,
+    parryWindowMs, blockWindowMs, blockChipMult, parryPostureMult, parryReflectDmg, parryHeal,
     grayDuration, rallyMult, maxFlasks, maxSeals, execHealPct, execFullSoul,
     grappleCd, spellCost, quakeCost, spellPostureBonus, heavySkillMult,
     soulGainMult, spellDmgMult, spellRadiusMult, postureDmgMult,
-    iaiChargeTime, bellTimerBonus, shadeDashCd, shadeBurstMult, shadePassHeal,
+    iaiChargeTime, moveSpeedMult, bellTimerBonus, shadeDashCd, shadeBurstMult, shadePassHeal,
     synergies,
     synGrappleQuake: !!synFlags.synGrappleQuake,
     synMirrorEmber: !!synFlags.synMirrorEmber,

@@ -3,7 +3,7 @@
 export const UI_DICT = {
   'zh-CN': {
     // Document & Title
-    'doc.title': '灰钟残誓 v19.0 — 纯程序化水墨画质升级版 · 暗黑手绘魂系类银河恶魔城',
+    'doc.title': '灰钟残誓 v21.0 — 风林山三大生态扩展版 · 暗黑手绘魂系类银河恶魔城',
     'game.title': '灰钟残誓',
     'game.subtitle': 'ASHEN BELL VOW · 暗黑手绘魂系类银河恶魔城',
     'title.loading': '载入中...',
@@ -42,6 +42,8 @@ export const UI_DICT = {
     'ctrl.altarKey': '祭坛',
     'ctrl.dashSeal': '墨影闪避 / 墨印引爆斩',
     'ctrl.healInteractMap': '灯油回血 / 交互 / 舆图',
+    'ctrl.weaponSwap': '三系兵刃 / 切刃派生',
+    'ctrl.weaponSwapKey': '1 · 2 · 3 / X',
     'ctrl.gamepad': '原生手柄支持',
     'ctrl.gamepadKey': 'Xbox / PS 即插即用',
 
@@ -66,6 +68,7 @@ export const UI_DICT = {
     'hud.sealsTip': '点击引爆墨印 [C/L]',
     'hud.echoesTip': '击杀敌兵掉落的残响，可在起点老铸钟匠处淬炼断刃',
     'hud.echoesLost': '{0} (遗{1})',
+    'hud.weaponTip': '三系兵刃快捷切换：按 1/2/3 或 X，或直接点击切换',
     'hud.minimapTitle': '晦渊舆图',
     'hud.minimapTip': '点击或按 M / Tab 展开手绘羊皮纸详图',
     'hud.explore': '探索 {0}%',
@@ -108,6 +111,8 @@ export const UI_DICT = {
     'mob.grapple': '钩锁',
     'mob.attack': '普攻',
     'mob.attackHold': '长按居合',
+    'mob.attackHoldHammer': '长按碎岳',
+    'mob.attackHoldBell': '长按三鸣',
     'mob.joyAria': '方向摇杆',
     'mob.fanAria': '动作扇形按键',
 
@@ -195,15 +200,15 @@ export const UI_DICT = {
 
     // Help Modal & Input Labels
     'help.title': '战斗心法',
-    'help.sub': '三段弹反 · 居合一闪 · 幽鸣灵刃 · 幽丝钩索 · 墨印处决',
+    'help.sub': '三系兵刃探索解锁 · 切刃派生技 · 三段弹反 · 居合/陨钟/三鸣 · 墨印处决',
     'help.close': '继续战斗',
     'help.body':
-      '<strong>1. 立体断刃剑技 [{0}]</strong>：轻按三连（上挑 → 横扫 → 踏步重劈）；<strong>长按 [{0}]</strong> 沉身收刀蓄力释放<strong>「居合 · 一闪」</strong>；配合 <strong>[{1}+斩]</strong> 上挑斩、空中 <strong>[{2}+斩]</strong> 踩头与悬灯/钟摆/共鸣钟下劈弹跳。<br>' +
+      '<strong>1. 三系兵刃探索解锁 &amp; 切刃派生技 [1/2/3 或 X 切刃 · {0} 攻击]</strong>：开局执<strong>①灰钟断刃</strong>（3连快斩 + 居合一闪）；斩落断钟骑士·晦后回老铸钟匠处免费重铸<strong>②镇渊钟锤</strong>（2段重拍全招破盾/削势×1.35，二段与蓄力「陨钟碎岳」霸体轰出裂地震荡波）；探索残钟地窖寻得<strong>③引魂摇铃</strong>（穿透音环 + 三连寻敌铃矢 + 360°弹反脉冲）。<strong>命中或弹反后 0.44s 内切武器</strong>将取消后摇并触发专属<strong>「切刃派生技」</strong>！<br>' +
       '<strong>2. 双魂火法术 [{3}] / [{1}+{3}] &amp; 幽丝钩索 [{4}]</strong>：平按 <strong>[{3}]</strong> 发射水平穿透「幽鸣灵刃」(耗30)；按住 <strong>[{1}+{3}]</strong> 施放对空与 360° 范围爆发<strong>「镇魂钟鸣」</strong>(耗40)，可直接破重盾、震散法球并一次敲响周围多口悬灯与共鸣钟！<br>' +
       '<strong>3. 精准弹反 [{5}] &amp; 识破反击 [{5} → 斩]</strong>：完美弹反零伤打铁（可反弹怨灵火球与青铜钟摆！）并攒墨印；弹反后 0.56 秒内接斩派生<strong>「断钟返 · 十字反击斩」</strong>，双倍吸血狂削架势。<br>' +
       '<strong>4. 双圣物槽 &amp; 隐藏羁绊</strong>：祭坛可同时铭刻<strong>主印 + 副印</strong>，特定组合会激活机制质变羁绊（如幽丝断钟+回响钟舌、碎镜之眼+孤灯余烬、噬痛荆棘+裂钟铁心、古钟心核+碎镜之眼）！<br>' +
       '<strong>5. 墨印引爆 [{6}]、灯油回血 [{7}] 与处决 [斩]</strong>：攒墨印后按 <strong>[{6}]</strong> 突刺贴符引爆；敌方架势崩溃跪地时，近身按斩触发黑白反色处决！可在右上角「设置」中自定义键位、开关手柄震动或微调辅助难度。',
-    'quick.bar': '{0}/{1} 移 · {2} 跳 · {3} 斩/居合 · {4} 弹反 · {5} 钩索 · {6} 灵刃 · {7}+法 钟鸣 · {8} 闪 · {9} 墨印 · {10} 回血 · {11} 交互 · {12} 舆图',
+    'quick.bar': '{0}/{1} 移 · {2} 跳 · 1/2/3/X 换刃 · {3} 攻/蓄力 · {4} 弹反 · {5} 钩索 · {6} 灵刃 · {7}+法 钟鸣 · {8} 闪 · {9} 墨印 · {10} 回血 · {11} 交互 · {12} 舆图',
     'input.lmb': '左键',
     'input.rmb': '右键',
     'input.mmb': '中键',
@@ -212,7 +217,12 @@ export const UI_DICT = {
     'input.gpConnected': '手柄已接入 · 震动反馈已就绪',
 
     // Altar Modal (Relics, Synergies, Warp, Vows, Echoes, NG+)
-    'altar.sub': '灯油与魂火已回满 · 提灯可同时铭刻「主印 + 副印」两枚圣物',
+    'altar.sub': '灯油与魂火已回满 · 提灯可切换三系兵刃并铭刻「主印 + 副印」',
+    'altar.armoryHeading': '兵刃库 · 已寻得 ({0}/{1})',
+    'altar.armorySubSwitch': '命中或弹反后按 [1/2/3/X] 可触发「切刃派生技」',
+    'altar.armorySubLocked': '斩落首领晦或探索残钟地窖解锁新兵刃',
+    'altar.weaponEquipped': '执刃中',
+    'altar.weaponEquipBtn': '换装',
     'altar.close': '起身前行',
     'altar.slotPrimary': '主印 · 烈日钟纹',
     'altar.slotSecondary': '副印 · 残月幽丝',
@@ -318,13 +328,21 @@ export const UI_DICT = {
     'smith.close': '收刃告辞',
     'smith.maxed': '已臻化境',
     'smith.temperBtn': '淬炼 · {0} 残响',
+    'smith.hammerTitle': '兵刃重铸 · 镇渊钟锤',
+    'smith.hammerDonePill': '已铸成',
+    'smith.hammerReadyPill': '可免费重铸',
+    'smith.hammerLockPill': '待斩断钟骑士·晦',
+    'smith.hammerDesc': '以断钟骑士·晦陨落后的断钟余铁重铸双手巨锤：2段沉重砸击全招破盾、削势 ×1.35，二段与蓄力「陨钟碎岳」自带霸体减伤并轰出裂地震荡波。',
+    'smith.hammerBtnDone': '已收入兵刃库',
+    'smith.hammerBtnForge': '免费重铸 · 断钟余铁',
+    'smith.hammerBtnLock': '未获断钟余铁',
     'smith.dlg.bothEnds': '“我听见清晨的风吹过回廊了……人偶，你已看尽永夜与破晓。老朽这方铁砧，终能随你一同安歇。”',
     'smith.dlg.boss3': '“初钟圣骸终于停鸣……你随时可以重返东侧初钟圣心，或在祭坛重召「三钟终试」锤炼剑心。”',
     'smith.dlg.boss2': '“连沉渊炉底的寂鸣都归于静默了……铸钟殿东门已开，顺着<strong>「初钟圣阶」</strong>一路登顶，便能直面初钟圣骸·渊。若你已在残钟地窖习得<strong>幽影穿身</strong>，切记探查圣阶中层的暗蚀结界！”',
     'smith.dlg.keeper': '“咦？你提灯里那股温润的火意……莫非你在圣顶遇着了<strong>汐</strong>那孩子？她总算等来了能替她送灯破晓的人。来吧，老朽再替你把刃口磨亮！”',
     'smith.dlg.chronicler': '“哈哈，你在井中悬坛遇着那个戴蓑笠的书生<strong>墨尘</strong>了？他嘴上念叨修史，手底下的拓图术倒极准——多带碑文去寻他，对你大有裨益。”',
     'smith.dlg.wings': '“我听见你衣袂间多了一缕墨翼风声。沉渊钟井西侧的<strong>井中悬坛背后</strong>，曾有一道我亲手封死的<strong>残钟地窖</strong>——那里藏着大批古钟残响，亦能直通礼拜堂前。”',
-    'smith.dlg.boss1': '“晦的钟声停了……礼拜堂东侧已通往沉渊钟井。井中既有执盾铁卫，也有高台咏钟的<strong>敲钟祭司</strong>与<strong>连刃武者</strong>，把收集的残响交给我，我替你淬锋。”',
+    'smith.dlg.boss1': '“晦的钟声停了……他那口断钟留下的青铜余铁正合老朽心意！来吧，先免费为你重铸一柄双手<strong>「镇渊钟锤」</strong>，提着它下沉渊钟井正好正面碾碎重盾铁卫！”',
     'smith.dlg.upgraded': '“好锋口！听这铁砧回音，你的断刃已吃透残响。斩杀枯骨与怨灵皆会凝出残响，随时带回给我淬炼。”',
     'smith.dlg.intro': '“别靠火炉太近，人偶……我双眼虽盲，却听得出你腰间断刃尚存余温。去斩落回廊中的墨蚀亡魂，将逸散的<strong>「残响」</strong>带回此处，我为你重淬刀锋。”',
 
@@ -544,6 +562,18 @@ export const UI_DICT = {
     'combat.riposte': '断钟返!',
     'combat.synBloodIai': '羁绊 · 血铁居合！',
     'combat.iai': '居合 · 一闪',
+    'combat.hammerSlam': '裂地重砸!',
+    'combat.hammerCharge': '陨钟碎岳!',
+    'combat.hammerCounter': '撼钟碎骨!',
+    'combat.shieldArmor': '霸体硬抗 -{0}',
+    'combat.bellVolley': '摄魂三鸣!',
+    'combat.bellCounter': '镇魂回响!',
+    'combat.switchBlade': '切刃 · 流影拔刀!',
+    'combat.switchHammer': '切刃 · 落钟破岳!',
+    'combat.switchBell': '切刃 · 退步双鸣!',
+    'combat.weaponSwap': '换刃 · {0}',
+    'combat.weaponUnlockBanner': '获得兵刃 · {0}',
+    'combat.ngWeaponDup': '轮回共鸣 · 兵刃已藏，化作 +{0} 残响！',
     'combat.quellFoundry': '清钟破鸣!',
     'combat.quellTide': '清钟破潮!',
     'combat.shortcutOpen': '高空锁链捷径已开启！',
@@ -610,7 +640,7 @@ export const UI_DICT = {
 
   'en-US': {
     // Document & Title
-    'doc.title': 'Ashen Bell Vow v19.0 — Procedural Ink Art Overhaul · Dark Hand-Drawn Soulslike Metroidvania',
+    'doc.title': 'Ashen Bell Vow v21.0 — Wind, Woods & Frost Biomes Expansion · Dark Hand-Drawn Soulslike Metroidvania',
     'game.title': 'ASHEN BELL VOW',
     'game.subtitle': 'Dark Hand-Drawn Soulslike Metroidvania',
     'title.loading': 'Loading...',
@@ -649,6 +679,8 @@ export const UI_DICT = {
     'ctrl.altarKey': 'Altar',
     'ctrl.dashSeal': 'Ink Dash / Seal Detonate',
     'ctrl.healInteractMap': 'Lantern Oil / Interact / Map',
+    'ctrl.weaponSwap': 'Weapon Swap / Switch Strike',
+    'ctrl.weaponSwapKey': '1 · 2 · 3 / X',
     'ctrl.gamepad': 'Native Gamepad',
     'ctrl.gamepadKey': 'Xbox / PS Plug & Play',
 
@@ -673,6 +705,7 @@ export const UI_DICT = {
     'hud.sealsTip': 'Detonate Ink Seals [C/L]',
     'hud.echoesTip': 'Echoes dropped by slain foes; spend at Bell-Smith Li to temper your blade',
     'hud.echoesLost': '{0} (Lost {1})',
+    'hud.weaponTip': 'Three-Weapon Quick-Swap: press 1/2/3 or X, or click directly',
     'hud.minimapTitle': 'Abyss Map',
     'hud.minimapTip': 'Click or press M / Tab to open the hand-drawn parchment map',
     'hud.explore': 'Explored {0}%',
@@ -715,6 +748,8 @@ export const UI_DICT = {
     'mob.grapple': 'Hook',
     'mob.attack': 'Slash',
     'mob.attackHold': 'Hold Iai',
+    'mob.attackHoldHammer': 'Hold Sunder',
+    'mob.attackHoldBell': 'Hold Volley',
     'mob.joyAria': 'Directional Joystick',
     'mob.fanAria': 'Action Fan Controls',
 
@@ -802,15 +837,15 @@ export const UI_DICT = {
 
     // Help Modal & Input Labels
     'help.title': 'Combat Arts',
-    'help.sub': '3-Tier Parry · Iai Flash · Resonant Blade · Phantom Grapple · Execution',
+    'help.sub': 'Unlockable 3-Weapon Arsenal · Switch Strikes · 3-Tier Parry · Execution',
     'help.close': 'Resume Fight',
     'help.body':
-      '<strong>1. Broken-Blade Arts [{0}]</strong>: Tap for a 3-hit combo (Up-Cut → Sweep → Heavy Cleave); <strong>Hold [{0}]</strong> to sheathe and unleash piercing <strong>Iai Flash</strong>; use <strong>[{1}+Atk]</strong> to slash overhead or mid-air <strong>[{2}+Atk]</strong> to pogo-bounce off foes, lanterns, pendulums & resonance bells.<br>' +
+      '<strong>1. Unlockable 3-Weapon Arsenal &amp; Switch Strikes [1/2/3 or X · {0} Attack]</strong>: Begin with <strong>① Ashen Broken Blade</strong> (fast 3-hit + Iai Flash); fell Boss Hui and visit Bell-Smith Li to reforge <strong>② Abyssal Bell-Maul</strong> (heavy 2-hit smash, all hits shatter shields, ×1.35 posture, hyper-armor slam + seismic wave); explore the Crypt of Shards for <strong>③ Soul-Calling Bell Staff</strong> (piercing rings + 3-dart homing volley + 360° parry pulse). <strong>Swap within 0.44s of a hit or parry</strong> to unleash a free <strong>Switch Strike</strong>!<br>' +
       '<strong>2. Twin Soulfire Spells [{3}] / [{1}+{3}] &amp; Phantom Grapple [{4}]</strong>: Tap <strong>[{3}]</strong> to fire a piercing Resonant Blade (30 Soul); hold <strong>[{1}+{3}]</strong> for 360° anti-air <strong>Requiem Chime</strong> (40 Soul) that shatters heavy shields, disperses orbs, and rings nearby lanterns & puzzle bells!<br>' +
       '<strong>3. Perfect Parry [{5}] &amp; Riposte [{5} → Atk]</strong>: Deflect golden flashes with zero damage (even reflecting wraith orbs & bronze pendulums!) to earn Ink Seals; slash within 0.56s after a parry for <strong>Bell-Breaker Riposte</strong> with 2x rally & heavy posture break.<br>' +
       '<strong>4. Twin Relic Slots &amp; Hidden Synergies</strong>: Attune both a <strong>Primary + Secondary Relic</strong> at any Altar; paired relics awaken hidden synergies (e.g., Phantom-Thread + Echoing Clapper, Mirror Eye + Lone Ember, Thorn + Ironheart, Bell Core + Mirror Eye)!<br>' +
       '<strong>5. Seal Detonation [{6}], Lantern Oil [{7}] &amp; Execution [Atk]</strong>: Press <strong>[{6}]</strong> to lunge and plant explosive Ink Seals; when a foe kneels posture-broken, strike up close for a monochrome Execution! Rebind keys or tune assist difficulty anytime in Settings.',
-    'quick.bar': '{0}/{1} Move · {2} Jump · {3} Slash/Iai · {4} Parry · {5} Hook · {6} Blade · {7}+Spell Chime · {8} Dash · {9} Seal · {10} Oil · {11} Interact · {12} Map',
+    'quick.bar': '{0}/{1} Move · {2} Jump · 1/2/3/X Swap · {3} Atk/Hold · {4} Parry · {5} Hook · {6} Blade · {7}+Spell Chime · {8} Dash · {9} Seal · {10} Oil · {11} Interact · {12} Map',
     'input.lmb': 'LMB',
     'input.rmb': 'RMB',
     'input.mmb': 'MMB',
@@ -819,7 +854,12 @@ export const UI_DICT = {
     'input.gpConnected': 'Gamepad Connected · Rumble Ready',
 
     // Altar Modal
-    'altar.sub': 'Lantern Oil & Soulfire replenished · Attune Primary + Secondary Relics',
+    'altar.sub': 'Lantern Oil & Soulfire replenished · Swap 3 Weapons & Attune Twin Relics',
+    'altar.armoryHeading': 'Armory · Unlocked ({0}/{1})',
+    'altar.armorySubSwitch': 'Swap within 0.44s of a hit/parry for a Switch Strike!',
+    'altar.armorySubLocked': 'Fell Hui or explore the Crypt of Shards to unlock more weapons',
+    'altar.weaponEquipped': 'Equipped',
+    'altar.weaponEquipBtn': 'Equip',
     'altar.close': 'Rise & Venture',
     'altar.slotPrimary': 'Primary · Solar Bell Crest',
     'altar.slotSecondary': 'Secondary · Crescent Thread',
@@ -925,13 +965,21 @@ export const UI_DICT = {
     'smith.close': 'Take Leave',
     'smith.maxed': 'Mastered',
     'smith.temperBtn': 'Temper · {0} Echoes',
+    'smith.hammerTitle': 'Reforge Weapon · Abyssal Bell-Maul',
+    'smith.hammerDonePill': 'Reforged',
+    'smith.hammerReadyPill': 'Free Reforge',
+    'smith.hammerLockPill': 'Defeat Boss Hui',
+    'smith.hammerDesc': 'Reforge shattered bronze from Hui into a massive two-handed bell-maul: heavy 2-hit crush breaks all shields (×1.35 posture), with hyper-armor slams & seismic shockwaves.',
+    'smith.hammerBtnDone': 'In Armory',
+    'smith.hammerBtnForge': 'Reforge Free · Bell Bronze',
+    'smith.hammerBtnLock': 'Needs Bell Bronze',
     'smith.dlg.bothEnds': '“I can hear the morning breeze moving through the cloister… Puppet, you have witnessed both endless night and dawn. This old anvil may rest beside you at last.”',
     'smith.dlg.boss3': '“The Relic of the First Bell has fallen silent at last… Return east to the Heart whenever you wish, or summon the Trial of Three Bells at any Altar.”',
     'smith.dlg.boss2': '“Even the roaring furnace deep in the foundry has quieted… The eastern gate stands open. Climb the <strong>Ascent of the First Bell</strong> to face Yuan—and if you learned <strong>Shadow Phase</strong> in the Crypt, search the barrier midway up the spire!”',
     'smith.dlg.keeper': '“Hm? That warm flame inside your lantern… Did you meet <strong>Xi</strong> up on the spire? At last she found someone to carry her light into dawn. Come, let me hone your edge once more!”',
     'smith.dlg.chronicler': '“Hah, ran into that bamboo-hatted scribe <strong>Mochen</strong> by the well altar, did you? He prattles about chronicles, yet his map-pinning eye is razor sharp—bring him your stele rubbings.”',
     'smith.dlg.wings': '“I hear the rush of ink-wings in your cloak. Behind the <strong>Suspended Well Altar</strong> in the western Bell Well lies the <strong>Crypt of Shards</strong> I sealed long ago—it holds ancient echoes and a shortcut back to the Chapel.”',
-    'smith.dlg.boss1': '“Hui’s bell has gone still… The eastern chapel gate now leads to the Abyssal Bell Well. Shielded Ironclads, <strong>Bell-Tolling Priests</strong>, and <strong>Oathbreaker Duelists</strong> wait below—bring me their Echoes and I shall temper your steel.”',
+    'smith.dlg.boss1': '“Hui’s bell has gone still… The shattered bronze left from his bell is just what my anvil craves! Let me reforge it into a two-handed <strong>Abyssal Bell-Maul</strong> for free—carry it into the Bell Well to crush those shielded ironclads!”',
     'smith.dlg.upgraded': '“A fine edge! Hear how the anvil answers—your broken blade drinks Echoes well. Slay husks and wraiths alike, and bring every scrap back to me.”',
     'smith.dlg.intro': '“Don’t stand too close to the coals, puppet… Blind I may be, yet I hear lingering warmth in that broken blade at your hip. Strike down the ink-blighted dead in the cloister and bring me their <strong>Echoes</strong> so I may reforge its edge.”',
 
@@ -1151,6 +1199,18 @@ export const UI_DICT = {
     'combat.riposte': 'RIPOSTE!',
     'combat.synBloodIai': 'Synergy · Crimson-Iron Iai!',
     'combat.iai': 'IAI FLASH',
+    'combat.hammerSlam': 'GROUND CRUSH!',
+    'combat.hammerCharge': 'ABYSSAL SUNDERING!',
+    'combat.hammerCounter': 'BELL-SHATTER!',
+    'combat.shieldArmor': 'ARMORED -{0}',
+    'combat.bellVolley': 'TRI-CHIME!',
+    'combat.bellCounter': 'REQUIEM PULSE!',
+    'combat.switchBlade': 'SWITCH · FLASH DRAW!',
+    'combat.switchHammer': 'SWITCH · FALLING MAUL!',
+    'combat.switchBell': 'SWITCH · RECOIL CHIME!',
+    'combat.weaponSwap': 'EQUIP · {0}',
+    'combat.weaponUnlockBanner': 'WEAPON UNLOCKED · {0}',
+    'combat.ngWeaponDup': 'NG+ Resonance · Weapon Owned → +{0} Echoes!',
     'combat.quellFoundry': 'RESONANCE QUELLED!',
     'combat.quellTide': 'TIDE QUELLED!',
     'combat.shortcutOpen': 'Skyway Chain Shortcut Opened!',
