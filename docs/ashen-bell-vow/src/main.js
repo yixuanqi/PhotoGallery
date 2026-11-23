@@ -5,7 +5,7 @@ import { G, hooks, createFreshWorldState, markMapExplored, createLanterns, creat
 import { loadWorldData, getPreviewSpawnRoomId } from './levelLoader.js';
 import { audio } from './audio.js';
 import { buildParchmentPattern, buildGlowSprites, initAmbientMotes } from './vfx.js';
-import { startTitleIntro, skipTitleIntro, isTitleIntroActive, updateTitleIntro, beginSceneFade } from './render/titleIntro.js';
+import { startTitleIntro, skipTitleIntro, isTitleIntroActive, isTitleIntroPlaying, updateTitleIntro, beginSceneFade } from './render/titleIntro.js';
 import {
   clearFrameInputs, syncControlModeUI, pollGamepad, initInputListeners,
   updateMobileOrientationLayout, requestMobileLandscapeFullscreen,
@@ -23,7 +23,7 @@ import { getBackdropCacheStats } from './render/backdropCache.js';
 import { prof } from './profiler.js';
 import { isBenchmarkActive, startCombatBenchmark, cancelCombatBenchmark, tickCombatBenchmark, openBenchmarkReportModal, copyBenchmarkReport } from './benchmark.js';
 import { readSaveData, saveProgress, loadUserSettings, saveUserSettings } from './save.js';
-import { t, setLocale, toggleLocale, loadSavedLocale, onLocaleChange } from './i18n.js';
+import { t, setLocale, toggleLocale, loadSavedLocale, onLocaleChange, applyStaticI18n } from './i18n.js';
 import {
   HUD_DOM, refreshTitleSaveUI, refreshActiveModalI18n, syncHUD, openModal, closeModal, renderParchmentMap, renderSettingsModal, openSettingsJournal,
   openSmithModal, openNpcModal, openDummyModal, openLoreModal, openMapModal, openCodexModal, openPauseModal, returnToTitle, interactWithAltar, respawnAtActiveAltar,
@@ -73,9 +73,14 @@ G.canvas = document.getElementById('gameCanvas');
 // Standard 2D context without alpha:false prevents Windows DWM/MPO opaque overlay freeze on 144Hz monitors
 G.ctx = G.canvas.getContext('2d');
 
+let _lastMobileFlag = null;
 function resizeCanvas() {
   const { mobile } = updateMobileOrientationLayout();
   G.isMobile = !!mobile;
+  if (_lastMobileFlag !== G.isMobile) {
+    _lastMobileFlag = G.isMobile;
+    applyStaticI18n();
+  }
   const root = document.getElementById('game-root');
   const lightMode = !!(G.settings && G.settings.dynamicLighting === false);
   const maxDpr = lightMode ? 1.0 : (mobile ? 1.25 : (window.innerWidth >= 1440 ? 1.5 : 1.75));
@@ -356,6 +361,15 @@ function runGameFrame(timestamp) {
     }
   }
   updateTitleIntro(dt);
+  // v43.5 State-driven body[data-game-state] so HUD & Mobile Touch Controls are 100% hidden during intro/title/cinematics/modals!
+  const nextBodyState = isTitleIntroPlaying()
+    ? 'intro'
+    : (G.gameState === 'playing' && ((G.bossIntro && G.bossIntro.timer > 0) || (G.bossKillSlowmo && G.bossKillSlowmo.timer > 0)))
+      ? 'cinematic'
+      : (G.gameState || 'title');
+  if (document.body.dataset.gameState !== nextBodyState) {
+    document.body.dataset.gameState = nextBodyState;
+  }
 
   if (G.activeModal === 'ending-cinematic') updateAndRenderEndingCinematic(dt);
   if (G.activeModal === 'smith') updateAndRenderSkillPreview(dt);
@@ -442,18 +456,20 @@ if (titleScreenEl) {
   titleScreenEl.addEventListener('mousedown', () => {
     if (isTitleIntroActive()) skipTitleIntro();
   });
+  titleScreenEl.addEventListener('touchstart', () => {
+    if (isTitleIntroActive()) skipTitleIntro();
+  }, { passive: true });
 }
 document.getElementById('btn-ctrl').addEventListener('click', () => {
   G.controlMode = G.controlMode === 'kbmouse' ? 'keyboard' : 'kbmouse';
   syncControlModeUI();
   if (G.gameState !== 'title') saveProgress(false);
 });
-const auxBtn = document.getElementById('btn-mobile-aux');
-const auxWrap = document.getElementById('mobile-aux-controls');
-if (auxBtn && auxWrap) {
-  auxBtn.addEventListener('click', () => {
-    const isHidden = auxWrap.classList.toggle('hidden');
-    auxBtn.textContent = isHidden ? t('hud.auxOff') : t('hud.auxOn');
+const rotFsBtn = document.getElementById('btn-rotate-fullscreen');
+if (rotFsBtn) {
+  rotFsBtn.addEventListener('click', () => {
+    requestMobileLandscapeFullscreen();
+    setTimeout(resizeCanvas, 220);
   });
 }
 const fsBtn = document.getElementById('btn-fullscreen');
@@ -725,6 +741,9 @@ if (backEditorBtn) {
 
 // Async Bootstrap: load room-based JSON data stream before initializing scene
 async function bootstrapGame() {
+  document.body.dataset.gameState = 'intro';
+  const initLayout = updateMobileOrientationLayout();
+  G.isMobile = !!initLayout.mobile;
   loadUserSettings();
   loadSavedLocale();
   buildGlowSprites();

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Zero-dependency static verifier for Ashen Bell Vow v43.4
+"""Zero-dependency static verifier for Ashen Bell Vow v43.5
 Checks:
 1. JS lexical & bracket syntax across all src/**/*.js
 2. ES Module import/export path existence, explicit .js suffix, exact case sensitivity & symbol verification
@@ -1062,7 +1062,7 @@ def check_undefined_js_calls(file_texts):
                 seen_err.add(fn)
                 errors.append(f"{rel}: Undefined function call '{fn}()'")
 
-        # v43.4 Guard: verify every config.js exported constant referenced in a module is explicitly imported/declared
+        # v43.5 Guard: verify every config.js exported constant referenced in a module is explicitly imported/declared
         clean_no_reexp = re.sub(r'export\s*\{[^}]*\}\s*from\s*[^;\n]+', '', clean)
         for sym in sorted(cfg_consts):
             if sym in declared:
@@ -1082,7 +1082,7 @@ def main():
     all_errs = js_errs + rm_errs + lnch_errs + v34_errs + topo_errs + undef_errs
     all_warns = js_warns + rm_warns + v34_warns
 
-    print(f"[Ashen Bell Vow v43.4 Verifier] JS modules: {js_cnt} | Cycles: {cyc_cnt} | Rooms: {rm_cnt} | Stamps: {st_cnt}")
+    print(f"[Ashen Bell Vow v43.5 Verifier] JS modules: {js_cnt} | Cycles: {cyc_cnt} | Rooms: {rm_cnt} | Stamps: {st_cnt}")
     print(
         f"Economy (1x): {eco['total_1x']} echoes "
         f"[Foes({eco['reg_cnt']}): {eco['reg_echo']} | Wardens: {eco['warden_echo']} | Bosses: {eco['boss_echo']} | "

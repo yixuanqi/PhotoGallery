@@ -957,7 +957,8 @@ export function drawWorldPrompts() {
   const py = G.player.y + G.player.h;
   G.ctx.save();
 
-  const ek = getActionKeyLabel('interact');
+  const isMob = !!(G.isMobile || (typeof document !== 'undefined' && document.body && document.body.classList.contains('is-mobile')));
+  const ek = isMob ? t('mob.interact') : getActionKeyLabel('interact');
   if (G.worldState && G.worldState.boss3Defeated && !G.echoSession &&
       Math.hypot(px - FIRST_BELL_CORE_POS.x, py - FIRST_BELL_CORE_POS.y) < 105) {
     drawPromptBadge(FIRST_BELL_CORE_POS.x, FIRST_BELL_CORE_POS.y - 118, t('prompt.core', ek));

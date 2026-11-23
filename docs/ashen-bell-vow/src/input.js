@@ -327,15 +327,16 @@ export function isMobileDevice() {
 }
 
 export function isForceLandscape() {
-  return document.body.classList.contains('force-landscape');
+  return false;
 }
 
 export function updateMobileOrientationLayout() {
   const mobile = isMobileDevice();
   const portrait = window.innerHeight > window.innerWidth;
   document.body.classList.toggle('is-mobile', mobile);
-  document.body.classList.toggle('force-landscape', mobile && portrait);
-  return { mobile, forceLandscape: mobile && portrait };
+  document.body.classList.toggle('is-portrait', mobile && portrait);
+  document.body.classList.remove('force-landscape');
+  return { mobile, portrait: mobile && portrait, forceLandscape: false };
 }
 
 export function requestMobileLandscapeFullscreen() {
@@ -422,6 +423,10 @@ export function getControlLabels() {
 export function syncHelpModalText() {
   const el = document.getElementById('help-modal-body');
   if (!el) return;
+  if (document.body.classList.contains('is-mobile')) {
+    el.innerHTML = t('help.bodyMobile');
+    return;
+  }
   const k = getControlLabels();
   const upK = getActionKeyLabel('up');
   const dnK = getActionKeyLabel('down');
@@ -741,48 +746,156 @@ export function initInputListeners() {
     });
   }
 
-  // --- Bottom-Right 4-Button Fan, Contextual Interact & Aux Multi-Touch Bindings ---
+  // --- Bottom-Right 6+3 Soulslike Thumb Stage with Up/Down Flick Gestures & Dynamic Swap (v43.5) ---
   const allTouchResetters = [];
+  const flickClearTimers = { up: null, down: null };
+  function triggerDirectionalFlick(action, dir, btnEl) {
+    if (flickClearTimers[dir]) clearTimeout(flickClearTimers[dir]);
+    setVirtualAction(dir, true);
+    pulseVirtualAction(action);
+    if (btnEl) {
+      const cls = dir === 'up' ? 'flick-up' : 'flick-down';
+      btnEl.classList.remove('flick-up', 'flick-down');
+      btnEl.classList.add(cls);
+      setTimeout(() => btnEl.classList.remove(cls), 200);
+    }
+    flickClearTimers[dir] = setTimeout(() => {
+      setVirtualAction(dir, false);
+      flickClearTimers[dir] = null;
+    }, 150);
+  }
+
   document.querySelectorAll('.t-btn').forEach(btn => {
+    const customOp = btn.dataset.custom || '';
+    if (customOp === 'swapWeapon') {
+      const fireSwap = e => {
+        e.preventDefault();
+        e.stopPropagation();
+        audio.init();
+        btn.classList.add('pressed');
+        if (hooks.cycleWeapon) hooks.cycleWeapon(1);
+        setTimeout(() => btn.classList.remove('pressed'), 120);
+      };
+      btn.addEventListener('touchstart', fireSwap, { passive: false });
+      btn.addEventListener('mousedown', e => { if (e.button === 0) fireSwap(e); });
+      allTouchResetters.push(() => btn.classList.remove('pressed'));
+      return;
+    }
+
     const act = btn.dataset.action || LEGACY_KEY_TO_ACTION[btn.dataset.key];
     if (!act) return;
+    const flickDirs = (btn.dataset.flick || '').split(',').filter(Boolean);
+    const hasFlick = flickDirs.length > 0;
+    const allowUp = flickDirs.includes('up');
+    const allowDown = flickDirs.includes('down');
+
     const activeIds = new Set();
-    const pressBtn = () => {
-      audio.init();
-      btn.classList.add('pressed');
+    let trackId = null;
+    let startY = 0;
+    let flickTriggered = false;
+    let pressStarted = false;
+    let deferTimer = null;
+
+    const commitNormalPress = () => {
+      if (pressStarted || flickTriggered) return;
+      pressStarted = true;
       setVirtualAction(act, true);
     };
-    const releaseBtn = () => {
-      btn.classList.remove('pressed');
-      setVirtualAction(act, false);
-    };
-    allTouchResetters.push(() => {
+
+    const resetBtnState = () => {
+      if (deferTimer) { clearTimeout(deferTimer); deferTimer = null; }
       activeIds.clear();
+      trackId = null;
       btn.classList.remove('pressed');
-    });
+      if (pressStarted) {
+        setVirtualAction(act, false);
+        pressStarted = false;
+      }
+      flickTriggered = false;
+    };
+    allTouchResetters.push(resetBtnState);
+
     btn.addEventListener('touchstart', e => {
       e.preventDefault();
+      audio.init();
+      btn.classList.add('pressed');
       for (let i = 0; i < e.changedTouches.length; i++) activeIds.add(e.changedTouches[i].identifier);
-      pressBtn();
+      if (!hasFlick) {
+        commitNormalPress();
+        return;
+      }
+      if (trackId === null && e.changedTouches.length > 0) {
+        const tch = e.changedTouches[0];
+        trackId = tch.identifier;
+        startY = tch.clientY;
+        flickTriggered = false;
+        pressStarted = false;
+        // Air jump fires with 0ms delay (drop-through only applies on ground); Attack/Spell wait 48ms for flick intent
+        const zeroDelay = (act === 'jump' && G.player && !G.player.grounded);
+        if (zeroDelay) {
+          commitNormalPress();
+        } else {
+          deferTimer = setTimeout(() => {
+            deferTimer = null;
+            if (activeIds.size > 0 && !flickTriggered) commitNormalPress();
+          }, 48);
+        }
+      }
     }, { passive: false });
+
+    if (hasFlick) {
+      btn.addEventListener('touchmove', e => {
+        if (trackId === null || flickTriggered) return;
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const tch = e.changedTouches[i];
+          if (tch.identifier !== trackId) continue;
+          const dy = tch.clientY - startY;
+          if (allowUp && dy <= -20) {
+            flickTriggered = true;
+            if (deferTimer) { clearTimeout(deferTimer); deferTimer = null; }
+            if (pressStarted) { setVirtualAction(act, false); pressStarted = false; }
+            triggerDirectionalFlick(act, 'up', btn);
+          } else if (allowDown && dy >= 20) {
+            flickTriggered = true;
+            if (deferTimer) { clearTimeout(deferTimer); deferTimer = null; }
+            if (pressStarted) { setVirtualAction(act, false); pressStarted = false; }
+            triggerDirectionalFlick(act, 'down', btn);
+          }
+          break;
+        }
+      }, { passive: false });
+    }
+
     const onEnd = e => {
       e.preventDefault();
       for (let i = 0; i < e.changedTouches.length; i++) activeIds.delete(e.changedTouches[i].identifier);
-      if (activeIds.size === 0) releaseBtn();
+      if (activeIds.size === 0) {
+        if (deferTimer) {
+          clearTimeout(deferTimer);
+          deferTimer = null;
+          if (!flickTriggered && !pressStarted) pulseVirtualAction(act);
+        }
+        resetBtnState();
+      }
     };
     btn.addEventListener('touchend', onEnd, { passive: false });
     btn.addEventListener('touchcancel', onEnd, { passive: false });
+
+    // Desktop DevTools simulator mouse fallback
     btn.addEventListener('mousedown', e => {
       if (e.button !== 0) return;
       e.stopPropagation();
-      pressBtn();
+      audio.init();
+      btn.classList.add('pressed');
+      commitNormalPress();
     });
     btn.addEventListener('mouseup', e => {
       e.stopPropagation();
-      releaseBtn();
+      resetBtnState();
     });
     btn.addEventListener('mouseleave', () => {
-      if (btn.classList.contains('pressed')) releaseBtn();
+      if (btn.classList.contains('pressed')) resetBtnState();
     });
   });
 

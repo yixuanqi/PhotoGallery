@@ -1,7 +1,7 @@
-// Simplified Chinese (zh-CN) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v43.4)
+// Simplified Chinese (zh-CN) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v43.5)
 export const UI_ZH = {
     // Document & Title
-    'doc.title': '灰钟残誓 v43.4 — 核心模块瘦身、全界面手柄导航与水牢镜渊乐章版 · 暗黑手绘魂系类银河恶魔城',
+    'doc.title': '灰钟残誓 v43.5 — 核心模块瘦身、全界面手柄导航与水牢镜渊乐章版 · 暗黑手绘魂系类银河恶魔城',
     'game.title': '灰钟残誓',
     'game.subtitle': 'ASHEN BELL VOW · 暗黑手绘魂系类银河恶魔城',
     'title.loading': '载入中...',
@@ -106,6 +106,15 @@ export const UI_ZH = {
     'mob.spell': '法术',
     'mob.spellBlade': '灵刃',
     'mob.spellQuake': '钟鸣',
+    'mob.spellDive': '下砸',
+    'mob.heal': '灯油',
+    'mob.swap': '切刃',
+    'mob.seal': '墨印',
+    'mob.sealUlt': '奥义',
+    'mob.pullSwitch': '启闸机关',
+    'mob.rotateTitle': '请横握手机',
+    'mob.rotateSub': '横屏以全屏视野体验《灰钟残誓》水墨箱庭与双指战斗',
+    'mob.rotateFsBtn': '尝试自动横屏全屏',
     'mob.grapple': '钩锁',
     'mob.attack': '普攻',
     'mob.attackHold': '长按居合',
@@ -200,6 +209,7 @@ export const UI_ZH = {
     'help.title': '战斗心法',
     'help.sub': '三系兵刃探索解锁 · 切刃派生技 · 三段弹反 · 居合/陨钟/三鸣 · 墨印处决',
     'help.close': '继续战斗',
+    'help.bodyMobile': '• <strong>左手摇杆</strong>：360° 移动与微调朝向，触墙按跳跃可蹬墙跳。<br>• <strong>普攻（支持轻滑）</strong>：点按三连斩，<strong>长按蓄满</strong>释放居合 / 碎岳 / 三鸣；<strong>上滑</strong>上挑斩，<strong>空中下滑</strong>下劈弹跳（Pogo）。<br>• <strong>弹反 & 闪避（常驻）</strong>：金芒闪现瞬间按「弹反」触发清脆打铁并派生反击斩；猩红「危」必杀用「闪避」无敌穿过（解锁幽影穿身后可变紫穿结界）。<br>• <strong>法术（支持轻滑）</strong>：点按幽鸣灵刃；<strong>上滑</strong>施放范围「镇魂钟鸣」；解锁后<strong>空中下滑</strong>施放无敌「镇岳下砸」。<br>• <strong>跳跃（支持下滑）</strong>：二段跳与蹬墙跳，立于单向平台时<strong>下滑跳跃键</strong>即可下穿。<br>• <strong>动态绝技槽</strong>：解锁「幽丝钩索」、获得第二把兵刃「切刃」、或蓄满「墨印奥义」后将自动浮现于右手上方。',
     'help.body':
       '<strong>1. 三系兵刃探索解锁 &amp; 切刃派生技 [1/2/3 或 X 切刃 · {0} 攻击]</strong>：开局执<strong>①灰钟断刃</strong>（3连快斩 + 居合一闪）；斩落断钟骑士·晦后回老铸钟匠处免费重铸<strong>②镇渊钟锤</strong>（2段重拍全招破盾/削势×1.35，二段与蓄力「陨钟碎岳」霸体轰出裂地震荡波）；探索残钟地窖寻得<strong>③引魂摇铃</strong>（穿透音环 + 三连寻敌铃矢 + 360°弹反脉冲）。<strong>命中或弹反后 0.44s 内切武器</strong>将取消后摇并触发专属<strong>「切刃派生技」</strong>！<br>' +
       '<strong>2. 双魂火法术 [{3}] / [{1}+{3}] &amp; 幽丝钩索 [{4}]</strong>：平按 <strong>[{3}]</strong> 发射水平穿透「幽鸣灵刃」(耗30)；按住 <strong>[{1}+{3}]</strong> 施放对空与 360° 范围爆发<strong>「镇魂钟鸣」</strong>(耗40)，可直接破重盾、震散法球并一次敲响周围多口悬灯与共鸣钟！<br>' +

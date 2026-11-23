@@ -1,7 +1,7 @@
-// English (en-US) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v43.4)
+// English (en-US) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v43.5)
 export const UI_EN = {
     // Document & Title
-    'doc.title': 'Ashen Bell Vow v43.4 — Modular Architecture Polish, Full Gamepad UI Navigation & Cistern/Mirror Score Edition · Dark Hand-Drawn Soulslike Metroidvania',
+    'doc.title': 'Ashen Bell Vow v43.5 — Modular Architecture Polish, Full Gamepad UI Navigation & Cistern/Mirror Score Edition · Dark Hand-Drawn Soulslike Metroidvania',
     'game.title': 'ASHEN BELL VOW',
     'game.subtitle': 'Dark Hand-Drawn Soulslike Metroidvania',
     'title.loading': 'Loading...',
@@ -106,6 +106,15 @@ export const UI_EN = {
     'mob.spell': 'Spell',
     'mob.spellBlade': 'Blade',
     'mob.spellQuake': 'Chime',
+    'mob.spellDive': 'Dive',
+    'mob.heal': 'Oil',
+    'mob.swap': 'Swap',
+    'mob.seal': 'Seal',
+    'mob.sealUlt': 'Ult',
+    'mob.pullSwitch': 'Pull Lever',
+    'mob.rotateTitle': 'Rotate to Landscape',
+    'mob.rotateSub': 'Hold your phone horizontally for fullscreen dark-ink exploration & dual-thumb combat.',
+    'mob.rotateFsBtn': 'Try Landscape Fullscreen',
     'mob.grapple': 'Hook',
     'mob.attack': 'Slash',
     'mob.attackHold': 'Hold Iai',
@@ -200,6 +209,7 @@ export const UI_EN = {
     'help.title': 'Combat Arts',
     'help.sub': 'Unlockable 3-Weapon Arsenal · Switch Strikes · 3-Tier Parry · Execution',
     'help.close': 'Resume Fight',
+    'help.bodyMobile': '• <strong>Left Joystick</strong>: Move smoothly and wall-slide; tap Jump on stone walls to Wall-Jump.<br>• <strong>Slash (Flick-Enabled)</strong>: Tap for combos, <strong>Hold</strong> for Charged Iai / Sunder / Volley; <strong>Flick Up</strong> for Up-Slash, <strong>Air Flick Down</strong> for Pogo bounce.<br>• <strong>Parry & Dash (Always On)</strong>: Tap Parry on golden flashes for Deflect + Riposte; Dash through crimson perils (evolves into violet Shadow Phase).<br>• <strong>Spell (Flick-Enabled)</strong>: Tap for Soul Wave, <strong>Flick Up</strong> for Requiem Chime, <strong>Air Flick Down</strong> for Bell Dive once unlocked.<br>• <strong>Jump (Flick Down)</strong>: Double-Jump in mid-air; <strong>Flick Down</strong> on thin platforms to drop through.<br>• <strong>Dynamic Slots</strong>: Grapple Hook, Weapon Swap (Switch Strike), and Ink Seal / Full-Seal Ult appear cleanly above your thumb once unlocked or charged.',
     'help.body':
       '<strong>1. Unlockable 3-Weapon Arsenal &amp; Switch Strikes [1/2/3 or X · {0} Attack]</strong>: Begin with <strong>① Ashen Broken Blade</strong> (fast 3-hit + Iai Flash); fell Boss Hui and visit Bell-Smith Li to reforge <strong>② Abyssal Bell-Maul</strong> (heavy 2-hit smash, all hits shatter shields, ×1.35 posture, hyper-armor slam + seismic wave); explore the Crypt of Shards for <strong>③ Soul-Calling Bell Staff</strong> (piercing rings + 3-dart homing volley + 360° parry pulse). <strong>Swap within 0.44s of a hit or parry</strong> to unleash a free <strong>Switch Strike</strong>!<br>' +
       '<strong>2. Twin Soulfire Spells [{3}] / [{1}+{3}] &amp; Phantom Grapple [{4}]</strong>: Tap <strong>[{3}]</strong> to fire a piercing Resonant Blade (30 Soul); hold <strong>[{1}+{3}]</strong> for 360° anti-air <strong>Requiem Chime</strong> (40 Soul) that shatters heavy shields, disperses orbs, and rings nearby lanterns & puzzle bells!<br>' +

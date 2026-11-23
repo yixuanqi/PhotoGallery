@@ -39,8 +39,62 @@ export function t(key, ...args) {
     const val = String(args[i]);
     str = str.split(`{${i}}`).join(val);
   }
-  return str;
+  return adaptTouchText(str);
 }
+
+function isTouchPromptMode() {
+  if (G && G.isMobile) return true;
+  return typeof document !== 'undefined' && !!document.body && document.body.classList.contains('is-mobile');
+}
+
+export function adaptTouchText(str) {
+  if (!str || !isTouchPromptMode()) return str;
+  let out = String(str);
+  // Strip desktop shortcut suffixes like " [M]", " [B]", " [F8]", " [F9]"
+  out = out.replace(new RegExp('\\s*\\[(?:M|B|F8|F9|Tab|Esc|Enter(?:\\s*/\\s*A)?)\\]', 'g'), '');
+  if (isEn()) {
+    out = out
+      .replace(/Press any key or click to skip/g, 'Tap screen to skip')
+      .replace(/KB\+M \/ Xbox & PS Gamepad Ready · \[Enter \/ A\] Begin/g, 'Touch Landscape Controls · Tap to Begin')
+      .replace(/KB\+M \/ Xbox & PS Gamepad Ready ·  Begin/g, 'Touch Landscape Controls · Tap to Begin')
+      .replace(/\[F\s*\/\s*Mid-Click\s*\/\s*I\]/g, '[Grapple]')
+      .replace(/F\/Mid-Click\/I/g, 'Grapple button')
+      .replace(/\[1\/2\/3\/X\]/g, '[Swap]')
+      .replace(/\[W\+Spell\]/g, 'Flick Spell Up')
+      .replace(/\[Air S\+Spell\]/g, 'Air Flick Spell Down')
+      .replace(/\bS\+Attack\b/g, 'Flick Slash Down')
+      .replace(/\bW\+Attack\b/g, 'Flick Slash Up')
+      .replace(/press \[E\]/gi, 'tap [Interact]')
+      .replace(/\[E\]/g, '[Interact]')
+      .replace(/\bShift\b/g, 'Dash')
+      .replace(/\bSpace\b/g, 'Jump')
+      .replace(/Left-click map to place pin · Click existing pin or Right-click to erase/g, 'Tap map to place pin · Tap existing pin to erase');
+  } else {
+    out = out
+      .replace(/按任意键或点击跳过/g, '点击屏幕跳过')
+      .replace(/键鼠\s*\/\s*Xbox\s*&\s*PS\s*手柄即插即用\s*·\s*启程/g, '横屏触控专属操控 · 点击启程')
+      .replace(/\[F\s*\/\s*中键\s*\/\s*I\]/g, '「钩锁」键')
+      .replace(/F\s*\/\s*中键\s*\/\s*I/g, '「钩锁」键')
+      .replace(/\[1\/2\/3\/X\]/g, '「切刃」键')
+      .replace(/1\/2\/3\s*或\s*X/g, '「切刃」键')
+      .replace(/空中按\s*S\+法术/g, '空中下滑「法术」')
+      .replace(/\[W\+法术\]|W\+法术|W\+法/g, '上滑「法术」')
+      .replace(/S\s*\+\s*法/g, '下滑「法术」')
+      .replace(/S\s*\+\s*斩/g, '下滑「普攻」')
+      .replace(/W\s*\+\s*斩/g, '上滑「普攻」')
+      .replace(/按\s*\[E\]/g, '点击「交互」')
+      .replace(/\[E\]/g, '「交互」')
+      .replace(/\[Q\/H\]|Q\/H/g, '「灯油」键')
+      .replace(/\[C\/L\]|C\/L/g, '「墨印」键')
+      .replace(/\[M\]/g, '右上小地图')
+      .replace(/\[B\]/g, '「设置」手账')
+      .replace(/\bShift\b/g, '「闪避」键')
+      .replace(/\bSpace\b/g, '「跳跃」键')
+      .replace(/左键点击舆图落钉\s*·\s*点击已有图钉或右键抹除/g, '点击舆图落钉 · 再次点击已有图钉抹除');
+  }
+  return out;
+}
+
 
 export function setLocale(loc, persist = true) {
   const next = loc === 'en-US' ? 'en-US' : 'zh-CN';
@@ -97,16 +151,16 @@ export function locAltar(altar, field = 'shortName') {
 
 export function locTablet(tablet, field = 'title') {
   if (!tablet) return '';
-  if (!isEn()) return tablet[field] || '';
-  const entry = tablet.id && WORLD_EN.tablets[tablet.id];
-  return (entry && entry[field]) || tablet[field] || '';
+  const entry = isEn() && tablet.id && WORLD_EN.tablets[tablet.id];
+  const out = (entry && entry[field]) || tablet[field] || '';
+  return adaptTouchText(out);
 }
 
 export function locPickup(pickup, field = 'name') {
   if (!pickup) return '';
-  if (!isEn()) return pickup[field] || '';
-  const entry = pickup.id && WORLD_EN.pickups[pickup.id];
-  return (entry && entry[field]) || pickup[field] || '';
+  const entry = isEn() && pickup.id && WORLD_EN.pickups[pickup.id];
+  const out = (entry && entry[field]) || pickup[field] || '';
+  return adaptTouchText(out);
 }
 
 export function locPuzzleName(puzzle) {
@@ -116,8 +170,9 @@ export function locPuzzleName(puzzle) {
 }
 
 export function locInscription(text) {
-  if (!text || !isEn()) return text || '';
-  return WORLD_EN.inscriptions[text] || text;
+  if (!text) return '';
+  const out = isEn() ? (WORLD_EN.inscriptions[text] || text) : text;
+  return adaptTouchText(out);
 }
 
 export function locBiomeAmbience(themeKey, fallback = '') {
@@ -183,9 +238,9 @@ export function locDummyMode(mode, field = 'label') {
 
 export function locBestiary(entry, field = 'name') {
   if (!entry) return '';
-  if (!isEn()) return entry[field] || '';
-  const en = entry.kind && ENTITIES_EN.bestiary[entry.kind];
-  return (en && en[field]) || entry[field] || '';
+  const en = isEn() && entry.kind && ENTITIES_EN.bestiary[entry.kind];
+  const out = (en && en[field]) || entry[field] || '';
+  return adaptTouchText(out);
 }
 
 export function locAchievement(ach, field = 'name') {

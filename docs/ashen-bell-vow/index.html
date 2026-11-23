@@ -7,13 +7,37 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="screen-orientation" content="landscape" />
 <meta name="x5-orientation" content="landscape" />
-<title>灰钟残誓 v43.4 — 四页设置手账（武器/怪物图鉴）、路线A能力渐进与刺壁黑冲重构 · 暗黑手绘魂系类银河恶魔城</title>
+<title>灰钟残誓 v43.5 — 四页设置手账（武器/怪物图鉴）、路线A能力渐进与刺壁黑冲重构 · 暗黑手绘魂系类银河恶魔城</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24'>🔔</text></svg>" />
-<link rel="stylesheet" href="./styles.css?v=43.4.0" />
+<link rel="stylesheet" href="./styles.css?v=43.5.0" />
 </head>
 <body>
 <div id="game-root">
   <canvas id="gameCanvas"></canvas>
+  <!-- v43.5 Mobile Portrait Rotate Guard (Elegant Dark-Ink Landscape Prompt) -->
+  <div id="mobile-rotate-guard" class="mobile-rotate-guard" aria-live="polite">
+    <div class="rotate-guard-card">
+      <div class="rotate-phone-anim" aria-hidden="true">
+        <svg viewBox="0 0 120 120" class="rotate-phone-svg" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(245, 158, 11, 0.25)" stroke-width="1.5" stroke-dasharray="5 5"/>
+          <path d="M 92 34 A 40 40 0 0 1 98 66" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round"/>
+          <polygon points="98,70 92,61 103,62" fill="#38bdf8"/>
+          <g class="rotate-phone-body">
+            <rect x="40" y="24" width="40" height="72" rx="7" fill="#101521" stroke="#fde047" stroke-width="2.2"/>
+            <line x1="54" y1="31" x2="66" y2="31" stroke="rgba(216, 207, 184, 0.55)" stroke-width="1.6" stroke-linecap="round"/>
+            <circle cx="60" cy="88" r="2.6" fill="#fde047"/>
+            <path d="M 52 49 Q 51 58 47 68 Q 60 72 73 68 Q 69 58 68 49 Z" fill="#1c2434" stroke="#38bdf8" stroke-width="1.3"/>
+            <circle cx="60" cy="71" r="2.2" fill="#fef08a"/>
+          </g>
+        </svg>
+      </div>
+      <div class="rotate-guard-title" data-i18n="mob.rotateTitle">请横握手机</div>
+      <div class="rotate-guard-sub" data-i18n="mob.rotateSub">横屏以全屏视野体验《灰钟残誓》水墨箱庭与双指战斗</div>
+      <button id="btn-rotate-fullscreen" type="button" class="primary-btn rotate-fs-btn" data-i18n="mob.rotateFsBtn">尝试自动横屏全屏</button>
+    </div>
+  </div>
+
+
 
   <!-- In-Game HUD -->
   <div id="hud">
@@ -71,14 +95,13 @@
         </div>
         <div class="hud-btn-row">
           <button id="btn-ctrl" class="hud-btn desktop-only-btn" data-i18n-title="hud.ctrlTip" title="切换键鼠一体 / 纯键盘预设（支持原生手柄即插即用）">操控: 键鼠</button>
-          <button id="btn-mobile-aux" class="hud-btn mobile-only-btn" data-i18n-title="hud.auxTip" title="展开/收起弹反与闪避辅键">辅键: 关</button>
           <button id="btn-fullscreen" class="hud-btn mobile-only-btn" data-i18n="hud.fullscreen" data-i18n-title="hud.fullscreenTip" title="切换横屏全屏">全屏</button>
-          <button id="btn-map" class="hud-btn" data-i18n="hud.map">地图 [M]</button>
-          <button id="btn-help" class="hud-btn" data-i18n="hud.help">心法</button>
+          <button id="btn-map" class="hud-btn mobile-hide-btn" data-i18n="hud.map">地图 [M]</button>
+          <button id="btn-help" class="hud-btn mobile-hide-btn" data-i18n="hud.help">心法</button>
           <button id="btn-settings" class="hud-btn" data-i18n="hud.settings">设置</button>
-          <button id="btn-mute" class="hud-btn" data-i18n="hud.muteOn">音效: 开</button>
+          <button id="btn-mute" class="hud-btn mobile-hide-btn" data-i18n="hud.muteOn">音效: 开</button>
           <button id="btn-pause" class="hud-btn mobile-only-btn" data-i18n="hud.pause">暂停</button>
-          <button id="btn-respawn" class="hud-btn" data-i18n="hud.respawn">回祭坛</button>
+          <button id="btn-respawn" class="hud-btn mobile-hide-btn" data-i18n="hud.respawn">回祭坛</button>
         </div>
         <div id="editor-preview-pill" class="editor-preview-pill hidden">
           <span data-i18n="hud.editorPreview">编辑器实时试玩中</span>
@@ -118,12 +141,12 @@
     A/D 移 · Space 跳 · 左键/J 三连·长按居合 · 右键/K 弹反 · F/中键/I 钩索 · R/U 灵刃 · Shift 闪 · C/L 墨印 · Q/H 回血 · E 交互 · M 舆图 · 支持手柄
   </div>
 
-  <!-- Title Overlay (v43.4 Full-Viewport Atmospheric Dark Hand-Drawn Title Stage) -->
+  <!-- Title Overlay (v43.5 Full-Viewport Atmospheric Dark Hand-Drawn Title Stage) -->
   <div id="title-screen" class="overlay-screen title-stage">
     <div class="title-backdrop-scrim" aria-hidden="true"></div>
 
     <div class="title-topbar">
-      <div class="title-ver-badge">ASHEN BELL VOW · v43.4</div>
+      <div class="title-ver-badge">ASHEN BELL VOW · v43.5</div>
       <div class="title-top-actions">
         <button id="btn-title-replay-intro" type="button" class="title-lang-btn" data-i18n="title.replayIntro">↺ 重播开场</button>
         <button id="btn-title-lang" type="button" class="title-lang-btn">Lang: 中文 / EN</button>
@@ -326,7 +349,7 @@
     </div>
   </div>
 
-  <!-- Unified 4-Tab Settings, Weapon Codex, Bestiary & Archive Modal (v43.4) -->
+  <!-- Unified 4-Tab Settings, Weapon Codex, Bestiary & Archive Modal (v43.5) -->
   <div id="settings-modal" class="overlay-screen hidden">
     <div class="modal-card settings-journal-card">
       <div class="modal-top-bar modal-top-split">
@@ -531,34 +554,62 @@
       </div>
     </div>
 
-    <!-- Contextual Interact Pill (appears only near Altar / Lore / Lever) -->
+    <!-- Contextual Interact Pill (appears near Altar / NPC / Tablet / Switch / Pickup) -->
     <button id="mobile-interact-btn" class="mobile-interact-btn t-btn hidden" data-key="KeyE" data-i18n="mob.interact">交互</button>
 
-    <!-- Optional Auxiliary Parry/Dash Pills (toggled via top bar 辅键) -->
-    <div id="mobile-aux-controls" class="mobile-aux-controls hidden">
-      <button class="t-btn aux-btn aux-parry" data-key="KeyK" data-i18n="mob.parry">弹反</button>
-      <button class="t-btn aux-btn aux-dash" data-key="ShiftLeft" data-i18n="mob.dash">闪避</button>
-    </div>
-
-    <!-- Bottom-Right 4-Button Fan Arc: 跳跃 / 钩锁 / 普攻 / 法术 -->
+    <!-- Bottom-Right Ergonomic 6+3 Soulslike Thumb Stage (v43.5) -->
     <div id="action-fan" class="action-fan" data-i18n-aria="mob.fanAria" aria-label="动作扇形按键">
-      <svg class="fan-arc-svg" viewBox="0 0 200 200" aria-hidden="true">
-        <path d="M 52 166 A 110 110 0 0 1 164 52" fill="none" stroke="rgba(216, 207, 184, 0.22)" stroke-width="1.5" stroke-dasharray="4 5" />
-        <path d="M 88 164 A 72 72 0 0 1 164 88" fill="none" stroke="rgba(245, 158, 11, 0.16)" stroke-width="1" />
+      <svg class="fan-arc-svg" viewBox="0 0 280 248" aria-hidden="true">
+        <path d="M 88 228 A 145 145 0 0 1 256 64" fill="none" stroke="rgba(216, 207, 184, 0.16)" stroke-width="1.4" stroke-dasharray="4 6" />
+        <path d="M 142 226 A 92 92 0 0 1 254 116" fill="none" stroke="rgba(245, 158, 11, 0.14)" stroke-width="1.2" />
       </svg>
-      <button id="fan-jump" class="t-btn fan-btn fan-jump" data-key="Space">
-        <span class="fan-label" data-i18n="mob.jump">跳跃</span>
-      </button>
-      <button id="fan-spell" class="t-btn fan-btn fan-spell" data-key="KeyU">
-        <span class="fan-label" data-i18n="mob.spell">法术</span>
-        <span id="fan-spell-sub" class="fan-sub" data-i18n="mob.spellBlade">灵刃</span>
-      </button>
-      <button id="fan-grapple" class="t-btn fan-btn fan-grapple" data-key="KeyI">
-        <span class="fan-label" data-i18n="mob.grapple">钩锁</span>
-      </button>
-      <button id="fan-attack" class="t-btn fan-btn fan-attack" data-key="KeyJ">
+
+      <!-- CORE 6 PERMANENT COMBAT BUTTONS -->
+      <button id="fan-attack" class="t-btn fan-btn fan-attack" data-key="KeyJ" data-flick="up,down">
+        <span class="fan-flick-arrow up" aria-hidden="true">▲</span>
         <span class="fan-label" data-i18n="mob.attack">普攻</span>
         <span id="fan-attack-sub" class="fan-sub" data-i18n="mob.attackHold">长按居合</span>
+        <span class="fan-flick-arrow down" aria-hidden="true">▼</span>
+      </button>
+
+      <button id="fan-jump" class="t-btn fan-btn fan-jump" data-key="Space" data-flick="down">
+        <span class="fan-label" data-i18n="mob.jump">跳跃</span>
+        <span class="fan-flick-arrow down" aria-hidden="true">▼</span>
+      </button>
+
+      <button id="fan-parry" class="t-btn fan-btn fan-parry" data-key="KeyK">
+        <span class="fan-label" data-i18n="mob.parry">弹反</span>
+      </button>
+
+      <button id="fan-dash" class="t-btn fan-btn fan-dash" data-key="ShiftLeft">
+        <span class="fan-label" data-i18n="mob.dash">闪避</span>
+      </button>
+
+      <button id="fan-spell" class="t-btn fan-btn fan-spell" data-key="KeyU" data-flick="up,down">
+        <span class="fan-flick-arrow up" aria-hidden="true">▲</span>
+        <span class="fan-label" data-i18n="mob.spell">法术</span>
+        <span id="fan-spell-sub" class="fan-sub" data-i18n="mob.spellBlade">灵刃</span>
+        <span class="fan-flick-arrow down" aria-hidden="true">▼</span>
+      </button>
+
+      <button id="fan-heal" class="t-btn fan-btn fan-heal" data-key="KeyQ">
+        <span class="fan-label" data-i18n="mob.heal">灯油</span>
+        <span id="fan-heal-cnt" class="fan-sub">×3</span>
+      </button>
+
+      <!-- DYNAMIC 3 UNLOCK / STATE BUTTONS (Zero clutter until unlocked / charged!) -->
+      <button id="fan-grapple" class="t-btn fan-btn fan-grapple hidden" data-key="KeyI">
+        <span class="fan-label" data-i18n="mob.grapple">钩锁</span>
+      </button>
+
+      <button id="fan-swap" class="t-btn fan-btn fan-swap hidden" data-custom="swapWeapon">
+        <span class="fan-label" data-i18n="mob.swap">切刃</span>
+        <span id="fan-swap-sub" class="fan-sub">断刃</span>
+      </button>
+
+      <button id="fan-seal" class="t-btn fan-btn fan-seal hidden" data-key="KeyL">
+        <span id="fan-seal-label" class="fan-label" data-i18n="mob.seal">墨印</span>
+        <span id="fan-seal-sub" class="fan-sub">0/3</span>
       </button>
     </div>
   </div>
@@ -635,7 +686,7 @@
   }, 8000);
 })();
 </script>
-<script type="module" src="./src/main.js?v=43.4.0"></script>
+<script type="module" src="./src/main.js?v=43.5.0"></script>
   <div id="gp-nav-bar" class="gp-nav-bar hidden" data-i18n="gp.navLegend">[十字/左摇杆] 移动 · [A] 确认 · [B] 返回 · [LB/RB] 切页 · [右摇杆] 滚动</div>
 </body>
 </html>

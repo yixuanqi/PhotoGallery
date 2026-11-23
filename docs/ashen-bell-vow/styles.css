@@ -975,17 +975,7 @@
   }
 
   /* Automatic Virtual Landscape when a mobile touch device is held in portrait (WeChat / iOS Safari safe) */
-  body.force-landscape #game-root {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    width: 100vh;
-    height: 100vw;
-    width: 100dvh;
-    height: 100dvw;
-    transform: translate(-50%, -50%) rotate(90deg);
-    transform-origin: center center;
-  }
+  /* v43.5 Replaced forced 90-deg CSS rotation with native landscape + elegant rotate guard */
 
   /* Prevent accidental browser zoom / scroll gestures on mobile */
   body.is-mobile,
@@ -4678,4 +4668,201 @@
     .title-crest-svg { width: 104px; height: 56px; }
     #title-screen.title-stage .game-title { letter-spacing: 8px; }
     .title-footer { padding: 8px 16px 12px; font-size: 10.5px; }
+  }
+
+  /* ==================== v43.5 STATE-DRIVEN HUD/TOUCH VISIBILITY, ROTATE GUARD & 6+3 MOBILE ARC ==================== */
+  /* Strictly hide HUD & Touch Controls during intro, title, modals, boss intro cinematics, death & victory! */
+  body:not([data-game-state="playing"]) #hud,
+  body:not([data-game-state="playing"]) #touch-controls,
+  body.is-portrait #hud,
+  body.is-portrait #touch-controls {
+    display: none !important;
+    pointer-events: none !important;
+  }
+
+  /* Slim Mobile Top Bar */
+  body.is-mobile .mobile-hide-btn {
+    display: none !important;
+  }
+
+  /* Elegant Dark-Ink Mobile Portrait Rotate Guard */
+  .mobile-rotate-guard {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: radial-gradient(circle at 50% 42%, #131926 0%, #06080e 74%, #030408 100%);
+    align-items: center;
+    justify-content: center;
+    padding: 28px;
+    text-align: center;
+  }
+  body.is-mobile.is-portrait .mobile-rotate-guard {
+    display: flex;
+  }
+  .rotate-guard-card {
+    max-width: 340px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  .rotate-phone-svg {
+    width: 118px;
+    height: 118px;
+    filter: drop-shadow(0 0 18px rgba(245, 158, 11, 0.28));
+  }
+  .rotate-phone-body {
+    transform-origin: 60px 60px;
+    animation: phoneTiltCue 2.6s ease-in-out infinite;
+  }
+  @keyframes phoneTiltCue {
+    0%, 18% { transform: rotate(0deg); }
+    48%, 72% { transform: rotate(90deg); }
+    92%, 100% { transform: rotate(0deg); }
+  }
+  .rotate-guard-title {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: 5px;
+    color: #f3ecda;
+    text-shadow: 0 0 18px rgba(245, 158, 11, 0.40);
+  }
+  .rotate-guard-sub {
+    font-size: 13px;
+    line-height: 1.65;
+    color: rgba(216, 207, 184, 0.78);
+    letter-spacing: 0.8px;
+  }
+  .rotate-fs-btn {
+    margin-top: 6px;
+    padding: 10px 22px;
+    font-size: 13px;
+    letter-spacing: 2px;
+    border-color: rgba(56, 189, 248, 0.65);
+    color: #bae6fd;
+  }
+
+  /* v43.5 Ergonomic 6+3 Right-Hand Action Fan */
+  body.is-mobile .action-fan {
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    width: 276px;
+    height: 244px;
+  }
+  @media (max-height: 410px) {
+    body.is-mobile .action-fan {
+      transform: scale(0.86);
+      transform-origin: right bottom;
+    }
+    body.is-mobile .joystick-zone {
+      transform: scale(0.88);
+      transform-origin: left bottom;
+    }
+  }
+  .fan-btn.hidden {
+    display: none !important;
+  }
+  .fan-flick-arrow {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 7.5px;
+    line-height: 1;
+    color: rgba(253, 224, 71, 0.52);
+    pointer-events: none;
+  }
+  .fan-flick-arrow.up { top: 4px; }
+  .fan-flick-arrow.down { bottom: 4px; }
+  .fan-btn.flick-up {
+    transform: translateY(-5px) scale(0.95) !important;
+    border-color: var(--cyan-bright) !important;
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.75) !important;
+  }
+  .fan-btn.flick-down {
+    transform: translateY(5px) scale(0.95) !important;
+    border-color: var(--gold-bright) !important;
+    box-shadow: 0 0 20px rgba(253, 224, 71, 0.75) !important;
+  }
+
+  /* Core 6 Permanent Positions */
+  body.is-mobile .fan-attack {
+    right: 12px; bottom: 10px; width: 68px; height: 68px;
+  }
+  body.is-mobile .fan-jump {
+    right: 98px; bottom: 10px; width: 58px; height: 58px;
+  }
+  body.is-mobile .fan-parry {
+    right: 92px; bottom: 82px; width: 56px; height: 56px;
+    border-color: rgba(253, 224, 71, 0.88);
+    background: radial-gradient(circle at 35% 30%, rgba(86, 62, 18, 0.86), rgba(22, 16, 10, 0.90));
+    color: #fef9c3;
+    box-shadow: 0 5px 18px rgba(0, 0, 0, 0.66), 0 0 12px rgba(245, 158, 11, 0.26);
+  }
+  body.is-mobile .fan-parry.pressed {
+    border-color: #ffffff;
+    box-shadow: 0 0 24px rgba(253, 224, 71, 0.78);
+  }
+  body.is-mobile .fan-dash {
+    right: 168px; bottom: 26px; width: 54px; height: 54px;
+    border-color: rgba(148, 163, 184, 0.78);
+    background: radial-gradient(circle at 35% 30%, rgba(30, 41, 59, 0.86), rgba(10, 14, 22, 0.90));
+    color: #e2e8f0;
+  }
+  body.is-mobile .fan-dash.shade-unlocked {
+    border-color: rgba(192, 132, 252, 0.90);
+    background: radial-gradient(circle at 35% 30%, rgba(68, 28, 106, 0.86), rgba(18, 10, 28, 0.92));
+    color: #f3e8ff;
+    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.65), 0 0 12px rgba(168, 85, 247, 0.34);
+  }
+  body.is-mobile .fan-dash.shade-cooling {
+    opacity: 0.62;
+  }
+  body.is-mobile .fan-spell {
+    right: 22px; bottom: 92px; width: 54px; height: 54px;
+  }
+  body.is-mobile .fan-heal {
+    right: 162px; bottom: 94px; width: 46px; height: 46px;
+    border-color: rgba(56, 189, 248, 0.76);
+    background: radial-gradient(circle at 35% 30%, rgba(14, 74, 98, 0.84), rgba(8, 20, 30, 0.90));
+    color: #e0f2fe;
+  }
+  body.is-mobile .fan-heal .fan-label { font-size: 11px; }
+  body.is-mobile .fan-heal.low-hp-pulse {
+    border-color: #fde047;
+    box-shadow: 0 0 18px rgba(56, 189, 248, 0.75);
+  }
+  body.is-mobile .fan-heal.empty { opacity: 0.42; }
+
+  /* Dynamic 3 Unlock / State Buttons */
+  body.is-mobile .fan-grapple {
+    right: 18px; bottom: 162px; width: 50px; height: 50px;
+    border-color: rgba(125, 211, 252, 0.78);
+    background: radial-gradient(circle at 35% 30%, rgba(18, 52, 74, 0.82), rgba(8, 16, 26, 0.88));
+    color: #bae6fd;
+  }
+  body.is-mobile .fan-grapple .fan-label { font-size: 12px; }
+  body.is-mobile .fan-grapple.ready-glow {
+    border-color: var(--gold-bright);
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.72);
+  }
+  body.is-mobile .fan-swap {
+    right: 84px; bottom: 152px; width: 46px; height: 46px;
+    border-color: rgba(245, 158, 11, 0.76);
+    background: radial-gradient(circle at 35% 30%, rgba(58, 42, 18, 0.86), rgba(16, 12, 10, 0.90));
+    color: #fef08a;
+  }
+  body.is-mobile .fan-swap .fan-label { font-size: 11px; }
+  body.is-mobile .fan-seal {
+    right: 146px; bottom: 154px; width: 50px; height: 50px;
+    border-color: rgba(245, 158, 11, 0.84);
+    background: radial-gradient(circle at 35% 30%, rgba(82, 42, 14, 0.88), rgba(20, 12, 10, 0.92));
+    color: #fef08a;
+  }
+  body.is-mobile .fan-seal .fan-label { font-size: 12px; }
+  body.is-mobile .fan-seal.ult-ready {
+    border-color: #f87171;
+    background: radial-gradient(circle at 35% 30%, rgba(153, 27, 27, 0.92), rgba(38, 10, 14, 0.94));
+    color: #fef9c3;
+    box-shadow: 0 0 22px rgba(248, 113, 113, 0.78), 0 0 10px rgba(253, 224, 71, 0.55);
   }

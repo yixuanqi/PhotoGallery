@@ -1,7 +1,7 @@
 // Live HUD Synchronization, Weapon Quick-Bar & Title Save-Slot UI (split from src/ui.js in v32.0)
 import {
   COLORS, RELICS, RELIC_SYNERGIES, VOW_CONSTRAINTS, DUMMY_MODES, SMITH_UPGRADES, ACTION_META, ROOMS, SOLIDS, ALTARS, NPCS, LORE_TABLETS, PICKUPS_DEF, ENEMIES_DEF, BOSSES_DEF,
-  SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, FIRST_BELL_CORE_POS, VOID_BARRIERS,
+  SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, FIRST_BELL_CORE_POS, VOID_BARRIERS, WORLD_SWITCHES_DEF,
   ABYSSAL_RIVERS, WIND_ZONES, BOUNCE_PADS, WORLD_MIN_X, WORLD_MIN_Y, WORLD_W, WORLD_H, WORLD_SPAN_W, WORLD_SPAN_H, FLOOR_Y, WELL_BOTTOM_Y,
   MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H, ECHO_GRADE_ORDER, SEVEN_BELLS_ORDER
 } from '../config.js';
@@ -9,7 +9,7 @@ import { getRoomAt, getZoneLabelAt, getPreviewSpawnRoomId, getPreviewSpawnCoords
 import {
   G, createFreshWorldState, getActiveAltar, getActiveSynergies, getRelicStats, getActiveVowStats, getCombatScaling, getEquippedRelicLabel, getActiveWeaponId, getActiveWeapon, isWeaponUnlocked, getUnlockedWeaponIds, unlockWeapon,
   isWeaponTraitUnlocked, getActiveWeaponTraitId, unlockWeaponTrait, setActiveWeaponTrait,
-  ensureNpcQuests, hasKeeperBlessing, getRealmSealCount, hasThirdRelicSlot, isRelicRefined,
+  ensureNpcQuests, hasKeeperBlessing, getEffectiveNpcPos, isWorldSwitchOn, isSwitchUnlocked, getRealmSealCount, hasThirdRelicSlot, isRelicRefined,
   getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks, getPlayerMaxSeals,
   markMapExplored, getExplorationPercent, createLanterns,
   createResonancePuzzles, createCrumblePlatforms, getAwakeBoss, getHudBoss, isBoss4Unlocked, clearOutcomeTimer, triggerBossBanner, setTextFast
@@ -441,13 +441,14 @@ export function syncHUD(force = false) {
     }
   }
 
-  // Reactive Mobile Fan Glow & Contextual Interact Button
+  // Reactive Mobile 6+3 Thumb Stage & Full 25-Room Contextual Interact Button (v43.5)
   if (document.body.classList.contains('is-mobile')) {
     const rsMob = getRelicStats();
     const holdingUp = isActionHeld('up');
+    const holdingDownAir = !G.player.grounded && isActionHeld('down') && !!(G.worldState && G.worldState.abilities.bellDive);
     const spellCostNow = holdingUp ? rsMob.quakeCost : rsMob.spellCost;
     const spellReady = G.player.soul >= spellCostNow;
-    const spellSubTxt = holdingUp ? t('mob.spellQuake') : t('mob.spellBlade');
+    const spellSubTxt = holdingDownAir ? t('mob.spellDive') : (holdingUp ? t('mob.spellQuake') : t('mob.spellBlade'));
     if (HUD_DOM.fanSpell && (force || hudCache.mobSpellReady !== spellReady)) {
       hudCache.mobSpellReady = spellReady;
       HUD_DOM.fanSpell.classList.toggle('ready-glow', spellReady);
@@ -457,11 +458,79 @@ export function syncHUD(force = false) {
       hudCache.mobSpellSub = spellSubTxt;
       setTextFast(HUD_DOM.fanSpellSub, spellSubTxt);
     }
-    const grappleReady = !!(G.grapplePreviewTarget && G.player.grappleCd <= 0);
-    if (HUD_DOM.fanGrapple && (force || hudCache.mobGrappleReady !== grappleReady)) {
-      hudCache.mobGrappleReady = grappleReady;
-      HUD_DOM.fanGrapple.classList.toggle('ready-glow', grappleReady);
+
+    // Permanent Dash evolves visually when Shadow Dash is unlocked
+    if (HUD_DOM.fanDash) {
+      const shadeOn = !!(G.worldState && G.worldState.abilities.shadeDash);
+      const shadeCd = shadeOn && (G.player.shadeDashCd || 0) > 0;
+      if (force || hudCache.mobShadeOn !== shadeOn || hudCache.mobShadeCd !== shadeCd) {
+        hudCache.mobShadeOn = shadeOn;
+        hudCache.mobShadeCd = shadeCd;
+        HUD_DOM.fanDash.classList.toggle('shade-unlocked', shadeOn);
+        HUD_DOM.fanDash.classList.toggle('shade-cooling', shadeCd);
+      }
     }
+
+    // Permanent Heal Flask button with live count & low-HP pulse
+    if (HUD_DOM.fanHeal) {
+      const flk = G.player.flasks || 0;
+      const lowHp = flk > 0 && G.player.hp <= G.player.maxHp * 0.45;
+      if (force || hudCache.mobFlk !== flk || hudCache.mobLowHp !== lowHp) {
+        hudCache.mobFlk = flk;
+        hudCache.mobLowHp = lowHp;
+        HUD_DOM.fanHeal.classList.toggle('empty', flk <= 0);
+        HUD_DOM.fanHeal.classList.toggle('low-hp-pulse', lowHp);
+        if (HUD_DOM.fanHealCnt) setTextFast(HUD_DOM.fanHealCnt, `×${flk}`);
+      }
+    }
+
+    // Dynamic 1: Grapple Hook (hidden until unlocked after Boss 1 Hui!)
+    if (HUD_DOM.fanGrapple) {
+      const hasGrap = !!(G.worldState && G.worldState.abilities.grappleHook);
+      const grappleReady = hasGrap && !!(G.grapplePreviewTarget && G.player.grappleCd <= 0);
+      if (force || hudCache.mobHasGrap !== hasGrap || hudCache.mobGrappleReady !== grappleReady) {
+        hudCache.mobHasGrap = hasGrap;
+        hudCache.mobGrappleReady = grappleReady;
+        HUD_DOM.fanGrapple.classList.toggle('hidden', !hasGrap);
+        HUD_DOM.fanGrapple.classList.toggle('ready-glow', grappleReady);
+      }
+    }
+
+    // Dynamic 2: Weapon Swap (hidden until >=2 weapons unlocked!)
+    if (HUD_DOM.fanSwap) {
+      const unlList = getUnlockedWeaponIds();
+      const showSwap = unlList.length >= 2;
+      const curWid = getActiveWeaponId();
+      if (force || hudCache.mobShowSwap !== showSwap || hudCache.mobSwapWid !== curWid) {
+        hudCache.mobShowSwap = showSwap;
+        hudCache.mobSwapWid = curWid;
+        HUD_DOM.fanSwap.classList.toggle('hidden', !showSwap);
+        if (showSwap && HUD_DOM.fanSwapSub) {
+          const wObj = WEAPONS[curWid] || WEAPONS.blade;
+          setTextFast(HUD_DOM.fanSwapSub, isEn() ? wObj.shortEn : wObj.short);
+        }
+      }
+    }
+
+    // Dynamic 3: Ink Seal / Full-Seal Ultimate (appears whenever player has >=1 seal or stuck talismans!)
+    if (HUD_DOM.fanSeal) {
+      const sNow = G.player.seals || 0;
+      const sMax = G.player.maxSeals || 3;
+      const hasTal = !!(G.talismans && G.talismans.length > 0);
+      const showSeal = sNow > 0 || hasTal;
+      const isUlt = sMax > 0 && sNow >= sMax;
+      if (force || hudCache.mobShowSeal !== showSeal || hudCache.mobSealNow !== sNow || hudCache.mobSealUlt !== isUlt) {
+        hudCache.mobShowSeal = showSeal;
+        hudCache.mobSealNow = sNow;
+        hudCache.mobSealUlt = isUlt;
+        HUD_DOM.fanSeal.classList.toggle('hidden', !showSeal);
+        HUD_DOM.fanSeal.classList.toggle('ult-ready', isUlt);
+        if (HUD_DOM.fanSealLabel) setTextFast(HUD_DOM.fanSealLabel, isUlt ? t('mob.sealUlt') : t('mob.seal'));
+        if (HUD_DOM.fanSealSub) setTextFast(HUD_DOM.fanSealSub, `${sNow}/${sMax}`);
+      }
+    }
+
+    // Contextual Interact Pill (covers all Altars, migrated NPCs incl. Scavenger, World Switches, Tablets, Pickups)
     if (HUD_DOM.mobileInteract) {
       let interactLabel = '';
       if (G.gameState === 'playing' && G.player.hp > 0) {
@@ -480,9 +549,21 @@ export function syncHUD(force = false) {
         }
         if (!interactLabel) {
           for (const npc of NPCS) {
-            if (Math.hypot(px - npc.x, py - npc.y) < 88) {
-              const verb = npc.kind === 'chronicler' ? t('prompt.npcChronMob') : npc.kind === 'keeper' ? t('prompt.npcKeeperMob') : t('prompt.npcSmithMob');
+            const pos = getEffectiveNpcPos(npc);
+            if (Math.hypot(px - pos.x, py - pos.y) < 88) {
+              const verb = npc.kind === 'chronicler' ? t('prompt.npcChronMob')
+                : npc.kind === 'keeper' ? t('prompt.npcKeeperMob')
+                : npc.kind === 'scavenger' ? t('prompt.npcScav')
+                : t('prompt.npcSmithMob');
               interactLabel = `${verb} · ${locNpcName(npc)}`;
+              break;
+            }
+          }
+        }
+        if (!interactLabel) {
+          for (const sw of WORLD_SWITCHES_DEF) {
+            if (!isWorldSwitchOn(sw.switchKey) && isSwitchUnlocked(sw) && Math.hypot(px - sw.x, py - sw.y) < 84) {
+              interactLabel = t('mob.pullSwitch');
               break;
             }
           }
