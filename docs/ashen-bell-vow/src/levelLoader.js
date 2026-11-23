@@ -454,6 +454,12 @@ export async function loadWorldData() {
     }
   }
 
+  // 1.5 Offline Pre-Bundled World Data (TapTap / 4399 / file:// zero-fetch release)
+  if (typeof window !== 'undefined' && window.__ABV_OFFLINE_WORLD__) {
+    G.isEditorPreview = false;
+    return hydrateWorldBundle(window.__ABV_OFFLINE_WORLD__);
+  }
+
   const fetchJsonWithRetry = async (url, retries = 2) => {
     let lastErr = null;
     for (let attempt = 0; attempt <= retries; attempt++) {

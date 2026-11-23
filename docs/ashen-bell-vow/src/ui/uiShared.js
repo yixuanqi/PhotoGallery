@@ -102,6 +102,8 @@ export const HUD_DOM = {
   fanSeal: document.getElementById('fan-seal'),
   fanSealLabel: document.getElementById('fan-seal-label'),
   fanSealSub: document.getElementById('fan-seal-sub'),
+  fanAttack: document.getElementById('fan-attack'),
+  fanAttackRing: document.getElementById('fan-attack-ring'),
   fanAttackSub: document.getElementById('fan-attack-sub'),
   weaponHudBar: document.getElementById('weapon-hud-bar'),
   mobileInteract: document.getElementById('mobile-interact-btn')

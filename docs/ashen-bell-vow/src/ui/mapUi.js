@@ -15,6 +15,7 @@ import {
   createResonancePuzzles, createCrumblePlatforms, getAwakeBoss, getHudBoss, isBoss4Unlocked, isSkyBridgeOpen, isWorldSwitchOn, isRiverDrained, clearOutcomeTimer, triggerBossBanner, setTextFast
 } from '../state.js';
 import { audio } from '../audio.js';
+import { isForceLandscape } from '../input.js';
 import {
   isActionHeld, syncHelpModalText, getActionKeyLabel, startKeyCapture, cancelKeyCapture, triggerHaptic
 } from '../input.js';
@@ -751,10 +752,20 @@ function zoomMapAtCanvasPoint(canvas, cx, cy, nextZoom) {
   renderParchmentMap(canvas, true);
 }
 
-function mapEventToWorld(canvas, e) {
+function mapClientToCanvas(canvas, clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
-  const cx = (e.clientX - rect.left) * (canvas.width / Math.max(1, rect.width));
-  const cy = (e.clientY - rect.top) * (canvas.height / Math.max(1, rect.height));
+  if (isForceLandscape()) {
+    const cx = (clientY - rect.top) * (canvas.width / Math.max(1, rect.height));
+    const cy = (rect.right - clientX) * (canvas.height / Math.max(1, rect.width));
+    return { cx, cy };
+  }
+  const cx = (clientX - rect.left) * (canvas.width / Math.max(1, rect.width));
+  const cy = (clientY - rect.top) * (canvas.height / Math.max(1, rect.height));
+  return { cx, cy };
+}
+
+function mapEventToWorld(canvas, e) {
+  const { cx, cy } = mapClientToCanvas(canvas, e.clientX, e.clientY);
   const proj = getMapProjection(canvas, true);
   const wx = WORLD_MIN_X + (cx - proj.ox) / proj.sx;
   const wy = WORLD_MIN_Y + (cy - proj.oy) / proj.sy;
@@ -890,16 +901,18 @@ export function initMapInteractions() {
     }
   });
 
-  cvs.addEventListener('click', e => {
-    if (suppressClick) { suppressClick = false; return; }
+  const handleMapTap = (clientX, clientY, isTouchTap = false) => {
     if (G.activeModal !== 'map' || !G.worldState) return;
     ensureCodexState();
-    const pt = mapEventToWorld(cvs, e);
+    const pt = mapEventToWorld(cvs, { clientX, clientY });
     const rm = getRoomAt(pt.wx, pt.wy);
     if (rm) mapFocusedRoomId = rm.id;
 
+    const altarRad = isTouchTap ? 24 : 14;
+    const pinRad = isTouchTap ? 26 : 16;
+
     if (mapPinTool === 'inspect') {
-      const altarHit = findNearestLitAltar(pt.cx, pt.cy, pt.ox, pt.oy, pt.sx, pt.sy, 14);
+      const altarHit = findNearestLitAltar(pt.cx, pt.cy, pt.ox, pt.oy, pt.sx, pt.sy, altarRad);
       if (altarHit) {
         if (!G.echoSession && !getAwakeBoss()) {
           hoveredAltarId = null;
@@ -916,7 +929,7 @@ export function initMapInteractions() {
       return;
     }
 
-    const hitIdx = findNearestMapPinIndex(pt.cx, pt.cy, pt.ox, pt.oy, pt.sx, pt.sy, 16);
+    const hitIdx = findNearestMapPinIndex(pt.cx, pt.cy, pt.ox, pt.oy, pt.sx, pt.sy, pinRad);
     if (hitIdx >= 0) {
       G.worldState.mapPins.splice(hitIdx, 1);
       audio.playResonanceBell(330, false);
@@ -935,7 +948,103 @@ export function initMapInteractions() {
     renderMapPinToolbar();
     renderParchmentMap(cvs, true);
     renderHudMinimapFast(true);
+  };
+
+  cvs.addEventListener('click', e => {
+    if (suppressClick) { suppressClick = false; return; }
+    handleMapTap(e.clientX, e.clientY, false);
   });
+
+  // v44.0 Native Mobile Touch Map: 1-Finger Drag Pan + 2-Finger Pinch-to-Zoom + Generous Tap!
+  let touchMode = 'none';
+  let tPanStartCx = 0;
+  let tPanStartCy = 0;
+  let tPanOrigX = 0;
+  let tPanOrigY = 0;
+  let tStartClientX = 0;
+  let tStartClientY = 0;
+  let tMovedPx = 0;
+  let tPinchStartDist = 0;
+  let tPinchStartZoom = 1.0;
+
+  cvs.addEventListener('touchstart', e => {
+    if (G.activeModal !== 'map' || !G.worldState) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.touches.length === 1) {
+      touchMode = 'pan';
+      tStartClientX = e.touches[0].clientX;
+      tStartClientY = e.touches[0].clientY;
+      const p0 = mapClientToCanvas(cvs, tStartClientX, tStartClientY);
+      tPanStartCx = p0.cx;
+      tPanStartCy = p0.cy;
+      tPanOrigX = mapView.panX;
+      tPanOrigY = mapView.panY;
+      tMovedPx = 0;
+    } else if (e.touches.length >= 2) {
+      touchMode = 'pinch';
+      tMovedPx = 999;
+      tPinchStartDist = Math.max(12, Math.hypot(
+        e.touches[1].clientX - e.touches[0].clientX,
+        e.touches[1].clientY - e.touches[0].clientY
+      ));
+      tPinchStartZoom = mapView.zoom;
+    }
+  }, { passive: false });
+
+  cvs.addEventListener('touchmove', e => {
+    if (G.activeModal !== 'map' || !G.worldState || touchMode === 'none') return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (touchMode === 'pinch' && e.touches.length >= 2) {
+      const dist = Math.max(12, Math.hypot(
+        e.touches[1].clientX - e.touches[0].clientX,
+        e.touches[1].clientY - e.touches[0].clientY
+      ));
+      const midX = (e.touches[0].clientX + e.touches[1].clientX) * 0.5;
+      const midY = (e.touches[0].clientY + e.touches[1].clientY) * 0.5;
+      const midC = mapClientToCanvas(cvs, midX, midY);
+      const targetZoom = tPinchStartZoom * (dist / tPinchStartDist);
+      zoomMapAtCanvasPoint(cvs, midC.cx, midC.cy, targetZoom);
+    } else if (touchMode === 'pan' && e.touches.length === 1) {
+      const cur = mapClientToCanvas(cvs, e.touches[0].clientX, e.touches[0].clientY);
+      const dx = cur.cx - tPanStartCx;
+      const dy = cur.cy - tPanStartCy;
+      tMovedPx = Math.max(tMovedPx, Math.hypot(dx, dy));
+      if (mapView.zoom > 1.01) {
+        mapView.panX = tPanOrigX + dx;
+        mapView.panY = tPanOrigY + dy;
+        clampMapPan(cvs);
+        renderParchmentMap(cvs, true);
+      }
+    }
+  }, { passive: false });
+
+  const endMapTouch = e => {
+    if (touchMode === 'none') return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (touchMode === 'pan' && e.touches.length === 0 && tMovedPx < 12) {
+      suppressClick = true;
+      handleMapTap(tStartClientX, tStartClientY, true);
+    } else if (e.touches.length === 1 && touchMode === 'pinch') {
+      touchMode = 'pan';
+      tMovedPx = 999;
+      const p0 = mapClientToCanvas(cvs, e.touches[0].clientX, e.touches[0].clientY);
+      tPanStartCx = p0.cx;
+      tPanStartCy = p0.cy;
+      tPanOrigX = mapView.panX;
+      tPanOrigY = mapView.panY;
+      return;
+    }
+    if (e.touches.length === 0) {
+      suppressClick = true;
+      touchMode = 'none';
+      setTimeout(() => { suppressClick = false; }, 260);
+    }
+  };
+  cvs.addEventListener('touchend', endMapTouch, { passive: false });
+  cvs.addEventListener('touchcancel', endMapTouch, { passive: false });
 }
 
 

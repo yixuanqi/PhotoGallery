@@ -276,6 +276,9 @@ export function recycleParticle(p) {
 }
 
 export function spawnParticles(x, y, count, opts = {}) {
+  const eco = !!(G.isMobile && G.settings && G.settings.mobileEcoMode);
+  const effCount = eco ? Math.max(1, Math.round(count * 0.58)) : count;
+  const maxCap = eco ? 78 : MAX_PARTICLES;
   const col = opts.color || COLORS.parchment;
   const spd = opts.speed || 200;
   const grav = opts.grav !== undefined ? opts.grav : 420;
@@ -287,13 +290,13 @@ export function spawnParticles(x, y, count, opts = {}) {
   const spread = opts.spread || 1.2;
   const hasSize = opts.size !== undefined;
   const baseSize = opts.size || 0;
-  const overflow = G.particles.length + count - MAX_PARTICLES;
+  const overflow = G.particles.length + effCount - maxCap;
   if (overflow > 0) {
     const drop = Math.min(G.particles.length, overflow);
     for (let d = 0; d < drop; d++) recycleParticle(G.particles[d]);
     G.particles.splice(0, drop);
   }
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < effCount; i++) {
     const ang = hasAng ? baseAng + (Math.random() - 0.5) * spread : Math.random() * Math.PI * 2;
     const s = spd * (0.35 + Math.random() * 0.85);
     let p = _particleFreePool.pop();

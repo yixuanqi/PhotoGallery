@@ -1,0 +1,39 @@
+{
+  "name": "灰钟残誓 · Ashen Bell Vow",
+  "short_name": "灰钟残誓",
+  "description": "暗黑手绘水墨魂系类银河恶魔城 · 25房立体箱庭与三系兵刃",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": [
+    "fullscreen",
+    "standalone"
+  ],
+  "orientation": "landscape",
+  "background_color": "#06080e",
+  "theme_color": "#080b11",
+  "categories": [
+    "games",
+    "action"
+  ],
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -74,7 +74,9 @@ function renderWeaponCodexInto(bodyEl) {
     });
     grid.appendChild(card);
   }
-  bodyEl.appendChild(grid);
+  const wSplit = document.createElement('div');
+  wSplit.className = 'weapon-split-wrap';
+  wSplit.appendChild(grid);
 
   // Compact Detail Strip for Selected Weapon (concise chips, art remains hero)
   const w = WEAPONS[selectedWeaponCodexId] || WEAPONS.blade;
@@ -112,7 +114,8 @@ function renderWeaponCodexInto(bodyEl) {
       <div class="wcodex-tag">${t(`wcodex.hint.${w.id}`)}</div>
     `;
   }
-  bodyEl.appendChild(detail);
+  wSplit.appendChild(detail);
+  bodyEl.appendChild(wSplit);
 }
 
 export function renderCodexModal(targetBodyEl = null, forcedTab = null) {
@@ -261,7 +264,9 @@ export function renderCodexModal(targetBodyEl = null, forcedTab = null) {
         }
       </div>
     `;
-    bodyEl.appendChild(hero);
+    const bSplit = document.createElement('div');
+    bSplit.className = 'bestiary-split-wrap';
+    bSplit.appendChild(hero);
 
     // 2. Bottom 4-Column Art-First Portrait Tile Grid (Big Image + Minimal Name/Count Footer)
     const grid = document.createElement('div');
@@ -287,7 +292,8 @@ export function renderCodexModal(targetBodyEl = null, forcedTab = null) {
       });
       grid.appendChild(tile);
     }
-    bodyEl.appendChild(grid);
+    bSplit.appendChild(grid);
+    bodyEl.appendChild(bSplit);
   } else {
     const pct = Math.round((c.achievements.length / Math.max(1, ACHIEVEMENTS_DEF.length)) * 100);
     const prog = document.createElement('div');
@@ -1069,6 +1075,37 @@ export function renderSettingsModal() {
   if (hapBtn) {
     hapBtn.textContent = G.settings.haptics ? t('settings.hapticsOn') : t('settings.hapticsOff');
     hapBtn.classList.toggle('active', !!G.settings.haptics);
+  }
+
+  const floatBtn = document.getElementById('btn-mob-float-joy');
+  if (floatBtn) {
+    const on = G.settings.mobileFloatingJoy !== false;
+    floatBtn.textContent = on ? t('settings.mobFloatOn') : t('settings.mobFloatOff');
+    floatBtn.classList.toggle('active', on);
+  }
+  const assistBtn = document.getElementById('btn-mob-combat-assist');
+  if (assistBtn) {
+    const on = G.settings.mobileCombatAssist !== false;
+    assistBtn.textContent = on ? t('settings.mobAssistOn') : t('settings.mobAssistOff');
+    assistBtn.classList.toggle('active', on);
+  }
+  const scaleInp = document.getElementById('mob-btn-scale');
+  const scaleVal = document.getElementById('mob-btn-scale-val');
+  const curScalePct = Math.round((Number(G.settings.mobileBtnScale) || 1.0) * 100);
+  if (scaleInp) scaleInp.value = String(curScalePct);
+  if (scaleVal) scaleVal.textContent = `${curScalePct}%`;
+
+  const opInp = document.getElementById('mob-btn-opacity');
+  const opVal = document.getElementById('mob-btn-opacity-val');
+  const curOpPct = Math.round((Number(G.settings.mobileBtnOpacity) || 0.90) * 100);
+  if (opInp) opInp.value = String(curOpPct);
+  if (opVal) opVal.textContent = `${curOpPct}%`;
+
+  const ecoBtn = document.getElementById('btn-mob-eco-mode');
+  if (ecoBtn) {
+    const ecoOn = !!G.settings.mobileEcoMode;
+    ecoBtn.textContent = ecoOn ? t('settings.mobEcoOn') : t('settings.mobEcoOff');
+    ecoBtn.classList.toggle('active', ecoOn);
   }
 
   const kbGrid = document.getElementById('keybind-grid');

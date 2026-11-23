@@ -55,6 +55,11 @@ export const G = {
     masterVol: 0.85,
     musicVol: 0.75,
     sfxVol: 0.90,
+    mobileFloatingJoy: true,
+    mobileCombatAssist: true,
+    mobileBtnScale: 1.0,
+    mobileBtnOpacity: 0.90,
+    mobileEcoMode: false,
     keybinds: { ...DEFAULT_KEYBINDS }
   },
 
@@ -428,7 +433,8 @@ function _ensureRelicCache() {
   const wTrait = getActiveWeaponTraitId(wId) || '';
   const sealCnt = getRealmSealCount();
   const drainedFlag = isRiverDrained() ? 1 : 0;
-  const key = `${r0 ? r0.id : ''}:${ref0}|${r1 ? r1.id : ''}:${ref1}|${r2 ? r2.id : ''}:${ref2}|${pMult}|${wId}|${wTrait}|${sealCnt}|${drainedFlag}`;
+  const mobAssist = (G.isMobile && (!G.settings || G.settings.mobileCombatAssist !== false)) ? 1 : 0;
+  const key = `${r0 ? r0.id : ''}:${ref0}|${r1 ? r1.id : ''}:${ref1}|${r2 ? r2.id : ''}:${ref2}|${pMult}|${wId}|${wTrait}|${sealCnt}|${drainedFlag}|${mobAssist}`;
   if (key === _relicCacheKey && _cachedRelicStats) return;
   _relicCacheKey = key;
 
@@ -449,10 +455,11 @@ function _ensureRelicCache() {
   const wp = getWeaponById(wId).passives;
   const traitParryBonus = wTrait === 'parry_seal' ? 15 : 0;
   const traitSpellMult = wTrait === 'echo_ring' ? 1.18 : 1.0;
+  const mobParryBonus = mobAssist ? 25 : 0;
   const baseParryWin = mirrorRelic ? (mirrorRelic.parryWindowMs || 100) : Math.max(...active.map(r => r.parryWindowMs || 140));
   const baseBlockWin = mirrorRelic ? (mirrorRelic.blockWindowMs || 225) : Math.max(...active.map(r => r.blockWindowMs || 260));
-  let parryWindowMs = Math.max(70, Math.round((baseParryWin + (wp.parryWindowBonusMs || 0) + traitParryBonus) * pMult));
-  let blockWindowMs = Math.max(parryWindowMs + 60, Math.round((baseBlockWin + (wp.blockWindowBonusMs || 0)) * (1 + (pMult - 1) * 0.65)));
+  let parryWindowMs = Math.max(70, Math.round((baseParryWin + (wp.parryWindowBonusMs || 0) + traitParryBonus + mobParryBonus) * pMult));
+  let blockWindowMs = Math.max(parryWindowMs + 60, Math.round((baseBlockWin + (wp.blockWindowBonusMs || 0) + mobParryBonus) * (1 + (pMult - 1) * 0.65)));
   let blockChipMult = wp.blockChipMult || 1.0;
   let parryPostureMult = active.reduce((acc, r) => acc * (r.parryPostureMult || 1.0), 1.0) * (wp.parryPostureMult || 1.0);
   let parryReflectDmg = active.reduce((acc, r) => acc + (r.parryReflectDmg || 0), 0);

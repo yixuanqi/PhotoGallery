@@ -455,7 +455,31 @@ export function updatePlayer(dt) {
 
     if (G.player.attackCd <= 0) {
       G.player.attackBufTimer = 0;
-      if (moveDir !== 0) G.player.facing = moveDir;
+      if (moveDir !== 0) {
+        G.player.facing = moveDir;
+      } else if (G.isMobile && (!G.settings || G.settings.mobileCombatAssist !== false)) {
+        // v44.0 Mobile Soft Auto-Face: gently face nearest nearby foe if thumb isn't steering away
+        const pCx = G.player.x + G.player.w * 0.5;
+        const pCy = G.player.y + G.player.h * 0.5;
+        let bestFoe = null;
+        let bestScore = 165;
+        const foes = getLivingFoes();
+        for (let fi = 0; fi < foes.length; fi++) {
+          const f = foes[fi];
+          if (!f || !f.alive) continue;
+          const dx = (f.x + f.w * 0.5) - pCx;
+          const dy = Math.abs((f.y + f.h * 0.5) - pCy);
+          const absDx = Math.abs(dx);
+          if (absDx > 160 || dy > 95) continue;
+          const frontBonus = (dx * G.player.facing >= 0) ? -28 : 0;
+          const score = absDx + dy * 0.6 + frontBonus;
+          if (score < bestScore) { bestScore = score; bestFoe = f; }
+        }
+        if (bestFoe) {
+          const dxf = (bestFoe.x + bestFoe.w * 0.5) - pCx;
+          if (Math.abs(dxf) > 8) G.player.facing = dxf > 0 ? 1 : -1;
+        }
+      }
       if (G.player.riposteWindow > 0) {
         G.player.riposteWindow = 0;
         triggerPlayerAttack('counter');

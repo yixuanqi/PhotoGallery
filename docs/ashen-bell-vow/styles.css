@@ -975,7 +975,18 @@
   }
 
   /* Automatic Virtual Landscape when a mobile touch device is held in portrait (WeChat / iOS Safari safe) */
-  /* v43.5 Replaced forced 90-deg CSS rotation with native landscape + elegant rotate guard */
+  /* v43.6 Fallback 90-deg CSS landscape (activated ONLY when browser/WeChat/OS lock refuses native rotation) */
+  body.force-landscape #game-root {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 100vh;
+    height: 100vw;
+    width: 100dvh;
+    height: 100dvw;
+    transform: translate(-50%, -50%) rotate(90deg);
+    transform-origin: center center;
+  }
 
   /* Prevent accidental browser zoom / scroll gestures on mobile */
   body.is-mobile,
@@ -4865,4 +4876,641 @@
     background: radial-gradient(circle at 35% 30%, rgba(153, 27, 27, 0.92), rgba(38, 10, 14, 0.94));
     color: #fef9c3;
     box-shadow: 0 0 22px rgba(248, 113, 113, 0.78), 0 0 10px rgba(253, 224, 71, 0.55);
+  }
+
+  /* ==================== v43.6 LANDSCAPE DETECTION SAFEGUARD & FALLBACK LINK ==================== */
+  @media (orientation: landscape) {
+    body.is-mobile .mobile-rotate-guard {
+      display: none !important;
+    }
+  }
+  .rotate-force-link {
+    margin-top: 2px;
+    padding: 6px 12px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed rgba(216, 207, 184, 0.36);
+    color: rgba(216, 207, 184, 0.72);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .rotate-force-link:active {
+    color: #fde047;
+    border-bottom-color: #fde047;
+  }
+
+  /* ==================== v44.0 NATIVE MOBILE FEEL: FLOATING JOYSTICK, CHARGE RING & CUSTOM SCALE/OPACITY ==================== */
+  .mobile-only-sec {
+    display: none;
+  }
+  body.is-mobile .mobile-only-sec {
+    display: block;
+  }
+
+  #fullMapCanvas {
+    touch-action: none;
+  }
+
+  /* Customizable Mobile Button Scale & Opacity */
+  body.is-mobile #touch-controls {
+    --mob-btn-scale: 1;
+    --mob-btn-alpha: 0.90;
+  }
+  body.is-mobile .action-fan {
+    opacity: var(--mob-btn-alpha, 0.90);
+    transform: scale(var(--mob-btn-scale, 1));
+    transform-origin: right bottom;
+  }
+  body.is-mobile .joystick-base {
+    opacity: calc(var(--mob-btn-alpha, 0.90) * 0.92);
+  }
+  @media (max-height: 410px) {
+    body.is-mobile .action-fan {
+      transform: scale(calc(var(--mob-btn-scale, 1) * 0.86));
+    }
+  }
+
+  /* Left-Half-Screen Dynamic Floating Joystick */
+  body.is-mobile.mob-floating-joy .joystick-zone {
+    left: 0;
+    bottom: 0;
+    width: min(42vw, 340px);
+    height: min(62vh, 275px);
+    display: block;
+  }
+  body.is-mobile.mob-floating-joy .joystick-base {
+    position: absolute;
+    left: max(22px, env(safe-area-inset-left));
+    bottom: max(18px, env(safe-area-inset-bottom));
+    opacity: calc(var(--mob-btn-alpha, 0.90) * 0.48);
+    transition: opacity 0.16s ease, border-color 0.14s ease;
+  }
+  body.is-mobile.mob-floating-joy .joystick-base.floating-engaged,
+  body.is-mobile.mob-floating-joy .joystick-base.active {
+    opacity: var(--mob-btn-alpha, 0.90);
+  }
+
+  /* Live SVG Iai / Sunder / Volley Charge Progress Ring on #fan-attack */
+  .fan-charge-svg {
+    position: absolute;
+    inset: -4px;
+    width: calc(100% + 8px);
+    height: calc(100% + 8px);
+    transform: rotate(-90deg);
+    pointer-events: none;
+  }
+  .fan-charge-track {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.06);
+    stroke-width: 3.5;
+  }
+  .fan-charge-fill {
+    fill: none;
+    stroke: rgba(253, 224, 71, 0.92);
+    stroke-width: 3.8;
+    stroke-linecap: round;
+    opacity: 0;
+    transition: opacity 0.08s linear, stroke 0.10s ease;
+  }
+  .fan-attack.charge-charging .fan-charge-fill {
+    opacity: 0.95;
+    stroke: #38bdf8;
+  }
+  .fan-attack.charge-ready .fan-charge-fill {
+    opacity: 1;
+    stroke: #fef08a;
+    filter: drop-shadow(0 0 6px rgba(253, 224, 71, 0.95));
+  }
+  .fan-attack.charge-ready {
+    border-color: #fef08a !important;
+    box-shadow: 0 0 26px rgba(253, 224, 71, 0.82), inset 0 0 14px rgba(253, 224, 71, 0.35) !important;
+  }
+
+  /* ==================== v44.1 MOBILE SHORT-HEIGHT LANDSCAPE (360-430px) COMPACT TWO-COLUMN UI ==================== */
+  /* Desktop zero-regression wrappers: completely transparent on PC */
+  .title-brand-col,
+  .title-action-col,
+  .altar-mobile-layout,
+  .altar-col-main,
+  .altar-col-side,
+  .map-mobile-layout,
+  .map-col-tools,
+  .map-col-canvas,
+  .map-col-legend,
+  .npc-mobile-layout,
+  .npc-col-talk,
+  .npc-col-services,
+  .weapon-split-wrap,
+  .bestiary-split-wrap {
+    display: contents;
+  }
+
+  /* 1. Title Screen: Compact Two-Column Landscape Stage (100% single-screen fit on 360px height!) */
+  body.is-mobile #title-screen.title-stage .title-topbar {
+    padding: 8px 16px 0;
+  }
+  body.is-mobile #title-screen.title-stage .title-ver-badge {
+    font-size: 10px;
+    letter-spacing: 2px;
+  }
+  body.is-mobile #title-screen.title-stage .title-lang-btn {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+  body.is-mobile #title-screen.title-stage .title-hero-shell {
+    padding: 4px clamp(14px, 3.2vw, 32px);
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  body.is-mobile #title-screen.title-stage .title-hero-column {
+    width: min(760px, 96vw);
+    display: grid;
+    grid-template-columns: minmax(0, 1.04fr) minmax(248px, 0.96fr);
+    gap: 16px 24px;
+    align-items: center;
+  }
+  body.is-mobile .title-brand-col {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+  body.is-mobile .title-action-col {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    max-height: calc(100dvh - 76px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  body.is-mobile .title-crest-wrap {
+    margin-bottom: 2px;
+  }
+  body.is-mobile .title-crest-svg {
+    width: 96px;
+    height: 50px;
+  }
+  body.is-mobile #title-screen.title-stage .game-title {
+    font-size: clamp(28px, 4.8vw, 40px);
+    letter-spacing: 8px;
+    line-height: 1.08;
+  }
+  body.is-mobile .title-ornament-line {
+    margin: 5px 0 4px;
+    max-width: 280px;
+  }
+  body.is-mobile .title-subtitle {
+    margin: 0 0 8px !important;
+    font-size: 10.5px !important;
+    letter-spacing: 1.6px !important;
+  }
+  body.is-mobile .title-save-ribbon {
+    margin: 0;
+    padding: 5px 9px;
+    font-size: 10.5px;
+    line-height: 1.35;
+  }
+  body.is-mobile .title-menu-list {
+    width: 100%;
+    gap: 4px;
+  }
+  body.is-mobile .title-menu-btn {
+    padding: 8px 12px 8px 24px;
+    min-height: 36px;
+    font-size: 14px;
+    letter-spacing: 2.2px;
+  }
+  body.is-mobile .title-menu-btn.primary-entry {
+    font-size: 15px;
+  }
+  body.is-mobile .title-slots-drawer {
+    margin-top: 8px;
+    width: 100%;
+    padding: 8px 10px 4px;
+  }
+  body.is-mobile .title-slots-drawer .save-slots-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  body.is-mobile .title-slots-drawer .save-slot-card {
+    padding: 6px 7px;
+  }
+  body.is-mobile .title-slots-drawer .save-slot-head {
+    font-size: 11px;
+  }
+  body.is-mobile .title-slots-drawer .save-slot-meta {
+    font-size: 9.5px;
+  }
+  body.is-mobile #title-screen.title-stage .title-footer {
+    padding: 4px 16px 8px;
+    font-size: 10px;
+  }
+
+  /* 2. Global Mobile Landscape Modal Ergonomics (Full Landscape Width, Compact Chrome, >=38px Touch Targets) */
+  body.is-mobile .overlay-screen {
+    padding: 8px 12px;
+  }
+  body.is-mobile .modal-card {
+    width: min(94vw, 820px) !important;
+    max-height: 94dvh;
+    padding: 10px 14px 12px;
+    border-radius: 10px;
+    text-align: left;
+  }
+  body.is-mobile .modal-top-bar {
+    margin-bottom: 4px;
+  }
+  body.is-mobile .modal-top-close,
+  body.is-mobile .modal-top-link {
+    min-height: 32px;
+    padding: 4px 10px;
+    font-size: 11.5px;
+  }
+  body.is-mobile .modal-title {
+    font-size: 16.5px;
+    letter-spacing: 3px;
+    margin-bottom: 2px;
+    text-align: center;
+  }
+  body.is-mobile .modal-sub {
+    font-size: 10.5px;
+    margin-bottom: 7px;
+    text-align: center;
+  }
+  body.is-mobile .modal-card .primary-btn {
+    min-height: 38px;
+    padding: 7px 14px;
+    font-size: 13px;
+  }
+  body.is-mobile .codex-tabs {
+    gap: 5px;
+    margin-bottom: 8px;
+  }
+  body.is-mobile .codex-tab-btn {
+    min-height: 32px;
+    padding: 4px 10px;
+    font-size: 11.5px;
+  }
+
+  /* 3. #altar-modal: Two-Column Landscape Layout (Left: Armory+Relics | Right: Warp+Vows+Echoes) */
+  body.is-mobile #altar-modal .altar-mobile-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.24fr) minmax(220px, 0.86fr);
+    gap: 10px;
+    align-items: start;
+  }
+  body.is-mobile #altar-modal .altar-col-main,
+  body.is-mobile #altar-modal .altar-col-side {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: calc(94dvh - 96px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-right: 3px;
+  }
+  body.is-mobile #altar-modal .relic-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  body.is-mobile #altar-modal .relic-card {
+    padding: 6px 8px;
+  }
+  body.is-mobile #altar-modal .armory-grid {
+    gap: 5px;
+  }
+  body.is-mobile #altar-modal .warp-row {
+    gap: 5px;
+    margin: 0;
+  }
+  body.is-mobile #altar-modal .warp-btn {
+    min-height: 34px;
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+  body.is-mobile #altar-modal .vow-grid,
+  body.is-mobile #altar-modal .echo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+  }
+  body.is-mobile #altar-modal #btn-close-altar {
+    width: 100%;
+    margin-top: 2px;
+  }
+
+  /* 4. #smith-modal (Bell-Vein Skill Tree): Force Crisp Two-Column Split even at 640-720px width! */
+  body.is-mobile #smith-modal .smith-header-strip {
+    flex-wrap: nowrap;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  body.is-mobile #smith-modal .npc-portrait-box {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+  }
+  body.is-mobile #smith-modal .smith-quote-pill {
+    font-size: 10.5px;
+    padding: 4px 8px;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  body.is-mobile #smith-modal .smith-echo-bar {
+    font-size: 11px;
+    padding: 4px 8px;
+    white-space: nowrap;
+  }
+  body.is-mobile #smith-modal .smith-tabs {
+    margin-bottom: 6px;
+  }
+  body.is-mobile #smith-modal .skill-tree-layout {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.24fr) minmax(220px, 0.90fr) !important;
+    gap: 9px;
+    align-items: start;
+  }
+  body.is-mobile #smith-modal .skill-tree-stage {
+    aspect-ratio: auto;
+    height: min(230px, calc(94dvh - 150px));
+    min-height: 185px;
+  }
+  body.is-mobile #smith-modal .skill-inspector {
+    max-height: min(230px, calc(94dvh - 150px));
+    overflow-y: auto;
+    padding: 8px 10px;
+    gap: 5px;
+  }
+  body.is-mobile #smith-modal .skill-preview-wrap {
+    height: 76px;
+  }
+  body.is-mobile #smith-modal .smith-refine-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    max-height: calc(94dvh - 160px);
+    overflow-y: auto;
+  }
+  body.is-mobile #smith-modal #btn-close-smith {
+    margin-top: 6px;
+    min-height: 34px;
+    padding: 5px 16px;
+  }
+
+  /* 5. #settings-modal: System Tab Two-Column Grid + Weapon/Bestiary Two-Column Split! */
+  body.is-mobile #settings-pane-system {
+    display: grid;
+    grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
+    gap: 8px;
+    align-items: start;
+    max-height: calc(94dvh - 142px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  body.is-mobile #settings-pane-system .settings-section {
+    margin-bottom: 0;
+    padding: 8px 10px;
+  }
+  body.is-mobile #settings-pane-system .settings-sec-title {
+    font-size: 11px;
+    margin-bottom: 6px;
+  }
+  body.is-mobile #settings-pane-system .settings-row {
+    padding: 4px 0;
+    font-size: 11px;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  body.is-mobile #settings-pane-system .seg-btn {
+    min-height: 30px;
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+  body.is-mobile #settings-pane-codex {
+    max-height: calc(94dvh - 134px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  body.is-mobile .weapon-split-wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 0.96fr) minmax(0, 1.04fr);
+    gap: 9px;
+    align-items: start;
+  }
+  body.is-mobile .weapon-gallery-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px;
+    margin-bottom: 0;
+  }
+  body.is-mobile .weapon-art-frame {
+    height: 92px;
+  }
+  body.is-mobile .weapon-art-caption {
+    padding: 4px 5px;
+    font-size: 10.5px;
+  }
+  body.is-mobile .weapon-detail-strip {
+    padding: 8px 10px;
+    max-height: calc(94dvh - 150px);
+    overflow-y: auto;
+  }
+  body.is-mobile .bestiary-split-wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
+    gap: 9px;
+    align-items: start;
+  }
+  body.is-mobile .bestiary-split-wrap .bestiary-hero {
+    order: 2;
+    margin-bottom: 0;
+    padding: 8px 10px;
+    max-height: calc(94dvh - 150px);
+    overflow-y: auto;
+  }
+  body.is-mobile .bestiary-split-wrap .bestiary-gallery-grid {
+    order: 1;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px;
+    max-height: calc(94dvh - 150px);
+    overflow-y: auto;
+    padding-right: 3px;
+  }
+  body.is-mobile .bestiary-tile-foot {
+    font-size: 9.5px;
+    padding: 3px 2px;
+  }
+  body.is-mobile #settings-modal #btn-close-settings {
+    margin-top: 6px;
+    min-height: 34px;
+    padding: 5px 18px;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* 6. #map-modal: Wide Pinch-Zoom Canvas Left + Tools/Legend Column Right */
+  body.is-mobile #map-modal .map-mobile-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.56fr) minmax(195px, 0.72fr);
+    grid-template-rows: auto 1fr;
+    gap: 6px 10px;
+    align-items: start;
+  }
+  body.is-mobile #map-modal .map-col-canvas {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    grid-column: 1;
+    grid-row: 1 / 3;
+  }
+  body.is-mobile #map-modal .parchment-map-box {
+    margin: 0;
+  }
+  body.is-mobile #map-modal #fullMapCanvas {
+    height: min(210px, calc(94dvh - 146px));
+    width: 100%;
+  }
+  body.is-mobile #map-modal .map-room-detail {
+    padding: 5px 8px;
+    font-size: 10.5px;
+    margin: 0;
+  }
+  body.is-mobile #map-modal .map-col-tools {
+    display: block;
+    grid-column: 2;
+    grid-row: 1;
+  }
+  body.is-mobile #map-modal .map-pin-toolbar {
+    gap: 4px;
+    margin: 0;
+    justify-content: flex-start;
+  }
+  body.is-mobile #map-modal .pin-tool-btn {
+    min-height: 30px;
+    padding: 3px 7px;
+    font-size: 10.5px;
+  }
+  body.is-mobile #map-modal .map-col-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    grid-column: 2;
+    grid-row: 2;
+    align-self: end;
+  }
+  body.is-mobile #map-modal .map-legend {
+    gap: 4px 8px;
+    font-size: 9.5px;
+    margin: 0;
+    justify-content: flex-start;
+  }
+  body.is-mobile #map-modal #btn-close-map {
+    width: 100%;
+    min-height: 34px;
+    padding: 5px 10px;
+  }
+
+  /* 7. #npc-modal: Left Portrait+Dialogue | Right Quest/Shop List */
+  body.is-mobile #npc-modal .npc-mobile-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 0.94fr) minmax(0, 1.06fr);
+    gap: 10px;
+    align-items: start;
+  }
+  body.is-mobile #npc-modal .npc-col-talk,
+  body.is-mobile #npc-modal .npc-col-services {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: calc(94dvh - 102px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  body.is-mobile #npc-modal .npc-portrait-box {
+    width: 52px;
+    height: 52px;
+    flex: 0 0 52px;
+  }
+  body.is-mobile #npc-modal .lore-text {
+    padding: 8px 10px;
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+  body.is-mobile #npc-modal #btn-close-npc {
+    width: 100%;
+    margin-top: 2px;
+  }
+
+  /* 8. #pause-modal: Zero-Scroll Compact 2-Column Action Grid */
+  body.is-mobile #pause-modal .modal-card {
+    width: min(520px, 86vw) !important;
+    text-align: center;
+  }
+  body.is-mobile #pause-modal .pause-menu-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 6px;
+  }
+  body.is-mobile #pause-modal #btn-pause-resume {
+    grid-column: 1 / -1;
+  }
+  body.is-mobile #pause-modal .pause-menu-list .primary-btn {
+    width: 100%;
+    min-height: 40px;
+    font-size: 13px;
+  }
+
+  /* 9. #help-modal, #lore-modal, #death-modal, #victory-modal, #ending-choice-modal */
+  body.is-mobile #help-modal .lore-text,
+  body.is-mobile #lore-modal .lore-text {
+    max-height: calc(94dvh - 148px);
+    overflow-y: auto;
+    padding: 10px 12px;
+    font-size: 12px !important;
+    line-height: 1.55;
+    margin-bottom: 8px;
+  }
+  body.is-mobile #help-modal #btn-close-help,
+  body.is-mobile #lore-modal #btn-close-lore {
+    display: block;
+    margin: 0 auto;
+    min-width: 150px;
+  }
+  body.is-mobile #death-modal .modal-card,
+  body.is-mobile #victory-modal .modal-card {
+    width: min(560px, 88vw) !important;
+    text-align: center;
+  }
+  body.is-mobile #ending-choice-modal .ending-choice-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  body.is-mobile #ending-choice-modal .ending-card {
+    padding: 10px 12px;
+  }
+
+  /* ==================== v44.2 PWA INSTALL PILL & MOBILE ECO / POWER-SAVING MODE ==================== */
+  .title-install-btn {
+    border-color: rgba(56, 189, 248, 0.72) !important;
+    color: #bae6fd !important;
+    background: rgba(10, 32, 48, 0.76) !important;
+  }
+  .title-install-btn.hidden {
+    display: none !important;
+  }
+  body.mob-eco-mode .t-btn,
+  body.mob-eco-mode .joystick-base,
+  body.mob-eco-mode .overlay-screen,
+  body.mob-eco-mode .title-save-ribbon,
+  body.mob-eco-mode .title-slots-drawer {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  body.mob-eco-mode .title-crest-svg {
+    animation: none !important;
   }

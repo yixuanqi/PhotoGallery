@@ -90,7 +90,8 @@ export function adaptTouchText(str) {
       .replace(/\[B\]/g, '「设置」手账')
       .replace(/\bShift\b/g, '「闪避」键')
       .replace(/\bSpace\b/g, '「跳跃」键')
-      .replace(/左键点击舆图落钉\s*·\s*点击已有图钉或右键抹除/g, '点击舆图落钉 · 再次点击已有图钉抹除');
+      .replace(/左键点击舆图落钉\s*·\s*点击已有图钉或右键抹除/g, '点击舆图落钉 · 再次点击已有图钉抹除 · 双指捏合缩放')
+      .replace(/滚轮缩放\s*·\s*左键拖动/g, '双指捏合缩放 · 单指拖动');
   }
   return out;
 }

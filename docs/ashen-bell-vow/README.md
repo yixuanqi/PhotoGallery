@@ -1,3 +1,60 @@
+## v44.2 PWA 离线全屏桌面图标、切后台音频自动保活与手机稳帧省电模式
+- **PWA 一键“添加到主屏幕”原生全屏壳（`manifest.webmanifest` / `sw.js` / `icon.svg` / `icon-192.png` / `icon-512.png`）**：
+  * 程序化绘制暗黑水墨裂钟双刃 App 图标（同时输出矢量 `icon.svg` 与 2× 超采样抗锯齿 `192px / 512px` PNG，原生适配 iOS Safari `apple-touch-icon` 与 Android PWA 安装器）；
+  * `manifest.webmanifest` 配置 `display: fullscreen` + `orientation: landscape`，`sw.js` 采用同源 Stale-While-Revalidate 离线缓存，添加到手机主屏幕后**无地址栏真全屏运行、断网离线可玩**；主界面右上角在浏览器支持安装时自动浮现 **`⬇ 安装到桌面`** 按钮（`file://` 与 TapTap 纯离线包内自动静默跳过且保持 3 文件纯净无 404）。
+- **移动端切后台 / 锁屏 / 来电音频自动保活（`src/audio.js` / `src/main.js`）**：
+  * 新增 `audio.keepAliveResume()` 与 `AudioContext.onstatechange` 监听，同步覆盖 Android `'suspended'` 与 **iOS Safari 特有 `'interrupted'` 静音状态**，切回前台自动尝试唤醒并清空积压节拍防爆音；若浏览器要求手势解锁，在切回后首次触屏瞬间无感补发 1-sample 静音脉冲秒恢复全部配乐与打铁音效。
+- **手机稳帧省电模式（`#btn-mob-eco-mode` · `src/vfx.js` / `src/render/vfxRenderer.js` / `src/main.js` / `styles.css`）**：
+  * 移动端设置页新增一键开关并持久化存档：开启后将渲染 DPR 锁至 `1.0`（像素填充直降 36%）、高刷手机自动按 60Hz 整除稳帧防发热降频、粒子上限与前景雨尘自动轻量化减半，并关闭耗合成层的 `backdrop-filter` 模糊特效。
+
+---
+
+## v44.1 手机矮屏横屏（360–430px）紧凑双栏标题页与全弹窗重构
+- **桌面零回归双栏结构（`index.html` / `src/ui/modalsUi.js` / `styles.css`）**：桌面端所有新增容器保持 `display: contents`，PC 排版像素级零变动；移动端横屏解除旧版 `560px` 宽度瓶颈，扩展至 `min(94vw, 820px)` 并全面升级为双栏分区：
+  * **主标题页（`#title-screen`）**：左栏呈现裂钟双刃纹章 + 烫金标题 + 档案摘要条，右栏呈现魂系竖排菜单与可展开 3 槽抽屉，在 360px 矮屏横屏手机上**零滚动条一屏完整显示**。
+  * **熄灯祭坛（`#altar-modal`）**：左栏兵刃与圣物星盘，右栏祭坛传送 + 钟誓 + 回响挑战，左右独立滚动。
+  * **铁匠铺钟脉星图（`#smith-modal`）**：强制保持左星图 + 右实景动作预览与升级按钮双栏，压缩顶部肖像条，不再被窄屏断点折成竖排长页。
+  * **4-Tab 设置手账（`#settings-modal`）**：系统设置页拆为左右双栏（左：语言/护道/音量/震动；右：移动端浮动摇杆/微辅/按键缩放与透明度）；兵刃画廊与 19 格怪物实景图鉴改为「左图库网格 + 右详情面板」双栏浏览，点选立看无需来回上下翻滚。
+  * **晦渊舆图（`#map-modal`）**：左宽屏捏合缩放地图 + 右图钉工具栏与图例。
+  * **NPC 对话（`#npc-modal`） & 暂停菜单（`#pause-modal`）**：NPC 改为左对话右服务列表；暂停菜单改为 2 列大按钮网格，全弹窗触控热区提升至 `36–42px+`。
+
+---
+
+# 灰钟残誓 (Ashen Bell Vow) — v44.0 移动端原生手感升级版
+
+## v44.0 核心升级
+- **左半屏动态浮动摇杆（`src/input.js` / `styles.css`）**：
+  * 触屏模式下左半屏下部（`42vw × 62vh`）任意落指即刻吸附生成摇杆底座，松手柔和淡回基准角，彻底消灭拇指按空与起手反向抽搐；同时完整兼容原生横屏与微信/锁屏 90° 兜底横屏，可在设置中随时切换「浮动 / 固定底座」。
+- **移动端专属战斗手感层（`src/player.js` / `src/state.js` / `src/input.js` / `src/ui/hudCore.js`）**：
+  * **近战软索敌自动微转向**：未刻意拉动反方向摇杆时，普攻出手瞬间自动微调面向 160px 内最近威胁敌兵，告别搓玻璃挥空；
+  * **触屏弹反宽容（`+25ms`）**：手机端默认给予 +25ms 精准弹反与格挡宽容帧（可在设置中关闭切回硬核原版）；
+  * **普攻外圈实时蓄力环**：`#fan-attack` 外圈内置零分配 SVG 圆形蓄力进度条，长按蓄力居合 / 碎岳 / 三鸣时实时走青蓝进度条，蓄满瞬间化作耀金光环脉冲；
+  * **Android 线性马达震动桥接**：`triggerHaptic()` 同步接入 `navigator.vibrate`，为轻斩、重击、弹反打铁、破盾、居合、处决与受击匹配不同短促震动波形（iOS 安全降级零报错）。
+- **大地图原生触屏交互（`src/ui/mapUi.js`）**：
+  * 完整实装**单指平滑拖动舆图**、**双指捏合以两指中心为锚点无极缩放**，并放宽移动端点击祭坛传送（`24px`）与落钉/删钉（`26px`）热区，同步兼容 90° 兜底横屏坐标。
+- **移动端专属手感设置面板（`index.html` / `src/save.js` / `src/ui/modalsUi.js`）**：
+  * 新增「左半屏动态浮动摇杆」「触屏战斗微辅」「触控按键尺寸（80–120%）」「触控按键透明度（45–100%）」四项持久化调校，实时生效。
+
+---
+
+## v43.7 一码多端离线构建管线（TapTap / 4399 纯离线直传包 + itch.io 根目录包）
+- **新增零依赖多平台构建脚本（`tools/build_release.py` + `build_release.bat` / `build_release.sh`）**：
+  * 自动先跑 `verify_project.py` 全量校验，再一键生成三套发行包至 `dist/`：
+    1. **`ashen_bell_vow_v43_7_taptap_offline.zip`**（TapTap / 4399 / 本地 `file://` 双击秒开通用离线包）：`index.html` 直接位于 ZIP 根目录，仅含 `index.html`、`styles.css` 与 `game.bundle.js` 三个文件；通过词法级 ES Module 编译器将 63 个运行期模块与全部 26 份关卡 JSON 内联为经典单脚本（**零 `type="module"`、零 `fetch()`、零 CORS、零资源 `?v=` 查询串、完整保留 `config.js` 实时变量绑定**），彻底解决 Android WebView 离线容器「点击无反应」问题。
+    2. **`ashen_bell_vow_v43_7_itch_web.zip`**（itch.io Web 扁平根目录直传包，剔除编辑器与开发脚本）。
+    3. **`ashen_bell_vow_v43_7_modular.zip`**（完整开发与博客部署源码包）。
+- **离线数据直通快路径（`src/levelLoader.js`）**：检测到 `window.__ABV_OFFLINE_WORLD__` 时跳过网络 `fetch()` 直接同步水合 25 房世界数据，开发模式与编辑器实时试玩完全不受影响。
+
+---
+
+## v43.6 移动端多源横屏检测修复与微信/锁屏强制横屏兜底
+- **彻底修复手机横屏后卡在「请横握手机」引导界面的问题（`src/input.js` / `src/main.js` / `styles.css`）**：
+  * **多源横屏判定 + 延迟复检**：同时结合 `visualViewport`、`innerWidth/innerHeight`、`screen.orientation.type`、`window.orientation` 与 `matchMedia('(orientation: landscape)')`，监听全部横竖屏与全屏事件并加入 `120ms / 320ms / 620ms` 阶梯复检与帧循环自动唤醒，同时加纯 CSS `@media (orientation: landscape)` 瞬时隐藏遮罩，彻底消除 WebView 尺寸延迟更新导致的卡死；
+  * **微信内置浏览器 / 系统竖屏锁定自动兜底**：点击「进入横屏全屏」先尝试原生全屏横屏，若 `320ms` 内浏览器拒绝旋转（如微信未开横屏、iOS Safari 或手机开了竖屏锁定），自动无缝切入 90° 兜底横屏并放行游戏（同时提供一键「强制横屏进入」直达链接，且一旦系统真正横屏会自动切回原生横屏）；
+  * **补齐 90° 兜底横屏下的轻滑手势坐标换算**，并在竖屏引导页期间自动暂停开场动画计时，横屏进入后从 0 秒完整带音效播放破刃斩钟开场。
+
+---
+
 ## v43.5 移动端原生横屏体验重塑（四大核心痛点一次性闭环）
 - **竖屏优雅「请横握手机」黑幕引导 + 横屏原生全屏进入（`index.html` / `styles.css` / `src/input.js`）**：
   * 移除旧版生硬的 CSS 90° 强制假旋转，竖屏打开时弹出带旋转手机水墨动效的 `#mobile-rotate-guard` 黑幕引导并附「尝试自动横屏全屏」按钮；横握手机后自动无缝切入原生横屏渲染。

@@ -459,6 +459,21 @@ export function syncHUD(force = false) {
       setTextFast(HUD_DOM.fanSpellSub, spellSubTxt);
     }
 
+    // Live SVG Iai / Sunder / Volley Charge Ring around #fan-attack (zero GC, quantized pct)
+    if (HUD_DOM.fanAttack && HUD_DOM.fanAttackRing) {
+      const chNeed = Math.max(0.18, rsMob.iaiChargeTime || 0.42);
+      const charging = !!(G.player.isCharging && G.player.chargeTime > 0.09);
+      const chPct = charging ? Math.min(100, Math.round((G.player.chargeTime / chNeed) * 100)) : 0;
+      const chReady = chPct >= 100;
+      if (force || hudCache.mobChargePct !== chPct) {
+        hudCache.mobChargePct = chPct;
+        const dashOff = (219.91 * (1 - chPct * 0.01)).toFixed(1);
+        HUD_DOM.fanAttackRing.style.strokeDashoffset = dashOff;
+        HUD_DOM.fanAttack.classList.toggle('charge-charging', chPct > 0 && !chReady);
+        HUD_DOM.fanAttack.classList.toggle('charge-ready', chReady);
+      }
+    }
+
     // Permanent Dash evolves visually when Shadow Dash is unlocked
     if (HUD_DOM.fanDash) {
       const shadeOn = !!(G.worldState && G.worldState.abilities.shadeDash);

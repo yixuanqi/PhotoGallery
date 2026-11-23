@@ -46,6 +46,11 @@ export function saveUserSettings() {
     masterVol: G.settings.masterVol,
     musicVol: G.settings.musicVol,
     sfxVol: G.settings.sfxVol,
+    mobileFloatingJoy: G.settings.mobileFloatingJoy !== false,
+    mobileCombatAssist: G.settings.mobileCombatAssist !== false,
+    mobileBtnScale: Number(G.settings.mobileBtnScale) || 1.0,
+    mobileBtnOpacity: Number(G.settings.mobileBtnOpacity) || 0.90,
+    mobileEcoMode: !!G.settings.mobileEcoMode,
     keybinds: { ...G.settings.keybinds }
   });
 }
@@ -71,6 +76,15 @@ export function loadUserSettings() {
   if (typeof s.masterVol === 'number' && !Number.isNaN(s.masterVol)) G.settings.masterVol = Math.max(0, Math.min(1, s.masterVol));
   if (typeof s.musicVol === 'number' && !Number.isNaN(s.musicVol)) G.settings.musicVol = Math.max(0, Math.min(1, s.musicVol));
   if (typeof s.sfxVol === 'number' && !Number.isNaN(s.sfxVol)) G.settings.sfxVol = Math.max(0, Math.min(1, s.sfxVol));
+  if (typeof s.mobileFloatingJoy === 'boolean') G.settings.mobileFloatingJoy = s.mobileFloatingJoy;
+  if (typeof s.mobileCombatAssist === 'boolean') G.settings.mobileCombatAssist = s.mobileCombatAssist;
+  if (typeof s.mobileBtnScale === 'number' && !Number.isNaN(s.mobileBtnScale)) {
+    G.settings.mobileBtnScale = Math.max(0.80, Math.min(1.20, s.mobileBtnScale));
+  }
+  if (typeof s.mobileBtnOpacity === 'number' && !Number.isNaN(s.mobileBtnOpacity)) {
+    G.settings.mobileBtnOpacity = Math.max(0.45, Math.min(1.0, s.mobileBtnOpacity));
+  }
+  if (typeof s.mobileEcoMode === 'boolean') G.settings.mobileEcoMode = s.mobileEcoMode;
   audio.setVolumes(G.settings.masterVol, G.settings.musicVol, G.settings.sfxVol);
 
   if (s.keybinds && typeof s.keybinds === 'object') {

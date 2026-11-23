@@ -5,16 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="灰钟残誓" />
+<meta name="theme-color" content="#080b11" />
 <meta name="screen-orientation" content="landscape" />
 <meta name="x5-orientation" content="landscape" />
-<title>灰钟残誓 v43.5 — 四页设置手账（武器/怪物图鉴）、路线A能力渐进与刺壁黑冲重构 · 暗黑手绘魂系类银河恶魔城</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24'>🔔</text></svg>" />
-<link rel="stylesheet" href="./styles.css?v=43.5.0" />
+<title>灰钟残誓 v44.2 — PWA 离线全屏壳、切后台音频保活与手机稳帧省电模式 · 暗黑手绘魂系类银河恶魔城</title>
+<link rel="manifest" href="./manifest.webmanifest" />
+<link rel="icon" type="image/svg+xml" href="./icon.svg" />
+<link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png" />
+<link rel="stylesheet" href="./styles.css?v=44.2.0" />
 </head>
 <body>
 <div id="game-root">
   <canvas id="gameCanvas"></canvas>
-  <!-- v43.5 Mobile Portrait Rotate Guard (Elegant Dark-Ink Landscape Prompt) -->
+  <!-- v44.2 Mobile Portrait Rotate Guard (Elegant Dark-Ink Landscape Prompt) -->
   <div id="mobile-rotate-guard" class="mobile-rotate-guard" aria-live="polite">
     <div class="rotate-guard-card">
       <div class="rotate-phone-anim" aria-hidden="true">
@@ -33,7 +38,8 @@
       </div>
       <div class="rotate-guard-title" data-i18n="mob.rotateTitle">请横握手机</div>
       <div class="rotate-guard-sub" data-i18n="mob.rotateSub">横屏以全屏视野体验《灰钟残誓》水墨箱庭与双指战斗</div>
-      <button id="btn-rotate-fullscreen" type="button" class="primary-btn rotate-fs-btn" data-i18n="mob.rotateFsBtn">尝试自动横屏全屏</button>
+      <button id="btn-rotate-fullscreen" type="button" class="primary-btn rotate-fs-btn" data-i18n="mob.rotateFsBtn">进入横屏全屏</button>
+      <button id="btn-rotate-force" type="button" class="rotate-force-link" data-i18n="mob.rotateForceBtn">已横屏仍未切换 / 微信内？点击强制横屏进入</button>
     </div>
   </div>
 
@@ -141,13 +147,14 @@
     A/D 移 · Space 跳 · 左键/J 三连·长按居合 · 右键/K 弹反 · F/中键/I 钩索 · R/U 灵刃 · Shift 闪 · C/L 墨印 · Q/H 回血 · E 交互 · M 舆图 · 支持手柄
   </div>
 
-  <!-- Title Overlay (v43.5 Full-Viewport Atmospheric Dark Hand-Drawn Title Stage) -->
+  <!-- Title Overlay (v44.2 Full-Viewport Atmospheric Dark Hand-Drawn Title Stage) -->
   <div id="title-screen" class="overlay-screen title-stage">
     <div class="title-backdrop-scrim" aria-hidden="true"></div>
 
     <div class="title-topbar">
-      <div class="title-ver-badge">ASHEN BELL VOW · v43.5</div>
+      <div class="title-ver-badge">ASHEN BELL VOW · v44.2</div>
       <div class="title-top-actions">
+        <button id="btn-pwa-install" type="button" class="title-lang-btn title-install-btn hidden" data-i18n="title.installPwa">⬇ 安装到桌面</button>
         <button id="btn-title-replay-intro" type="button" class="title-lang-btn" data-i18n="title.replayIntro">↺ 重播开场</button>
         <button id="btn-title-lang" type="button" class="title-lang-btn">Lang: 中文 / EN</button>
       </div>
@@ -155,6 +162,7 @@
 
     <div class="title-hero-shell">
       <div class="title-hero-column">
+        <div class="title-brand-col">
         <!-- Hand-Drawn SVG Cracked Bronze Bell & Crossed Blade Crest -->
         <div class="title-crest-wrap" aria-hidden="true">
           <svg class="title-crest-svg" viewBox="0 0 180 96" xmlns="http://www.w3.org/2000/svg">
@@ -195,7 +203,9 @@
 
         <!-- Active Save Slot Compact Status Ribbon -->
         <div id="title-save-info" class="title-save-ribbon" style="display:none;"></div>
+        </div>
 
+        <div class="title-action-col">
         <!-- Clean Vertical Soulslike Menu -->
         <nav class="title-menu-list" aria-label="Main Menu">
           <button id="btn-continue" type="button" class="title-menu-btn primary-entry" disabled data-i18n="title.loading" style="display:none;">载入中...</button>
@@ -212,6 +222,7 @@
             <button id="btn-close-slots-drawer" type="button" class="title-slots-close">✕</button>
           </div>
           <div id="save-slots-grid" class="save-slots-grid"></div>
+        </div>
         </div>
       </div>
     </div>
@@ -231,14 +242,20 @@
       </div>
       <div id="altar-modal-title" class="modal-title">熄灯祭坛</div>
       <div class="modal-sub" data-i18n="altar.sub">灯油与魂火已回满 · 提灯可自由切换三系兵刃并铭刻「主印 + 副印」</div>
-      <div id="altar-armory-section" class="armory-section"></div>
-      <div id="relic-slots-bar" class="relic-slots-bar"></div>
-      <div id="relic-synergy-box" class="relic-synergy-box"></div>
-      <div id="relic-list" class="relic-list"></div>
-      <div id="altar-warp-row" class="warp-row"></div>
-      <div id="altar-vow-section" class="vow-section"></div>
-      <div id="altar-echo-section" class="echo-section"></div>
-      <button id="btn-close-altar" class="primary-btn" data-i18n="altar.close">起身前行</button>
+      <div class="altar-mobile-layout">
+        <div class="altar-col-main">
+          <div id="altar-armory-section" class="armory-section"></div>
+          <div id="relic-slots-bar" class="relic-slots-bar"></div>
+          <div id="relic-synergy-box" class="relic-synergy-box"></div>
+          <div id="relic-list" class="relic-list"></div>
+        </div>
+        <div class="altar-col-side">
+          <div id="altar-warp-row" class="warp-row"></div>
+          <div id="altar-vow-section" class="vow-section"></div>
+          <div id="altar-echo-section" class="echo-section"></div>
+          <button id="btn-close-altar" class="primary-btn" data-i18n="altar.close">起身前行</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -251,11 +268,17 @@
       </div>
       <div class="modal-title" data-i18n="map.title">晦渊舆图</div>
       <div id="map-modal-sub" class="modal-sub">沉钟回廊 · 已探索 0% · 已点燃祭坛 1 / 2</div>
-      <div id="map-pin-toolbar" class="map-pin-toolbar"></div>
-      <div class="parchment-map-box">
-        <canvas id="fullMapCanvas" width="760" height="310"></canvas>
-      </div>
-      <div id="map-room-detail" class="map-room-detail"></div>
+      <div class="map-mobile-layout">
+        <div class="map-col-tools">
+          <div id="map-pin-toolbar" class="map-pin-toolbar"></div>
+        </div>
+        <div class="map-col-canvas">
+          <div class="parchment-map-box">
+            <canvas id="fullMapCanvas" width="760" height="310"></canvas>
+          </div>
+          <div id="map-room-detail" class="map-room-detail"></div>
+        </div>
+        <div class="map-col-legend">
       <div class="map-legend">
         <span class="legend-item"><span class="legend-dot" style="background:#38bdf8;box-shadow:0 0 6px #38bdf8;"></span><span data-i18n="map.legendLit">已点燃祭坛</span></span>
         <span class="legend-item"><span class="legend-dot" style="background:#64748b;"></span><span data-i18n="map.legendUnlit">未点燃祭坛</span></span>
@@ -266,6 +289,8 @@
         <span class="legend-item"><span class="legend-dot" style="background:#ffffff;"></span><span data-i18n="map.legendPlayer">当前位置</span></span>
       </div>
       <button id="btn-close-map" class="primary-btn" data-i18n="map.close">收起舆图 [M]</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -328,10 +353,16 @@
       <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="npc" data-i18n="modal.farewell">✕ 告辞</button></div>
       <div id="npc-modal-title" class="modal-title">游方拾碑客 · 墨尘</div>
       <div id="npc-modal-sub" class="modal-sub">沉渊钟井 · 井中悬坛</div>
-      <div class="npc-dialogue-row"><div id="npc-portrait-box" class="npc-portrait-box"></div><div id="npc-dialogue" class="lore-text" style="border-left-color:var(--cyan);margin-bottom:0;flex:1;"></div></div>
-      <div id="npc-echo-bar" class="smith-echo-bar"></div>
-      <div id="npc-quest-list" class="smith-upgrade-list"></div>
-      <button id="btn-close-npc" class="primary-btn" data-i18n="npc.close">拱手告辞</button>
+      <div class="npc-mobile-layout">
+        <div class="npc-col-talk">
+          <div class="npc-dialogue-row"><div id="npc-portrait-box" class="npc-portrait-box"></div><div id="npc-dialogue" class="lore-text" style="border-left-color:var(--cyan);margin-bottom:0;flex:1;"></div></div>
+          <div id="npc-echo-bar" class="smith-echo-bar"></div>
+        </div>
+        <div class="npc-col-services">
+          <div id="npc-quest-list" class="smith-upgrade-list"></div>
+          <button id="btn-close-npc" class="primary-btn" data-i18n="npc.close">拱手告辞</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -349,7 +380,7 @@
     </div>
   </div>
 
-  <!-- Unified 4-Tab Settings, Weapon Codex, Bestiary & Archive Modal (v43.5) -->
+  <!-- Unified 4-Tab Settings, Weapon Codex, Bestiary & Archive Modal (v44.2) -->
   <div id="settings-modal" class="overlay-screen hidden">
     <div class="modal-card settings-journal-card">
       <div class="modal-top-bar modal-top-split">
@@ -421,6 +452,35 @@
           <div class="seg-group">
             <button id="btn-haptics-toggle" class="seg-btn active">震动: 开</button>
             <button id="btn-test-haptic" class="seg-btn" data-i18n="settings.testHaptic">测试震动</button>
+          </div>
+        </div>
+      </div>
+      <div class="settings-section mobile-only-sec">
+        <div class="settings-sec-title" data-i18n="settings.secMobile">移动端触控手感与布局</div>
+        <div class="settings-row">
+          <span data-i18n="settings.mobFloatJoy">左半屏动态浮动摇杆</span>
+          <div class="seg-group">
+            <button id="btn-mob-float-joy" class="seg-btn active">浮动: 开</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span data-i18n="settings.mobCombatAssist">触屏战斗微辅（软索敌 +25ms 弹反）</span>
+          <div class="seg-group">
+            <button id="btn-mob-combat-assist" class="seg-btn active">微辅: 开</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span data-i18n="settings.mobBtnScale">触控按键尺寸</span>
+          <div class="vol-slider-wrap"><input id="mob-btn-scale" class="vol-slider" type="range" min="80" max="120" step="5" value="100" /><span id="mob-btn-scale-val" class="vol-val">100%</span></div>
+        </div>
+        <div class="settings-row">
+          <span data-i18n="settings.mobBtnOpacity">触控按键透明度</span>
+          <div class="vol-slider-wrap"><input id="mob-btn-opacity" class="vol-slider" type="range" min="45" max="100" step="5" value="90" /><span id="mob-btn-opacity-val" class="vol-val">90%</span></div>
+        </div>
+        <div class="settings-row">
+          <span data-i18n="settings.mobEcoMode">手机稳帧省电模式（降 DPR/粒子防发热）</span>
+          <div class="seg-group">
+            <button id="btn-mob-eco-mode" class="seg-btn">省电: 关</button>
           </div>
         </div>
       </div>
@@ -557,7 +617,7 @@
     <!-- Contextual Interact Pill (appears near Altar / NPC / Tablet / Switch / Pickup) -->
     <button id="mobile-interact-btn" class="mobile-interact-btn t-btn hidden" data-key="KeyE" data-i18n="mob.interact">交互</button>
 
-    <!-- Bottom-Right Ergonomic 6+3 Soulslike Thumb Stage (v43.5) -->
+    <!-- Bottom-Right Ergonomic 6+3 Soulslike Thumb Stage (v44.2) -->
     <div id="action-fan" class="action-fan" data-i18n-aria="mob.fanAria" aria-label="动作扇形按键">
       <svg class="fan-arc-svg" viewBox="0 0 280 248" aria-hidden="true">
         <path d="M 88 228 A 145 145 0 0 1 256 64" fill="none" stroke="rgba(216, 207, 184, 0.16)" stroke-width="1.4" stroke-dasharray="4 6" />
@@ -566,6 +626,10 @@
 
       <!-- CORE 6 PERMANENT COMBAT BUTTONS -->
       <button id="fan-attack" class="t-btn fan-btn fan-attack" data-key="KeyJ" data-flick="up,down">
+        <svg class="fan-charge-svg" viewBox="0 0 76 76" aria-hidden="true">
+          <circle class="fan-charge-track" cx="38" cy="38" r="35" />
+          <circle id="fan-attack-ring" class="fan-charge-fill" cx="38" cy="38" r="35" stroke-dasharray="219.91" stroke-dashoffset="219.91" />
+        </svg>
         <span class="fan-flick-arrow up" aria-hidden="true">▲</span>
         <span class="fan-label" data-i18n="mob.attack">普攻</span>
         <span id="fan-attack-sub" class="fan-sub" data-i18n="mob.attackHold">长按居合</span>
@@ -686,7 +750,7 @@
   }, 8000);
 })();
 </script>
-<script type="module" src="./src/main.js?v=43.5.0"></script>
+<script type="module" src="./src/main.js?v=44.2.0"></script>
   <div id="gp-nav-bar" class="gp-nav-bar hidden" data-i18n="gp.navLegend">[十字/左摇杆] 移动 · [A] 确认 · [B] 返回 · [LB/RB] 切页 · [右摇杆] 滚动</div>
 </body>
 </html>

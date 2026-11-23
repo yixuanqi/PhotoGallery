@@ -285,11 +285,59 @@ const HAPTIC_PRESETS = {
   test:        { duration: 160, weak: 0.75, strong: 0.75 }
 };
 
+const MOBILE_VIBRATE_PATTERNS = {
+  lightHit:    10,
+  heavyHit:    22,
+  parry:       [14, 22, 18],
+  shieldBreak: [20, 24, 28],
+  iai:         [12, 18, 22],
+  execution:   [26, 28, 42],
+  bossPhase:   [32, 30, 38],
+  hurt:        [18, 20, 16],
+  test:        [18, 26, 22]
+};
+let _lastMobVibeMs = 0;
+
+export function applyMobileTouchPrefs() {
+  if (typeof document === 'undefined' || !document.body) return;
+  const floatOn = !G.settings || G.settings.mobileFloatingJoy !== false;
+  const scale = Math.max(0.80, Math.min(1.20, Number(G.settings && G.settings.mobileBtnScale) || 1.0));
+  const alpha = Math.max(0.45, Math.min(1.00, Number(G.settings && G.settings.mobileBtnOpacity) || 0.90));
+  document.body.classList.toggle('mob-floating-joy', floatOn);
+  document.body.classList.toggle('mob-eco-mode', !!(G.settings && G.settings.mobileEcoMode));
+  const tc = document.getElementById('touch-controls');
+  if (tc) {
+    tc.style.setProperty('--mob-btn-scale', scale.toFixed(2));
+    tc.style.setProperty('--mob-btn-alpha', alpha.toFixed(2));
+  }
+}
+
 export function triggerHaptic(preset = 'lightHit', scale = 1.0) {
-  if (!G.settings || !G.settings.haptics || !navigator.getGamepads) return false;
+  if (!G.settings || !G.settings.haptics) return false;
+  let fired = false;
+
+  // v44.0 Mobile Linear Motor Vibration Bridge (Android Chrome / WebView safe, gracefully ignored on iOS)
+  if ((G.isMobile || (typeof document !== 'undefined' && document.body && document.body.classList.contains('is-mobile')))
+      && typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+    const nowMs = performance.now();
+    if (preset === 'test' || nowMs - _lastMobVibeMs >= 28) {
+      _lastMobVibeMs = nowMs;
+      const rawPat = MOBILE_VIBRATE_PATTERNS[preset] || 12;
+      const mult = Math.max(0.7, Math.min(1.35, Number(scale) || 1.0));
+      const pat = Array.isArray(rawPat)
+        ? rawPat.map((ms, idx) => idx % 2 === 0 ? Math.max(6, Math.round(ms * mult)) : ms)
+        : Math.max(6, Math.round(rawPat * mult));
+      try {
+        if (navigator.vibrate(pat)) fired = true;
+      } catch {
+        // Ignore blocked vibrate calls before gesture
+      }
+    }
+  }
+
+  if (!navigator.getGamepads) return fired;
   const p = HAPTIC_PRESETS[preset] || HAPTIC_PRESETS.lightHit;
   const pads = navigator.getGamepads();
-  let fired = false;
   for (let i = 0; i < pads.length; i++) {
     const pad = pads[i];
     if (!pad || !pad.connected) continue;
@@ -326,17 +374,44 @@ export function isMobileDevice() {
   return coarse || (mobileUA && ('ontouchstart' in window || (navigator.maxTouchPoints || 0) > 0));
 }
 
+let _manualForceLandscape = false;
+
 export function isForceLandscape() {
-  return false;
+  return document.body.classList.contains('force-landscape');
+}
+
+export function isViewportLandscape() {
+  const vv = window.visualViewport;
+  const w = (vv && vv.width) ? vv.width : (window.innerWidth || document.documentElement.clientWidth || 0);
+  const h = (vv && vv.height) ? vv.height : (window.innerHeight || document.documentElement.clientHeight || 0);
+  if (w > h + 4) return true;
+  if (h > w + 4) {
+    // Check screen.orientation / window.orientation in case WebView lags updating innerWidth/innerHeight
+    const so = window.screen && window.screen.orientation && window.screen.orientation.type;
+    if (typeof so === 'string' && /^landscape/i.test(so)) return true;
+    if (typeof window.orientation === 'number' && Math.abs(window.orientation) === 90) return true;
+    if (window.matchMedia && window.matchMedia('(orientation: landscape)').matches) return true;
+    return false;
+  }
+  return true;
+}
+
+export function setForceLandscapeFallback(enabled) {
+  _manualForceLandscape = !!enabled;
+  return updateMobileOrientationLayout();
 }
 
 export function updateMobileOrientationLayout() {
   const mobile = isMobileDevice();
-  const portrait = window.innerHeight > window.innerWidth;
+  const nativeLandscape = isViewportLandscape();
+  // Automatically release CSS fallback once OS/browser enters real native landscape
+  if (nativeLandscape && _manualForceLandscape) _manualForceLandscape = false;
+  const forceLandscape = mobile && !nativeLandscape && _manualForceLandscape;
+  const showPortraitGuard = mobile && !nativeLandscape && !forceLandscape;
   document.body.classList.toggle('is-mobile', mobile);
-  document.body.classList.toggle('is-portrait', mobile && portrait);
-  document.body.classList.remove('force-landscape');
-  return { mobile, portrait: mobile && portrait, forceLandscape: false };
+  document.body.classList.toggle('is-portrait', showPortraitGuard);
+  document.body.classList.toggle('force-landscape', forceLandscape);
+  return { mobile, portrait: showPortraitGuard, forceLandscape, nativeLandscape };
 }
 
 export function requestMobileLandscapeFullscreen() {
@@ -619,13 +694,16 @@ export function initInputListeners() {
     }
   });
 
-  // --- Bottom-Left 360° Virtual Joystick (Multi-Touch + Forced-Landscape Coordinate Mapping) ---
+  // --- Bottom-Left 360° Dynamic Floating / Fixed Virtual Joystick (v44.0) ---
   const joyZone = document.getElementById('joystick-zone');
   const joyBase = document.getElementById('joystick-base');
   const joyKnob = document.getElementById('joystick-knob');
   const joyPrev = { left: false, right: false, up: false, down: false };
   let joyTouchId = null;
   let joyMouseActive = false;
+  let joyAnchorX = 0;
+  let joyAnchorY = 0;
+  let joyHasFloatingAnchor = false;
   const dirEls = joyBase ? {
     up: joyBase.querySelector('[data-dir="up"]'),
     down: joyBase.querySelector('[data-dir="down"]'),
@@ -641,10 +719,60 @@ export function initInputListeners() {
     }
   }
 
+  function isFloatingJoyEnabled() {
+    return document.body.classList.contains('mob-floating-joy') && (!G.settings || G.settings.mobileFloatingJoy !== false);
+  }
+
+  function placeFloatingJoystickAt(clientX, clientY) {
+    if (!joyZone || !joyBase || !isFloatingJoyEnabled()) {
+      joyHasFloatingAnchor = false;
+      return;
+    }
+    const zRect = joyZone.getBoundingClientRect();
+    const forceRot = isForceLandscape();
+    const zoneW = joyZone.clientWidth || (forceRot ? zRect.height : zRect.width) || 260;
+    const zoneH = joyZone.clientHeight || (forceRot ? zRect.width : zRect.height) || 200;
+    // Map viewport client coords into #joystick-zone local unrotated coordinates
+    let localX, localY;
+    if (forceRot) {
+      // #game-root is rotated +90deg CW: visual left->right is screen top->bottom, visual top->bottom is screen right->left
+      localX = clientY - zRect.top;
+      localY = zRect.right - clientX;
+    } else {
+      localX = clientX - zRect.left;
+      localY = clientY - zRect.top;
+    }
+    const halfBase = (joyBase.clientWidth || 122) * 0.5;
+    const margin = Math.min(halfBase + 6, Math.min(zoneW, zoneH) * 0.45);
+    const clampedX = Math.max(margin, Math.min(zoneW - margin, localX));
+    const clampedY = Math.max(margin, Math.min(zoneH - margin, localY));
+
+    joyBase.style.left = `${(clampedX - halfBase).toFixed(1)}px`;
+    joyBase.style.top = `${(clampedY - halfBase).toFixed(1)}px`;
+    joyBase.style.bottom = 'auto';
+    joyBase.classList.add('floating-engaged');
+
+    // Compute exact viewport anchor center corresponding to clamped base
+    if (forceRot) {
+      joyAnchorX = zRect.right - clampedY;
+      joyAnchorY = zRect.top + clampedX;
+    } else {
+      joyAnchorX = zRect.left + clampedX;
+      joyAnchorY = zRect.top + clampedY;
+    }
+    joyHasFloatingAnchor = true;
+  }
+
   function resetJoystick() {
     joyTouchId = null;
     joyMouseActive = false;
-    if (joyBase) joyBase.classList.remove('active');
+    joyHasFloatingAnchor = false;
+    if (joyBase) {
+      joyBase.classList.remove('active', 'floating-engaged');
+      joyBase.style.left = '';
+      joyBase.style.top = '';
+      joyBase.style.bottom = '';
+    }
     if (joyKnob) joyKnob.style.transform = 'translate3d(0px, 0px, 0)';
     setJoyAction('left', false);
     setJoyAction('right', false);
@@ -658,9 +786,15 @@ export function initInputListeners() {
 
   function updateStickFromClient(clientX, clientY) {
     if (!joyBase || !joyKnob) return;
-    const rect = joyBase.getBoundingClientRect();
-    const cx = rect.left + rect.width * 0.5;
-    const cy = rect.top + rect.height * 0.5;
+    let cx, cy;
+    if (joyHasFloatingAnchor) {
+      cx = joyAnchorX;
+      cy = joyAnchorY;
+    } else {
+      const rect = joyBase.getBoundingClientRect();
+      cx = rect.left + rect.width * 0.5;
+      cy = rect.top + rect.height * 0.5;
+    }
     const sdx = clientX - cx;
     const sdy = clientY - cy;
     // Compensate for 90deg clockwise CSS rotation when forced-landscape is active
@@ -677,9 +811,9 @@ export function initInputListeners() {
 
     const nx = dx / maxR;
     const ny = dy / maxR;
-    const active = dist > maxR * 0.24;
-    const left = active && nx < -0.32;
-    const right = active && nx > 0.32;
+    const active = dist > maxR * 0.20;
+    const left = active && nx < -0.28;
+    const right = active && nx > 0.28;
     const up = active && ny < -0.45;
     const down = active && ny > 0.45;
 
@@ -701,6 +835,7 @@ export function initInputListeners() {
         const tch = e.changedTouches[0];
         joyTouchId = tch.identifier;
         joyBase.classList.add('active');
+        placeFloatingJoystickAt(tch.clientX, tch.clientY);
         updateStickFromClient(tch.clientX, tch.clientY);
       }
     }, { passive: false });
@@ -735,6 +870,7 @@ export function initInputListeners() {
       audio.init();
       joyMouseActive = true;
       joyBase.classList.add('active');
+      placeFloatingJoystickAt(e.clientX, e.clientY);
       updateStickFromClient(e.clientX, e.clientY);
     });
     window.addEventListener('mousemove', e => {
@@ -791,6 +927,7 @@ export function initInputListeners() {
 
     const activeIds = new Set();
     let trackId = null;
+    let startX = 0;
     let startY = 0;
     let flickTriggered = false;
     let pressStarted = false;
@@ -827,6 +964,7 @@ export function initInputListeners() {
       if (trackId === null && e.changedTouches.length > 0) {
         const tch = e.changedTouches[0];
         trackId = tch.identifier;
+        startX = tch.clientX;
         startY = tch.clientY;
         flickTriggered = false;
         pressStarted = false;
@@ -850,7 +988,7 @@ export function initInputListeners() {
         for (let i = 0; i < e.changedTouches.length; i++) {
           const tch = e.changedTouches[i];
           if (tch.identifier !== trackId) continue;
-          const dy = tch.clientY - startY;
+          const dy = isForceLandscape() ? -(tch.clientX - startX) : (tch.clientY - startY);
           if (allowUp && dy <= -20) {
             flickTriggered = true;
             if (deferTimer) { clearTimeout(deferTimer); deferTimer = null; }

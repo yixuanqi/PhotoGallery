@@ -8,7 +8,7 @@ import { buildParchmentPattern, buildGlowSprites, initAmbientMotes } from './vfx
 import { startTitleIntro, skipTitleIntro, isTitleIntroActive, isTitleIntroPlaying, updateTitleIntro, beginSceneFade } from './render/titleIntro.js';
 import {
   clearFrameInputs, syncControlModeUI, pollGamepad, initInputListeners,
-  updateMobileOrientationLayout, requestMobileLandscapeFullscreen,
+  updateMobileOrientationLayout, requestMobileLandscapeFullscreen, setForceLandscapeFallback, isViewportLandscape, applyMobileTouchPrefs,
   getActionKeyCode, isCapturingKey, resetDefaultKeybinds, triggerHaptic
 } from './input.js';
 import { capturePlayerInputBuffers, updatePlayer } from './player.js';
@@ -82,7 +82,7 @@ function resizeCanvas() {
     applyStaticI18n();
   }
   const root = document.getElementById('game-root');
-  const lightMode = !!(G.settings && G.settings.dynamicLighting === false);
+  const lightMode = !!(G.settings && (G.settings.dynamicLighting === false || (mobile && G.settings.mobileEcoMode)));
   const maxDpr = lightMode ? 1.0 : (mobile ? 1.25 : (window.innerWidth >= 1440 ? 1.5 : 1.75));
   const dpr = Math.min(maxDpr, Math.max(1, window.devicePixelRatio || 1));
   const cssW = Math.max(320, (root && root.clientWidth) || window.innerWidth || 1280);
@@ -116,8 +116,24 @@ function scheduleResize() {
     resizeCanvas();
   }, 90);
 }
+function scheduleOrientationRecheck() {
+  resizeCanvas();
+  setTimeout(resizeCanvas, 120);
+  setTimeout(resizeCanvas, 320);
+  setTimeout(resizeCanvas, 620);
+}
 window.addEventListener('resize', scheduleResize);
-window.addEventListener('orientationchange', scheduleResize);
+window.addEventListener('orientationchange', scheduleOrientationRecheck);
+document.addEventListener('fullscreenchange', scheduleOrientationRecheck);
+document.addEventListener('webkitfullscreenchange', scheduleOrientationRecheck);
+if (window.screen && window.screen.orientation && window.screen.orientation.addEventListener) {
+  window.screen.orientation.addEventListener('change', scheduleOrientationRecheck);
+}
+if (window.matchMedia) {
+  const mql = window.matchMedia('(orientation: landscape)');
+  if (mql.addEventListener) mql.addEventListener('change', scheduleOrientationRecheck);
+  else if (mql.addListener) mql.addListener(scheduleOrientationRecheck);
+}
 if (window.visualViewport) window.visualViewport.addEventListener('resize', scheduleResize);
 
 let lastFrameTime = 0;
@@ -249,7 +265,11 @@ function runGameFrame(timestamp) {
 
   // 2. Exact integer VSync divisor skipping (eliminates 144Hz -> 120FPS pulldown judder!)
   const benchOn = isBenchmarkActive();
-  const divisor = benchOn ? 1 : Math.max(1, Number(G.settings && G.settings.fpsDivisor) || 1);
+  let divisor = benchOn ? 1 : Math.max(1, Number(G.settings && G.settings.fpsDivisor) || 1);
+  if (!benchOn && G.isMobile && G.settings && G.settings.mobileEcoMode && divisor === 1) {
+    const curHz = prof.getRefreshHz();
+    if (curHz >= 90) divisor = Math.max(2, Math.round(curHz / 60));
+  }
   if (prof.shouldSkipFrame(divisor)) return;
 
   const jsStart = performance.now();
@@ -360,7 +380,13 @@ function runGameFrame(timestamp) {
       G.cam.y += (targetCamY - G.cam.y) * Math.min(1, dt * 2.5);
     }
   }
-  updateTitleIntro(dt);
+  const isPortraitGuard = document.body.classList.contains('is-portrait');
+  if (isPortraitGuard) {
+    // Watchdog: recover automatically if browser updated dimensions without firing resize/orientationchange
+    if (isViewportLandscape()) resizeCanvas();
+  } else {
+    updateTitleIntro(dt);
+  }
   // v43.5 State-driven body[data-game-state] so HUD & Mobile Touch Controls are 100% hidden during intro/title/cinematics/modals!
   const nextBodyState = isTitleIntroPlaying()
     ? 'intro'
@@ -468,8 +494,25 @@ document.getElementById('btn-ctrl').addEventListener('click', () => {
 const rotFsBtn = document.getElementById('btn-rotate-fullscreen');
 if (rotFsBtn) {
   rotFsBtn.addEventListener('click', () => {
+    audio.init();
     requestMobileLandscapeFullscreen();
-    setTimeout(resizeCanvas, 220);
+    scheduleOrientationRecheck();
+    // If browser (WeChat / iOS Safari / OS rotation lock) refuses native landscape after 320ms, seamlessly enter CSS fallback landscape!
+    setTimeout(() => {
+      if (document.body.classList.contains('is-portrait')) {
+        setForceLandscapeFallback(true);
+        resizeCanvas();
+      }
+    }, 320);
+  });
+}
+const rotForceBtn = document.getElementById('btn-rotate-force');
+if (rotForceBtn) {
+  rotForceBtn.addEventListener('click', () => {
+    audio.init();
+    requestMobileLandscapeFullscreen();
+    setForceLandscapeFallback(true);
+    resizeCanvas();
   });
 }
 const fsBtn = document.getElementById('btn-fullscreen');
@@ -606,6 +649,56 @@ document.getElementById('btn-haptics-toggle').addEventListener('click', () => {
   renderSettingsModal();
   if (G.settings.haptics) triggerHaptic('test', 0.7);
 });
+const mobFloatBtn = document.getElementById('btn-mob-float-joy');
+if (mobFloatBtn) {
+  mobFloatBtn.addEventListener('click', () => {
+    G.settings.mobileFloatingJoy = G.settings.mobileFloatingJoy === false;
+    applyMobileTouchPrefs();
+    saveUserSettings();
+    renderSettingsModal();
+  });
+}
+const mobAssistBtn = document.getElementById('btn-mob-combat-assist');
+if (mobAssistBtn) {
+  mobAssistBtn.addEventListener('click', () => {
+    G.settings.mobileCombatAssist = G.settings.mobileCombatAssist === false;
+    saveUserSettings();
+    renderSettingsModal();
+  });
+}
+const mobScaleInp = document.getElementById('mob-btn-scale');
+if (mobScaleInp) {
+  mobScaleInp.addEventListener('input', () => {
+    const pct = Math.max(80, Math.min(120, Number(mobScaleInp.value) || 100));
+    G.settings.mobileBtnScale = pct / 100;
+    const lbl = document.getElementById('mob-btn-scale-val');
+    if (lbl) lbl.textContent = `${pct}%`;
+    applyMobileTouchPrefs();
+  });
+  mobScaleInp.addEventListener('change', () => saveUserSettings());
+}
+const mobOpInp = document.getElementById('mob-btn-opacity');
+if (mobOpInp) {
+  mobOpInp.addEventListener('input', () => {
+    const pct = Math.max(45, Math.min(100, Number(mobOpInp.value) || 90));
+    G.settings.mobileBtnOpacity = pct / 100;
+    const lbl = document.getElementById('mob-btn-opacity-val');
+    if (lbl) lbl.textContent = `${pct}%`;
+    applyMobileTouchPrefs();
+  });
+  mobOpInp.addEventListener('change', () => saveUserSettings());
+}
+const mobEcoBtn = document.getElementById('btn-mob-eco-mode');
+if (mobEcoBtn) {
+  mobEcoBtn.addEventListener('click', () => {
+    G.settings.mobileEcoMode = !G.settings.mobileEcoMode;
+    applyMobileTouchPrefs();
+    prof.resetRolling();
+    saveUserSettings();
+    resizeCanvas();
+    renderSettingsModal();
+  });
+}
 document.getElementById('btn-test-haptic').addEventListener('click', () => {
   const ok = triggerHaptic('test', 1.0);
   const b = document.getElementById('btn-test-haptic');
@@ -718,14 +811,76 @@ window.addEventListener('keydown', e => {
   }
 });
 
+// v44.2 Mobile Background-Return & Lock-Screen Audio Keep-Alive (iOS Safari / Android Chrome / WeChat safe)
 document.addEventListener('visibilitychange', () => {
-  audio.setBackgroundDuck(document.hidden);
-  if (document.hidden && G.saveDirtyTimer > 0 && G.worldState) saveProgress(false);
+  if (document.hidden) {
+    audio.setBackgroundDuck(true);
+    if (G.saveDirtyTimer > 0 && G.worldState) saveProgress(false);
+  } else {
+    audio.setBackgroundDuck(false);
+    audio.keepAliveResume(false);
+  }
+});
+window.addEventListener('pageshow', () => {
+  audio.setBackgroundDuck(false);
+  audio.keepAliveResume(false);
+});
+window.addEventListener('focus', () => {
+  if (!document.hidden) audio.keepAliveResume(false);
 });
 window.addEventListener('pagehide', () => {
   if (G.saveDirtyTimer > 0 && G.worldState) saveProgress(false);
   audio.emergencySuspend();
 });
+const _recoverAudioOnGesture = () => {
+  if (audio.needsRecovery()) audio.keepAliveResume(true);
+};
+window.addEventListener('touchstart', _recoverAudioOnGesture, { capture: true, passive: true });
+window.addEventListener('pointerdown', _recoverAudioOnGesture, { capture: true, passive: true });
+window.addEventListener('keydown', _recoverAudioOnGesture, { capture: true, passive: true });
+
+// v44.2 PWA Offline Service Worker & One-Tap Add-to-Home-Screen Install Pill (HTTPS / localhost only)
+let _deferredPwaPrompt = null;
+const pwaInstallBtn = document.getElementById('btn-pwa-install');
+const isStandalonePwa = !!(
+  (window.matchMedia && (window.matchMedia('(display-mode: fullscreen)').matches || window.matchMedia('(display-mode: standalone)').matches)) ||
+  window.navigator.standalone === true
+);
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _deferredPwaPrompt = e;
+  if (pwaInstallBtn && !isStandalonePwa) pwaInstallBtn.classList.remove('hidden');
+});
+window.addEventListener('appinstalled', () => {
+  _deferredPwaPrompt = null;
+  if (pwaInstallBtn) pwaInstallBtn.classList.add('hidden');
+});
+if (pwaInstallBtn) {
+  pwaInstallBtn.addEventListener('click', () => {
+    if (!_deferredPwaPrompt) return;
+    const promptEv = _deferredPwaPrompt;
+    _deferredPwaPrompt = null;
+    try {
+      promptEv.prompt();
+      if (promptEv.userChoice && typeof promptEv.userChoice.then === 'function') {
+        promptEv.userChoice.then(() => pwaInstallBtn.classList.add('hidden')).catch(() => {});
+      } else {
+        pwaInstallBtn.classList.add('hidden');
+      }
+    } catch {
+      pwaInstallBtn.classList.add('hidden');
+    }
+  });
+}
+if ('serviceWorker' in navigator && !window.__ABV_OFFLINE_WORLD__) {
+  const proto = window.location.protocol;
+  const host = window.location.hostname;
+  if (proto === 'https:' || host === 'localhost' || host === '127.0.0.1') {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
+  }
+}
 window.addEventListener('error', () => {
   audio.emergencySuspend();
 });
@@ -745,6 +900,7 @@ async function bootstrapGame() {
   const initLayout = updateMobileOrientationLayout();
   G.isMobile = !!initLayout.mobile;
   loadUserSettings();
+  applyMobileTouchPrefs();
   loadSavedLocale();
   buildGlowSprites();
   await loadWorldData();

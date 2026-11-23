@@ -64,6 +64,7 @@ export class SoundEngine {
     this.musicVol = 0.75;
     this.sfxVol = 0.90;
     this.bgDucked = false;
+    this._needsGestureResume = false;
     this.windFilter = null;
     this.droneFilter = null;
     this._windFreqTarget = 220;
@@ -88,7 +89,9 @@ export class SoundEngine {
 
   init() {
     if (this.ctx) {
-      if (this.ctx.state === 'suspended') this.ctx.resume();
+      if (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted') {
+        this.keepAliveResume(true);
+      }
       this.startAmbience();
       if (!this._bakeStarted) this._bakeAllBuffers();
       return;
@@ -96,6 +99,7 @@ export class SoundEngine {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     this.ctx = new AC();
+    this._bindStateRecovery();
     const len = Math.floor(this.ctx.sampleRate * 0.55);
     this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
     const data = this.noiseBuf.getChannelData(0);
@@ -330,14 +334,74 @@ export class SoundEngine {
     this._applyMixGains(0.1);
   }
 
+  _bindStateRecovery() {
+    if (!this.ctx) return;
+    try {
+      this.ctx.onstatechange = () => {
+        if (!this.ctx) return;
+        if (this.ctx.state === 'running') {
+          this._needsGestureResume = false;
+          if (!this.bgDucked && !this.muted) this._applyMixGains(0.08);
+        } else if (!this.bgDucked && !this.muted && (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted')) {
+          this._needsGestureResume = true;
+        }
+      };
+    } catch {}
+  }
+
+  _unlockSilentPulse() {
+    if (!this.ctx || this.ctx.state !== 'running') return;
+    try {
+      const b = this.ctx.createBuffer(1, 1, this.ctx.sampleRate || 22050);
+      const s = this.ctx.createBufferSource();
+      s.buffer = b;
+      s.connect(this.ctx.destination);
+      s.start(0);
+    } catch {}
+  }
+
+  needsRecovery() {
+    if (!this.ctx || this.muted || this.bgDucked) return false;
+    return !!(this._needsGestureResume || this.ctx.state === 'suspended' || this.ctx.state === 'interrupted');
+  }
+
+  keepAliveResume(fromUserGesture = false) {
+    if (!this.ctx || this.muted) return;
+    this.bgDucked = false;
+    this.musicAccum = 0;
+    const st = this.ctx.state;
+    if (st === 'suspended' || st === 'interrupted') {
+      try {
+        const p = this.ctx.resume();
+        if (p && typeof p.then === 'function') {
+          p.then(() => {
+            this._needsGestureResume = false;
+            if (fromUserGesture) this._unlockSilentPulse();
+            this._applyMixGains(0.08);
+          }).catch(() => {
+            this._needsGestureResume = true;
+          });
+        }
+      } catch {
+        this._needsGestureResume = true;
+      }
+    } else if (st === 'running') {
+      this._needsGestureResume = false;
+      if (fromUserGesture) this._unlockSilentPulse();
+      this._applyMixGains(0.08);
+    }
+  }
+
   setBackgroundDuck(hidden) {
     this.bgDucked = !!hidden;
     this._applyMixGains(0.08);
     if (this.ctx) {
       if (this.bgDucked) {
+        this.musicAccum = 0;
         try { if (this.ctx.state === 'running') this.ctx.suspend().catch(() => {}); } catch {}
       } else if (!this.muted) {
-        try { if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {}); } catch {}
+        this._needsGestureResume = true;
+        this.keepAliveResume(false);
       }
     }
   }

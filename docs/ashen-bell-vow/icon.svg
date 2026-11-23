@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="44%" r="62%">
+      <stop offset="0%" stop-color="#192338"/>
+      <stop offset="62%" stop-color="#0a0e18"/>
+      <stop offset="100%" stop-color="#05070c"/>
+    </radialGradient>
+    <radialGradient id="halo" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.46"/>
+      <stop offset="58%" stop-color="#38bdf8" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bellBody" x1="20%" y1="10%" x2="85%" y2="95%">
+      <stop offset="0%" stop-color="#3a2d1d"/>
+      <stop offset="50%" stop-color="#1b2230"/>
+      <stop offset="100%" stop-color="#0a0d16"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#64748b"/>
+      <stop offset="55%" stop-color="#e2e8f0"/>
+      <stop offset="100%" stop-color="#fef08a"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <rect x="18" y="18" width="476" height="476" rx="82" fill="none" stroke="rgba(216,207,184,0.22)" stroke-width="4"/>
+  <circle cx="256" cy="256" r="196" fill="url(#halo)"/>
+  <circle cx="256" cy="256" r="176" fill="none" stroke="rgba(253,224,71,0.30)" stroke-width="3.5" stroke-dasharray="14 12"/>
+  <!-- Crossed Broken Blades -->
+  <path d="M 98 378 L 404 128 L 424 146 L 116 394 Z" fill="url(#steel)" opacity="0.88"/>
+  <path d="M 414 378 L 108 128 L 88 146 L 396 394 Z" fill="#94a3b8" opacity="0.48"/>
+  <!-- Bell Suspension & Crown -->
+  <line x1="256" y1="48" x2="256" y2="112" stroke="#d8cfb8" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="256" cy="122" r="20" fill="#101521" stroke="#fde047" stroke-width="7"/>
+  <!-- Giant Cracked Bronze Bell -->
+  <path d="M 196 142 Q 178 232 134 344 Q 256 382 378 344 Q 334 232 316 142 Z" fill="url(#bellBody)" stroke="#fde047" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M 176 248 Q 256 264 336 248 M 150 310 Q 256 332 362 310" fill="none" stroke="rgba(245,158,11,0.58)" stroke-width="6"/>
+  <!-- Glowing Molten Fracture Crack -->
+  <path d="M 274 148 L 244 218 L 278 264 L 236 346" fill="none" stroke="#fef08a" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Luminous Soulfire Clapper -->
+  <circle cx="256" cy="368" r="22" fill="#7dd3fc" stroke="#fef08a" stroke-width="6"/>
+</svg>

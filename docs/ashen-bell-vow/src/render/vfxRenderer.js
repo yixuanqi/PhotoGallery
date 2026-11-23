@@ -1031,7 +1031,8 @@ export function drawWeatherLayer(isPhase2) {
   if (!G.weatherParticles || G.weatherParticles.length === 0) return;
   const wType = G.themeBlend ? G.themeBlend.weather : 'ash';
   const accent = G.themeBlend ? G.themeBlend.accent : [216, 207, 184];
-  const step = (G.isMobile || (G.settings && G.settings.dynamicLighting === false)) ? 2 : 1;
+  const eco = !!(G.isMobile && G.settings && G.settings.mobileEcoMode);
+  const step = eco ? 4 : ((G.isMobile || (G.settings && G.settings.dynamicLighting === false)) ? 2 : 1);
   const list = G.weatherParticles;
   G.ctx.save();
   if (wType === 'rain') {
@@ -1116,7 +1117,8 @@ export function drawWeatherLayer(isPhase2) {
 export function drawForegroundMotes(isPhase2) {
   G.ctx.save();
   const acc = G.themeBlend ? G.themeBlend.accent : [216, 207, 184];
-  const step = (G.isMobile || (G.settings && G.settings.dynamicLighting === false)) ? 2 : 1;
+  const eco = !!(G.isMobile && G.settings && G.settings.mobileEcoMode);
+  const step = eco ? 4 : ((G.isMobile || (G.settings && G.settings.dynamicLighting === false)) ? 2 : 1);
   G.ctx.fillStyle = isPhase2 ? 'rgba(248, 113, 113, 0.45)' : rgbStr(acc, 0.28);
   G.ctx.beginPath();
   for (let i = 0; i < G.ambientMotes.length; i += step) {
