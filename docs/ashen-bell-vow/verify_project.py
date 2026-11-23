@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Zero-dependency static verifier for Ashen Bell Vow v44.2
+"""Zero-dependency static verifier for Ashen Bell Vow v44.3
 Checks:
 1. JS lexical & bracket syntax across all src/**/*.js
 2. ES Module import/export path existence, explicit .js suffix, exact case sensitivity & symbol verification
@@ -645,14 +645,14 @@ def check_v34_economy_relics_i18n(file_texts):
     if 'cycleOverlayTab' not in file_texts.get('src/uiNav.js', '') or 'scrollOverlay' not in file_texts.get('src/uiNav.js', ''):
         errors.append("v43.0: Missing full gamepad tab-cycling / scrolling in src/uiNav.js")
     if '__ABV_OFFLINE_WORLD__' not in file_texts.get('src/levelLoader.js', ''):
-        errors.append("v44.2: Missing offline pre-bundled world fast-path in src/levelLoader.js")
+        errors.append("v44.3: Missing offline pre-bundled world fast-path in src/levelLoader.js")
     if not os.path.isfile(os.path.join(BASE_DIR, 'tools', 'build_release.py')):
-        errors.append("v44.2: Missing tools/build_release.py offline release builder")
+        errors.append("v44.3: Missing tools/build_release.py offline release builder")
     for pwa_f in ('manifest.webmanifest', 'sw.js', 'icon.svg', 'icon-192.png', 'icon-512.png'):
         if not os.path.isfile(os.path.join(BASE_DIR, pwa_f)):
-            errors.append(f"v44.2: Missing PWA asset '{pwa_f}'")
+            errors.append(f"v44.3: Missing PWA asset '{pwa_f}'")
     if 'keepAliveResume' not in file_texts.get('src/audio.js', '') or 'mobileEcoMode' not in file_texts.get('src/state.js', ''):
-        errors.append("v44.2: Missing audio keepAliveResume or mobileEcoMode implementation")
+        errors.append("v44.3: Missing audio keepAliveResume or mobileEcoMode implementation")
 
     en_refined_count = len(re.findall(r"^\s+refinedEffect:\s*'", ent_loc, re.M))
     if en_refined_count != len(relic_ids):
@@ -1071,7 +1071,7 @@ def check_undefined_js_calls(file_texts):
                 seen_err.add(fn)
                 errors.append(f"{rel}: Undefined function call '{fn}()'")
 
-        # v44.2 Guard: verify every config.js exported constant referenced in a module is explicitly imported/declared
+        # v44.3 Guard: verify every config.js exported constant referenced in a module is explicitly imported/declared
         clean_no_reexp = re.sub(r'export\s*\{[^}]*\}\s*from\s*[^;\n]+', '', clean)
         for sym in sorted(cfg_consts):
             if sym in declared:
@@ -1091,7 +1091,7 @@ def main():
     all_errs = js_errs + rm_errs + lnch_errs + v34_errs + topo_errs + undef_errs
     all_warns = js_warns + rm_warns + v34_warns
 
-    print(f"[Ashen Bell Vow v44.2 Verifier] JS modules: {js_cnt} | Cycles: {cyc_cnt} | Rooms: {rm_cnt} | Stamps: {st_cnt}")
+    print(f"[Ashen Bell Vow v44.3 Verifier] JS modules: {js_cnt} | Cycles: {cyc_cnt} | Rooms: {rm_cnt} | Stamps: {st_cnt}")
     print(
         f"Economy (1x): {eco['total_1x']} echoes "
         f"[Foes({eco['reg_cnt']}): {eco['reg_echo']} | Wardens: {eco['warden_echo']} | Bosses: {eco['boss_echo']} | "

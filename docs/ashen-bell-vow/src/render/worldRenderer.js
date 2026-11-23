@@ -361,12 +361,24 @@ export function drawNpcs() {
       G.ctx.lineTo(ax + 15, y - 16); G.ctx.lineTo(ax + 18, y);
       G.ctx.closePath();
       G.ctx.fill(); G.ctx.stroke();
-      drawGlowSprite('gold', ax, y - 27, 22 * pulse, 0.72);
-      G.ctx.fillStyle = COLORS.goldBright;
+      const forgeFlash = (G.smithForge && G.smithForge.flash > 0) ? G.smithForge.flash : 0;
+      drawGlowSprite('gold', ax, y - 27, (22 + forgeFlash * 26) * pulse, Math.min(1, 0.72 + forgeFlash * 0.28));
+      G.ctx.fillStyle = forgeFlash > 0.25 ? '#fef9c3' : COLORS.goldBright;
       G.ctx.fillRect(ax - 7, y - 28, 14, 4);
 
-      const tapCycle = Math.sin(G.globalTime * 3.4);
-      const hammerLift = tapCycle > 0.3 ? (tapCycle - 0.3) * 1.1 : 0;
+      // Synchronized 2.2s forge curve: smooth lift (0..0.48), crisp strike onto anvil at 0.62, subtle bounce (0.62..0.76)
+      const fPhase = (G.globalTime / 2.2) % 1;
+      let hammerLift = 0;
+      if (fPhase < 0.48) {
+        const u = fPhase / 0.48;
+        hammerLift = (u * u * (3 - 2 * u)) * 1.18;
+      } else if (fPhase < 0.62) {
+        const u = (fPhase - 0.48) / 0.14;
+        hammerLift = (1 - u * u * u) * 1.18;
+      } else if (fPhase < 0.76) {
+        const u = (fPhase - 0.62) / 0.14;
+        hammerLift = Math.sin(u * Math.PI) * 0.18;
+      }
       G.ctx.translate(x - 6, y);
       G.ctx.fillStyle = '#151924';
       G.ctx.strokeStyle = COLORS.parchment;

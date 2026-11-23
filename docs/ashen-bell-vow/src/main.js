@@ -80,17 +80,31 @@ function resizeCanvas() {
   if (_lastMobileFlag !== G.isMobile) {
     _lastMobileFlag = G.isMobile;
     applyStaticI18n();
+    if (window.__ABV_BOOTED__) refreshTitleSaveUI();
   }
   const root = document.getElementById('game-root');
-  const lightMode = !!(G.settings && (G.settings.dynamicLighting === false || (mobile && G.settings.mobileEcoMode)));
-  const maxDpr = lightMode ? 1.0 : (mobile ? 1.25 : (window.innerWidth >= 1440 ? 1.5 : 1.75));
-  const dpr = Math.min(maxDpr, Math.max(1, window.devicePixelRatio || 1));
   const cssW = Math.max(320, (root && root.clientWidth) || window.innerWidth || 1280);
-  const cssH = Math.max(240, (root && root.clientHeight) || window.innerHeight || 720);
-  // Unified virtual logical viewport: locks vertical FOV (~660px desktop / 560px mobile) & caps ultrawide FOV
-  // so 720p, 1080p, 2K, and 4K displays show identical framing and never bleed across stacked rooms.
-  const targetH = mobile ? 560 : 660;
-  const maxLogicalW = mobile ? 1180 : 1280;
+  const cssH = Math.max(180, (root && root.clientHeight) || window.innerHeight || 720);
+  if (root) {
+    root.style.setProperty('--stage-w', `${cssW}px`);
+    root.style.setProperty('--stage-h', `${cssH}px`);
+  }
+  const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  document.body.classList.toggle('is-fullscreen', isFs);
+  document.body.classList.toggle('is-short-viewport', mobile && cssH < 305);
+
+  // v44.3 Mobile Retina Sharpness: unlock up to 2.4x native DPR (capped at 2048px GPU width) so G.renderScale ~1.8-2.1 matches PC!
+  const ecoOn = !!(mobile && G.settings && G.settings.mobileEcoMode);
+  const lightMode = !!(G.settings && G.settings.dynamicLighting === false);
+  const rawMaxDpr = mobile
+    ? (ecoOn ? 1.35 : (lightMode ? 1.75 : 2.4))
+    : (lightMode ? 1.0 : (window.innerWidth >= 1440 ? 1.5 : 1.75));
+  const gpuCapDpr = mobile ? Math.max(1.25, 2048 / Math.max(640, cssW)) : rawMaxDpr;
+  const dpr = Math.min(rawMaxDpr, gpuCapDpr, Math.max(1, window.devicePixelRatio || 1));
+
+  // Tighter mobile targetH (480) keeps sprites & in-game text crisp and large on handheld screens
+  const targetH = mobile ? 480 : 660;
+  const maxLogicalW = mobile ? 1080 : 1280;
   const viewScale = Math.max(cssH / targetH, cssW / maxLogicalW);
   G.canvasW = Math.round(cssW / viewScale);
   G.canvasH = Math.round(cssH / viewScale);
@@ -98,6 +112,8 @@ function resizeCanvas() {
   G.canvas.height = Math.round(cssH * dpr);
   G.renderScale = dpr * viewScale;
   G.ctx.setTransform(G.renderScale, 0, 0, G.renderScale, 0, 0);
+  G.ctx.imageSmoothingEnabled = true;
+  if ('imageSmoothingQuality' in G.ctx) G.ctx.imageSmoothingQuality = 'high';
   if (G.player) {
     snapCameraToPlayer(G.cam.shake);
   } else {
@@ -470,6 +486,15 @@ const btnTitleSettings = document.getElementById('btn-title-settings');
 if (btnTitleSettings) {
   btnTitleSettings.addEventListener('click', () => openModal('settings'));
 }
+const btnTitleFs = document.getElementById('btn-title-fullscreen');
+if (btnTitleFs) {
+  btnTitleFs.addEventListener('click', e => {
+    e.stopPropagation();
+    audio.init();
+    requestMobileLandscapeFullscreen();
+    scheduleOrientationRecheck();
+  });
+}
 const btnTitleReplayIntro = document.getElementById('btn-title-replay-intro');
 if (btnTitleReplayIntro) {
   btnTitleReplayIntro.addEventListener('click', () => {
@@ -483,7 +508,10 @@ if (titleScreenEl) {
     if (isTitleIntroActive()) skipTitleIntro();
   });
   titleScreenEl.addEventListener('touchstart', () => {
-    if (isTitleIntroActive()) skipTitleIntro();
+    if (isTitleIntroActive()) {
+      requestMobileLandscapeFullscreen();
+      skipTitleIntro();
+    }
   }, { passive: true });
 }
 document.getElementById('btn-ctrl').addEventListener('click', () => {

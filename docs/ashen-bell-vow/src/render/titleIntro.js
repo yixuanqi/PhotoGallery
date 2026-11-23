@@ -464,9 +464,12 @@ export function drawTitleIntroOverlay() {
     const shX = shakeMag > 0 ? (Math.random() - 0.5) * shakeMag * 2 : 0;
     const shY = shakeMag > 0 ? (Math.random() - 0.5) * shakeMag * 2 : 0;
 
+    // Dynamic vertical fit so non-fullscreen mobile browser bars NEVER crop the bronze bell or blade!
+    const fitScale = Math.min(1.0, Math.max(0.46, (h * 0.68) / 286));
+    const totalZoom = camZoom * fitScale;
     ctx.save();
     ctx.translate(cx + shX, cy + shY);
-    ctx.scale(camZoom, camZoom);
+    ctx.scale(totalZoom, totalZoom);
     ctx.translate(-cx, -cy);
 
     // 2. Pale Moon Halo & Ornate Outer Seal behind the Giant Bell
@@ -764,8 +767,8 @@ export function drawTitleIntroOverlay() {
       if (a1 > 0.02) {
         ctx.globalAlpha = a1;
         ctx.fillStyle = COLORS.parchment;
-        ctx.font = getCanvasFont(isEn() ? 18 : 22, false);
-        ctx.fillText(t('intro.line1'), cx, cy + 168);
+        ctx.font = getCanvasFont(Math.max(13, Math.round((isEn() ? 18 : 22) * Math.min(1, fitScale + 0.12))), false);
+        ctx.fillText(t('intro.line1'), cx, Math.min(h - barH - 14, cy + Math.round(166 * fitScale)));
       }
     }
     // Act III line after bell splits (3.90s .. 6.15s)
@@ -774,14 +777,15 @@ export function drawTitleIntroOverlay() {
       if (a2 > 0.02) {
         ctx.globalAlpha = a2;
         ctx.fillStyle = '#fef08a';
-        ctx.font = getCanvasFont(isEn() ? 20 : 24, true);
-        ctx.fillText(t('intro.act2Line'), cx, cy + 160);
+        const subY1 = Math.min(h - barH - 32, cy + Math.round(156 * fitScale));
+        ctx.font = getCanvasFont(Math.max(14, Math.round((isEn() ? 20 : 24) * Math.min(1, fitScale + 0.10))), true);
+        ctx.fillText(t('intro.act2Line'), cx, subY1);
         const a2Sub = Math.min(1, Math.max(0, (curT - 4.35) / 0.55)) * a2 * 0.88;
         if (a2Sub > 0.02) {
           ctx.globalAlpha = a2Sub;
           ctx.fillStyle = '#bae6fd';
-          ctx.font = getCanvasFont(isEn() ? 12.5 : 13.5, false);
-          ctx.fillText(t('intro.line2'), cx, cy + 190);
+          ctx.font = getCanvasFont(Math.max(11, Math.round((isEn() ? 12.5 : 13.5) * Math.min(1, fitScale + 0.12))), false);
+          ctx.fillText(t('intro.line2'), cx, Math.min(h - barH - 12, subY1 + Math.max(18, Math.round(28 * fitScale))));
         }
       }
     }

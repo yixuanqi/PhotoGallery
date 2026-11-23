@@ -747,6 +747,24 @@ export function buildSfxBakeTasks(makeNoise) {
         const g = c.createGain(); g.gain.setValueAtTime(0.14, 0); g.gain.exponentialRampToValueAtTime(0.0006, 0.065);
         n.connect(bp); bp.connect(g); g.connect(out); n.start(0); n.stop(0.08);
       }],
+      ['anvil_tap', 0.34, (c, out) => {
+        // Crisp distant-friendly bronze anvil strike (Bell-Smith Li rhythmic forging)
+        [1180, 2360, 3540].forEach((f, idx) => {
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = idx === 0 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(f, 0);
+          osc.frequency.exponentialRampToValueAtTime(f * 0.985, 0.26);
+          const pk = idx === 0 ? 0.16 : idx === 1 ? 0.11 : 0.055;
+          g.gain.setValueAtTime(0.0005, 0);
+          g.gain.linearRampToValueAtTime(pk, 0.003);
+          g.gain.exponentialRampToValueAtTime(0.0005, 0.28 - idx * 0.05);
+          osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.32);
+        });
+        const n = c.createBufferSource(); n.buffer = makeNoise(c);
+        const hp = c.createBiquadFilter(); hp.type = 'bandpass'; hp.frequency.setValueAtTime(3200, 0); hp.Q.value = 2.6;
+        const ng = c.createGain(); ng.gain.setValueAtTime(0.11, 0); ng.gain.exponentialRampToValueAtTime(0.0005, 0.045);
+        n.connect(hp); hp.connect(ng); ng.connect(out); n.start(0); n.stop(0.06);
+      }],
       ['bgm_tap_soft', 0.09, (c, out) => {
         const n = c.createBufferSource(); n.buffer = makeNoise(c);
         const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.setValueAtTime(1650, 0); bp.Q.value = 3.2;

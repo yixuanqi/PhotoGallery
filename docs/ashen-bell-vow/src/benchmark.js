@@ -462,7 +462,7 @@ function buildDiagnosis(report) {
 
 function formatPlainReport(report) {
   const lines = [
-    `=== 灰钟残誓 v44.2 10秒 A/B 战斗压测报告 (字形图集 + 静态背景缓存版) ===`,
+    `=== 灰钟残誓 v44.3 10秒 A/B 战斗压测报告 (字形图集 + 静态背景缓存版) ===`,
     `屏幕实测刷频: ${report.refreshHz}Hz (1×预算 ${report.budgetMs.toFixed(2)}ms) | UA: ${report.uaShort}`,
     `离屏缓存状态: 字形图集命中率 ${report.cacheSnap.glyphHitRate.toFixed(1)}% (${report.cacheSnap.glyphEntries}项) | 静态背景缓存 ${report.cacheSnap.backdropPanels}块`,
     ``

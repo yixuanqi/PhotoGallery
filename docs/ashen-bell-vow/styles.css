@@ -4935,8 +4935,8 @@
   body.is-mobile.mob-floating-joy .joystick-zone {
     left: 0;
     bottom: 0;
-    width: min(42vw, 340px);
-    height: min(62vh, 275px);
+    width: min(42%, 340px);
+    height: min(62%, 275px);
     display: block;
   }
   body.is-mobile.mob-floating-joy .joystick-base {
@@ -5019,13 +5019,13 @@
     font-size: 11px;
   }
   body.is-mobile #title-screen.title-stage .title-hero-shell {
-    padding: 4px clamp(14px, 3.2vw, 32px);
+    padding: 4px clamp(14px, 3.2%, 32px);
     align-items: center;
     justify-content: center;
     overflow: hidden;
   }
   body.is-mobile #title-screen.title-stage .title-hero-column {
-    width: min(760px, 96vw);
+    width: min(760px, 94%);
     display: grid;
     grid-template-columns: minmax(0, 1.04fr) minmax(248px, 0.96fr);
     gap: 16px 24px;
@@ -5041,7 +5041,7 @@
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    max-height: calc(100dvh - 76px);
+    max-height: calc(var(--stage-h, 390px) - 72px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
@@ -5053,7 +5053,7 @@
     height: 50px;
   }
   body.is-mobile #title-screen.title-stage .game-title {
-    font-size: clamp(28px, 4.8vw, 40px);
+    font-size: clamp(24px, calc(var(--stage-w, 720px) * 0.048), 38px); white-space: nowrap;
     letter-spacing: 8px;
     line-height: 1.08;
   }
@@ -5114,8 +5114,8 @@
     padding: 8px 12px;
   }
   body.is-mobile .modal-card {
-    width: min(94vw, 820px) !important;
-    max-height: 94dvh;
+    width: min(94%, 820px) !important;
+    max-height: calc(var(--stage-h, 390px) * 0.94);
     padding: 10px 14px 12px;
     border-radius: 10px;
     text-align: left;
@@ -5167,7 +5167,7 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    max-height: calc(94dvh - 96px);
+    max-height: calc(var(--stage-h, 390px) * 0.94 - 96px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     padding-right: 3px;
@@ -5237,11 +5237,11 @@
   }
   body.is-mobile #smith-modal .skill-tree-stage {
     aspect-ratio: auto;
-    height: min(230px, calc(94dvh - 150px));
+    height: min(230px, calc(var(--stage-h, 390px) * 0.94 - 146px));
     min-height: 185px;
   }
   body.is-mobile #smith-modal .skill-inspector {
-    max-height: min(230px, calc(94dvh - 150px));
+    max-height: min(230px, calc(var(--stage-h, 390px) * 0.94 - 146px));
     overflow-y: auto;
     padding: 8px 10px;
     gap: 5px;
@@ -5252,7 +5252,7 @@
   body.is-mobile #smith-modal .smith-refine-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
-    max-height: calc(94dvh - 160px);
+    max-height: calc(var(--stage-h, 390px) * 0.94 - 156px);
     overflow-y: auto;
   }
   body.is-mobile #smith-modal #btn-close-smith {
@@ -5267,7 +5267,7 @@
     grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
     gap: 8px;
     align-items: start;
-    max-height: calc(94dvh - 142px);
+    max-height: calc(var(--stage-h, 390px) * 0.94 - 138px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
@@ -5291,7 +5291,7 @@
     font-size: 11px;
   }
   body.is-mobile #settings-pane-codex {
-    max-height: calc(94dvh - 134px);
+    max-height: calc(var(--stage-h, 390px) * 0.94 - 130px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
@@ -5315,7 +5315,7 @@
   }
   body.is-mobile .weapon-detail-strip {
     padding: 8px 10px;
-    max-height: calc(94dvh - 150px);
+    max-height: calc(var(--stage-h, 390px) * 0.94 - 146px);
     overflow-y: auto;
   }
   body.is-mobile .bestiary-split-wrap {
@@ -5328,14 +5328,14 @@
     order: 2;
     margin-bottom: 0;
     padding: 8px 10px;
-    max-height: calc(94dvh - 150px);
+    max-height: calc(var(--stage-h, 390px) * 0.94 - 146px);
     overflow-y: auto;
   }
   body.is-mobile .bestiary-split-wrap .bestiary-gallery-grid {
     order: 1;
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     gap: 6px;
-    max-height: calc(94dvh - 150px);
+    max-height: calc(var(--stage-h, 390px) * 0.94 - 146px);
     overflow-y: auto;
     padding-right: 3px;
   }
@@ -5371,7 +5371,7 @@
     margin: 0;
   }
   body.is-mobile #map-modal #fullMapCanvas {
-    height: min(210px, calc(94dvh - 146px));
+    height: min(210px, calc(var(--stage-h, 390px) * 0.94 - 142px));
     width: 100%;
   }
   body.is-mobile #map-modal .map-room-detail {
@@ -5426,7 +5426,7 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    max-height: calc(94dvh - 102px);
+    max-height: calc(var(--stage-h, 390px) * 0.94 - 98px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
@@ -5447,7 +5447,7 @@
 
   /* 8. #pause-modal: Zero-Scroll Compact 2-Column Action Grid */
   body.is-mobile #pause-modal .modal-card {
-    width: min(520px, 86vw) !important;
+    width: min(520px, 88%) !important;
     text-align: center;
   }
   body.is-mobile #pause-modal .pause-menu-list {
@@ -5468,7 +5468,7 @@
   /* 9. #help-modal, #lore-modal, #death-modal, #victory-modal, #ending-choice-modal */
   body.is-mobile #help-modal .lore-text,
   body.is-mobile #lore-modal .lore-text {
-    max-height: calc(94dvh - 148px);
+    max-height: calc(var(--stage-h, 390px) * 0.94 - 142px);
     overflow-y: auto;
     padding: 10px 12px;
     font-size: 12px !important;
@@ -5483,7 +5483,7 @@
   }
   body.is-mobile #death-modal .modal-card,
   body.is-mobile #victory-modal .modal-card {
-    width: min(560px, 88vw) !important;
+    width: min(560px, 90%) !important;
     text-align: center;
   }
   body.is-mobile #ending-choice-modal .ending-choice-grid {
@@ -5513,4 +5513,43 @@
   }
   body.mob-eco-mode .title-crest-svg {
     animation: none !important;
+  }
+
+  /* ==================== v44.3 TITLE FULLSCREEN BUTTON & ULTRA-SHORT MOBILE FIT ==================== */
+  .title-fs-btn {
+    border-color: rgba(245, 158, 11, 0.72) !important;
+    color: #fef08a !important;
+    background: rgba(42, 28, 12, 0.78) !important;
+  }
+  body.is-mobile.is-fullscreen .title-fs-btn {
+    display: none !important;
+  }
+  body.is-mobile #title-screen.title-stage .title-hero-column {
+    grid-template-columns: minmax(0, 1.06fr) minmax(220px, 0.94fr);
+    gap: 12px 20px;
+  }
+  body.is-mobile .title-brand-col {
+    min-width: 0;
+  }
+  body.is-mobile .title-subtitle {
+    white-space: normal;
+    line-height: 1.4;
+  }
+  body.is-mobile .title-save-ribbon {
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* Compact mode when browser top/bottom bars leave < 305px height */
+  body.is-mobile.is-short-viewport .title-crest-wrap {
+    display: none;
+  }
+  body.is-mobile.is-short-viewport .title-menu-btn {
+    min-height: 30px;
+    padding: 5px 10px 5px 22px;
+    font-size: 13px;
+  }
+  body.is-mobile.is-short-viewport #title-screen.title-stage .title-footer {
+    display: none;
   }

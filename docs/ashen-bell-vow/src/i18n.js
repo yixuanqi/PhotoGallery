@@ -286,11 +286,14 @@ export function getEndingScript(type = 'vow') {
 
 export function getCanvasFont(size, bold = false) {
   const en = isEn();
-  const effSize = en ? Math.max(10, Math.round(size * 0.92)) : size;
+  const isMob = !!(G && G.isMobile);
+  const effSize = en ? Math.max(10, Math.round(size * 0.92)) : (isMob ? Math.max(12, Math.round(size * 1.06)) : size);
   const family = en
     ? 'Georgia, "Times New Roman", serif'
-    : '"Noto Serif SC", "Microsoft YaHei", serif';
-  return `${bold ? 'bold ' : ''}${effSize}px ${family}`;
+    : (isMob
+        ? '"PingFang SC", "HarmonyOS Sans SC", "MiSans", "Noto Sans SC", "Microsoft YaHei", sans-serif'
+        : '"Noto Serif SC", "Microsoft YaHei", serif');
+  return `${(bold || (isMob && size <= 13.5)) ? 'bold ' : ''}${effSize}px ${family}`;
 }
 
 export function applyStaticI18n() {

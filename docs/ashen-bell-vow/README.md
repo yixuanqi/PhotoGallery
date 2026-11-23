@@ -1,3 +1,17 @@
+## v44.3 移动端真机实测专项修复（清晰度对齐 PC、标题防挤压、非全屏适配与铁匠音画同步）
+- **手机端画质与文字清晰度全面对齐 PC（`src/main.js` / `src/i18n.js` / `src/render/glyphAtlas.js`）**：
+  * 解除旧版移动端 `maxDpr = 1.25` 过低上限（原先在手机上 `renderScale` 仅 `0.87×`，低于 1 物理像素导致整体发糊），升级为 **2.4× 视网膜高分渲染（GPU 宽限 2048px）+ `targetH = 480` + `imageSmoothingQuality = 'high'`**，实机 `renderScale` 跃升至 `1.8–2.1×` 对齐 PC 清晰度；
+  * 高分屏启用 `glyphAtlas` **3× 超采样字形烘焙**，移动端画布字族自动选用清晰无衬线系统字体（`PingFang SC / HarmonyOS Sans SC / MiSans / Noto Sans SC`），消除小号中文发糊。
+- **修复标题页文字挤压错乱与「载入中...」残留（`index.html` / `styles.css` / `src/main.js`）**：
+  * 将 `#game-root` 内所有移动端布局的 `vw / vh / dvh` 统一替换为容器相对 `%` 与动态 `--stage-w / --stage-h`，彻底解决 90° 兜底横屏下 `96vw` 误取竖屏宽度导致左栏被压成 100px 竖排折字的问题；
+  * 移除 `#btn-continue` 与 `#btn-start` 上会被 `applyStaticI18n()` 重置的 `data-i18n="title.loading"` 属性，杜绝按钮退回「载入中... / 正在载入晦渊地图...」。
+- **非全屏矮视口自适应 + 标题栏一键全屏（`src/render/titleIntro.js` / `index.html` / `src/main.js`）**：
+  * 开场破刃斩钟动画新增 `fitScale` 动态缩放与字幕防越界钳位，即使忘记点全屏被浏览器上下白条压扁，巨钟、断刃与字幕也完整居中零截断；标题栏右上角新增醒目 **`⛶ 全屏`** 按钮，轻触开场画面也会顺手尝试拉起横屏全屏。
+- **盲眼老铸钟匠·砺 打铁动画、火星与音效 100% 同帧同步（`src/audioSfxBank.js` / `src/audio.js` / `src/world.js` / `src/render/worldRenderer.js`）**：
+  * 新增预烘焙青铜铁砧敲击音效 `anvil_tap`，以统一 `2.2s` 锻打周期（`0.62` 落锤时刻）同步驱动铁匠挥锤动作、砧面炙热闪光、金色溅射火星与随距离衰减的清脆「叮！」铁砧声。
+
+---
+
 ## v44.2 PWA 离线全屏桌面图标、切后台音频自动保活与手机稳帧省电模式
 - **PWA 一键“添加到主屏幕”原生全屏壳（`manifest.webmanifest` / `sw.js` / `icon.svg` / `icon-192.png` / `icon-512.png`）**：
   * 程序化绘制暗黑水墨裂钟双刃 App 图标（同时输出矢量 `icon.svg` 与 2× 超采样抗锯齿 `192px / 512px` PNG，原生适配 iOS Safari `apple-touch-icon` 与 Android PWA 安装器）；

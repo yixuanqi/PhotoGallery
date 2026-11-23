@@ -1,5 +1,5 @@
 // World hazards, pendulums, Abyssal River, projectiles, talismans, tides & camera
-import { COLORS, ROOM_THEMES, ROOMS, SOLIDS, VOID_BARRIERS, SLICK_WALLS, WORLD_MIN_X, WORLD_MIN_Y, WORLD_W, WORLD_H, FLOOR_Y, WELL_BOTTOM_Y, PENDULUMS, ABYSSAL_RIVERS, PUDDLES, WIND_ZONES, BOUNCE_PADS, WIND_VANES, SWITCH_GATES } from './config.js';
+import { COLORS, ROOM_THEMES, ROOMS, SOLIDS, VOID_BARRIERS, SLICK_WALLS, NPCS, WORLD_MIN_X, WORLD_MIN_Y, WORLD_W, WORLD_H, FLOOR_Y, WELL_BOTTOM_Y, PENDULUMS, ABYSSAL_RIVERS, PUDDLES, WIND_ZONES, BOUNCE_PADS, WIND_VANES, SWITCH_GATES } from './config.js';
 import {
   G, hooks, getLivingFoes, getAwakeBoss, getRelicStats, hasActiveWeaponTrait, isSkyBridgeOpen, isWorldSwitchOn, isRiverDrained, isWindZoneActive, isBoss4Unlocked, triggerZoneBanner, scheduleOutcome, addShake, punchZoom, triggerHitstop, damp
 } from './state.js';
@@ -1252,6 +1252,32 @@ export function updateWorldEffects(dt) {
     if (!hasWindWarden && G.wardenArenaFx.windTimer > 0) {
       G.wardenArenaFx.windTimer = 0;
       G.wardenArenaFx.windDir = 0;
+    }
+  }
+  // v44.3 Bell-Smith Li Frame-Synchronized Anvil Strike (Visual Hammer Impact == Spark Burst == Metal Clang!)
+  if (G.smithForge) {
+    if (G.smithForge.flash > 0) G.smithForge.flash = Math.max(0, G.smithForge.flash - dt * 3.6);
+    if (G.gameState === 'playing' && G.player && NPCS && NPCS.length > 0) {
+      const SMITH_PERIOD = 2.2;
+      const STRIKE_PHASE = 0.62;
+      const rawCycles = G.globalTime / SMITH_PERIOD;
+      const curCycle = Math.floor(rawCycles);
+      const phase = rawCycles - curCycle;
+      if (phase >= STRIKE_PHASE && G.smithForge.cycleIdx !== curCycle) {
+        G.smithForge.cycleIdx = curCycle;
+        const smith = NPCS.find(n => !n.kind || n.kind === 'smith');
+        if (smith) {
+          const dist = Math.hypot((G.player.x + G.player.w * 0.5) - smith.x, (G.player.y + G.player.h * 0.5) - smith.y);
+          if (dist < 640) {
+            G.smithForge.flash = 1.0;
+            const ax = smith.x + 28;
+            const ay = smith.y - 26;
+            spawnParticles(ax, ay, 7, { color: COLORS.goldBright, speed: 155, angle: -Math.PI * 0.55, spread: 1.5, spark: true, bounce: true, grav: 440, life: 0.34 });
+            const atten = Math.max(0.12, 1 - dist / 660);
+            audio.playAnvilTap(atten * atten);
+          }
+        }
+      }
     }
   }
   if (G.screenFlash.alpha > 0) G.screenFlash.alpha = Math.max(0, G.screenFlash.alpha - dt * 1.2);

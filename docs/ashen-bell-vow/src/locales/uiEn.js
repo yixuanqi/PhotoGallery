@@ -1,7 +1,7 @@
-// English (en-US) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v44.2)
+// English (en-US) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v44.3)
 export const UI_EN = {
     // Document & Title
-    'doc.title': 'Ashen Bell Vow v44.2 — Native Mobile Feel (Floating Stick, Haptics, Pinch Map & Soft Auto-Face) · Dark Hand-Drawn Soulslike Metroidvania',
+    'doc.title': 'Ashen Bell Vow v44.3 — Native Mobile Feel (Floating Stick, Haptics, Pinch Map & Soft Auto-Face) · Dark Hand-Drawn Soulslike Metroidvania',
     'game.title': 'ASHEN BELL VOW',
     'game.subtitle': 'Dark Hand-Drawn Soulslike Metroidvania',
     'title.loading': 'Loading...',
@@ -927,6 +927,7 @@ export const UI_EN = {
     'intro.line1': '“WHILE THE FIRST BELL ENDURES, NIGHT KNOWS NO DAWN.”',
     'intro.act2Line': '“A BROKEN BLADE SEVERS THE OLD VOW”',
     'intro.line2': '— A lantern-bearing shadow tolls the final dawn —',
+    'title.fullscreen': '⛶ Fullscreen',
     'title.installPwa': '⬇ Install App',
     'title.replayIntro': '↺ Replay Intro',
     'intro.skipHint': 'Press any key or click to skip',

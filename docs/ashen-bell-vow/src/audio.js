@@ -944,6 +944,21 @@ export class SoundEngine {
     this._playBaked('forge_trait', 1.0);
   }
 
+  playAnvilTap(volScale = 1.0) {
+    if (!this.ctx || this.muted || this.bgDucked) return;
+    const buf = this._baked['anvil_tap'];
+    if (!buf) return;
+    const v = Math.max(0.02, Math.min(1.0, Number(volScale) || 0.7));
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    src.playbackRate.value = 0.96 + Math.random() * 0.08;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(v * 0.75, this.ctx.currentTime);
+    src.connect(g);
+    g.connect(this.sfxOut);
+    src.start();
+  }
+
   playRelicRefine() {
     this._playBaked('relic_refine', 1.0);
   }
