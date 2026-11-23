@@ -133,6 +133,7 @@ export function startTitleIntro(skipImmediate = false) {
     revealTitleDom();
     return;
   }
+  if (audio && typeof audio.stopIntroCinematic === 'function') audio.stopIntroCinematic();
   _intro.active = true;
   _intro.t = 0;
   _intro.bellSfxDone = false;
@@ -162,7 +163,7 @@ export function skipTitleIntro() {
   revealTitleDom();
   try {
     audio.init();
-    audio.playDistantBell();
+    audio.stopIntroCinematic();
   } catch {
     // Ignore audio unlock error before user gesture
   }
@@ -195,32 +196,23 @@ export function updateTitleIntro(dt) {
   if (!_intro.active) return;
   _intro.t += dt;
 
-  // Synchronized procedural Web Audio cues (fires automatically whenever AudioContext is unlocked, e.g. Replay Intro)
+  // Dedicated v44.4 theatrical intro audio suite (0 shared in-game combat SFX; instant live synthesis!)
   if (!_intro.bellSfxDone && _intro.t >= 0.32) {
     _intro.bellSfxDone = true;
-    if (canPlayAudioNow()) audio.playDistantBell();
+    if (canPlayAudioNow()) audio.playIntroOmen();
   }
   if (!_intro.chargeSfxDone && _intro.t >= CHARGE_TIME) {
     _intro.chargeSfxDone = true;
-    if (canPlayAudioNow()) {
-      audio.playIaiReady();
-      audio.playGlintCue(false);
-    }
+    if (canPlayAudioNow()) audio.playIntroBladeDraw();
   }
   if (!_intro.slashed && _intro.t >= SLASH_TIME) {
     _intro.slashed = true;
-    if (canPlayAudioNow()) {
-      audio.playIaiSlash();
-      audio.playParry(true, 3);
-    }
+    if (canPlayAudioNow()) audio.playIntroCleaveSlash();
   }
   if (!_intro.splitSpawned && _intro.t >= SPLIT_START) {
     _intro.splitSpawned = true;
     spawnCleaveBurst(G.canvasW * 0.5, G.canvasH * 0.45);
-    if (canPlayAudioNow()) {
-      audio.playBellToll();
-      audio.playShieldBreak();
-    }
+    if (canPlayAudioNow()) audio.playIntroBellCleave();
   }
   if (!_intro.uiRevealed && _intro.t >= REVEAL_UI_TIME) {
     revealTitleDom();

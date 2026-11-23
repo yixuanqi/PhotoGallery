@@ -2,7 +2,7 @@
 // Zero external assets · Zero per-sound onended listeners · Zero per-beat Oscillator/Filter/Gain churn
 import { prof } from './profiler.js';
 import { locBiomeAmbience } from './i18n.js';
-import { buildSfxBakeTasks } from './audioSfxBank.js';
+import { buildSfxBakeTasks, synthIntroOmen, synthIntroBladeDraw, synthIntroCleaveSlash, synthIntroBellCleave } from './audioSfxBank.js';
 
 const PHRYGIAN_SCALE = [
   146.83, 155.56, 174.61, 196.00, 220.00, 233.08, 261.63,
@@ -75,6 +75,7 @@ export class SoundEngine {
     this.distantBellTimer = 9;
     this.heartbeatTimer = 0.6;
     this._lastSfxTime = {};
+    this._introBus = null;
 
     // Static OfflineAudioContext pre-baked AudioBuffers (1 node per playback, 0 listeners)
     this._baked = Object.create(null);
@@ -973,6 +974,53 @@ export class SoundEngine {
 
   playBoss4Counter() {
     this._playBaked('boss4_counter', 1.0);
+  }
+
+  _getIntroBus() {
+    if (!this.ctx || !this.sfxOut) return null;
+    if (!this._introBus) {
+      this._introBus = this.ctx.createGain();
+      this._introBus.gain.setValueAtTime(1.0, this.ctx.currentTime);
+      this._introBus.connect(this.sfxOut);
+    }
+    return this._introBus;
+  }
+
+  stopIntroCinematic() {
+    if (!this.ctx || !this._introBus) return;
+    const oldBus = this._introBus;
+    this._introBus = null;
+    try {
+      const t = this.ctx.currentTime;
+      oldBus.gain.cancelScheduledValues(t);
+      oldBus.gain.setValueAtTime(Math.max(0.0001, oldBus.gain.value), t);
+      oldBus.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+      setTimeout(() => { try { oldBus.disconnect(); } catch {} }, 120);
+    } catch {}
+  }
+
+  playIntroOmen() {
+    if (!this.ctx || this.muted || this.bgDucked) return;
+    const bus = this._getIntroBus();
+    if (bus) synthIntroOmen(this.ctx, bus, this.noiseBuf);
+  }
+
+  playIntroBladeDraw() {
+    if (!this.ctx || this.muted || this.bgDucked) return;
+    const bus = this._getIntroBus();
+    if (bus) synthIntroBladeDraw(this.ctx, bus, this.noiseBuf);
+  }
+
+  playIntroCleaveSlash() {
+    if (!this.ctx || this.muted || this.bgDucked) return;
+    const bus = this._getIntroBus();
+    if (bus) synthIntroCleaveSlash(this.ctx, bus, this.noiseBuf);
+  }
+
+  playIntroBellCleave() {
+    if (!this.ctx || this.muted || this.bgDucked) return;
+    const bus = this._getIntroBus();
+    if (bus) synthIntroBellCleave(this.ctx, bus, this.noiseBuf);
   }
 }
 

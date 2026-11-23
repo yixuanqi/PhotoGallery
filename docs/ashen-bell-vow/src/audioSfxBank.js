@@ -774,3 +774,287 @@ export function buildSfxBakeTasks(makeNoise) {
     ];
     return tasks;
 }
+
+
+// ==================== BESPOKE TITLE INTRO CINEMATIC AUDIO SUITE (v44.4) ====================
+// Dedicated theatrical sound design for "破刃断钟" — ZERO shared in-game combat SFX!
+
+export function synthIntroOmen(c, dest, noiseBuf) {
+  const t = c.currentTime;
+  const master = c.createGain();
+  master.gain.setValueAtTime(0.0005, t);
+  master.gain.linearRampToValueAtTime(0.46, t + 0.55);
+  master.gain.exponentialRampToValueAtTime(0.0005, t + 2.25);
+  const lp = c.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(220, t);
+  lp.frequency.linearRampToValueAtTime(460, t + 0.7);
+  lp.frequency.exponentialRampToValueAtTime(150, t + 2.2);
+  master.connect(lp);
+  lp.connect(dest);
+
+  // Dark cathedral bronze hum (D2 + A2 + muted D3)
+  [
+    [73.42, 'sine', 0.52],
+    [110.00, 'triangle', 0.24],
+    [146.83, 'sine', 0.20]
+  ].forEach(([freq, type, amp]) => {
+    const osc = c.createOscillator();
+    const g = c.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.985, t + 2.2);
+    g.gain.setValueAtTime(amp, t);
+    osc.connect(g);
+    g.connect(master);
+    osc.start(t);
+    osc.stop(t + 2.3);
+  });
+
+  // Subtle cold abyssal draft exhale
+  if (noiseBuf) {
+    const n = c.createBufferSource();
+    n.buffer = noiseBuf;
+    n.loop = true;
+    const bp = c.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.setValueAtTime(310, t);
+    bp.Q.value = 1.8;
+    const ng = c.createGain();
+    ng.gain.setValueAtTime(0.0005, t);
+    ng.gain.linearRampToValueAtTime(0.16, t + 0.65);
+    ng.gain.exponentialRampToValueAtTime(0.0005, t + 2.15);
+    n.connect(bp); bp.connect(ng); ng.connect(dest);
+    n.start(t); n.stop(t + 2.2);
+  }
+}
+
+export function synthIntroBladeDraw(c, dest, noiseBuf) {
+  // Exact 0.94s rising steel draw & golden sightline tension -> 60ms dramatic vacuum breath right before 3.55s slash!
+  const t = c.currentTime;
+  const cutT = t + 0.94;
+
+  // 1. Cold notched steel glide-scrape (high-Q resonant sweep 850Hz -> 3650Hz)
+  if (noiseBuf) {
+    const n = c.createBufferSource();
+    n.buffer = noiseBuf;
+    n.loop = true;
+    const bp = c.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.setValueAtTime(850, t);
+    bp.frequency.exponentialRampToValueAtTime(3650, t + 0.88);
+    bp.Q.value = 5.2;
+    const hp = c.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.setValueAtTime(650, t);
+    const ng = c.createGain();
+    ng.gain.setValueAtTime(0.0005, t);
+    ng.gain.exponentialRampToValueAtTime(0.26, t + 0.84);
+    ng.gain.linearRampToValueAtTime(0.32, t + 0.90);
+    ng.gain.exponentialRampToValueAtTime(0.0004, cutT);
+    n.connect(bp); bp.connect(hp); hp.connect(ng); ng.connect(dest);
+    n.start(t); n.stop(cutT + 0.02);
+  }
+
+  // 2. Converging golden sightline tension harmonics (crisp cinema riser, hard-gated for pre-slash breath)
+  [
+    [587.33, 1174.66, 'sine', 0.095],
+    [880.00, 1760.00, 'triangle', 0.055],
+    [1760.0, 2637.02, 'sine', 0.032]
+  ].forEach(([f0, f1, type, peak]) => {
+    const osc = c.createOscillator();
+    const g = c.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(f0, t);
+    osc.frequency.exponentialRampToValueAtTime(f1, t + 0.90);
+    g.gain.setValueAtTime(0.0004, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + 0.88);
+    g.gain.exponentialRampToValueAtTime(0.0004, cutT);
+    osc.connect(g); g.connect(dest);
+    osc.start(t); osc.stop(cutT + 0.02);
+  });
+
+  // 3. Low inward air-suck sub swell (110Hz -> 58Hz) that cuts dead at 0.94s
+  const sub = c.createOscillator();
+  const sg = c.createGain();
+  sub.type = 'sine';
+  sub.frequency.setValueAtTime(112, t);
+  sub.frequency.exponentialRampToValueAtTime(56, t + 0.90);
+  sg.gain.setValueAtTime(0.0005, t);
+  sg.gain.exponentialRampToValueAtTime(0.18, t + 0.87);
+  sg.gain.exponentialRampToValueAtTime(0.0004, cutT);
+  sub.connect(sg); sg.connect(dest);
+  sub.start(t); sub.stop(cutT + 0.02);
+}
+
+export function synthIntroCleaveSlash(c, dest, noiseBuf) {
+  // Theatrical "破刃一闪" diagonal razor blade cleave (fits the 0.16s flash + dramatic hitstop freeze!)
+  const t = c.currentTime;
+
+  // 1. High-velocity razor air-tear whip ("刷——！": steep 8400Hz -> 1150Hz resonant slash)
+  if (noiseBuf) {
+    const n1 = c.createBufferSource();
+    n1.buffer = noiseBuf;
+    const bp = c.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.setValueAtTime(8400, t);
+    bp.frequency.exponentialRampToValueAtTime(1150, t + 0.125);
+    bp.Q.value = 1.5;
+    const g1 = c.createGain();
+    g1.gain.setValueAtTime(0.001, t);
+    g1.gain.linearRampToValueAtTime(0.62, t + 0.005);
+    g1.gain.exponentialRampToValueAtTime(0.0006, t + 0.15);
+    n1.connect(bp); bp.connect(g1); g1.connect(dest);
+    n1.start(t); n1.stop(t + 0.165);
+
+    // Ultra-crisp razor sheen edge (> 4600Hz)
+    const n2 = c.createBufferSource();
+    n2.buffer = noiseBuf;
+    const hp = c.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.setValueAtTime(4600, t);
+    const g2 = c.createGain();
+    g2.gain.setValueAtTime(0.001, t);
+    g2.gain.linearRampToValueAtTime(0.38, t + 0.003);
+    g2.gain.exponentialRampToValueAtTime(0.0006, t + 0.085);
+    n2.connect(hp); hp.connect(g2); g2.connect(dest);
+    n2.start(t); n2.stop(t + 0.10);
+  }
+
+  // 2. Dry cold-steel bronze-bite transient (sharp inharmonic metallic shear — NO arcade parry ping!)
+  [
+    [2640, 2120, 'sawtooth', 0.11, 0.095],
+    [4180, 3520, 'triangle', 0.085, 0.085],
+    [6320, 5100, 'sine',     0.055, 0.070]
+  ].forEach(([f0, f1, type, amp, dur]) => {
+    const osc = c.createOscillator();
+    const hp = c.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.setValueAtTime(1600, t);
+    const g = c.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(f0, t);
+    osc.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(0.0008, t);
+    g.gain.linearRampToValueAtTime(amp, t + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.0005, t + dur);
+    osc.connect(hp); hp.connect(g); g.connect(dest);
+    osc.start(t); osc.stop(t + dur + 0.015);
+  });
+
+  // 3. Cinematic sub-bass vacuum punch (155Hz -> 34Hz, tight 0.15s envelope locking into the hitstop)
+  const sub = c.createOscillator();
+  const sg = c.createGain();
+  sub.type = 'sine';
+  sub.frequency.setValueAtTime(155, t);
+  sub.frequency.exponentialRampToValueAtTime(34, t + 0.145);
+  sg.gain.setValueAtTime(0.001, t);
+  sg.gain.linearRampToValueAtTime(0.58, t + 0.004);
+  sg.gain.exponentialRampToValueAtTime(0.0008, t + 0.155);
+  sub.connect(sg); sg.connect(dest);
+  sub.start(t); sub.stop(t + 0.17);
+}
+
+export function synthIntroBellCleave(c, dest, noiseBuf) {
+  // Theatrical "古钟断裂 · 残鸣余韵" — Colossal bronze bell splitting into two pitch-diverging halves!
+  const t = c.currentTime;
+
+  // 1. Seismic weight fracture boom (96Hz -> 25Hz sub-drop + deep bronze body thump)
+  const boom = c.createOscillator();
+  const bg = c.createGain();
+  boom.type = 'sine';
+  boom.frequency.setValueAtTime(96, t);
+  boom.frequency.exponentialRampToValueAtTime(25, t + 0.65);
+  bg.gain.setValueAtTime(0.001, t);
+  bg.gain.linearRampToValueAtTime(0.62, t + 0.008);
+  bg.gain.exponentialRampToValueAtTime(0.0006, t + 0.85);
+  boom.connect(bg); bg.connect(dest);
+  boom.start(t); boom.stop(t + 0.90);
+
+  if (noiseBuf) {
+    // Heavy low-frequency structural crack thud
+    const thud = c.createBufferSource();
+    thud.buffer = noiseBuf;
+    const lpThud = c.createBiquadFilter();
+    lpThud.type = 'lowpass';
+    lpThud.frequency.setValueAtTime(360, t);
+    lpThud.frequency.exponentialRampToValueAtTime(85, t + 0.28);
+    const tg = c.createGain();
+    tg.gain.setValueAtTime(0.001, t);
+    tg.gain.linearRampToValueAtTime(0.42, t + 0.006);
+    tg.gain.exponentialRampToValueAtTime(0.0006, t + 0.30);
+    thud.connect(lpThud); lpThud.connect(tg); tg.connect(dest);
+    thud.start(t); thud.stop(t + 0.32);
+
+    // Molten seared cut-seam sizzle hiss
+    const hiss = c.createBufferSource();
+    hiss.buffer = noiseBuf;
+    const hpHiss = c.createBiquadFilter();
+    hpHiss.type = 'bandpass';
+    hpHiss.frequency.setValueAtTime(3800, t);
+    hpHiss.Q.value = 1.4;
+    const hg = c.createGain();
+    hg.gain.setValueAtTime(0.0006, t);
+    hg.gain.linearRampToValueAtTime(0.16, t + 0.015);
+    hg.gain.exponentialRampToValueAtTime(0.0005, t + 0.44);
+    hiss.connect(hpHiss); hpHiss.connect(hg); hg.connect(dest);
+    hiss.start(t); hiss.stop(t + 0.48);
+  }
+
+  // 2. Severed Cracked-Bronze Bell Split Resonance (3.1s cathedral tail with subtle diverging fracture pitch!)
+  const bellFilter = c.createBiquadFilter();
+  bellFilter.type = 'lowpass';
+  bellFilter.frequency.setValueAtTime(3100, t);
+  bellFilter.frequency.exponentialRampToValueAtTime(420, t + 2.95);
+  bellFilter.Q.value = 1.1;
+  bellFilter.connect(dest);
+
+  const partials = [
+    // [startHz, endHz, wave, amp, decaySec]
+    [73.42,  72.6,   'sine',     0.26, 3.05], // Abyssal sub hum (D2)
+    [146.83, 144.2,  'sine',     0.22, 2.85], // Lower bell half fundamental
+    [150.40, 152.1,  'sine',     0.15, 2.55], // Upper half detuned beat (cracked metallic wobble!)
+    [174.61, 171.8,  'triangle', 0.13, 2.35], // Dark Phrygian minor third (F3)
+    [293.66, 283.5,  'sine',     0.14, 1.95], // Cleaved mid ring bending downward
+    [415.30, 398.0,  'sine',     0.085, 1.35], // Inharmonic bronze fracture overtone
+    [587.33, 562.0,  'triangle', 0.075, 1.15], // High bronze shimmer fading into mist
+    [932.33, 888.0,  'sine',     0.045, 0.72]
+  ];
+  for (let i = 0; i < partials.length; i++) {
+    const [f0, f1, type, amp, dur] = partials[i];
+    const osc = c.createOscillator();
+    const g = c.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(f0, t);
+    osc.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(0.0006, t);
+    g.gain.linearRampToValueAtTime(amp, t + 0.007);
+    g.gain.exponentialRampToValueAtTime(0.0005, t + dur);
+    osc.connect(g); g.connect(bellFilter);
+    osc.start(t); osc.stop(t + dur + 0.04);
+  }
+
+  // 3. Staggered cascading bronze shard clinks flying outward
+  const shards = [
+    [0.025, 2140, 0.075, 0.13],
+    [0.075, 3420, 0.060, 0.11],
+    [0.140, 2680, 0.055, 0.14],
+    [0.215, 4380, 0.042, 0.09],
+    [0.310, 1960, 0.040, 0.15],
+    [0.435, 3120, 0.028, 0.12]
+  ];
+  for (let i = 0; i < shards.length; i++) {
+    const [off, freq, amp, dur] = shards[i];
+    const st = t + off;
+    const osc = c.createOscillator();
+    const g = c.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, st);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.94, st + dur);
+    g.gain.setValueAtTime(0.0004, st);
+    g.gain.linearRampToValueAtTime(amp, st + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0004, st + dur);
+    osc.connect(g); g.connect(dest);
+    osc.start(st); osc.stop(st + dur + 0.02);
+  }
+}
