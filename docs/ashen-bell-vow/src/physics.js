@@ -1,8 +1,8 @@
 // AABB collision, zero-allocation dynamic blockers & grounding queries
 import {
-  SOLIDS, VOID_BARRIERS, WORLD_H, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, SKY_BRIDGE_GATE_DEF
+  SOLIDS, VOID_BARRIERS, SLICK_WALLS, SWITCH_GATES, WORLD_H, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, SKY_BRIDGE_GATE_DEF, FOUNDRY_VENT_GATE_DEF, MIRROR_ABYSS_GATE_DEF
 } from './config.js';
-import { G, getAwakeBoss, isSkyBridgeOpen } from './state.js';
+import { G, getAwakeBoss, isSkyBridgeOpen, isWorldSwitchOn, isBoss4Unlocked } from './state.js';
 
 export function aabbOverlap(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
@@ -13,6 +13,8 @@ const _chapelExitBox = { x: 0, y: 0, w: 0, h: 0, type: 'pillar' };
 const _foundryEntryBox = { x: 0, y: 0, w: 0, h: 0, type: 'pillar' };
 const _foundryExitBox = { x: 0, y: 0, w: 0, h: 0, type: 'pillar' };
 const _skyBridgeBox = { x: 0, y: 0, w: 0, h: 0, type: 'pillar' };
+const _foundryVentBox = { x: 0, y: 0, w: 0, h: 0, type: 'pillar' };
+const _mirrorAbyssBox = { x: 0, y: 0, w: 0, h: 0, type: 'pillar' };
 const _dynBlockers = [];
 
 function syncGateBox(box, def) {
@@ -28,13 +30,27 @@ export function refreshDynamicBlockers() {
     if (!G.worldState.abilities.doubleJump && !G.echoSession && syncGateBox(_foundryEntryBox, FOUNDRY_ENTRY_GATE_DEF)) _dynBlockers.push(_foundryEntryBox);
     if (!G.worldState.boss2Defeated && !G.echoSession && syncGateBox(_foundryExitBox, FOUNDRY_EXIT_GATE_DEF)) _dynBlockers.push(_foundryExitBox);
     if (!isSkyBridgeOpen() && !G.echoSession && syncGateBox(_skyBridgeBox, SKY_BRIDGE_GATE_DEF)) _dynBlockers.push(_skyBridgeBox);
+    if (!isWorldSwitchOn('foundryValveOpen') && syncGateBox(_foundryVentBox, FOUNDRY_VENT_GATE_DEF)) _dynBlockers.push(_foundryVentBox);
+    if (!isBoss4Unlocked() && syncGateBox(_mirrorAbyssBox, MIRROR_ABYSS_GATE_DEF)) _dynBlockers.push(_mirrorAbyssBox);
+    for (let i = 0; i < SWITCH_GATES.length; i++) {
+      const sg = SWITCH_GATES[i];
+      if (!isWorldSwitchOn(sg.switchKey)) _dynBlockers.push(sg);
+    }
     const walls = G.worldState.secretWalls;
-    for (let i = 0; i < walls.length; i++) {
-      if (!walls[i].broken) _dynBlockers.push(walls[i]);
+    for (let i = 0; i < walls.length; i++) { if (!walls[i].broken) _dynBlockers.push(walls[i]); }
+    const floors = G.worldState.breakableFloors || [];
+    for (let i = 0; i < floors.length; i++) { if (!floors[i].broken) _dynBlockers.push(floors[i]); }
+    const pillars = G.worldState.icePillars || [];
+    for (let i = 0; i < pillars.length; i++) {
+      const ip = pillars[i];
+      if (ip.state === 'bridge') {
+        if (!ip._bridgeBox) ip._bridgeBox = { x: ip.bridgeX, y: ip.bridgeY, w: ip.bridgeW, h: ip.bridgeH, type: 'platform' };
+        _dynBlockers.push(ip._bridgeBox);
+      }
     }
   }
   for (let i = 0; i < VOID_BARRIERS.length; i++) {
-    _dynBlockers.push(VOID_BARRIERS[i]);
+    if (!VOID_BARRIERS[i].sweeping) _dynBlockers.push(VOID_BARRIERS[i]);
   }
   return _dynBlockers;
 }
@@ -107,6 +123,7 @@ export function moveAndCollide(ent, dt, respectBossBarrier = false) {
   // Horizontal
   ent.x += ent.vx * dt;
   ent.wallDir = 0;
+  ent.wallSlick = false;
 
   const activeBoss = respectBossBarrier ? getAwakeBoss() : null;
   if (activeBoss) {
@@ -116,6 +133,12 @@ export function moveAndCollide(ent, dt, respectBossBarrier = false) {
 
   resolveHorizontalAgainst(ent, SOLIDS);
   resolveHorizontalAgainst(ent, dynBlockers);
+  if (ent === G.player && ent.wallDir !== 0 && SLICK_WALLS.length > 0) {
+    const probe = { x: ent.x + (ent.wallDir > 0 ? ent.w - 2 : -4), y: ent.y + 4, w: 6, h: ent.h - 8 };
+    for (let i = 0; i < SLICK_WALLS.length; i++) {
+      if (aabbOverlap(probe, SLICK_WALLS[i])) { ent.wallSlick = true; break; }
+    }
+  }
 
   // Vertical
   const prevBottom = ent.y + ent.h;
@@ -197,9 +220,18 @@ export function getGroundSurfaceY(cx, footY) {
   }
   if (G.crumblePlatforms) {
     for (const s of G.crumblePlatforms) {
-      if (s.state !== 'broken' && cx >= s.x - 6 && cx <= s.x + s.w + 6 && s.y >= footY - 6 && s.y < bestY) {
-        bestY = s.y;
-      }
+      if (s.state !== 'broken' && cx >= s.x - 6 && cx <= s.x + s.w + 6 && s.y >= footY - 6 && s.y < bestY) bestY = s.y;
+    }
+  }
+  if (G.worldState) {
+    for (const f of (G.worldState.breakableFloors || [])) {
+      if (!f.broken && cx >= f.x - 6 && cx <= f.x + f.w + 6 && f.y >= footY - 6 && f.y < bestY) bestY = f.y;
+    }
+    for (const sg of SWITCH_GATES) {
+      if (sg.orientation === 'horizontal' && !isWorldSwitchOn(sg.switchKey) && cx >= sg.x - 6 && cx <= sg.x + sg.w + 6 && sg.y >= footY - 6 && sg.y < bestY) bestY = sg.y;
+    }
+    for (const ip of (G.worldState.icePillars || [])) {
+      if (ip.state === 'bridge' && cx >= ip.bridgeX - 6 && cx <= ip.bridgeX + ip.bridgeW + 6 && ip.bridgeY >= footY - 6 && ip.bridgeY < bestY) bestY = ip.bridgeY;
     }
   }
   return bestY;

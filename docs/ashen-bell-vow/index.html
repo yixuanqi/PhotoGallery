@@ -7,9 +7,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="screen-orientation" content="landscape" />
 <meta name="x5-orientation" content="landscape" />
-<title>灰钟残誓 v35.0 — 可视化钟脉技能树、极简去文字化与圣物羁绊星轨版 · 暗黑手绘魂系类银河恶魔城</title>
+<title>灰钟残誓 v43.4 — 四页设置手账（武器/怪物图鉴）、路线A能力渐进与刺壁黑冲重构 · 暗黑手绘魂系类银河恶魔城</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24'>🔔</text></svg>" />
-<link rel="stylesheet" href="./styles.css?v=35.0.1" />
+<link rel="stylesheet" href="./styles.css?v=43.4.0" />
 </head>
 <body>
 <div id="game-root">
@@ -22,8 +22,10 @@
         <div class="hp-header">
           <span id="hp-text">100 / 100</span>
           <div style="display:flex;gap:5px;align-items:center;">
+            <span id="ability-grapple-tag" class="ability-badge grapple" data-i18n="hud.abilityGrapple" data-i18n-title="hud.abilityGrappleTip" title="已习得幽丝钩索：按 F/中键/I 飞索拉向钩环、悬灯或敌兵并派生幽丝瞬斩">幽丝钩索</span>
             <span id="ability-tag" class="ability-badge" data-i18n="hud.abilityWings" data-i18n-title="hud.abilityWingsTip" title="已习得墨翼步：空中可再按 Space 二段跳">墨翼步</span>
             <span id="ability-shade-tag" class="ability-badge shade" data-i18n="hud.abilityShade" data-i18n-title="hud.abilityShadeTip" title="已习得幽影穿身：按 Shift 穿透暗蚀结界与敌人并触发残爆">幽影穿身</span>
+            <span id="ability-dive-tag" class="ability-badge dive" data-i18n="hud.abilityDive" data-i18n-title="hud.abilityDiveTip" title="已习得镇岳下砸：空中按 S+法术 化身青铜巨钟无敌俯冲并震破发光裂石地板">镇岳下砸</span>
             <span id="key-dawn-tag" class="ability-badge dawn" data-i18n="hud.keyDawn" data-i18n-title="hud.keyDawnTip" title="持有真结局关键信物「破晓初印」：斩落初钟圣骸后可开启真结局「破晓熄钟」">破晓初印</span>
             <span id="blessing-tag" class="ability-badge blessing" data-i18n="hud.blessing" data-i18n-title="hud.blessingTip" title="守灯祝福生效中：魂火自然回复翻倍，承受致命伤时保留 22% 气血并震退敌兵">守灯祝福</span>
             <span id="realm-seals-tag" class="ability-badge realm-seals" data-i18n-title="hud.realmSealsTip" title="三境铭印（风/林/霜）：1印破境增伤，2印精粹强化，3印解封终誓第三圣物槽"></span>
@@ -116,40 +118,84 @@
     A/D 移 · Space 跳 · 左键/J 三连·长按居合 · 右键/K 弹反 · F/中键/I 钩索 · R/U 灵刃 · Shift 闪 · C/L 墨印 · Q/H 回血 · E 交互 · M 舆图 · 支持手柄
   </div>
 
-  <!-- Title Overlay -->
-  <div id="title-screen" class="overlay-screen">
-    <div class="modal-card title-modal-card">
-      <div class="title-top-bar">
+  <!-- Title Overlay (v43.4 Full-Viewport Atmospheric Dark Hand-Drawn Title Stage) -->
+  <div id="title-screen" class="overlay-screen title-stage">
+    <div class="title-backdrop-scrim" aria-hidden="true"></div>
+
+    <div class="title-topbar">
+      <div class="title-ver-badge">ASHEN BELL VOW · v43.4</div>
+      <div class="title-top-actions">
+        <button id="btn-title-replay-intro" type="button" class="title-lang-btn" data-i18n="title.replayIntro">↺ 重播开场</button>
         <button id="btn-title-lang" type="button" class="title-lang-btn">Lang: 中文 / EN</button>
       </div>
-      <div class="game-title" data-i18n="game.title">灰钟残誓</div>
-      <div class="modal-sub" data-i18n="game.subtitle">ASHEN BELL VOW · 暗黑手绘魂系类银河恶魔城</div>
-      <div class="controls-grid">
-        <div class="ctrl-item"><span data-i18n="ctrl.moveJump">移动 / 蹬墙跳</span><span><span class="keycap">A/D</span> <span class="keycap">Space</span></span></div>
-        <div class="ctrl-item"><span data-i18n="ctrl.slashIai">三连斩 / 长按居合一闪</span><span><span class="keycap" data-i18n="ctrl.slashIaiKey">左键 · J</span> / <span class="keycap gold" data-i18n="ctrl.holdKey">长按</span></span></div>
-        <div class="ctrl-item"><span data-i18n="ctrl.upDown">上挑斩 / 空中下劈</span><span><span class="keycap" data-i18n="ctrl.upKey">W+斩</span> / <span class="keycap" data-i18n="ctrl.downKey">S+斩</span></span></div>
-        <div class="ctrl-item"><span data-i18n="ctrl.parryRiposte">三段弹反 → 派生反击斩</span><span><span class="keycap gold" data-i18n="ctrl.parryKey">右键 · K</span> → <span class="keycap gold" data-i18n="ctrl.slashShort">斩</span></span></div>
-        <div class="ctrl-item"><span data-i18n="ctrl.spells">幽鸣灵刃 / 镇魂钟鸣</span><span><span class="keycap cyan">R · U</span> / <span class="keycap cyan" data-i18n="ctrl.quakeKey">W+法</span></span></div>
-        <div class="ctrl-item"><span data-i18n="ctrl.grappleRelic">幽丝钩索 / 双圣物槽</span><span><span class="keycap cyan" data-i18n="ctrl.grappleKey">F · 中键 · I</span> / <span class="keycap gold" data-i18n="ctrl.altarKey">祭坛</span></span></div>
-        <div class="ctrl-item"><span data-i18n="ctrl.dashSeal">墨影闪避 / 墨印引爆斩</span><span><span class="keycap">Shift</span> / <span class="keycap gold">C · L</span></span></div>
-        <div class="ctrl-item"><span data-i18n="ctrl.healInteractMap">灯油回血 / 交互 / 舆图</span><span><span class="keycap cyan">Q · H</span> <span class="keycap">E</span> <span class="keycap">M</span></span></div>
-        <div class="ctrl-item"><span data-i18n="ctrl.weaponSwap">三系兵刃即时切换</span><span><span class="keycap gold" data-i18n="ctrl.weaponSwapKey">1 · 2 · 3 / X</span></span></div>
-        <div class="ctrl-item"><span data-i18n="ctrl.gamepad">原生手柄支持</span><span><span class="keycap gold" data-i18n="ctrl.gamepadKey">Xbox / PS 即插即用</span></span></div>
-      </div>
-      <div id="file-protocol-warning" class="file-protocol-warning" style="display:none;">
-        <div class="fpw-title">⚠ 检测到本地 file:// 协议直接打开</div>
-        <div class="fpw-body">
-          浏览器安全策略（CORS）会拦截 <code>file://</code> 下加载 ES Modules 脚本，因此标题页按钮不会响应。<br>
-          <strong>本地试玩：</strong>双击目录中的 <code>start_game.bat</code>（Windows）或运行 <code>./start_game.sh</code>（macOS / Linux），或在终端执行 <code>python -m http.server 8080</code> 后访问 <code>http://localhost:8080</code>。<br>
-          <strong>线上部署：</strong>直接上传至 GitHub Pages（HTTPS）即可零配置游玩。
+    </div>
+
+    <div class="title-hero-shell">
+      <div class="title-hero-column">
+        <!-- Hand-Drawn SVG Cracked Bronze Bell & Crossed Blade Crest -->
+        <div class="title-crest-wrap" aria-hidden="true">
+          <svg class="title-crest-svg" viewBox="0 0 180 96" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="tcGlow" cx="50%" cy="54%" r="50%">
+                <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.42"/>
+                <stop offset="60%" stop-color="#38bdf8" stop-opacity="0.14"/>
+                <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+            <ellipse cx="90" cy="52" rx="74" ry="38" fill="url(#tcGlow)"/>
+            <!-- Crossed broken blades behind the bell -->
+            <path d="M 32 76 L 144 20 L 152 24 L 38 80 Z" fill="#cbd5e1" opacity="0.72"/>
+            <path d="M 148 76 L 36 20 L 28 24 L 142 80 Z" fill="#94a3b8" opacity="0.52"/>
+            <!-- Crescent moon arc -->
+            <path d="M 52 50 A 38 38 0 1 1 128 50" fill="none" stroke="rgba(253, 224, 71, 0.36)" stroke-width="1.3" stroke-dasharray="4 4"/>
+            <!-- Central Cracked Bronze Bell -->
+            <line x1="90" y1="4" x2="90" y2="20" stroke="#d8cfb8" stroke-width="1.8"/>
+            <circle cx="90" cy="22" r="4.5" fill="none" stroke="#fde047" stroke-width="1.5"/>
+            <path d="M 76 26 Q 72 48 60 72 Q 90 80 120 72 Q 108 48 104 26 Z" fill="#141822" stroke="#fde047" stroke-width="1.9"/>
+            <path d="M 70 54 L 110 54 M 65 65 L 115 65" stroke="rgba(245, 158, 11, 0.45)" stroke-width="1.3"/>
+            <path d="M 94 28 L 87 44 L 96 54 L 85 72" fill="none" stroke="#fef08a" stroke-width="2.0"/>
+            <circle cx="90" cy="77" r="4.8" fill="#fef08a" stroke="#b45309" stroke-width="1.3"/>
+          </svg>
+        </div>
+
+        <h1 class="game-title" data-i18n="game.title">灰钟残誓</h1>
+        <div class="title-ornament-line" aria-hidden="true"><span></span><i>✦</i><span></span></div>
+        <div class="modal-sub title-subtitle" data-i18n="game.subtitle">ASHEN BELL VOW · 暗黑手绘魂系类银河恶魔城</div>
+
+        <div id="file-protocol-warning" class="file-protocol-warning" style="display:none;">
+          <div class="fpw-title">⚠ 检测到本地 file:// 协议直接打开</div>
+          <div class="fpw-body">
+            浏览器安全策略（CORS）会拦截 <code>file://</code> 下加载 ES Modules 脚本，因此标题页按钮不会响应。<br>
+            <strong>本地试玩：</strong>双击目录中的 <code>start_game.bat</code>（Windows）或运行 <code>./start_game.sh</code>（macOS / Linux），或在终端执行 <code>python serve_local.py</code> 后访问 <code>http://localhost:8080</code>。
+          </div>
+        </div>
+
+        <!-- Active Save Slot Compact Status Ribbon -->
+        <div id="title-save-info" class="title-save-ribbon" style="display:none;"></div>
+
+        <!-- Clean Vertical Soulslike Menu -->
+        <nav class="title-menu-list" aria-label="Main Menu">
+          <button id="btn-continue" type="button" class="title-menu-btn primary-entry" disabled data-i18n="title.loading" style="display:none;">载入中...</button>
+          <button id="btn-start" type="button" class="title-menu-btn" disabled data-i18n="title.loadingMap">正在载入晦渊地图...</button>
+          <button id="btn-title-slots" type="button" class="title-menu-btn" data-i18n="title.menuSlots">选择档案</button>
+          <button id="btn-title-controls" type="button" class="title-menu-btn" data-i18n="title.menuControls">操作指南</button>
+          <button id="btn-title-settings" type="button" class="title-menu-btn" data-i18n="title.menuSettings">系统设置</button>
+        </nav>
+
+        <!-- Collapsible Glassmorphic 3-Slot Save Drawer -->
+        <div id="title-slots-drawer" class="title-slots-drawer hidden">
+          <div class="title-slots-head">
+            <span data-i18n="title.slotsHeader">选择或管理晦渊档案槽</span>
+            <button id="btn-close-slots-drawer" type="button" class="title-slots-close">✕</button>
+          </div>
+          <div id="save-slots-grid" class="save-slots-grid"></div>
         </div>
       </div>
-      <div id="save-slots-grid" class="save-slots-grid"></div>
-      <div id="title-save-info" class="modal-sub" style="margin-bottom:10px;color:var(--cyan-bright);display:none;"></div>
-      <div class="modal-btn-row">
-        <button id="btn-continue" class="primary-btn" disabled data-i18n="title.loading" style="display:none;border-color:var(--cyan-bright);color:var(--cyan-bright);">载入中...</button>
-        <button id="btn-start" class="primary-btn" disabled data-i18n="title.loadingMap">正在载入晦渊地图...</button>
-      </div>
+    </div>
+
+    <div class="title-footer">
+      <span data-i18n="title.footerLeft">手绘水墨 · 三系兵刃 · 25房立体箱庭</span>
+      <span data-i18n="title.footerRight">键鼠 / Xbox &amp; PS 手柄即插即用 · [Enter / A] 启程</span>
     </div>
   </div>
 
@@ -244,6 +290,7 @@
       <div id="smith-modal-title" class="modal-title">盲眼老铸钟匠 · 砺</div>
       <div class="modal-sub" data-i18n="smith.sub">钟脉星图 · 点击节点直览动作演示并点亮三脉</div>
       <div class="smith-header-strip">
+        <div id="smith-portrait-box" class="npc-portrait-box"></div>
         <div id="smith-dialogue" class="smith-quote-pill"></div>
         <div id="smith-echo-bar" class="smith-echo-bar"></div>
       </div>
@@ -258,7 +305,7 @@
       <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="npc" data-i18n="modal.farewell">✕ 告辞</button></div>
       <div id="npc-modal-title" class="modal-title">游方拾碑客 · 墨尘</div>
       <div id="npc-modal-sub" class="modal-sub">沉渊钟井 · 井中悬坛</div>
-      <div id="npc-dialogue" class="lore-text" style="border-left-color:var(--cyan);margin-bottom:12px;"></div>
+      <div class="npc-dialogue-row"><div id="npc-portrait-box" class="npc-portrait-box"></div><div id="npc-dialogue" class="lore-text" style="border-left-color:var(--cyan);margin-bottom:0;flex:1;"></div></div>
       <div id="npc-echo-bar" class="smith-echo-bar"></div>
       <div id="npc-quest-list" class="smith-upgrade-list"></div>
       <button id="btn-close-npc" class="primary-btn" data-i18n="npc.close">拱手告辞</button>
@@ -279,12 +326,18 @@
     </div>
   </div>
 
-  <!-- Settings, Assist Mode & Custom Keybinds Modal -->
+  <!-- Unified 4-Tab Settings, Weapon Codex, Bestiary & Archive Modal (v43.4) -->
   <div id="settings-modal" class="overlay-screen hidden">
-    <div class="modal-card" style="width: min(640px, 94%);">
-      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="settings" data-i18n="modal.back">✕ 返回</button></div>
-      <div class="modal-title" data-i18n="settings.title">设置与护道辅助</div>
-      <div class="modal-sub" data-i18n="settings.sub">界面语言 · 辅助难度微调 · 手柄双马达震动 · 键盘自定义改键</div>
+    <div class="modal-card settings-journal-card">
+      <div class="modal-top-bar modal-top-split">
+        <button id="btn-settings-to-map" type="button" class="modal-top-link" data-i18n="modal.linkMap">🗺 晦渊舆图 [M]</button>
+        <button type="button" class="modal-top-close" data-close-modal="settings" data-i18n="modal.back">✕ 返回</button>
+      </div>
+      <div id="settings-modal-title" class="modal-title" data-i18n="settings.journalTitle">设置与晦渊图鉴</div>
+      <div id="settings-modal-sub" class="modal-sub" data-i18n="settings.journalSub">系统设置 · 兵刃图鉴 · 妖魔图鉴 · 残碑与成就</div>
+      <div id="settings-tabs" class="codex-tabs settings-tabs"></div>
+      <div id="settings-pane-codex" class="codex-body hidden"></div>
+      <div id="settings-pane-system">
       <div class="settings-section">
         <div class="settings-sec-title" data-i18n="settings.secAudio">语言、护道辅助 &amp; 外设反馈</div>
         <div class="settings-row">
@@ -354,6 +407,7 @@
           <button id="btn-reset-keys" class="seg-btn" data-i18n="settings.resetKeys">恢复默认</button>
         </div>
         <div id="keybind-grid" class="keybind-grid"></div>
+      </div>
       </div>
       <button id="btn-close-settings" class="primary-btn" data-i18n="settings.saveClose">保存并返回</button>
     </div>
@@ -581,6 +635,7 @@
   }, 8000);
 })();
 </script>
-<script type="module" src="./src/main.js?v=35.0.1"></script>
+<script type="module" src="./src/main.js?v=43.4.0"></script>
+  <div id="gp-nav-bar" class="gp-nav-bar hidden" data-i18n="gp.navLegend">[十字/左摇杆] 移动 · [A] 确认 · [B] 返回 · [LB/RB] 切页 · [右摇杆] 滚动</div>
 </body>
 </html>

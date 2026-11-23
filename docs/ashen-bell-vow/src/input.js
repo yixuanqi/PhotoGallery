@@ -4,7 +4,8 @@ import { G, hooks } from './state.js';
 import { audio } from './audio.js';
 import { spawnFloatText } from './vfx.js';
 import { t } from './i18n.js';
-import { ensureOverlayFocus, navigateOverlay, confirmOverlayFocus, clearGamepadFocus } from './uiNav.js';
+import { ensureOverlayFocus, navigateOverlay, confirmOverlayFocus, clearGamepadFocus, cycleOverlayTab, scrollOverlay } from './uiNav.js';
+import { isTitleIntroActive, skipTitleIntro } from './render/titleIntro.js';
 
 export const keysHeld = {};
 export const gpHeld = {};
@@ -135,6 +136,9 @@ const GAMEPAD_LABELS = {
 function setActiveInputDevice(dev) {
   if (G.inputDevice === dev) return;
   G.inputDevice = dev;
+  if (typeof document !== 'undefined' && document.body) {
+    document.body.classList.toggle('input-gamepad', dev === 'gamepad');
+  }
   if (dev !== 'gamepad') clearGamepadFocus();
   syncControlModeUI();
 }
@@ -503,29 +507,59 @@ export function pollGamepad() {
   }
   gpPrev._gpPause = btnStart;
 
-  // Full Gamepad Focus Navigation for all overlays (Title, Pause, Altar, Smith, Settings, Map, Death, Victory)
+  const btnLB = b(4);
+  const btnRB = b(5);
+  const btnLT = b(6);
+  const btnRT = b(7);
+  const axRX = pad.axes[2] || 0;
+  const axRY = pad.axes[3] || 0;
+
+  if (G.gameState === 'title' && isTitleIntroActive()) {
+    if ((btnA && !gpPrev._uiConfirm) || (btnStart && !gpPrev._gpPause) || (btnB && !gpPrev._uiBack)) {
+      skipTitleIntro();
+    }
+    gpPrev._uiConfirm = btnA; gpPrev._uiBack = btnB;
+    return;
+  }
   if (G.gameState !== 'playing') {
     if (G.inputDevice === 'gamepad') ensureOverlayFocus();
-    if (navUp && !gpPrev._navUp) navigateOverlay('up');
-    if (navDown && !gpPrev._navDown) navigateOverlay('down');
-    if (navLeft && !gpPrev._navLeft) navigateOverlay('left');
-    if (navRight && !gpPrev._navRight) navigateOverlay('right');
-    if (btnA && !gpPrev._uiConfirm) {
-      audio.init();
-      confirmOverlayFocus();
-    }
-    if (btnB && !gpPrev._uiBack && G.gameState === 'modal' && G.activeModal) {
-      hooks.closeModal(G.activeModal);
-    }
-    gpPrev._navUp = navUp; gpPrev._navDown = navDown;
-    gpPrev._navLeft = navLeft; gpPrev._navRight = navRight;
+    const nowMs = performance.now();
+    const checkNavDir = (held, key, dir) => {
+      const prevHeld = !!gpPrev[key];
+      if (held) {
+        if (!prevHeld) { navigateOverlay(dir); gpPrev[key + '_next'] = nowMs + 340; }
+        else if (nowMs >= (gpPrev[key + '_next'] || 0)) { navigateOverlay(dir); gpPrev[key + '_next'] = nowMs + 110; }
+      }
+      gpPrev[key] = held;
+    };
+    checkNavDir(navUp, '_navUp', 'up');
+    checkNavDir(navDown, '_navDown', 'down');
+    checkNavDir(navLeft, '_navLeft', 'left');
+    checkNavDir(navRight, '_navRight', 'right');
+    if (btnLB && !gpPrev._uiLB) cycleOverlayTab(-1);
+    if (btnRB && !gpPrev._uiRB) cycleOverlayTab(1);
+    if (Math.abs(axRY) > 0.32) scrollOverlay(axRY * 14);
+    else if (btnLT) scrollOverlay(-12);
+    else if (btnRT) scrollOverlay(12);
+    if (btnA && !gpPrev._uiConfirm) { audio.init(); confirmOverlayFocus(); }
+    if (btnB && !gpPrev._uiBack && G.gameState === 'modal' && G.activeModal) hooks.closeModal(G.activeModal);
+    gpPrev._uiLB = btnLB; gpPrev._uiRB = btnRB;
     gpPrev._uiConfirm = btnA; gpPrev._uiBack = btnB;
+    gpPrev._gpWpnL = false; gpPrev._gpWpnR = false;
     return;
   }
   clearGamepadFocus();
   gpPrev._navUp = navUp; gpPrev._navDown = navDown;
   gpPrev._navLeft = navLeft; gpPrev._navRight = navRight;
+  gpPrev._uiLB = btnLB; gpPrev._uiRB = btnRB;
   gpPrev._uiConfirm = btnA; gpPrev._uiBack = btnB;
+
+  const wpnR = axRX > 0.72;
+  const wpnL = axRX < -0.72;
+  if (wpnR && !gpPrev._gpWpnR && hooks.cycleWeapon) hooks.cycleWeapon(1);
+  if (wpnL && !gpPrev._gpWpnL && hooks.cycleWeapon) hooks.cycleWeapon(-1);
+  gpPrev._gpWpnR = wpnR;
+  gpPrev._gpWpnL = wpnL;
 
   if (btnA || b(2) || b(4) || b(5)) audio.init();
 

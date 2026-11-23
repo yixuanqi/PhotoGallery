@@ -65,8 +65,10 @@ export const HUD_DOM = {
   hpGray: document.getElementById('hp-gray'),
   hpText: document.getElementById('hp-text'),
   relicTag: document.getElementById('relic-tag'),
+  abilityGrappleTag: document.getElementById('ability-grapple-tag'),
   abilityTag: document.getElementById('ability-tag'),
   abilityShadeTag: document.getElementById('ability-shade-tag'),
+  abilityDiveTag: document.getElementById('ability-dive-tag'),
   keyDawnTag: document.getElementById('key-dawn-tag'),
   blessingTag: document.getElementById('blessing-tag'),
   realmSealsTag: document.getElementById('realm-seals-tag'),
@@ -145,7 +147,13 @@ export function closeModal(name = G.activeModal) {
   if (modal) modal.classList.add('hidden');
   if (G.activeModal === name) G.activeModal = null;
   if (G.gameState === 'modal') {
-    G.gameState = G.modalReturnState === 'title' ? 'title' : 'playing';
+    if (G.modalReturnState === 'title') {
+      G.gameState = 'title';
+      const ts = document.getElementById('title-screen');
+      if (ts) ts.classList.remove('hidden');
+    } else {
+      G.gameState = 'playing';
+    }
   }
 }
 

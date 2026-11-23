@@ -44,7 +44,9 @@
     "r03_chapel",
     "r05_foundry",
     "r06_crypt",
-    "r09_wind_spire"
+    "r09_wind_spire",
+    "r20_bell_galleries",
+    "r22_cistern_nave"
   ],
   "solids": [
     {
@@ -57,7 +59,14 @@
     {
       "x": 860,
       "y": 580,
-      "w": 920,
+      "w": 240,
+      "h": 160,
+      "type": "ground"
+    },
+    {
+      "x": 1240,
+      "y": 580,
+      "w": 540,
       "h": 160,
       "type": "ground"
     },
@@ -92,7 +101,14 @@
     {
       "x": 360,
       "y": 1380,
-      "w": 1420,
+      "w": 1000,
+      "h": 180,
+      "type": "ground"
+    },
+    {
+      "x": 1500,
+      "y": 1380,
+      "w": 280,
       "h": 180,
       "type": "ground"
     },
@@ -147,14 +163,14 @@
     },
     {
       "x": 430,
-      "y": 1135,
+      "y": 1125,
       "w": 155,
       "h": 22,
       "type": "platform"
     },
     {
       "x": 655,
-      "y": 1245,
+      "y": 1230,
       "w": 155,
       "h": 22,
       "type": "platform"
@@ -205,6 +221,14 @@
       "name": "沉渊钟井 · 井中悬坛",
       "shortName": "钟井 · 井中悬坛",
       "defaultLit": false
+    },
+    {
+      "id": "altar_foundry_door",
+      "x": 1690,
+      "y": 1380,
+      "name": "沉渊钟井 · 炉前残坛",
+      "shortName": "钟井 · 炉前残坛",
+      "defaultLit": false
     }
   ],
   "loreTablets": [
@@ -233,6 +257,16 @@
       "y": 1240,
       "w": 40,
       "h": 140
+    },
+    {
+      "id": "gate_wind_west",
+      "role": "switchGate",
+      "switchKey": "windWestOpen",
+      "orientation": "vertical",
+      "x": 1760,
+      "y": 420,
+      "w": 40,
+      "h": 160
     }
   ],
   "secretWalls": [
@@ -242,14 +276,6 @@
       "y": 740,
       "w": 34,
       "h": 280,
-      "maxHp": 3
-    },
-    {
-      "id": "wall_wind_west",
-      "x": 1762,
-      "y": 420,
-      "w": 36,
-      "h": 160,
       "maxHp": 3
     }
   ],
@@ -266,7 +292,7 @@
       "id": "pickup_ink_wings",
       "kind": "ability",
       "abilityId": "doubleJump",
-      "x": 1610,
+      "x": 1560,
       "y": 1380,
       "name": "绝技 · 墨翼步",
       "desc": "习得二段跳！空中再按 Space 可振翼跃升，可返回起点探索苍穹残钟阁！"
@@ -291,6 +317,18 @@
       "y": 1380,
       "name": "沉渊秘龛 · 圣油残芯",
       "desc": "灯油上限再 +1、生命 +15，并获 +90 残响！"
+    },
+    {
+      "id": "pickup_sunken_well",
+      "kind": "statCore",
+      "requiresSwitch": "riverDrained",
+      "bonusHp": 10,
+      "bonusSoul": 15,
+      "echoAmount": 60,
+      "x": 790,
+      "y": 1380,
+      "name": "河底遗核 · 退潮魂晶",
+      "desc": "暗河退潮后显露的沉渊魂晶（生命 +10 · 魂火 +15 · +60 残响）"
     }
   ],
   "resonancePuzzles": [
@@ -372,7 +410,8 @@
       "id": "river_well",
       "x": 430,
       "y": 1368,
-      "w": 740
+      "w": 740,
+      "drainable": true
     }
   ],
   "grappleAnchors": [
@@ -405,6 +444,11 @@
       "x": 1170,
       "y": 1210,
       "topY": 1140
+    },
+    {
+      "x": 235,
+      "y": 135,
+      "id": "anc_r04_bell_well_5"
     }
   ],
   "lanterns": [
@@ -451,10 +495,10 @@
     {
       "id": "golem_3",
       "kind": "golem",
-      "x": 1395,
+      "x": 1335,
       "y": 1302,
       "minX": 1290,
-      "maxX": 1550
+      "maxX": 1490
     },
     {
       "id": "wraith_3",
@@ -539,6 +583,12 @@
       "x": 1620,
       "y": 510,
       "text": "「东壁风隙 · 疑通绝风断塔 →」"
+    },
+    {
+      "x": 1235,
+      "y": 1295,
+      "text": "「暗河泄洪闸 · 启闸可排干全境墨渊暗河」",
+      "hideWhenSwitch": "riverDrained"
     }
   ],
   "props": {
@@ -712,6 +762,52 @@
       "name": "游方拾碑客 · 墨尘",
       "x": 292,
       "y": 1020
+    }
+  ],
+  "breakableFloors": [
+    {
+      "id": "floor_well_shortcut",
+      "x": 1100,
+      "y": 580,
+      "w": 140,
+      "h": 160,
+      "style": "stone"
+    },
+    {
+      "id": "floor_well_cistern",
+      "x": 1360,
+      "y": 1380,
+      "w": 140,
+      "h": 140,
+      "style": "stone"
+    }
+  ],
+  "worldSwitches": [
+    {
+      "id": "switch_drain_river",
+      "switchKey": "riverDrained",
+      "kind": "sluice",
+      "x": 1235,
+      "y": 1380,
+      "name": "暗河泄洪青铜闸"
+    }
+  ],
+  "slickWalls": [
+    {
+      "id": "slick_r04_west",
+      "x": 340,
+      "y": 600,
+      "w": 20,
+      "h": 150,
+      "side": "right"
+    },
+    {
+      "id": "slick_r04_east",
+      "x": 1760,
+      "y": 740,
+      "w": 40,
+      "h": 250,
+      "side": "left"
     }
   ]
 }

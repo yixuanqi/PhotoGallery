@@ -1,0 +1,307 @@
+{
+  "id": "r20_bell_galleries",
+  "name": "悬索钟阁 · 风桥前廊",
+  "theme": "wind",
+  "bounds": {
+    "x": 3780,
+    "y": -740,
+    "w": 1780,
+    "h": 740
+  },
+  "connections": [
+    "r04_bell_well",
+    "r12_wind_bridge"
+  ],
+  "solids": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 1780,
+      "h": 34,
+      "type": "pillar"
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 36,
+      "h": 740,
+      "type": "pillar"
+    },
+    {
+      "x": 0,
+      "y": 620,
+      "w": 150,
+      "h": 120,
+      "type": "ground"
+    },
+    {
+      "x": 150,
+      "y": 620,
+      "w": 170,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 320,
+      "y": 620,
+      "w": 460,
+      "h": 120,
+      "type": "ground"
+    },
+    {
+      "x": 1020,
+      "y": 620,
+      "w": 760,
+      "h": 120,
+      "type": "ground"
+    },
+    {
+      "x": 450,
+      "y": 445,
+      "w": 210,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 780,
+      "y": 355,
+      "w": 220,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1150,
+      "y": 430,
+      "w": 230,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 815,
+      "y": 195,
+      "w": 190,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 830,
+      "y": 195,
+      "w": 175,
+      "h": 20,
+      "type": "pillar"
+    },
+    {
+      "x": 985,
+      "y": 34,
+      "w": 20,
+      "h": 161,
+      "type": "pillar"
+    }
+  ],
+  "crumblePlatforms": [
+    {
+      "id": "cr_gal_1",
+      "x": 830,
+      "y": 540,
+      "w": 140,
+      "h": 20
+    }
+  ],
+  "gates": [],
+  "secretWalls": [],
+  "voidBarriers": [
+    {
+      "id": "vb_galleries",
+      "x": 835,
+      "y": 34,
+      "w": 22,
+      "h": 161
+    }
+  ],
+  "altars": [],
+  "npcs": [],
+  "loreTablets": [],
+  "pickups": [
+    {
+      "id": "pickup_echo_galleries",
+      "kind": "echoCache",
+      "echoAmount": 85,
+      "x": 910,
+      "y": 195,
+      "name": "悬索钟阁残响",
+      "desc": "高悬钟阁断索之间凝结的 +85 残响"
+    }
+  ],
+  "resonancePuzzles": [],
+  "lanterns": [
+    {
+      "id": "lan_gal_1",
+      "x": 235,
+      "anchorY": 34,
+      "len": 230,
+      "topY": 34
+    },
+    {
+      "id": "lan_gal_2",
+      "x": 890,
+      "anchorY": 34,
+      "len": 140,
+      "topY": 34
+    }
+  ],
+  "grappleAnchors": [
+    {
+      "x": 235,
+      "y": 540,
+      "id": "anc_r20_bell_galleries_0",
+      "topY": 34
+    },
+    {
+      "x": 890,
+      "y": 470,
+      "id": "anc_r20_bell_galleries_1",
+      "topY": 34
+    },
+    {
+      "x": 1480,
+      "y": 380,
+      "id": "anc_r20_bell_galleries_2",
+      "topY": 34
+    }
+  ],
+  "pendulums": [
+    {
+      "x": 680,
+      "anchorY": 34,
+      "len": 320,
+      "amp": 0.48,
+      "speed": 1.45,
+      "phase": 0.4,
+      "r": 24
+    },
+    {
+      "x": 1350,
+      "anchorY": 34,
+      "len": 300,
+      "amp": 0.5,
+      "speed": 1.65,
+      "phase": 1.9,
+      "r": 24
+    }
+  ],
+  "windZones": [
+    {
+      "id": "wz_gal_1",
+      "x": 800,
+      "y": 120,
+      "w": 195,
+      "h": 540,
+      "vx": 18,
+      "vy": -1540
+    }
+  ],
+  "windVanes": [
+    {
+      "id": "vane_gal_1",
+      "x": 560,
+      "y": 445,
+      "dir": 1,
+      "boostVx": 155,
+      "targetZoneIds": [
+        "wz_gal_1"
+      ]
+    }
+  ],
+  "rivers": [],
+  "enemies": [
+    {
+      "id": "f_gal_1",
+      "kind": "falcon",
+      "x": 620,
+      "y": 290,
+      "minX": 340,
+      "maxX": 960
+    },
+    {
+      "id": "f_gal_2",
+      "kind": "falcon",
+      "x": 1240,
+      "y": 265,
+      "minX": 1000,
+      "maxX": 1640
+    },
+    {
+      "id": "s_gal_1",
+      "kind": "sentinel",
+      "x": 1420,
+      "y": 558,
+      "minX": 1120,
+      "maxX": 1680
+    }
+  ],
+  "bosses": [],
+  "inscriptions": [
+    {
+      "x": 1610,
+      "y": 550,
+      "text": "「东侧绝风铁闸须自千铃断桥一侧启闸贯通」",
+      "hideWhenSwitch": "galleryWindOpen"
+    }
+  ],
+  "props": {
+    "puddles": [],
+    "banners": [
+      {
+        "x": 410,
+        "y": 34,
+        "len": 160,
+        "color": "#16263a"
+      },
+      {
+        "x": 1120,
+        "y": 34,
+        "len": 170,
+        "color": "#16263a"
+      }
+    ],
+    "candles": [
+      {
+        "x": 380,
+        "y": 620,
+        "count": 3
+      },
+      {
+        "x": 1520,
+        "y": 620,
+        "count": 3
+      }
+    ],
+    "boneCairns": [],
+    "stamps": [
+      {
+        "type": "broken_arch",
+        "x": 490,
+        "y": 620,
+        "scale": 1.1,
+        "layer": "bg"
+      },
+      {
+        "type": "fallen_bell",
+        "x": 1260,
+        "y": 620,
+        "scale": 0.95,
+        "layer": "bg"
+      }
+    ]
+  },
+  "slickWalls": [
+    {
+      "id": "slick_r20_west",
+      "x": 0,
+      "y": 120,
+      "w": 36,
+      "h": 460,
+      "side": "right"
+    }
+  ]
+}

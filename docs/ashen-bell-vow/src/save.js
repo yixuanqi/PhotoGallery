@@ -1,9 +1,9 @@
 // Versioned 3-slot persistence built on StorageAdapter (ready for Electron FS / Steam Cloud)
 import {
-  COLORS, RELICS, DEFAULT_KEYBINDS, ALTARS, WORLD_MIN_X, WORLD_MIN_Y, MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H,
+  COLORS, RELICS, DEFAULT_KEYBINDS, ROOMS, ALTARS, WORLD_MIN_X, WORLD_MIN_Y, MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H,
   SAVE_KEY, LEGACY_SAVE_KEY_V9, LEGACY_SAVE_KEY_V8, SETTINGS_KEY
 } from './config.js';
-import { G, hooks, createFreshWorldState, getExplorationPercent } from './state.js';
+import { G, hooks, createFreshWorldState, getExplorationPercent, syncWindVanesFromWorldState } from './state.js';
 import { WEAPON_ORDER, normalizeWeaponId, getWeaponById } from './weapons.js';
 import { storage } from './storage.js';
 import { audio } from './audio.js';
@@ -87,7 +87,7 @@ export function loadUserSettings() {
 export function readSaveSlot(slot = G.activeSaveSlot) {
   migrateLegacySaveIfNeeded();
   const data = storage.getJSON(slotKey(slot));
-  if (!data || ![8, 9, 10, 11, 12, 15, 17, 18, 19, 20, 25, 26, 30, 33, 34, 35].includes(data.v)) return null;
+  if (!data || ![8, 9, 10, 11, 12, 15, 17, 18, 19, 20, 25, 26, 30, 33, 34, 35, 37, 38, 40, 41, 42].includes(data.v)) return null;
   return data;
 }
 
@@ -121,13 +121,16 @@ export function saveProgress(showToast = false) {
   const rawCodex = G.worldState.codex || { readTablets: [], bestiary: {}, achievements: [], discoveredSynergies: [] };
   const rawNq = G.worldState.npcQuests || { metChronicler: false, chroniclerClaims: [], metKeeper: false, keeperWickGifted: false, keeperBlessingActive: false };
   const payload = {
-    v: 35,
+    v: 42,
     npcQuests: {
       metChronicler: !!rawNq.metChronicler,
       chroniclerClaims: Array.isArray(rawNq.chroniclerClaims) ? [...new Set(rawNq.chroniclerClaims)] : [],
       metKeeper: !!rawNq.metKeeper,
       keeperWickGifted: !!rawNq.keeperWickGifted,
-      keeperBlessingActive: !!rawNq.keeperBlessingActive
+      keeperBlessingActive: !!rawNq.keeperBlessingActive,
+      metScavenger: !!rawNq.metScavenger,
+      boughtSecretMap: !!rawNq.boughtSecretMap,
+      boughtBellSatchel: !!rawNq.boughtBellSatchel
     },
     slot: G.activeSaveSlot,
     ngPlusCycle: Math.max(1, Math.floor(Number(G.worldState.ngPlusCycle) || 1)),
@@ -159,6 +162,11 @@ export function saveProgress(showToast = false) {
     shortcutOpen: !!G.worldState.shortcutOpen,
     solvedPuzzles: [...(G.worldState.solvedPuzzles || [])],
     brokenWalls: G.worldState.secretWalls.filter(w => w.broken).map(w => w.id),
+    brokenFloors: (G.worldState.breakableFloors || []).filter(f => f.broken).map(f => f.id),
+    worldSwitches: G.worldState.worldSwitches ? { ...G.worldState.worldSwitches } : { riverDrained: false, foundryValveOpen: false },
+    awakenedPads: G.worldState.awakenedPads ? [...G.worldState.awakenedPads] : [],
+    windVaneDirs: G.worldState.windVaneDirs ? { ...G.worldState.windVaneDirs } : {},
+    fallenIcePillars: (G.worldState.icePillars || []).filter(ip => ip.state === 'bridge').map(ip => ip.id),
     collectedPickups: G.worldState.pickups.filter(p => p.collected).map(p => p.id),
     bonusFlasks: G.worldState.bonusFlasks,
     bonusMaxHp: G.worldState.bonusMaxHp || 0,
@@ -166,7 +174,7 @@ export function saveProgress(showToast = false) {
     echoes: G.worldState.echoes || 0,
     lostEchoes: G.worldState.lostEchoes ? { ...G.worldState.lostEchoes } : null,
     smithUpgrades: { ...(G.worldState.smithUpgrades || { blade: 0, posture: 0, forge: 0 }) },
-    abilities: { doubleJump: !!G.worldState.abilities.doubleJump, shadeDash: !!G.worldState.abilities.shadeDash },
+    abilities: { grappleHook: !!G.worldState.abilities.grappleHook, doubleJump: !!G.worldState.abilities.doubleJump, shadeDash: !!G.worldState.abilities.shadeDash, bellDive: !!G.worldState.abilities.bellDive },
     equippedWeapon: normalizeWeaponId(G.worldState.equippedWeapon || 'blade'),
     unlockedWeapons: G.worldState.unlockedWeapons ? [...G.worldState.unlockedWeapons] : ['blade'],
     weaponTraits: G.worldState.weaponTraits ? { ...G.worldState.weaponTraits } : { blade: null, hammer: null, bell: null },
@@ -271,13 +279,40 @@ export function applySaveData(data) {
       chroniclerClaims: Array.isArray(data.npcQuests.chroniclerClaims) ? [...new Set(data.npcQuests.chroniclerClaims)] : [],
       metKeeper: !!data.npcQuests.metKeeper,
       keeperWickGifted: !!data.npcQuests.keeperWickGifted,
-      keeperBlessingActive: !!data.npcQuests.keeperBlessingActive
+      keeperBlessingActive: !!data.npcQuests.keeperBlessingActive,
+      metScavenger: !!data.npcQuests.metScavenger,
+      boughtSecretMap: !!data.npcQuests.boughtSecretMap,
+      boughtBellSatchel: !!data.npcQuests.boughtBellSatchel
     };
   }
+  const legacyGrapple = (Number(data.v) || 0) < 40 && (!!data.bossDefeated || !!(data.abilities && data.abilities.doubleJump));
   G.worldState.abilities = {
+    grappleHook: !!(data.abilities && data.abilities.grappleHook) || legacyGrapple,
     doubleJump: !!(data.abilities && data.abilities.doubleJump),
-    shadeDash: !!(data.abilities && data.abilities.shadeDash)
+    shadeDash: !!(data.abilities && data.abilities.shadeDash),
+    bellDive: !!(data.abilities && data.abilities.bellDive)
   };
+  const rawSw = data.worldSwitches && typeof data.worldSwitches === 'object' ? data.worldSwitches : {};
+  const legacyBroken = new Set(Array.isArray(data.brokenWalls) ? data.brokenWalls : []);
+  G.worldState.worldSwitches = {
+    riverDrained: !!rawSw.riverDrained,
+    foundryValveOpen: !!rawSw.foundryValveOpen,
+    belfryHatchOpen: !!rawSw.belfryHatchOpen || legacyBroken.has('wall_belfry_drop'),
+    forestHatchOpen: !!rawSw.forestHatchOpen || legacyBroken.has('wall_forest_shaft'),
+    cryptHatchOpen: !!rawSw.cryptHatchOpen || ((Number(data.v) || 0) < 42 && !!data.bossDefeated),
+    windAscentOpen: !!rawSw.windAscentOpen,
+    windWestOpen: !!rawSw.windWestOpen || legacyBroken.has('wall_wind_west'),
+    galleryWindOpen: !!rawSw.galleryWindOpen || legacyBroken.has('wall_gallery_wind'),
+    cisternWestOpen: !!rawSw.cisternWestOpen || legacyBroken.has('wall_cavern_cistern')
+  };
+  G.worldState.switchGateAnims = {};
+  for (const k of Object.keys(G.worldState.worldSwitches)) {
+    if (G.worldState.worldSwitches[k]) G.worldState.switchGateAnims[k] = 1;
+  }
+  G.worldState.riverDrainAnim = G.worldState.worldSwitches.riverDrained ? 1 : 0;
+  G.worldState.foundryVentAnim = G.worldState.worldSwitches.foundryValveOpen ? 1 : 0;
+  G.worldState.awakenedPads = new Set(Array.isArray(data.awakenedPads) ? data.awakenedPads.filter(x => typeof x === 'string') : []);
+  G.worldState.windVaneDirs = (data.windVaneDirs && typeof data.windVaneDirs === 'object') ? { ...data.windVaneDirs } : {};
   const rawUnlW = Array.isArray(data.unlockedWeapons) && data.unlockedWeapons.length
     ? data.unlockedWeapons.map(normalizeWeaponId)
     : ['blade'];
@@ -300,9 +335,12 @@ export function applySaveData(data) {
   G.worldState.refinedRelics = new Set(Array.isArray(data.refinedRelics) ? data.refinedRelics.filter(id => typeof id === 'string' && RELICS.some(r => r.id === id)) : []);
 
   const brokenSet = new Set(Array.isArray(data.brokenWalls) ? data.brokenWalls : []);
-  for (const w of G.worldState.secretWalls) {
-    if (brokenSet.has(w.id)) { w.broken = true; w.hp = 0; }
-  }
+  for (const w of G.worldState.secretWalls) { if (brokenSet.has(w.id)) { w.broken = true; w.hp = 0; } }
+  const brokenFloorSet = new Set(Array.isArray(data.brokenFloors) ? data.brokenFloors : []);
+  for (const f of (G.worldState.breakableFloors || [])) { if (brokenFloorSet.has(f.id)) f.broken = true; }
+  const fallenIceSet = new Set(Array.isArray(data.fallenIcePillars) ? data.fallenIcePillars : []);
+  for (const ip of (G.worldState.icePillars || [])) { if (fallenIceSet.has(ip.id)) { ip.state = 'bridge'; ip.fallY = ip.bridgeY; } }
+  syncWindVanesFromWorldState();
   const pickedSet = new Set(Array.isArray(data.collectedPickups) ? data.collectedPickups : []);
   for (const p of G.worldState.pickups) {
     if (pickedSet.has(p.id)) p.collected = true;
@@ -312,24 +350,40 @@ export function applySaveData(data) {
     const rows = data.exploredStr.split('|');
     const oldR = rows.length;
     const oldC = oldR > 0 ? rows[0].length : 0;
-    if (oldR === MAP_ROWS && oldC === MAP_COLS && data.v >= 30) {
+    const isInsideAnyRoom = (wx, wy) => {
+      if (!ROOMS.length) return true;
+      for (let i = 0; i < ROOMS.length; i++) {
+        const b = ROOMS[i].bounds;
+        if (wx >= b.x - 12 && wx <= b.x + b.w + 12 && wy >= b.y - 12 && wy <= b.y + b.h + 12) return true;
+      }
+      return false;
+    };
+    if (oldR === MAP_ROWS && oldC === MAP_COLS && data.v >= 41) {
       for (let r = 0; r < MAP_ROWS; r++) {
         for (let c = 0; c < MAP_COLS; c++) {
           G.worldState.explored[r][c] = rows[r][c] === '1';
         }
       }
     } else if (oldR > 0 && oldC > 0) {
-      // Seamless world-space reprojection for legacy v8-v26 saves (mapped 0..9680 x 0..1520)
-      const legacyW = oldC >= 44 ? 9680 : 6740;
-      const legacyH = 1520;
+      // Exact world-space reprojection across all save generations (v8-v26, v30-v37, v38-v40 -> v41 32x64)
+      const dv = Number(data.v) || 0;
+      const legacyMinY = dv >= 38 ? -1480 : (dv >= 30 ? -740 : 0);
+      const legacyMaxY = dv >= 30 ? 2260 : 1520;
+      const legacySpanY = legacyMaxY - legacyMinY;
+      const legacyW = dv >= 30 ? 11180 : (oldC >= 44 ? 9680 : 6740);
       for (let r = 0; r < oldR; r++) {
-        const wy = ((r + 0.5) / oldR) * legacyH;
-        const nr = Math.max(0, Math.min(MAP_ROWS - 1, Math.floor((wy - WORLD_MIN_Y) / MAP_CELL_H)));
+        const wy0 = legacyMinY + (r / oldR) * legacySpanY;
+        const wy1 = legacyMinY + ((r + 1) / oldR) * legacySpanY;
         for (let c = 0; c < Math.min(oldC, rows[r].length); c++) {
           if (rows[r][c] !== '1') continue;
           const wx = ((c + 0.5) / oldC) * legacyW;
           const nc = Math.max(0, Math.min(MAP_COLS - 1, Math.floor((wx - WORLD_MIN_X) / MAP_CELL_W)));
-          G.worldState.explored[nr][nc] = true;
+          // Sample 2 vertical points per old cell so 16->32 upscaling has no horizontal stripes!
+          for (const wy of [wy0 + (wy1 - wy0) * 0.25, wy0 + (wy1 - wy0) * 0.75]) {
+            if (!isInsideAnyRoom(wx, wy)) continue;
+            const nr = Math.max(0, Math.min(MAP_ROWS - 1, Math.floor((wy - WORLD_MIN_Y) / MAP_CELL_H)));
+            G.worldState.explored[nr][nc] = true;
+          }
         }
       }
     }

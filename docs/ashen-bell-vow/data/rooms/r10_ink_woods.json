@@ -83,9 +83,9 @@
       "type": "platform"
     },
     {
-      "x": 150,
-      "y": 150,
-      "w": 140,
+      "x": 255,
+      "y": 135,
+      "w": 135,
       "h": 22,
       "type": "platform"
     },
@@ -173,6 +173,15 @@
       "w": 78,
       "h": 26,
       "boostVy": -780
+    },
+    {
+      "id": "bp_forest_dormant",
+      "x": 1195,
+      "y": 640,
+      "w": 88,
+      "h": 30,
+      "boostVy": -960,
+      "dormant": true
     }
   ],
   "altars": [
@@ -196,17 +205,19 @@
       "html": "“圣城筑于千丈古林之上。地脉浸染墨蚀后，枯木仍以荧光孢伞吐纳微薄灵气，托举迷途旅人。<br><br>顺着最西侧盘根暗井破开树根封壁，便可径直攀回<strong>起点熄灯祭坛</strong>——老铸钟匠的铁砧就在咫尺之上。”"
     }
   ],
-  "gates": [],
-  "secretWalls": [
+  "gates": [
     {
-      "id": "wall_forest_shaft",
+      "id": "gate_forest_hatch",
+      "role": "switchGate",
+      "switchKey": "forestHatchOpen",
+      "orientation": "horizontal",
       "x": 150,
       "y": 0,
       "w": 105,
-      "h": 34,
-      "maxHp": 2
+      "h": 34
     }
   ],
+  "secretWalls": [],
   "pickups": [
     {
       "id": "pickup_echo_woods_canopy",
@@ -358,6 +369,17 @@
       "x": 1355,
       "y": 575,
       "text": "东侧深根裂隙通往「盘根溶洞」— 沉渊暗河之水由此西渗滋养古林"
+    },
+    {
+      "x": 1195,
+      "y": 562,
+      "text": "「休眠巨孢 · 以「镇魂钟鸣」或引魂摇铃唤醒」"
+    },
+    {
+      "x": 318,
+      "y": 78,
+      "text": "「启闸开启古根活板 · 直通起点熄灯祭坛」",
+      "hideWhenSwitch": "forestHatchOpen"
     }
   ],
   "props": {
@@ -499,6 +521,16 @@
       "y": 532,
       "w": 22,
       "h": 108
+    }
+  ],
+  "worldSwitches": [
+    {
+      "id": "switch_forest_hatch",
+      "switchKey": "forestHatchOpen",
+      "kind": "hatch",
+      "x": 318,
+      "y": 135,
+      "name": "古林归坛活板闸"
     }
   ]
 }

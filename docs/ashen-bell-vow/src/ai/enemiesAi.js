@@ -1,12 +1,111 @@
 // Standard Enemy & Sparring Automaton AI (split from src/ai.js in v32.0)
 import { COLORS, FLOOR_Y, WELL_BOTTOM_Y, GRAVITY, DUMMY_MODES, WIND_ZONES, BOUNCE_PADS } from '../config.js';
-import { G, addShake, triggerBossBanner, getCombatScaling, isPlayerInRoomId, damp } from '../state.js';
+import { G, addShake, triggerBossBanner, getCombatScaling, getBladeDamageMult, isPlayerInRoomId, isWindZoneActive, isBouncePadAwake, damp } from '../state.js';
 import { audio } from '../audio.js';
 import { triggerHaptic } from '../input.js';
 import { updateCloak, spawnParticles, spawnShockwave, spawnFloatText } from '../vfx.js';
 import { aabbOverlap, moveAndCollide, getGroundSurfaceY } from '../physics.js';
-import { applyIncomingAttackToPlayer } from '../combat.js';
+import { applyIncomingAttackToPlayer, applyEnemyHitFeel, damageEnemyHP, addPostureToEnemy } from '../combat.js';
 import { t, locBoss } from '../i18n.js';
+
+
+// v36.0 Per-Enemy Hit-Freeze, Deformation Recovery, Wall-Slam & Bowling Chain Knockback
+export function updateEnemyHitFeel(e, dt) {
+  if (!e) return false;
+  if (e.squashX !== undefined) e.squashX += (1 - e.squashX) * Math.min(1, dt * 16);
+  else e.squashX = 1;
+  if (e.squashY !== undefined) e.squashY += (1 - e.squashY) * Math.min(1, dt * 16);
+  else e.squashY = 1;
+  if (e.recoilLean) {
+    e.recoilLean *= damp(0.76, dt);
+    if (Math.abs(e.recoilLean) < 0.004) e.recoilLean = 0;
+  }
+  if (e.hitTremor > 0) e.hitTremor = Math.max(0, e.hitTremor - dt * 36);
+  if (e.hitFreezeTimer > 0) {
+    e.hitFreezeTimer = Math.max(0, e.hitFreezeTimer - dt);
+    if (e.hurtFlash > 0) e.hurtFlash = Math.max(0, e.hurtFlash - dt * 0.65);
+    return true;
+  }
+  return false;
+}
+
+export function updateEnemyLaunchPhysics(e, dt) {
+  if (!e || !e.alive || e.isBoss || e.isDummy || !(e.launchTimer > 0)) return false;
+  e.launchTimer = Math.max(0, e.launchTimer - dt);
+  if (e.hurtFlash > 0) e.hurtFlash = Math.max(0, e.hurtFlash - dt);
+
+  const isFly = e.kind === 'wraith' || e.kind === 'falcon';
+  e.vx *= damp(0.955, dt);
+  if (!isFly) e.vy = Math.min(920, (e.vy || 0) + GRAVITY * dt);
+  else e.vy *= damp(0.92, dt);
+
+  moveAndCollide(e, dt, false);
+
+  // 1. Wall-Slam Impact (撞墙碎石 + 额外伤害与巨额削势!)
+  if (e.wallDir !== 0 && Math.abs(e.vx) < 20) {
+    const wDir = e.wallDir;
+    e.launchTimer = 0;
+    const slamDmg = e.isMiniBoss
+      ? Math.max(16, Math.round(e.maxHp * 0.08))
+      : Math.max(18, Math.min(62, Math.round(e.maxHp * 0.26)));
+    e.vx = -wDir * 155;
+    if (!isFly) e.vy = -175;
+    e.squashX = 0.64;
+    e.squashY = 1.36;
+    e.recoilLean = -wDir * 0.24;
+    e.hitFreezeTimer = 0.052;
+    e.hitTremor = 6.0;
+    audio.playWallSlam();
+    triggerHaptic('heavyHit', 1.05);
+    addShake(9.5);
+    const wx = wDir > 0 ? (e.x + e.w) : e.x;
+    const wy = e.y + e.h * 0.48;
+    spawnShockwave(wx, wy, 94, COLORS.goldBright, 4.2, 0.28);
+    spawnParticles(wx, wy, 20, { color: COLORS.parchment, speed: 260, grav: 480, life: 0.45 });
+    spawnParticles(wx, wy, 14, { color: COLORS.goldBright, speed: 290, spark: true, bounce: true, grav: 560, life: 0.40 });
+    spawnFloatText(wx, e.y - 26, t('combat.wallSlam', slamDmg), COLORS.goldBright, 20, 0.95);
+    damageEnemyHP(e, slamDmg, false);
+    addPostureToEnemy(e, e.isMiniBoss ? 22 : 34);
+    if (e.cloak) updateCloak(e.cloak, e.x + e.w * 0.5 - e.facing * 6, e.y + 18, e.facing, -e.vx * 0.4, dt);
+    return true;
+  }
+
+  // 2. Bowling Chain Collision (击飞保龄球撞倒其他敌兵!)
+  if (e.alive && Math.abs(e.vx) > 155) {
+    if (!e.launchHitIds) e.launchHitIds = new Set();
+    for (let i = 0; i < G.enemies.length; i++) {
+      const other = G.enemies[i];
+      if (!other || !other.alive || other === e || other.isDummy || other.isBoss) continue;
+      if (e.launchHitIds.has(other.id)) continue;
+      if (aabbOverlap(e, other)) {
+        e.launchHitIds.add(other.id);
+        const bDir = e.launchDir || Math.sign(e.vx) || 1;
+        const chainDmg = Math.max(18, Math.round(24 * getBladeDamageMult()));
+        const othSpd = other.isMiniBoss ? 180 : 340;
+        other.vx = bDir * othSpd;
+        if (other.kind !== 'wraith' && other.kind !== 'falcon' && !other.isMiniBoss) other.vy = -195;
+        applyEnemyHitFeel(other, true, bDir, othSpd);
+        if (other.launchHitIds) other.launchHitIds.add(e.id);
+        audio.playHit(true, 3);
+        addShake(6.5);
+        const mx = (e.x + other.x + (e.w + other.w) * 0.5) * 0.5;
+        const my = (e.y + other.y + (e.h + other.h) * 0.5) * 0.5;
+        spawnShockwave(mx, my, 78, COLORS.cyanBright, 3.4, 0.24);
+        spawnParticles(mx, my, 14, { color: COLORS.goldBright, speed: 240, spark: true, life: 0.34 });
+        spawnFloatText(mx, other.y - 24, t('combat.bowlingCrash'), COLORS.cyanBright, 18, 0.85);
+        damageEnemyHP(other, chainDmg, true);
+        addPostureToEnemy(other, 26);
+        e.vx *= 0.74;
+      }
+    }
+  }
+
+  if (Math.abs(e.vx) < 110 && (e.grounded || isFly)) {
+    e.launchTimer = 0;
+  }
+  if (e.cloak) updateCloak(e.cloak, e.x + e.w * 0.5 - e.facing * 6, e.y + 18, e.facing, -e.vx * 0.4, dt);
+  return true;
+}
 
 export function applyEnemyBiomeCoupling(e, dt) {
   if (!e || !e.alive || e.isBoss || e.isDummy) return;
@@ -19,6 +118,7 @@ export function applyEnemyBiomeCoupling(e, dt) {
   if (WIND_ZONES.length > 0 && !heavyRooted) {
     for (let i = 0; i < WIND_ZONES.length; i++) {
       const wz = WIND_ZONES[i];
+      if (!isWindZoneActive(wz)) continue;
       if (ecx >= wz.x && ecx <= wz.x + wz.w && ecy >= wz.y && ecy <= wz.y + wz.h) {
         const liftFactor = e.isMiniBoss ? 0.38 : (e.kind === 'golem' ? 0.42 : (isFlying ? 0.25 : 0.78));
         if (wz.vy < 0) {
@@ -50,6 +150,7 @@ export function applyEnemyBiomeCoupling(e, dt) {
     const fBox = { x: e.x + 2, y: e.y + e.h - 14, w: e.w - 4, h: 18 };
     for (let i = 0; i < BOUNCE_PADS.length; i++) {
       const bp = BOUNCE_PADS[i];
+      if (!isBouncePadAwake(bp)) continue;
       if (aabbOverlap(fBox, { x: bp.x - bp.w * 0.5, y: bp.y - bp.h, w: bp.w, h: bp.h })) {
         bp.squish = 1.0;
         e.bounceCd = 0.85;
@@ -1204,3 +1305,217 @@ export function updateFrostguard(e, dt) {
   if (e.cloak) updateCloak(e.cloak, e.x + e.w / 2 - e.facing * 6, e.y + 18, e.facing, -e.vx * 0.45, dt);
 }
 
+
+/* ---------- CISTERN BIOME ENEMY 1: 溺钟潜行者 (Drowned Bell-Lurker: Ink Submerge Ambush + Wet-Drench Hooks) ---------- */
+export function updateDrowned(e, dt) {
+  if (e.hurtFlash > 0) e.hurtFlash -= dt;
+  if (e.submergeCd > 0) e.submergeCd = Math.max(0, e.submergeCd - dt);
+  if (e.postureDecayDelay > 0) e.postureDecayDelay -= dt;
+  else if (e.state !== 'stagger' && e.posture > 0) e.posture = Math.max(0, e.posture - 7.5 * dt);
+
+  const px = G.player.x + G.player.w * 0.5;
+  const py = G.player.y + G.player.h * 0.5;
+  const ex = e.x + e.w * 0.5;
+  const ey = e.y + e.h * 0.5;
+  const dx = px - ex;
+  const dy = Math.abs(py - ey);
+  const absDx = Math.abs(dx);
+  e.stateTimer -= dt;
+
+  if (e.state === 'stagger') {
+    e.submergeAlpha = 1;
+    e.vx *= damp(0.84, dt);
+    if (e.stateTimer <= 0) { e.state = 'chase'; e.posture = e.maxPosture * 0.3; }
+  } else if (e.state === 'patrol') {
+    e.submergeAlpha = Math.min(1, (e.submergeAlpha || 1) + dt * 5);
+    e.vx = e.facing * 72;
+    if (e.x <= e.minX) e.facing = 1;
+    if (e.x >= e.maxX) e.facing = -1;
+    if (absDx < 370 && dy < 175 && G.player.hp > 0) {
+      e.state = 'chase';
+      e.facing = dx >= 0 ? 1 : -1;
+    }
+  } else if (e.state === 'chase') {
+    e.submergeAlpha = Math.min(1, (e.submergeAlpha || 1) + dt * 6);
+    if (absDx > 480 || dy > 260) {
+      e.state = 'patrol';
+    } else if (e.submergeCd <= 0 && absDx >= 135 && absDx <= 340 && dy < 95 && e.grounded) {
+      // Submerge into dark ink ripple and ambush behind/near player!
+      e.state = 'submerge';
+      e.stateTimer = 0.42;
+      e.submergeCd = 4.6;
+      e.vx = 0;
+      const desiredX = Math.max(e.minX - 40, Math.min(e.maxX + 40, px + (dx >= 0 ? 78 : -78) - e.w * 0.5));
+      e.ambushX = desiredX;
+      spawnShockwave(ex, e.y + e.h - 4, 52, COLORS.cyanBright, 2.4, 0.25);
+      spawnParticles(ex, e.y + e.h - 4, 14, { color: COLORS.ink, speed: 160, grav: 240, life: 0.38 });
+    } else if (absDx < 112 && dy < 85 && e.stateTimer <= 0) {
+      e.facing = dx >= 0 ? 1 : -1;
+      e.attackKind = Math.random() < 0.34 ? 'redHookLunge' : 'hookSwipe';
+      e.state = 'windup';
+      e.stateTimer = e.attackKind === 'redHookLunge' ? 0.62 : 0.44;
+      e.windupDuration = e.stateTimer;
+      e.didHit = false;
+      e.vx = 0;
+      if (e.attackKind === 'redHookLunge') audio.playDangerAlert();
+      else audio.playGlintCue(false);
+    } else {
+      e.facing = dx >= 0 ? 1 : -1;
+      e.vx = e.facing * 138;
+    }
+  } else if (e.state === 'submerge') {
+    e.vx = 0;
+    e.submergeAlpha = Math.max(0.10, e.stateTimer / 0.42);
+    if (e.stateTimer <= 0) {
+      e.x = e.ambushX;
+      e.facing = (px - (e.x + e.w * 0.5)) >= 0 ? 1 : -1;
+      e.state = 'windup';
+      e.attackKind = 'hookSwipe';
+      e.stateTimer = 0.48;
+      e.windupDuration = 0.48;
+      e.didHit = false;
+      e.submergeAlpha = 1;
+      audio.playGlintCue(false);
+      spawnShockwave(e.x + e.w * 0.5, e.y + e.h - 4, 64, COLORS.cyanBright, 3.0, 0.28);
+      spawnParticles(e.x + e.w * 0.5, e.y + e.h - 6, 18, { color: COLORS.cyanBright, speed: 210, spark: true, grav: 260, life: 0.36 });
+    }
+  } else if (e.state === 'windup') {
+    e.submergeAlpha = 1;
+    e.vx *= damp(0.8, dt);
+    if (Math.random() < 18 * dt) {
+      spawnParticles(ex + e.facing * 14, e.y + 24, 1, {
+        color: e.attackKind === 'redHookLunge' ? COLORS.crimsonBright : COLORS.cyanBright, speed: 60, grav: -20, life: 0.22
+      });
+    }
+    if (e.stateTimer <= 0) {
+      const isRed = e.attackKind === 'redHookLunge';
+      e.state = 'attack';
+      e.stateTimer = isRed ? 0.24 : 0.19;
+      e.vx = e.facing * (isRed ? 390 : 215);
+      audio.playSlash(isRed ? 0.82 : 1.05, isRed);
+      G.slashes.push({
+        x: ex + e.facing * 32, y: e.y + 30, facing: e.facing,
+        type: isRed ? 'enemyRedThrust' : 'enemyThrust', life: 0.22, maxLife: 0.22
+      });
+    }
+  } else if (e.state === 'attack') {
+    e.vx *= damp(0.86, dt);
+    if (!e.didHit) {
+      const isRed = e.attackKind === 'redHookLunge';
+      const reach = isRed ? 96 : 82;
+      const hitBox = { x: ex + (e.facing > 0 ? 0 : -reach), y: e.y + 6, w: reach, h: 52 };
+      if (aabbOverlap(hitBox, G.player)) {
+        e.didHit = true;
+        applyIncomingAttackToPlayer(e, isRed ? 24 : 18, isRed, isRed ? 245 : 190);
+        if (G.player && G.player.hp > 0) G.player.wetTimer = Math.max(G.player.wetTimer || 0, 4.5);
+      }
+    }
+    if (e.stateTimer <= 0) { e.state = 'recover'; e.stateTimer = 0.78; }
+  } else if (e.state === 'recover') {
+    e.vx *= damp(0.84, dt);
+    if (e.stateTimer <= 0) { e.state = 'chase'; e.stateTimer = 0.30; }
+  }
+
+  e.vy += GRAVITY * dt;
+  moveAndCollide(e, dt, false);
+  if (Math.abs(e.vx) > 12 && e.grounded) e.walkCycle = (e.walkCycle || 0) + dt * Math.abs(e.vx) * 0.055;
+  if (e.x < e.minX - 65) e.x = e.minX - 65;
+  if (e.x > e.maxX + 65) e.x = e.maxX + 65;
+  if (e.cloak) updateCloak(e.cloak, e.x + e.w * 0.5 - e.facing * 6, e.y + 16, e.facing, -e.vx * 0.45, dt);
+}
+
+/* ---------- CISTERN BIOME ENEMY 2: 锈锚重锤兵 (Rusted Anchor-Warden: Heavy Chain-Anchor Sweep + Ink Splash Smash) ---------- */
+export function updateAnchorite(e, dt) {
+  if (e.hurtFlash > 0) e.hurtFlash -= dt;
+  if (e.postureDecayDelay > 0) e.postureDecayDelay -= dt;
+  else if (e.state !== 'stagger' && e.posture > 0) e.posture = Math.max(0, e.posture - 6.0 * dt);
+
+  const px = G.player.x + G.player.w * 0.5;
+  const py = G.player.y + G.player.h * 0.5;
+  const ex = e.x + e.w * 0.5;
+  const ey = e.y + e.h * 0.5;
+  const dx = px - ex;
+  const dy = Math.abs(py - ey);
+  const absDx = Math.abs(dx);
+  e.stateTimer -= dt;
+
+  if (e.state === 'stagger') {
+    e.vx *= damp(0.82, dt);
+    if (e.stateTimer <= 0) { e.state = 'chase'; e.posture = e.maxPosture * 0.35; }
+  } else if (e.state === 'patrol') {
+    e.vx = e.facing * 48;
+    if (e.x <= e.minX) e.facing = 1;
+    if (e.x >= e.maxX) e.facing = -1;
+    if (absDx < 350 && dy < 165 && G.player.hp > 0) {
+      e.state = 'chase';
+      e.facing = dx >= 0 ? 1 : -1;
+    }
+  } else if (e.state === 'chase') {
+    if (absDx > 480 || dy > 260) {
+      e.state = 'patrol';
+    } else if (absDx < 142 && dy < 95 && e.stateTimer <= 0) {
+      e.facing = dx >= 0 ? 1 : -1;
+      e.attackKind = Math.random() < 0.40 ? 'redAnchorSlam' : 'anchorDrag';
+      e.state = 'windup';
+      e.stateTimer = e.attackKind === 'redAnchorSlam' ? 0.74 : 0.62;
+      e.windupDuration = e.stateTimer;
+      e.didHit = false;
+      e.vx = 0;
+      if (e.attackKind === 'redAnchorSlam') audio.playDangerAlert();
+      else audio.playGlintCue(true);
+    } else {
+      e.facing = dx >= 0 ? 1 : -1;
+      e.vx = e.facing * 78;
+    }
+  } else if (e.state === 'windup') {
+    e.vx *= damp(0.82, dt);
+    if (Math.random() < 18 * dt) {
+      spawnParticles(ex - e.facing * 18, e.y + 38, 1, {
+        color: e.attackKind === 'redAnchorSlam' ? COLORS.crimsonBright : COLORS.goldBright, speed: 55, grav: 40, life: 0.24
+      });
+    }
+    if (e.stateTimer <= 0) {
+      const isRed = e.attackKind === 'redAnchorSlam';
+      e.state = 'attack';
+      e.stateTimer = isRed ? 0.26 : 0.23;
+      e.vx = e.facing * (isRed ? 160 : 225);
+      audio.playSlash(0.64, true);
+      if (isRed) {
+        addShake(7.5);
+        spawnShockwave(ex + e.facing * 42, e.y + e.h - 4, 108, COLORS.cyanBright, 3.8, 0.28);
+        spawnParticles(ex + e.facing * 42, e.y + e.h - 4, 18, { color: COLORS.cyanBright, speed: 240, spark: true, grav: 320, life: 0.38 });
+        G.groundWaves.push({
+          x: ex + e.facing * 48, y: e.y + e.h, minX: e.minX - 180, maxX: e.maxX + 180,
+          vx: e.facing * 310, w: 32, h: 42, life: 0.95, hit: false
+        });
+      }
+      G.slashes.push({
+        x: ex + e.facing * 44, y: e.y + 42, facing: e.facing,
+        type: isRed ? 'hammerQuake' : 'hammerSweep', life: 0.26, maxLife: 0.26
+      });
+    }
+  } else if (e.state === 'attack') {
+    e.vx *= damp(0.84, dt);
+    if (!e.didHit) {
+      const isRed = e.attackKind === 'redAnchorSlam';
+      const reach = isRed ? 124 : 112;
+      const hitBox = { x: ex + (e.facing > 0 ? -8 : -reach + 8), y: e.y + 10, w: reach, h: 68 };
+      if (aabbOverlap(hitBox, G.player)) {
+        e.didHit = true;
+        applyIncomingAttackToPlayer(e, isRed ? 30 : 23, isRed, isRed ? 310 : 240);
+        if (G.player && G.player.hp > 0) G.player.wetTimer = Math.max(G.player.wetTimer || 0, 5.0);
+      }
+    }
+    if (e.stateTimer <= 0) { e.state = 'recover'; e.stateTimer = 0.96; }
+  } else if (e.state === 'recover') {
+    e.vx *= damp(0.84, dt);
+    if (e.stateTimer <= 0) { e.state = 'chase'; e.stateTimer = 0.40; }
+  }
+
+  e.vy += GRAVITY * dt;
+  moveAndCollide(e, dt, false);
+  if (Math.abs(e.vx) > 10 && e.grounded) e.walkCycle = (e.walkCycle || 0) + dt * Math.abs(e.vx) * 0.042;
+  if (e.x < e.minX - 60) e.x = e.minX - 60;
+  if (e.x > e.maxX + 60) e.x = e.maxX + 60;
+  if (e.cloak) updateCloak(e.cloak, e.x + e.w * 0.5 - e.facing * 8, e.y + 20, e.facing, -e.vx * 0.4, dt);
+}

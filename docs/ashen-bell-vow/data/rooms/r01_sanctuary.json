@@ -35,7 +35,8 @@
   ],
   "connections": [
     "r02_corridor",
-    "r10_ink_woods"
+    "r10_ink_woods",
+    "r19_belfry_outer"
   ],
   "solids": [
     {
@@ -107,6 +108,13 @@
       "w": 114,
       "h": 20,
       "type": "pillar"
+    },
+    {
+      "x": 916,
+      "y": 192,
+      "w": 24,
+      "h": 228,
+      "type": "pillar"
     }
   ],
   "crumblePlatforms": [],
@@ -175,8 +183,8 @@
     {
       "id": "lan_0",
       "x": 880,
-      "anchorY": 165,
-      "len": 155,
+      "anchorY": 250,
+      "len": 135,
       "angle": 0.08
     }
   ],
@@ -325,6 +333,16 @@
       "y": 440,
       "w": 22,
       "h": 140
+    }
+  ],
+  "slickWalls": [
+    {
+      "id": "slick_r01_east",
+      "x": 916,
+      "y": 192,
+      "w": 24,
+      "h": 228,
+      "side": "left"
     }
   ]
 }

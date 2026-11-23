@@ -12,7 +12,8 @@
   },
   "connections": [
     "r09_wind_spire",
-    "r13_wind_peak"
+    "r13_wind_peak",
+    "r20_bell_galleries"
   ],
   "subZones": [
     {
@@ -35,7 +36,14 @@
       "x": 0,
       "y": 0,
       "w": 34,
-      "h": 740,
+      "h": 450,
+      "type": "pillar"
+    },
+    {
+      "x": 0,
+      "y": 620,
+      "w": 34,
+      "h": 120,
       "type": "pillar"
     },
     {
@@ -93,6 +101,20 @@
       "w": 185,
       "h": 22,
       "type": "platform"
+    },
+    {
+      "x": 34,
+      "y": 125,
+      "w": 212,
+      "h": 20,
+      "type": "pillar"
+    },
+    {
+      "x": 34,
+      "y": 285,
+      "w": 212,
+      "h": 20,
+      "type": "pillar"
     }
   ],
   "crumblePlatforms": [
@@ -111,11 +133,39 @@
       "h": 20
     }
   ],
-  "altars": [],
+  "altars": [
+    {
+      "id": "altar_wind_bridge",
+      "x": 1065,
+      "y": 620,
+      "name": "绝风断塔 · 千铃桥头坛",
+      "shortName": "绝风 · 千铃桥头坛",
+      "defaultLit": false
+    }
+  ],
   "npcs": [],
   "secretWalls": [],
-  "voidBarriers": [],
-  "gates": [],
+  "voidBarriers": [
+    {
+      "id": "vb_wind_bridge",
+      "x": 220,
+      "y": 145,
+      "w": 22,
+      "h": 140
+    }
+  ],
+  "gates": [
+    {
+      "id": "gate_gallery_wind",
+      "role": "switchGate",
+      "switchKey": "galleryWindOpen",
+      "orientation": "vertical",
+      "x": 0,
+      "y": 450,
+      "w": 34,
+      "h": 170
+    }
+  ],
   "pickups": [
     {
       "id": "pickup_echo_wind_bridge",
@@ -203,10 +253,10 @@
     {
       "id": "duelist_wb_1",
       "kind": "duelist",
-      "x": 1015,
+      "x": 575,
       "y": 560,
-      "minX": 920,
-      "maxX": 1150
+      "minX": 470,
+      "maxX": 675
     },
     {
       "id": "priest_wb_1",
@@ -333,6 +383,29 @@
       "x": 1030,
       "y": 555,
       "text": "东行踏入「断塔绝顶」— 截风巡塔使 · 朔仍在云海守誓"
+    }
+  ],
+  "windVanes": [
+    {
+      "id": "vane_wb_1",
+      "x": 585,
+      "y": 420,
+      "dir": 1,
+      "boostVx": 165,
+      "targetZoneIds": [
+        "wz_wb_1",
+        "wz_wb_2"
+      ]
+    }
+  ],
+  "worldSwitches": [
+    {
+      "id": "switch_gallery_wind",
+      "switchKey": "galleryWindOpen",
+      "kind": "gateLever",
+      "x": 115,
+      "y": 620,
+      "name": "千铃断桥西门铁闸"
     }
   ]
 }

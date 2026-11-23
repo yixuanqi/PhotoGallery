@@ -6,7 +6,7 @@ import {
 import { G } from './state.js';
 import { WEAPON_ORDER } from './weapons.js';
 import { audio } from './audio.js';
-import { t, isEn, locAchievement, getCanvasFont } from './i18n.js';
+import { t, isEn, locAchievement, locBestiary, getCanvasFont } from './i18n.js';
 
 export const MAP_PIN_TYPES = [
   { id: 'wall', label: '暗墙', color: '#38bdf8', hint: '标记可击破暗墙或隐秘通道' },
@@ -133,6 +133,24 @@ export const BESTIARY_ENTRIES = [
     lore: '在圣脊极寒中冻结成冰雕的旧誓卫士，长戟锋刃凝结着永不融化的霜髓。'
   },
   {
+    kind: 'drowned',
+    name: '溺钟潜行者',
+    title: '沉钟水牢 · 潜墨伏袭者',
+    isBoss: false,
+    habitat: '沉钟水牢',
+    tactic: '会潜入墨波瞬移至身侧伏袭，攻击附带潮湿状态；弹反其银芒勾爪，或反借潮湿触发高额导电钟鸣！',
+    lore: '头罩裂钟潜行于水牢暗河的守牢残骸，以双钩拖拽误入渊底的提灯者。'
+  },
+  {
+    kind: 'anchorite',
+    name: '锈锚重锤兵',
+    title: '沉钟水牢 · 巨锚刑卒',
+    isBoss: false,
+    habitat: '沉钟水牢',
+    tactic: '拖链横扫为延迟重拍，精准弹反可削去巨额架势；猩红高举砸锚会激起地面水波，须跳跃或冲刺规避。',
+    lore: '曾负责将废钟拖沉水牢的巨汉刑卒，至今仍挥舞着沾满铁锈的青铜钟锚。'
+  },
+  {
     kind: 'warden_wind',
     name: '截风巡塔使 · 朔',
     title: '绝风守誓精英 · 乘风双刃',
@@ -177,8 +195,8 @@ export const ACHIEVEMENTS_DEF = [
   { id: 'boss_hui', name: '断钟寂灭', desc: '于断钟礼拜堂斩落「断钟骑士 · 晦」。' },
   { id: 'boss_ji', name: '沉渊熄炉', desc: '于沉渊铸钟殿斩落「沉渊铸钟师 · 寂」。' },
   { id: 'boss_yuan', name: '初钟终末', desc: '于初钟圣心斩落最终首领「初钟圣骸 · 渊」。' },
-  { id: 'all_tablets', name: '晦渊拾碑人', desc: '寻得并研读晦渊全境全部 11 座风化残碑。' },
-  { id: 'all_relics', name: '十一印归灯', desc: '寻得并解锁全部 11 枚晦渊与秘境圣物。' },
+  { id: 'all_tablets', name: '晦渊拾碑人', desc: '寻得并研读晦渊全境全部 14 座风化残碑。' },
+  { id: 'all_relics', name: '十一印归灯', desc: '寻得并解锁全部 12 枚晦渊与秘境圣物。' },
   { id: 'synergy_awakened', name: '双印共鸣', desc: '在祭坛同时铭刻特定双圣物，激活隐藏机制羁绊。' },
   { id: 'no_hit_echo', name: '无伤断誓', desc: '在任意残誓回响中零受创通关，夺得 S+ 评级。' },
   { id: 'rush_clear', name: '三钟宗师', desc: '在祭坛残誓回响中通关「三钟终试（晦→寂→渊）」。' },
@@ -229,14 +247,46 @@ function getBestiaryEntry(kind) {
   return rec;
 }
 
-export function recordBestiaryEvent(kind, eventType = 'seen') {
+export function recordBestiaryEvent(kind, eventType = 'seen', showDiscoverToast = false) {
   if (!kind || G.benchActive) return;
+  const c = ensureCodexState();
+  const wasSeen = !!(c && c.bestiary[kind] && c.bestiary[kind].seen);
   const rec = getBestiaryEntry(kind);
   if (!rec) return;
   rec.seen = true;
   if (eventType === 'kill') rec.kills = (rec.kills || 0) + 1;
   else if (eventType === 'parry') rec.parries = (rec.parries || 0) + 1;
   else if (eventType === 'execution') rec.executions = (rec.executions || 0) + 1;
+  if (!wasSeen && showDiscoverToast && G.gameState === 'playing') {
+    const def = BESTIARY_ENTRIES.find(e => e.kind === kind);
+    if (def) {
+      G.bestiaryToast = { kind, name: locBestiary(def, 'name'), isBoss: !!def.isBoss, life: 2.6, maxLife: 2.6 };
+      if (G.saveDirtyTimer <= 0) G.saveDirtyTimer = 2.0;
+    }
+  }
+}
+
+export function drawBestiaryToast() {
+  if (!G.bestiaryToast || G.bestiaryToast.life <= 0) return;
+  const bt = G.bestiaryToast;
+  const p = 1 - bt.life / bt.maxLife;
+  const a = p < 0.14 ? (p / 0.14) : (bt.life < 0.45 ? (bt.life / 0.45) : 1);
+  if (a <= 0.02) return;
+  const ctx = G.ctx;
+  const txt = t('codex.toastSeen', bt.name);
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, Math.min(1, a));
+  ctx.font = getCanvasFont(12.5, true);
+  const tw = Math.max(150, ctx.measureText(txt).width + 28);
+  const x = G.canvasW - tw - 18, y = G.canvasH - 54;
+  ctx.fillStyle = 'rgba(8, 12, 20, 0.86)';
+  ctx.strokeStyle = bt.isBoss ? COLORS.crimsonBright : COLORS.cyanBright;
+  ctx.lineWidth = 1.4;
+  ctx.fillRect(x, y, tw, 30); ctx.strokeRect(x, y, tw, 30);
+  ctx.fillStyle = bt.isBoss ? '#fecaca' : '#bae6fd';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(txt, x + 13, y + 15.5);
+  ctx.restore();
 }
 
 export function recordTabletRead(tabletId) {

@@ -13,7 +13,8 @@ export const WORLD_EN = {
     '残钟地窖': 'Crypt of Shards',
     '绝风断塔': 'Gale-Shattered Spire',
     '枯墨古林': 'Withered Ink Woods',
-    '霜骸圣脊': 'Frost-Bone Ridge'
+    '霜骸圣脊': 'Frost-Bone Ridge',
+    '沉钟水牢': 'Sunken Bell Cistern'
   },
 
   rooms: {
@@ -33,7 +34,15 @@ export const WORLD_EN = {
     r14_woods_cavern: { zoneName: 'Withered Ink Woods',      name: 'Ink Woods · Root-Tangled Cavern' },
     r15_woods_heart:  { zoneName: 'Withered Ink Woods',      name: 'Ink Woods · Hollow Bell-Tree' },
     r16_frost_tomb:   { zoneName: 'Frost-Bone Ridge',        name: 'Frost Ridge · Frozen Blade Mound' },
-    r17_frost_summit: { zoneName: 'Frost-Bone Ridge',        name: 'Frost Ridge · Glacial Peak' }
+    r17_frost_summit: { zoneName: 'Frost-Bone Ridge',        name: 'Frost Ridge · Glacial Peak' },
+    r18_rain_steps:     { zoneName: 'Sunken Bell Cloister',  name: 'Rain-Swept Tomb Steps' },
+    r19_belfry_outer:   { zoneName: 'Sunken Bell Cloister',  name: 'Severed-Cord Outer Belfry' },
+    r20_bell_galleries: { zoneName: 'Gale-Shattered Spire',  name: 'Suspended Bell Galleries' },
+    r21_cistern_west:   { zoneName: 'Sunken Bell Cistern',   name: 'Cistern · Seeping Cell Gallery' },
+    r22_cistern_nave:   { zoneName: 'Sunken Bell Cistern',   name: 'Cistern · Drowned Bell Nave' },
+    r23_cistern_lock:   { zoneName: 'Sunken Bell Cistern',   name: 'Cistern · Broken Sluice Lock' },
+    r24_frost_seep:     { zoneName: 'Frost-Bone Ridge',      name: 'Frost-Seep River Source' },
+    r25_mirror_abyss:   { zoneName: 'Heart of the First Bell', name: 'Mirror Abyss · Sanctum of First Forging' }
   },
 
   subZones: {
@@ -89,13 +98,18 @@ export const WORLD_EN = {
     altar_wind:     { name: 'Gale-Shattered Spire · Gale Altar',         shortName: 'Spire · Gale Altar' },
     altar_forest:   { name: 'Withered Ink Woods · Root Cavern Altar',    shortName: 'Woods · Root Altar' },
     altar_mountain:   { name: 'Frost-Bone Ridge · Snowmelt Altar',       shortName: 'Ridge · Snowmelt Altar' },
-    altar_frost_tomb: { name: 'Frost-Bone Ridge · Summit Snow Altar',    shortName: 'Ridge · Summit Altar' }
+    altar_frost_tomb: { name: 'Frost-Bone Ridge · Summit Snow Altar',    shortName: 'Ridge · Summit Altar' },
+    altar_cistern:      { name: 'Sunken Bell Cistern · Drowned Bell Altar', shortName: 'Cistern · Drowned Altar' },
+    altar_mirror_abyss: { name: 'Mirror Abyss · Obsidian Mirror Altar',     shortName: 'Mirror Abyss Altar' },
+    altar_foundry_door: { name: 'Abyssal Bell Well · Furnace Gate Altar',   shortName: 'Well · Furnace Gate Altar' },
+    altar_wind_bridge:  { name: 'Gale-Shattered Spire · Bridgehead Altar',  shortName: 'Spire · Bridgehead Altar' }
   },
 
   npcs: {
     npc_smith:      { name: 'Li, the Blind Bell-Smith', shortName: 'Bell-Smith Li' },
     npc_chronicler: { name: 'Mochen, Wandering Chronicler', shortName: 'Chronicler Mochen' },
-    npc_keeper:     { name: 'Xi, Keeper of the Old Vow', shortName: 'Keeper Xi' }
+    npc_keeper:     { name: 'Xi, Keeper of the Old Vow', shortName: 'Keeper Xi' },
+    npc_scavenger:  { name: 'Ashbud, Blind Scavenger Child', shortName: 'Scavenger Ashbud' }
   },
 
   tablets: {
@@ -153,6 +167,21 @@ export const WORLD_EN = {
       title: 'Epitaph of the Frozen Keepers',
       sub: 'Frost-Bone Ridge · Frozen Sword Steps',
       html: '“The old Lantern Keepers once stood vigil atop these peaks to freeze the cracked First Bell shut; yet heat rising from the western Gale Spire melted the summit snows into endless <strong>ashen rain</strong>.<br>The meltwater cascades down these cliffs, washes the cloister, and seeps into the sunken woods.<br><br>Climb past our sword-mounds to the peak: <strong>Frost-Marquis Lin</strong> guards the western sky-bridge linking directly to the <strong>Gale Spire Summit</strong>.”'
+    },
+    lore_cistern_west: {
+      title: 'Inscription of Failed Castings',
+      sub: 'Sunken Bell Cistern · Seeping Cell Gallery',
+      html: '“Every bronze bell cast with a flawed ring was cast down into this flooded cistern, forbidden to see the pale moon.<br>As abyssal ink seeped through the stone, the jailers became <strong>Drowned Bell-Lurkers</strong> and hulking <strong>Rusted Anchor-Wardens</strong>.<br><br>Remember: their strikes drench you in conductive ink—<strong>cast Requiem Chime while drenched to unleash amplified shockwaves!</strong>”'
+    },
+    lore_cistern_nave: {
+      title: 'Chronicle of the Great Sluice',
+      sub: 'Sunken Bell Cistern · Drowned Bell Nave',
+      html: '“Long ago the Bell-Founder forged a bronze sluice wheel at the very floor of the <strong>Abyssal Bell Well</strong> to drain overflow away from the furnace.<br>Should any lantern-bearer turn that wheel again, the subterranean rivers shall recede across the realm—<br><br>exposing the sunken <strong>Ebbed Oil Core</strong> in this nave, and the ancient <strong>Ebbed Tide-Bell Seal</strong> resting beneath the eastern Sluice Lock.”'
+    },
+    lore_cistern_lock: {
+      title: 'Stele of the Broken Lock',
+      sub: 'Sunken Bell Cistern · Broken Sluice Lock',
+      html: '“East of this lock lies the <strong>Frost-Seep River Source</strong>, where glacial snowmelt from Frost-Bone Ridge enters the subterranean loop.<br>Whoever attunes the <strong>Ebbed Tide-Bell Seal</strong> alongside the <strong>Resonant Clapper</strong> shall summon <strong>Abyssal Tide-Resonance</strong> even on dry stone—unleashing twin tidal waves that shatter every shield.”'
     }
   },
 
@@ -272,7 +301,20 @@ export const WORLD_EN = {
     pickup_seal_mountain: {
       name: 'Frost Realm Seal · Frost-Ridge Shard',
       desc: 'Unsealed upon defeating Lin! Grants the Frost Realm Seal & Frost-Ridge Shard relic.'
-    }
+    },
+    pickup_bell_dive: { name: 'Art · Bell Dive', desc: 'Mid-air [S+Spell] invincible bronze-bell plunge that shatters glowing cracked floors & brittle ice!' },
+    pickup_sunken_well: { name: 'Riverbed Core · Ebbed Soul Crystal', desc: 'Revealed after draining the Abyssal River (+10 Vitality · +15 Soulfire · +60 Echoes).' },
+    pickup_sunken_woods: { name: 'Seepage Core · Dry Spore Marrow', desc: 'Revealed at the drained cavern pool (+15 Vitality · +10 Soulfire · +60 Echoes).' },
+    pickup_frost_vault_core: { name: 'Glacial Vault · Frost-Heart Core', desc: 'Uncovered via Bell Dive beneath brittle ice (+15 Vitality · +15 Soulfire · +80 Echoes).' },
+    pickup_echo_rain_steps: { name: 'Rain-Step Echoes', desc: 'Recovered +75 Echoes beneath the outer cloister eaves.' },
+    pickup_core_belfry: { name: 'Belfry Core · Severed Crystal', desc: 'Max Vitality +15 · Max Soulfire +10 · +55 Echoes.' },
+    pickup_echo_galleries: { name: 'Bell-Gallery Echoes', desc: 'Recovered +85 Echoes among the suspended chains.' },
+    pickup_flask_cistern: { name: 'Drowned Wick · Ebbed Oil Core', desc: 'Uncovered after draining the cistern (+1 Max Lantern Oil · +75 Echoes).' },
+    pickup_echo_cistern_lock: { name: 'Sluice-Lock Echoes', desc: 'Recovered +110 Echoes atop the bronze lock beams.' },
+    pickup_echo_frost_seep: { name: 'Frost-Seep Echoes', desc: 'Recovered +120 pure Echoes at the frozen river source.' },
+    pickup_zhu_crown: { name: 'First-Forged Crown · Twin-Mask', desc: 'Unsealed upon defeating Zhu! Vitality +25 · Soulfire +25 · +150 Echoes.' },
+    pickup_grapple_hook: { name: 'Art · Silk Grapple', desc: 'Unsealed upon defeating Hui! Press [F/Mid-Click/I] to swing across bronze anchors & snap-cut foes.' },
+    pickup_relic_tidebell: { name: 'Hidden Relic · Ebbed Tide-Bell Seal', desc: 'Exposed after draining the Abyssal Sluice! +18% Spell radius; once drained, +16% Spell DMG & -4 cost.' }
   },
 
   puzzles: {
@@ -322,7 +364,29 @@ export const WORLD_EN = {
     '西行步入「古钟树窟」— 破除盘根树铠后可由西侧孢伞直冲回廊': '“West enters Hollow Bell-Tree—bounce up the western spore-caps to return to the cloister”',
     '踏荧光巨孢伞连跃而上，可直返上层古林与起点圣所捷径': '“Bounce up the glowing spore-caps to ascend straight back to the upper woods and Sanctuary shortcut”',
     '西登「绝脊霜台」迎战断剑霜侯·凛 — 越过霜台即可高空连通绝风断塔': '“Ascend west to Glacial Peak to face Lin, Frost-Marquis—beyond lies the sky-link to Gale Spire”',
-    '西越冰风断桥即达「绝风断塔 · 断塔绝顶」': '“Cross the icy wind-bridge west to reach Gale Spire · Cloud-Sea Summit”'
+    '西越冰风断桥即达「绝风断塔 · 断塔绝顶」': '“Cross the icy wind-bridge west to reach Gale Spire · Cloud-Sea Summit”',
+    '「裂石薄层 · 需以「镇岳下砸」垂直震破」': '“Glowing cracked slab · shatter with mid-air [S+Spell] Bell Dive”',
+    '「暗河泄洪闸 · 启闸可排干全境墨渊暗河」': '“Abyssal Sluice Wheel · turn to drain ink rivers realm-wide”',
+    '「换向风铃 · 击鸣可反转双井罡风侧向气流」': '“Wind Vane · strike to reverse dual-shaft crosswinds”',
+    '「休眠巨孢 · 以「镇魂钟鸣」或引魂摇铃唤醒」': '“Dormant Giant Cap · awaken with Requiem Chime or Bell Staff”',
+    '「悬冰巨棱 · 击落可砸敌并冻成冰桥」': '“Hanging Icicle · strike down to crush foes & freeze a bridge”',
+    '「集齐三境铭印且斩落初钟圣骸 · 镜渊金风将贯通天穹」': '“Gather all Three Realm Seals & fell Yuan—a golden gale will ascend to the Mirror Abyss”',
+    '「西行可达断索钟楼外廊 · 绕回熄灯祭坛穹顶」': '“Head west to the Outer Belfry · loops back above the Extinguished Altar”',
+    '「击碎脚下封板 · 贯通回起点熄灯祭坛高阁」': '“Break the floor seal below · shortcut straight back to the Sanctuary loft”',
+    '「东侧暗墙之后直通绝风断桥 · 无需绕行古炉」': '“Beyond the east secret wall lies the Thousand-Bell Wind Bridge”',
+    '「沉钟水牢 · 昔日铸钟败品皆沉没于此渊底」': '“Sunken Bell Cistern · where failed bronze castings lie drowned”',
+    '「若启钟井暗河泄洪闸 · 巨厅深池将现古灯残芯」': '“Turn the Abyssal Sluice in the Well to expose a sunken Oil Core below”',
+    '「东行步入霜渊冰窖 · 暗河融雪之源」': '“Continue east to the Frost-Seep Source · origin of the subterranean rivers”',
+    '「寒流风井直通霜骸圣脊 · 地下大环路至此闭环」': '“This freezing updraft ascends to Frost Ridge · completing the subterranean loop”',
+    '「黑曜镜水之上 · 初铸残影静候三刃真主」': '“Upon obsidian mirror waters · Zhu awaits the Master of Three Arms”',
+    '「断钟骑士遗留的幽丝残环 · 破敌后可习得飞索绝技」': '“A severed silk-ring left by Hui · defeat the knight to claim Silk Grapple”',
+    '「启闸开启青铜活板 · 永久贯通回起点熄灯祭坛」': '“Pull lever to open the bronze hatch · permanent shortcut back to Sanctuary”',
+    '「启闸开启古根活板 · 直通起点熄灯祭坛」': '“Pull lever to open the root hatch · links straight up to Sanctuary”',
+    '「启闸开启绝风铁闸 · 贯通初钟圣阶与绝风断塔」': '“Pull lever to unseal the western iron gate · connects Ascent & Gale Spire”',
+    '「启闸开启西侧铁闸 · 贯通回沉渊钟井上层」': '“Pull lever to open the western shortcut back to Upper Bell Well”',
+    '「东侧绝风铁闸须自千铃断桥一侧启闸贯通」': '“East iron gate is sealed from the Thousand-Bell Bridge side”',
+    '「启闸开启西侧水牢铁闸 · 贯通回枯墨古林深窟」': '“Pull lever to open the western lock · links Cistern back to Ink Woods”',
+    '「启闸开启地窖活板 · 永久贯通回礼拜堂前祭坛」': '“Pull lever to open the crypt hatch · permanent shortcut up to Chapel Forecourt”'
   },
 
   biomes: {
@@ -350,6 +414,7 @@ export const WORLD_EN = {
     heart:     'Heart of the First Bell',
     wind:      'Gale-Shattered Spire',
     forest:    'Withered Ink Woods',
-    mountain:  'Frost-Bone Ridge'
+    mountain:  'Frost-Bone Ridge',
+    cistern:   'Sunken Bell Cistern'
   }
 };

@@ -1,6 +1,6 @@
 // Main Boss & Hidden Boss AI: Hui, Ji, Yuan, Zhu (split from src/ai.js in v32.0)
 import { COLORS, FLOOR_Y, WELL_BOTTOM_Y, GRAVITY, DUMMY_MODES, WIND_ZONES, BOUNCE_PADS } from '../config.js';
-import { G, addShake, triggerBossBanner, getCombatScaling, isPlayerInRoomId, damp } from '../state.js';
+import { G, addShake, triggerBossBanner, triggerBossIntro, getCombatScaling, isPlayerInRoomId, isBoss4Unlocked, damp } from '../state.js';
 import { audio } from '../audio.js';
 import { triggerHaptic } from '../input.js';
 import { updateCloak, spawnParticles, spawnShockwave, spawnFloatText } from '../vfx.js';
@@ -488,11 +488,10 @@ export function updateBoss2(b, dt) {
         b.windupDuration = 1.12;
         b.novaCd = 13.0;
         b.didHit = false;
-        G.chapelTide = { phase: 'warn', timer: 1.12, maxTimer: 1.12, hitCd: 0, x0: 5584, w: 1132, floorY: WELL_BOTTOM_Y, owner: b, lanternIds: ['lan_9', 'lan_10'], theme: 'gold' };
-        audio.playDangerAlert();
-        audio.playBellToll();
-        addShake(9);
-        spawnFloatText(bx, b.y - 54, t('boss.ji.novaWarn'), COLORS.goldBright, 21, 1.5);
+        G.chapelTide = { phase: 'warn', timer: 1.25, maxTimer: 1.25, hitCd: 0, x0: 5584, w: 1132, floorY: WELL_BOTTOM_Y, owner: b, lanternIds: [], theme: 'gold' };
+        b.stateTimer = 1.25; b.windupDuration = 1.25;
+        audio.playDangerAlert(); audio.playBellToll(); addShake(9);
+        spawnFloatText(bx, b.y - 54, t('boss.ji.novaWarnCrucible'), COLORS.goldBright, 21, 1.65);
       } else {
         const chosen = pickWeightedBossMove(b.lastMoveKind, [
           { kind: 'chainDropSlam', w: 28 },
@@ -829,29 +828,16 @@ export function updateBoss3(b, dt) {
       b.didHit = false;
       b.vx = 0;
       spawnFloatText(bxCenter, b.y - 50, t('combat.antiAirYuan'), COLORS.goldBright, 18, 0.9);
-    } else if (b.stateTimer <= 0 && b.phase >= 2 && b.tideCd <= 0 && !G.chapelTide) {
-      b.moveKind = 'eclipseTide';
-      b.lastMoveKind = 'eclipseTide';
-      b.comboIdx = 0;
-      b.comboTotal = 1;
-      b.isDelayedHit = false;
-      b.glintPlayed = false;
-      b.finisherParried = false;
-      b.state = 'windup';
-      b.stateTimer = 1.12;
-      b.windupDuration = 1.12;
-      b.tideCd = b.phase === 3 ? 12.0 : 14.0;
-      b.didHit = false;
-      b.vx = 0;
-      G.chapelTide = {
-        phase: 'warn', timer: 1.12, maxTimer: 1.12, hitCd: 0,
-        x0: b.arenaMinX, w: b.arenaMaxX - b.arenaMinX, floorY: b.arenaFloorY,
-        owner: b, lanternIds: ['lan_heart_1', 'lan_heart_2'], theme: 'gold'
-      };
-      audio.playDangerAlert();
-      audio.playBellToll();
-      addShake(10);
-      spawnFloatText(bxCenter, b.y - 54, t('boss.yuan.tideWarn'), COLORS.goldBright, 21, 1.55);
+    } else if (b.stateTimer <= 0 && b.phase >= 2 && b.tideCd <= 0) {
+      b.moveKind = 'eclipseTide'; b.lastMoveKind = 'eclipseTide';
+      b.comboIdx = 0; b.comboTotal = 3;
+      b.symphonyBeatsLeft = 3; b.symphonyBeatTimer = 0.05; b.symphonyReflects = 0;
+      b.isDelayedHit = false; b.glintPlayed = false; b.finisherParried = false;
+      b.state = 'windup'; b.stateTimer = 0.78; b.windupDuration = 0.78;
+      b.tideCd = b.phase === 3 ? 11.5 : 14.0; b.didHit = false; b.vx = 0;
+      audio.playBellToll(); audio.playGlintCue(false); addShake(10);
+      spawnShockwave(bxCenter, b.y + 42, 165, COLORS.goldBright, 4.2, 0.35);
+      spawnFloatText(bxCenter, b.y - 56, t('boss.yuan.symphonyWarn'), COLORS.goldBright, 21, 1.65);
     } else if (b.stateTimer <= 0 && absDx < 540) {
       let pool;
       if (b.phase === 3) {
@@ -948,17 +934,8 @@ export function updateBoss3(b, dt) {
       b.didHit = false;
       const by = b.y + 52;
       if (b.moveKind === 'eclipseTide') {
-        b.stateTimer = 1.45;
-        if (G.chapelTide) {
-          G.chapelTide.phase = 'surge';
-          G.chapelTide.timer = 1.45;
-          G.chapelTide.maxTimer = 1.45;
-          G.chapelTide.hitCd = 0;
-        }
-        audio.playTideRoar();
-        addShake(15);
-        G.screenFlash = { alpha: 0.28, color: COLORS.goldBright };
-        spawnShockwave(bxCenter, FLOOR_Y - 10, 260, COLORS.goldBright, 5.4, 0.45);
+        b.stateTimer = 2.45; b.symphonyBeatsLeft = 3; b.symphonyBeatTimer = 0.02; b.symphonyReflects = 0;
+        audio.playBellToll(); addShake(10); G.screenFlash = { alpha: 0.18, color: COLORS.goldBright };
       } else if (b.moveKind === 'skyShatter') {
         b.stateTimer = 1.35;
         b.leapAirborne = false;
@@ -1047,6 +1024,27 @@ export function updateBoss3(b, dt) {
         b.vy = 780;
         audio.playSlash(0.56, true);
         spawnShockwave(bxCenter, b.y + 42, 74, COLORS.goldBright, 3.2, 0.22);
+      }
+    }
+    if (b.moveKind === 'eclipseTide' && b.symphonyBeatsLeft > 0) {
+      b.symphonyBeatTimer -= dt;
+      if (b.symphonyBeatTimer <= 0) {
+        const beatNum = 4 - b.symphonyBeatsLeft;
+        b.symphonyBeatsLeft--;
+        b.symphonyBeatTimer = b.phase >= 3 ? 0.68 : 0.76;
+        b.facing = dx >= 0 ? 1 : -1;
+        const aimAng = Math.atan2((py - 6) - (b.y + 46), px - bxCenter);
+        const wSpd = b.phase >= 3 ? 520 : 465;
+        audio.playGlintCue(beatNum === 3);
+        audio.playResonanceBell(beatNum === 3 ? 659.25 : beatNum === 2 ? 523.25 : 440.0, false);
+        addShake(6.5);
+        spawnShockwave(bxCenter, b.y + 46, 118, COLORS.goldBright, 3.8, 0.26);
+        G.projectiles.push({
+          owner: 'enemy', source: b, kind: 'yuanResonanceWave', beatNum,
+          x: bxCenter + b.facing * 24, y: b.y + 46,
+          vx: Math.cos(aimAng) * wSpd, vy: Math.sin(aimAng) * wSpd,
+          r: 22, dmg: 24, posture: 26, life: 2.4, maxLife: 2.4, reflected: false, hitIds: new Set()
+        });
       }
     }
     if (b.moveKind !== 'eclipseTide' && b.moveKind !== 'bellRain') {
@@ -1185,6 +1183,15 @@ export function updateBoss4(b, dt) {
     b.vy += GRAVITY * dt;
     moveAndCollide(b, dt, false);
     updateCloak(b.cloak, b.x + b.w / 2 - b.facing * 10, b.y + 26, b.facing, 0, dt);
+    if (!G.echoSession && G.player && G.player.hp > 0 && isBoss4Unlocked() &&
+        G.player.x > b.arenaMinX + 440 && G.player.x < b.arenaMaxX &&
+        Math.abs((G.player.y + G.player.h) - b.arenaFloorY) < 220) {
+      b.awake = true; b.state = 'stalk'; b.stateTimer = 0.55;
+      audio.playBellToll(); audio.playBoss4Swap(); addShake(12);
+      G.screenFlash = { alpha: 0.24, color: COLORS.goldBright };
+      spawnShockwave(b.x + b.w * 0.5, b.y + b.h * 0.45, 220, COLORS.goldBright, 4.6, 0.48);
+      triggerBossIntro(b, t('boss.echoZhuTitle'), t('boss.echoZhuQuote'), COLORS.goldBright, 1.65);
+    }
     return;
   }
 

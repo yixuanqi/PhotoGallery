@@ -6,7 +6,7 @@ import { rgbStr, drawParallaxBackground, drawForegroundSilhouettes } from './ren
 import { drawStampsLayer } from './stampAtlas.js';
 import { drawWorldArchitecture } from './renderTerrain.js';
 import { isRoomOccluded } from './world.js';
-import { drawAchievementBanner } from './codex.js';
+import { drawAchievementBanner, drawBestiaryToast } from './codex.js';
 import { isInView, drawContactShadow } from './render/renderShared.js';
 import {
   drawWorldBackdrop, drawWeatherRipples, drawRoomOcclusionMasks, drawWallInscriptions,
@@ -18,6 +18,9 @@ import {
 } from './render/worldRenderer.js';
 import { drawPuppet } from './render/playerRenderer.js';
 import { drawEnemy } from './render/enemyRenderer.js';
+import { drawFoundryVentGate, drawMirrorAbyssGate, drawBreakableFloors, drawWorldSwitches, drawWindVanes, drawIcePillars, drawSlickWalls, drawSwitchGates } from './render/puzzleRenderer.js';
+import { drawFoundryCrucibles, drawCinematicLetterbox, drawZoneCalligraphyBanner } from './render/cinematicRenderer.js';
+import { drawTitleIntroOverlay } from './render/titleIntro.js';
 import { drawBoss, drawBoss2, drawBoss3, drawBoss4MirrorFloor, drawBoss4, drawBossBanner } from './render/bossRenderer.js';
 import {
   drawProjectiles, drawTalismans, drawChapelTide, drawGroundWaves, drawSporeClouds,
@@ -107,7 +110,11 @@ export function render() {
   drawWallInscriptions();
   drawWindZones();
   drawBouncePads();
+  drawBreakableFloors();
   drawCrumblePlatforms();
+  drawWorldSwitches();
+  drawWindVanes();
+  drawIcePillars();
   drawAltars();
   drawNpcs();
   drawShortcutGate();
@@ -120,6 +127,7 @@ export function render() {
 
   // 5. Hanging Brass Lanterns, Swinging Pendulums & Grapple Bell Anchors
   drawLanterns();
+  drawFoundryCrucibles();
   drawPendulums();
   drawGrappleAnchors();
 
@@ -191,6 +199,10 @@ export function render() {
   drawFoundryEntryGate();
   drawFoundryExitGate();
   drawSkyBridgeGate();
+  drawFoundryVentGate();
+  drawMirrorAbyssGate();
+  drawSwitchGates();
+  drawSlickWalls();
   drawSecretWalls();
   let _t5 = performance.now();
   prof.addModuleTime('vfx', _t5 - _t4);
@@ -232,8 +244,12 @@ export function render() {
   }
 
   drawFrostOverlay();
+  drawCinematicLetterbox();
+  drawZoneCalligraphyBanner();
   drawBossBanner();
   drawAchievementBanner();
+  drawBestiaryToast();
+  drawTitleIntroOverlay();
   prof.addModuleTime('vfx', performance.now() - _t6);
 
   G.ctx.restore();

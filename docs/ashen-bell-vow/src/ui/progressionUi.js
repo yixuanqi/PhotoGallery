@@ -12,7 +12,7 @@ import {
   ensureNpcQuests, hasKeeperBlessing,
   getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks, getPlayerMaxSeals,
   markMapExplored, getExplorationPercent, createLanterns,
-  createResonancePuzzles, createCrumblePlatforms, getAwakeBoss, getHudBoss, isBoss4Unlocked, clearOutcomeTimer, triggerBossBanner, setTextFast
+  createResonancePuzzles, createCrumblePlatforms, createFoundryCrucibles, getAwakeBoss, getHudBoss, isBoss4Unlocked, clearOutcomeTimer, triggerBossBanner, setTextFast
 } from '../state.js';
 import { audio } from '../audio.js';
 import {
@@ -56,7 +56,10 @@ export function returnToTitle() {
   G.gameState = 'title';
   uiHooks.refreshTitleSaveUI();
   const titleEl = document.getElementById('title-screen');
-  if (titleEl) titleEl.classList.remove('hidden');
+  if (titleEl) { titleEl.classList.remove('hidden', 'title-intro-lock'); titleEl.classList.add('title-revealed'); }
+  const sd = document.getElementById('title-slots-drawer');
+  if (sd) sd.classList.add('hidden');
+  G.player = null;
 }
 
 export function evaluateEchoGrade(mode, elapsedSec, dmgTaken) {
@@ -68,6 +71,9 @@ export function evaluateEchoGrade(mode, elapsedSec, dmgTaken) {
 }
 
 export function setupEchoArena(stageBoss) {
+  G.foundryCrucibles = createFoundryCrucibles();
+  G.bossIntro = null;
+  G.bossKillSlowmo = null;
   G.enemies = [];
   G.boss = createBoss();
   G.boss2 = createBoss2();
@@ -177,11 +183,8 @@ export function setupEchoArena(stageBoss) {
     snapCameraToPlayer(8);
     triggerBossBanner(t('boss.echoWardenMountainTitle'), t('boss.wardenMountain.awakeQuote'), '#bae6fd', 2.4);
   } else if (stageBoss === 'zhu') {
-    G.boss.alive = false;
-    G.boss2.alive = false;
-    G.boss3.alive = false;
-    G.boss4.alive = true;
-    G.boss4.awake = true;
+    G.boss.alive = false; G.boss2.alive = false; G.boss3.alive = false;
+    G.boss4 = createBoss4(true); G.boss4.alive = true; G.boss4.awake = true;
     const isSeven = !!(G.echoSession && G.echoSession.mode === 'seven_bells' && G.player);
     const keepFlasks = isSeven ? Math.min(getPlayerMaxFlasks(), G.player.flasks + 2) : getPlayerMaxFlasks();
     const keepHp = isSeven ? Math.min(G.player.maxHp, Math.max(90, G.player.hp + 85)) : getPlayerMaxHp();
@@ -337,6 +340,9 @@ export function restAtAltar() {
 }
 
 export function respawnAtActiveAltar() {
+  G.foundryCrucibles = createFoundryCrucibles();
+  G.bossIntro = null;
+  G.bossKillSlowmo = null;
   clearOutcomeTimer();
   if (!G.player || !G.worldState) {
     startGame();
@@ -473,6 +479,14 @@ export function showVictory(bossId = 'boss_hui') {
     btnEnterWell.style.display = 'inline-block';
     btnEnterWell.textContent = t('death.retryAltar');
     btnPlayAgain.style.display = 'none';
+  } else if (bossId === 'boss_zhu') {
+    const elapsed = Math.max(0, (performance.now() - G.stats.startTime) / 1000);
+    const minutes = Math.floor(elapsed / 60);
+    const seconds = Math.floor(elapsed % 60).toString().padStart(2, '0');
+    titleEl.textContent = t('victory.zhuTitle'); subEl.textContent = t('victory.zhuSub');
+    statsEl.textContent = t('victory.jiStats', getExplorationPercent(), minutes, seconds, G.stats.parries, G.stats.executions, G.stats.damageTaken);
+    btnEchoAgain.style.display = 'none'; btnEnterWell.style.display = 'inline-block';
+    btnEnterWell.textContent = t('victory.zhuNext'); btnPlayAgain.style.display = 'inline-block';
   } else if (bossId === 'boss_ji') {
     const elapsed = Math.max(0, (performance.now() - G.stats.startTime) / 1000);
     const minutes = Math.floor(elapsed / 60);
@@ -528,6 +542,12 @@ export function startGame() {
   G.boss3 = createBoss3();
   G.boss4 = createBoss4();
   G.bossBanner = null;
+  G.bossIntro = null;
+  G.bossKillSlowmo = null;
+  G.zoneBanner = null;
+  G.bestiaryToast = null;
+  G.lastZoneName = '';
+  G.foundryCrucibles = createFoundryCrucibles();
   G.endingState = null;
   G.lanterns = createLanterns();
   G.resonancePuzzles = createResonancePuzzles();

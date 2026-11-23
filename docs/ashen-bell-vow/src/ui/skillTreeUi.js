@@ -12,6 +12,7 @@ import { triggerHaptic } from '../input.js';
 import { saveProgress } from '../save.js';
 import { t, isEn, locNpcName, locRelic } from '../i18n.js';
 import { getRelicEmblemSvg, getWeaponEmblemSvg } from '../emblems.js';
+import { getNpcPortraitSvg } from '../npcPortraits.js';
 import { WEAPONS } from '../weapons.js';
 import { checkAchievements } from '../codex.js';
 import {
@@ -128,6 +129,8 @@ export function renderSmithModal() {
   const echoes = G.worldState.echoes || 0;
 
   // Compact single-line atmospheric quote (trimmed from verbose dialogue)
+  const pBox = document.getElementById('smith-portrait-box');
+  if (pBox) pBox.innerHTML = getNpcPortraitSvg('smith');
   const dlg = document.getElementById('smith-dialogue');
   if (dlg) {
     const u = G.worldState.smithUpgrades;

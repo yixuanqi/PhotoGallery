@@ -21,7 +21,8 @@
   ],
   "connections": [
     "r04_bell_well",
-    "r07_ascent"
+    "r07_ascent",
+    "r09_wind_spire"
   ],
   "solids": [
     {
@@ -41,7 +42,14 @@
     {
       "x": 0,
       "y": 0,
-      "w": 1180,
+      "w": 275,
+      "h": 40,
+      "type": "pillar"
+    },
+    {
+      "x": 430,
+      "y": 0,
+      "w": 750,
       "h": 40,
       "type": "pillar"
     },
@@ -71,10 +79,29 @@
       "y": 460,
       "w": 40,
       "h": 140
+    },
+    {
+      "id": "gate_foundry_vent",
+      "role": "foundryValve",
+      "x": 275,
+      "y": 0,
+      "w": 155,
+      "h": 40
     }
   ],
   "secretWalls": [],
-  "pickups": [],
+  "pickups": [
+    {
+      "id": "pickup_bell_dive",
+      "kind": "ability",
+      "abilityId": "bellDive",
+      "requiresBoss": "boss_ji",
+      "x": 580,
+      "y": 600,
+      "name": "绝技 · 镇岳下砸",
+      "desc": "空中按 [S+法术] 化身青铜巨钟无敌俯冲，可震碎发光裂石地板与脆冰！"
+    }
+  ],
   "resonancePuzzles": [],
   "pendulums": [],
   "rivers": [],
@@ -226,5 +253,28 @@
       }
     ]
   },
-  "voidBarriers": []
+  "voidBarriers": [],
+  "worldSwitches": [
+    {
+      "id": "switch_foundry_valve",
+      "switchKey": "foundryValveOpen",
+      "kind": "valve",
+      "requiresBoss": "boss_ji",
+      "x": 352,
+      "y": 600,
+      "name": "古炉泄压风阀"
+    }
+  ],
+  "windZones": [
+    {
+      "id": "wz_foundry_express",
+      "x": 275,
+      "y": -24,
+      "w": 155,
+      "h": 624,
+      "vx": 0,
+      "vy": -1680,
+      "requiresSwitch": "foundryValveOpen"
+    }
+  ]
 }

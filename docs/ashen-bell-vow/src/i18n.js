@@ -129,12 +129,13 @@ export function locNpcName(npc, fallbackKind = 'smith') {
   const kind = (npc && npc.kind) || fallbackKind;
   if (!isEn()) {
     if (npc && npc.name) return npc.name;
-    return kind === 'chronicler' ? '游方拾碑客 · 墨尘' : kind === 'keeper' ? '旧誓守灯人 · 汐' : '盲眼老铸钟匠 · 砺';
+    return kind === 'chronicler' ? '游方拾碑客 · 墨尘' : kind === 'keeper' ? '旧誓守灯人 · 汐' : kind === 'scavenger' ? '盲眼拾荒童 · 灰芽' : '盲眼老铸钟匠 · 砺';
   }
   const byId = npc && npc.id && WORLD_EN.npcs[npc.id];
   if (byId) return byId.name;
   if (kind === 'chronicler') return WORLD_EN.npcs.npc_chronicler.name;
   if (kind === 'keeper') return WORLD_EN.npcs.npc_keeper.name;
+  if (kind === 'scavenger') return WORLD_EN.npcs.npc_scavenger.name;
   return WORLD_EN.npcs.npc_smith.name;
 }
 

@@ -139,6 +139,7 @@ class ModuleHTTPRequestHandler(http_server.SimpleHTTPRequestHandler):
 
 def main():
     no_open = '--no-open' in sys.argv
+    open_editor = '--editor' in sys.argv
     srv = None
     port = 8080
     for p in range(8080, 8100):
@@ -153,12 +154,12 @@ def main():
         raise SystemExit(u'端口 8080-8099 均被占用，请关闭部分本地服务后重试。')
 
     url = 'http://localhost:{0}/'.format(port)
-    print(u'>>> 灰钟残誓 v35.0 本地服务已就绪: {0}'.format(url))
+    print(u'>>> 灰钟残誓 v43.4 本地服务已就绪: {0}'.format(url))
     print(u'>>> 房间关卡编辑器地址:        {0}editor.html'.format(url))
     print(u'>>> 已启用 .js MIME 强制修正与编辑器本地保存 API (/api/save-bundle)')
     print(u'>>> 关闭此窗口或按 Ctrl+C 即可停止服务。\n')
     if not no_open:
-        webbrowser.open(url)
+        webbrowser.open(url + ('editor.html' if open_editor else ''))
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

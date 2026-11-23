@@ -3,15 +3,15 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>灰钟残誓 v35.0 — 全境生态关卡、铭印神龛与经济体检编辑器</title>
-<link rel="stylesheet" href="./editor.css?v=35.0" />
+<title>灰钟残誓 v43.4 — 全境生态关卡、铭印神龛与经济体检编辑器</title>
+<link rel="stylesheet" href="./editor.css?v=43.4" />
 </head>
 <body>
 <div class="ed-shell">
   <!-- Top Bar -->
   <header class="ed-topbar">
     <div class="ed-brand">
-      <span>灰钟残誓 v35.0 · 全境编辑器</span>
+      <span>灰钟残誓 v43.4 · 全境编辑器</span>
     </div>
     <div class="ed-top-group">
       <button id="btn-view-room" class="ed-btn active">单房间编辑</button>
@@ -26,7 +26,8 @@
       <button id="btn-fit" class="ed-btn" title="居中适配画布 [F]">适配视野</button>
       <button id="btn-undo" class="ed-btn" title="撤销 [Ctrl+Z]">↶ 撤销</button>
       <button id="btn-redo" class="ed-btn" title="重做 [Ctrl+Y]">↷ 重做</button>
-      <button id="btn-audit" class="ed-btn" title="一键体检房间重叠、断链、生态机关、铭印神龛、天顶石门与全境残响经济总量">🩺 全境体检</button>
+      <button id="btn-audit" class="ed-btn" title="打开/刷新实时全境体检（含 5 阶有向可达图防软锁、防绕后、竖井净空与残响经济）">🩺 全境体检</button>
+      <button id="btn-audit-highlight-top" class="ed-btn" title="一键高亮全图所有违规/告警房间与冲突几何区 [G]">🔦 高亮违规房 [G]</button>
     </div>
     <div class="ed-top-group">
       <button id="btn-playtest" class="ed-btn primary" title="直接跳入当前编辑的房间试玩">▶ 试玩当前房</button>
@@ -89,6 +90,8 @@
         <button class="tool-btn" data-tool="falcon"><span class="tool-dot" style="background:#38bdf8"></span>衔铃风隼</button>
         <button class="tool-btn" data-tool="fungus"><span class="tool-dot" style="background:#22c55e"></span>孢蚀菌傀</button>
         <button class="tool-btn" data-tool="frostguard"><span class="tool-dot" style="background:#93c5fd"></span>寒戟骸卫</button>
+        <button class="tool-btn" data-tool="drowned"><span class="tool-dot" style="background:#0ea5e9"></span>溺钟潜行者</button>
+        <button class="tool-btn" data-tool="anchorite"><span class="tool-dot" style="background:#94a3b8"></span>锈锚重锤兵</button>
         <button class="tool-btn warden-tool" data-tool="warden_wind"><span class="tool-dot" style="background:#0ea5e9"></span>守誓·朔</button>
         <button class="tool-btn warden-tool" data-tool="warden_forest"><span class="tool-dot" style="background:#16a34a"></span>守誓·枯</button>
         <button class="tool-btn warden-tool" data-tool="warden_mountain"><span class="tool-dot" style="background:#60a5fa"></span>守誓·凛</button>
@@ -115,7 +118,7 @@
     </div>
 
     <div>
-      <div class="ed-sec-title"><span>程序化水墨图章 (17 种)</span></div>
+      <div class="ed-sec-title"><span>程序化水墨图章 (20 种)</span></div>
       <div id="stamp-cat-tabs" class="stamp-cat-tabs"></div>
       <div id="stamp-palette" class="tool-grid"></div>
     </div>
@@ -125,20 +128,33 @@
   <main class="ed-viewport">
     <canvas id="editorCanvas"></canvas>
     <div id="ed-toast" class="ed-toast"></div>
+    <div id="ed-file-guard" class="ed-file-guard hidden">
+      <div class="ed-file-guard-card">
+        <div class="ed-file-guard-title">⚠ 检测到以本地文件 (file://) 直接打开编辑器</div>
+        <p>浏览器安全策略禁止在 <code>file://</code> 协议下加载 ES 模块与读取 <code>data/rooms/*.json</code>，因此画布与房间列表无法启动。</p>
+        <div class="ed-file-guard-steps">
+          <div><strong>正确打开方式（任选其一）：</strong></div>
+          <div>1. 双击项目根目录的 <code>start_editor.bat</code>（Mac/Linux 运行 <code>./start_editor.sh</code>）一键启动编辑器。</div>
+          <div>2. 若已双击运行 <code>start_game.bat</code>，直接在浏览器地址栏访问 <code>http://localhost:8080/editor.html</code>（支持直接保存回磁盘）。</div>
+        </div>
+      </div>
+    </div>
+
     <div id="audit-panel" class="audit-panel hidden">
       <div class="audit-header">
         <div>
           <span class="audit-title">全境箱庭体检报告</span>
           <span id="audit-summary" class="audit-summary"></span>
         </div>
-        <div style="display:flex;gap:6px;">
-          <button id="btn-audit-rerun" class="ed-btn" style="padding:3px 8px;font-size:11px;">重新校验</button>
+        <div style="display:flex;gap:5px;">
+          <button id="btn-audit-highlight" class="ed-btn" style="padding:3px 8px;font-size:11px;" title="在画布上高亮所有违规房间与冲突区域并切至全境总览">🔦 高亮违规</button>
+          <button id="btn-audit-rerun" class="ed-btn" style="padding:3px 8px;font-size:11px;">刷新</button>
           <button id="btn-audit-close" class="ed-btn" style="padding:3px 8px;font-size:11px;">✕</button>
         </div>
       </div>
       <div id="audit-list" class="audit-list"></div>
     </div>
-    <div class="ed-hint-pill">左键选/画 · 右/中键平移 · 滚轮缩放 · M 切实景水墨/线框 · P 定点试玩 · [/] 缩图章 · H 镜像 · L 切层 · R 换变体 · Ctrl+D 复制 · Del 删除 · F 适配</div>
+    <div class="ed-hint-pill">左键选/画 · 右/中键平移 · 滚轮缩放 · M 切实景水墨/线框 · G 高亮违规房 · P 定点试玩 · [/] 缩图章 · H 镜像 · L 切层 · Ctrl+D 复制 · Del 删除 · F 适配</div>
   </main>
 
   <!-- Right Sidebar: Inspector -->
@@ -163,6 +179,14 @@
     <span id="status-info">就绪</span>
   </footer>
 </div>
-<script type="module" src="./src/editor.js?v=35.0"></script>
+<script>
+  if (window.location.protocol === 'file:') {
+    var g = document.getElementById('ed-file-guard');
+    if (g) g.classList.remove('hidden');
+    var st = document.getElementById('status-info');
+    if (st) st.textContent = '⚠ 请通过 start_editor.bat 或 http://localhost:8080/editor.html 打开';
+  }
+</script>
+<script type="module" src="./src/editor.js?v=43.4"></script>
 </body>
 </html>

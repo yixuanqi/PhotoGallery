@@ -1,4 +1,5 @@
 // Codex, NPCs (Mochen / Xi / Bell-Smith Li), Training Console, Lore, Pause, Settings & Altar Modals (v32.0)
+import { getNpcPortraitSvg } from '../npcPortraits.js';
 import { COLORS, RELICS, RELIC_SYNERGIES, DUMMY_MODES, ACTION_META, ROOMS, LORE_TABLETS } from '../config.js';
 import { G, getActiveWeaponId, isWeaponUnlocked, isWeaponTraitUnlocked, getActiveWeaponTraitId, setActiveWeaponTrait, ensureNpcQuests, getPlayerMaxHp, getPlayerMaxSoul, getExplorationPercent } from '../state.js';
 import { audio } from '../audio.js';
@@ -7,35 +8,121 @@ import { equipWeapon } from '../combat.js';
 import { spawnShockwave, spawnFloatText } from '../vfx.js';
 import { saveProgress, saveUserSettings } from '../save.js';
 import { t, getLocale, isEn, locZoneName, locRoomName, locTablet, locPickup, locNpcName, locRelic, locSynergy, locBestiary, locAchievement, locDummyMode, locActionLabel } from '../i18n.js';
-import { getBestiaryEmblemSvg } from '../emblems.js';
-import { WEAPON_ORDER, WEAPONS, getWeaponForgeTraits } from '../weapons.js';
+import { getWeaponHeroSvg, getBestiaryPortraitDataUrl } from './codexGallery.js';
+import { WEAPON_ORDER, WEAPONS, getWeaponForgeTraits, getWeaponUltimateDef } from '../weapons.js';
 import { prof } from '../profiler.js';
 import { BESTIARY_ENTRIES, ACHIEVEMENTS_DEF, ensureCodexState, recordTabletRead, checkAchievements } from '../codex.js';
 import { uiState, uiHooks, formatPlayTime, openModal, closeModal } from './uiShared.js';
-let codexActiveTab = 'lore'; // 'lore' | 'bestiary' | 'achievements'
+let settingsActiveTab = 'settings'; // 'settings' | 'weapons' | 'bestiary' | 'archive'
+let codexActiveTab = 'bestiary';
+let selectedWeaponCodexId = 'blade';
+let selectedBestiaryKind = 'sentinel';
 let activeLoreTabletRef = null;
+
+export function openSettingsJournal(tab = 'settings') {
+  if (G.gameState === 'dead' || G.gameState === 'victory') return;
+  const target = ['settings', 'weapons', 'bestiary', 'archive'].includes(tab) ? tab : 'settings';
+  if (G.activeModal === 'settings' && settingsActiveTab === target) {
+    saveUserSettings();
+    closeModal('settings');
+    return;
+  }
+  settingsActiveTab = target;
+  if (G.worldState) checkAchievements();
+  openModal('settings');
+  renderSettingsModal();
+}
 
 export function openCodexModal(tab = null) {
   if (G.gameState === 'dead' || G.gameState === 'victory' || G.gameState === 'title') return;
-  if (G.activeModal === 'codex' && (!tab || tab === codexActiveTab)) {
-    closeModal('codex');
-    return;
-  }
-  if (tab && ['lore', 'bestiary', 'achievements'].includes(tab)) {
-    codexActiveTab = tab;
-  }
-  checkAchievements();
-  openModal('codex');
-  renderCodexModal();
+  const mapped = (tab === 'lore' || tab === 'achievements') ? 'archive'
+    : tab === 'weapons' ? 'weapons'
+    : 'bestiary';
+  openSettingsJournal(mapped);
 }
 
-export function renderCodexModal() {
+function renderWeaponCodexInto(bodyEl) {
+  const en = isEn();
+  const activeW = getActiveWeaponId();
+  if (!WEAPON_ORDER.includes(selectedWeaponCodexId)) selectedWeaponCodexId = activeW || 'blade';
+
+  const grid = document.createElement('div');
+  grid.className = 'weapon-gallery-grid';
+  for (let i = 0; i < WEAPON_ORDER.length; i++) {
+    const id = WEAPON_ORDER[i];
+    const w = WEAPONS[id];
+    const unlocked = !G.worldState || isWeaponUnlocked(id);
+    const isEq = unlocked && activeW === id;
+    const isSel = selectedWeaponCodexId === id;
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = `weapon-art-card${isSel ? ' selected' : ''}${unlocked ? '' : ' locked'}`;
+    card.innerHTML = `
+      <div class="weapon-art-frame">
+        ${getWeaponHeroSvg(id, unlocked)}
+        <span class="weapon-art-badge">${isEq ? t('altar.weaponEquipped') : unlocked ? (en ? w.tagEn : w.tag) : t('altar.relicLocked')}</span>
+      </div>
+      <div class="weapon-art-caption">
+        <span class="weapon-art-name">${unlocked ? (en ? w.nameEn : w.name) : t('altar.relicUnknown')}</span>
+        <span class="weapon-art-key">[${w.hotkey}]</span>
+      </div>
+    `;
+    card.addEventListener('click', () => {
+      selectedWeaponCodexId = id;
+      bodyEl.innerHTML = '';
+      renderWeaponCodexInto(bodyEl);
+    });
+    grid.appendChild(card);
+  }
+  bodyEl.appendChild(grid);
+
+  // Compact Detail Strip for Selected Weapon (concise chips, art remains hero)
+  const w = WEAPONS[selectedWeaponCodexId] || WEAPONS.blade;
+  const unlocked = !G.worldState || isWeaponUnlocked(w.id);
+  const detail = document.createElement('div');
+  detail.className = 'weapon-detail-strip';
+  if (unlocked) {
+    const ult = getWeaponUltimateDef(w.id);
+    const traits = getWeaponForgeTraits(w.id);
+    const activeTid = getActiveWeaponTraitId(w.id);
+    const wTraits = en ? w.traitsEn : w.traits;
+    detail.innerHTML = `
+      <div class="weapon-detail-head">
+        <span class="weapon-detail-title">[${w.hotkey}] ${en ? w.nameEn : w.name}</span>
+        <span class="wcodex-tag">${wTraits[0]}</span>
+      </div>
+      <div class="wcodex-moves">
+        <div class="wcodex-move-pill"><strong>${t('wcodex.lblHold')}</strong>${wTraits[1] || ''}</div>
+        <div class="wcodex-move-pill"><strong>${t('wcodex.lblSwitch')}</strong>${wTraits[2] || ''}</div>
+        <div class="wcodex-move-pill"><strong>${t('wcodex.lblAir')}</strong>${t(`wcodex.air.${w.id}`)}</div>
+        <div class="wcodex-move-pill"><strong>${t('wcodex.lblUlt')}</strong>${en ? ult.nameEn : ult.name}</div>
+      </div>
+      <div class="wcodex-traits-row">${traits.map(ft => {
+        const has = isWeaponTraitUnlocked(ft.id);
+        const act = has && activeTid === ft.id;
+        return `<span class="wcodex-trait-pill${has ? ' lit' : ''}">${act ? '✦ ' : has ? '◇ ' : '🔒 '}${en ? ft.nameEn : ft.name}</span>`;
+      }).join('')}</div>
+    `;
+  } else {
+    detail.innerHTML = `
+      <div class="weapon-detail-head">
+        <span class="weapon-detail-title">${t('altar.relicUnknown')}</span>
+        <span class="smith-lv-pill">${t('altar.relicLocked')}</span>
+      </div>
+      <div class="wcodex-tag">${t(`wcodex.hint.${w.id}`)}</div>
+    `;
+  }
+  bodyEl.appendChild(detail);
+}
+
+export function renderCodexModal(targetBodyEl = null, forcedTab = null) {
   if (!G.worldState) return;
   const c = ensureCodexState();
   const subEl = document.getElementById('codex-modal-sub');
   const tabsEl = document.getElementById('codex-tabs');
-  const bodyEl = document.getElementById('codex-body');
-  if (!tabsEl || !bodyEl) return;
+  const bodyEl = targetBodyEl || document.getElementById('codex-body');
+  const activeTab = forcedTab || codexActiveTab;
+  if (!bodyEl) return;
 
   let seenFoes = 0;
   for (const e of BESTIARY_ENTRIES) {
@@ -45,25 +132,26 @@ export function renderCodexModal() {
     subEl.textContent = t('codex.sub', c.readTablets.length, LORE_TABLETS.length, seenFoes, BESTIARY_ENTRIES.length, c.achievements.length, ACHIEVEMENTS_DEF.length, c.discoveredSynergies.length, RELIC_SYNERGIES.length);
   }
 
-  tabsEl.innerHTML = '';
-  [
-    { id: 'lore', label: t('codex.tabLore', c.readTablets.length, LORE_TABLETS.length) },
-    { id: 'bestiary', label: t('codex.tabBestiary', seenFoes, BESTIARY_ENTRIES.length) },
-    { id: 'achievements', label: t('codex.tabAchievements', c.achievements.length, ACHIEVEMENTS_DEF.length) }
-  ].forEach(tb => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = `codex-tab-btn${codexActiveTab === tb.id ? ' active' : ''}`;
-    btn.textContent = tb.label;
-    btn.addEventListener('click', () => {
-      codexActiveTab = tb.id;
-      renderCodexModal();
+  if (!targetBodyEl && tabsEl) {
+    tabsEl.innerHTML = '';
+    [
+      { id: 'lore', label: t('codex.tabLore', c.readTablets.length, LORE_TABLETS.length) },
+      { id: 'bestiary', label: t('codex.tabBestiary', seenFoes, BESTIARY_ENTRIES.length) },
+      { id: 'achievements', label: t('codex.tabAchievements', c.achievements.length, ACHIEVEMENTS_DEF.length) }
+    ].forEach(tb => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `codex-tab-btn${activeTab === tb.id ? ' active' : ''}`;
+      btn.textContent = tb.label;
+      btn.addEventListener('click', () => { codexActiveTab = tb.id; renderCodexModal(); });
+      tabsEl.appendChild(btn);
     });
-    tabsEl.appendChild(btn);
-  });
+  }
 
   bodyEl.innerHTML = '';
-  if (codexActiveTab === 'lore') {
+  if (activeTab === 'weapons') {
+    renderWeaponCodexInto(bodyEl);
+  } else if (activeTab === 'lore' || activeTab === 'archive') {
     const sec1 = document.createElement('div');
     sec1.className = 'codex-sec-head';
     sec1.textContent = t('codex.secTablets');
@@ -113,35 +201,91 @@ export function renderCodexModal() {
       endGrid.appendChild(card);
     });
     bodyEl.appendChild(endGrid);
-  } else if (codexActiveTab === 'bestiary') {
+    if (activeTab === 'archive') {
+      const pct = Math.round((c.achievements.length / Math.max(1, ACHIEVEMENTS_DEF.length)) * 100);
+      const sec3 = document.createElement('div');
+      sec3.className = 'codex-sec-head';
+      sec3.style.marginTop = '14px';
+      sec3.textContent = t('codex.tabAchievements', c.achievements.length, ACHIEVEMENTS_DEF.length);
+      bodyEl.appendChild(sec3);
+      const prog = document.createElement('div');
+      prog.className = 'codex-ach-prog';
+      prog.innerHTML = `<div class="codex-ach-prog-top"><span>${t('codex.achProgress')}</span><span>${c.achievements.length} / ${ACHIEVEMENTS_DEF.length} (${pct}%)</span></div><div class="codex-ach-track"><div class="codex-ach-fill" style="width:${pct}%"></div></div>`;
+      bodyEl.appendChild(prog);
+      const aGrid = document.createElement('div');
+      aGrid.className = 'codex-ach-grid';
+      for (const ach of ACHIEVEMENTS_DEF) {
+        const done = c.achievements.includes(ach.id);
+        const card = document.createElement('div');
+        card.className = `codex-ach-card${done ? ' done' : ''}`;
+        card.innerHTML = `<div class="codex-ach-seal">${done ? t('codex.achSeal') : '·'}</div><div class="codex-ach-info"><div class="codex-ach-name">${locAchievement(ach, 'name')}</div><div class="codex-ach-desc">${locAchievement(ach, 'desc')}</div></div>`;
+        aGrid.appendChild(card);
+      }
+      bodyEl.appendChild(aGrid);
+    }
+  } else if (activeTab === 'bestiary') {
+    const validSelected = BESTIARY_ENTRIES.find(e => e.kind === selectedBestiaryKind);
+    if (!validSelected) {
+      const firstSeen = BESTIARY_ENTRIES.find(e => c.bestiary[e.kind] && c.bestiary[e.kind].seen);
+      selectedBestiaryKind = firstSeen ? firstSeen.kind : BESTIARY_ENTRIES[0].kind;
+    }
+    const selEntry = BESTIARY_ENTRIES.find(e => e.kind === selectedBestiaryKind) || BESTIARY_ENTRIES[0];
+    const selRec = c.bestiary[selEntry.kind];
+    const selSeen = !!(selRec && selRec.seen);
+    const selHabitat = locBestiary(selEntry, 'habitat');
+    const sKills = selRec ? (selRec.kills || 0) : 0;
+    const sParries = selRec ? (selRec.parries || 0) : 0;
+    const sExecs = selRec ? (selRec.executions || 0) : 0;
+
+    // 1. Top Big Portrait Hero Showcase
+    const hero = document.createElement('div');
+    hero.className = `bestiary-hero${selEntry.isBoss ? ' boss' : ''}`;
+    const heroStats = selEntry.kind === 'dummy'
+      ? `<span class="bestiary-stat-chip">${t('codex.statDummyParries')}<strong>${sParries}</strong></span><span class="bestiary-stat-chip">${t('codex.statDummyExecs')}<strong>${sExecs}</strong></span>`
+      : `<span class="bestiary-stat-chip">${t('codex.statKills')}<strong>${sKills}</strong></span><span class="bestiary-stat-chip">${t('codex.statParries')}<strong>${sParries}</strong></span><span class="bestiary-stat-chip">${t('codex.statExecs')}<strong>${sExecs}</strong></span>`;
+    hero.innerHTML = `
+      <div class="bestiary-hero-art">
+        <img src="${getBestiaryPortraitDataUrl(selEntry.kind, selSeen)}" alt="${selSeen ? locBestiary(selEntry, 'name') : '?'}" />
+      </div>
+      <div class="bestiary-hero-info">
+        <div class="bestiary-hero-name">
+          <span>${selSeen ? locBestiary(selEntry, 'name') : t('altar.relicUnknown')}</span>
+          ${selEntry.isBoss ? `<span class="codex-boss-pill">${t('codex.bossPill')}</span>` : ''}
+        </div>
+        <div class="bestiary-hero-sub">${selSeen ? `${locBestiary(selEntry, 'title')} · ${selHabitat}` : t('codex.habitatUnknown', selHabitat)}</div>
+        ${selSeen
+          ? `<div class="bestiary-hero-tactic"><strong>${t('codex.tacticLabel')}</strong>${locBestiary(selEntry, 'tactic')}</div>
+             <div class="bestiary-hero-lore">${locBestiary(selEntry, 'lore')}</div>
+             <div class="bestiary-hero-stats">${heroStats}</div>`
+          : `<div class="bestiary-hero-lore">${t('codex.foeLocked')}</div>`
+        }
+      </div>
+    `;
+    bodyEl.appendChild(hero);
+
+    // 2. Bottom 4-Column Art-First Portrait Tile Grid (Big Image + Minimal Name/Count Footer)
     const grid = document.createElement('div');
-    grid.className = 'codex-bestiary-grid';
+    grid.className = 'bestiary-gallery-grid';
     for (const entry of BESTIARY_ENTRIES) {
       const rec = c.bestiary[entry.kind];
       const seen = !!(rec && rec.seen);
-      const card = document.createElement('div');
-      card.className = `codex-foe-card${seen ? '' : ' locked'}${entry.isBoss ? ' boss' : ''}`;
       const kills = rec ? (rec.kills || 0) : 0;
-      const parries = rec ? (rec.parries || 0) : 0;
-      const execs = rec ? (rec.executions || 0) : 0;
-      const statsHtml = entry.kind === 'dummy'
-        ? `<span>${t('codex.statDummyParries')} <strong>${parries}</strong></span><span>${t('codex.statDummyExecs')} <strong>${execs}</strong></span>`
-        : `<span>${t('codex.statKills')} <strong>${kills}</strong></span><span>${t('codex.statParries')} <strong>${parries}</strong></span><span>${t('codex.statExecs')} <strong>${execs}</strong></span>`;
-      const habitat = locBestiary(entry, 'habitat');
-      card.innerHTML = `
-        <div class="codex-foe-head">
-          <div class="codex-foe-icon">${getBestiaryEmblemSvg(seen ? entry.kind : 'unknown')}</div>
-          <div class="codex-foe-titles">
-            <div class="codex-foe-name">${seen ? locBestiary(entry, 'name') : t('altar.relicUnknown')}${entry.isBoss ? `<span class="codex-boss-pill">${t('codex.bossPill')}</span>` : ''}</div>
-            <div class="codex-foe-sub">${seen ? `${locBestiary(entry, 'title')} · ${habitat}` : t('codex.habitatUnknown', habitat)}</div>
-          </div>
+      const tile = document.createElement('button');
+      tile.type = 'button';
+      tile.className = `bestiary-tile${seen ? '' : ' locked'}${entry.isBoss ? ' boss' : ''}${entry.kind === selectedBestiaryKind ? ' selected' : ''}`;
+      tile.innerHTML = `
+        <div class="bestiary-tile-art">
+          <img src="${getBestiaryPortraitDataUrl(entry.kind, seen)}" alt="${seen ? locBestiary(entry, 'name') : '?'}" />
+          ${entry.isBoss ? `<span class="bestiary-tile-boss">${t('codex.bossPill')}</span>` : ''}
+          ${seen && kills > 0 ? `<span class="bestiary-tile-kills">×${kills}</span>` : ''}
         </div>
-        ${seen
-          ? `<div class="codex-foe-lore">${locBestiary(entry, 'lore')}</div><div class="codex-foe-tactic"><span>${t('codex.tacticLabel')}</span>${locBestiary(entry, 'tactic')}</div><div class="codex-foe-stats">${statsHtml}</div>`
-          : `<div class="codex-foe-lore">${t('codex.foeLocked')}</div>`
-        }
+        <div class="bestiary-tile-foot">${seen ? locBestiary(entry, 'name') : '？？？'}</div>
       `;
-      grid.appendChild(card);
+      tile.addEventListener('click', () => {
+        selectedBestiaryKind = entry.kind;
+        renderCodexModal(targetBodyEl, activeTab);
+      });
+      grid.appendChild(tile);
     }
     bodyEl.appendChild(grid);
   } else {
@@ -193,12 +337,68 @@ export function renderCodexModal() {
 
 export function openNpcModal(npc) {
   if (!npc) return;
-  if (npc.kind === 'chronicler') {
-    openChroniclerModal(npc);
-  } else if (npc.kind === 'keeper') {
-    openKeeperModal(npc);
-  } else {
-    openSmithModal(npc);
+  if (npc.kind === 'chronicler') openChroniclerModal(npc);
+  else if (npc.kind === 'keeper') openKeeperModal(npc);
+  else if (npc.kind === 'scavenger') openScavengerModal(npc);
+  else openSmithModal(npc);
+}
+
+export function openScavengerModal(npc) {
+  const nq = ensureNpcQuests();
+  if (nq && !nq.metScavenger) {
+    nq.metScavenger = true;
+    saveProgress(true);
+    G.minimapDirty = true;
+  }
+  uiState.activeNpcModalRef = npc;
+  renderScavengerModal();
+  audio.playResonanceBell(659.25, false);
+  openModal('npc');
+}
+
+export function renderScavengerModal() {
+  if (!G.worldState) return;
+  const nq = ensureNpcQuests();
+  const echoes = G.worldState.echoes || 0;
+  const titleEl = document.getElementById('npc-modal-title');
+  const subEl = document.getElementById('npc-modal-sub');
+  const dlgEl = document.getElementById('npc-dialogue');
+  const echoBar = document.getElementById('npc-echo-bar');
+  const listEl = document.getElementById('npc-quest-list');
+  if (!listEl) return;
+  const pBoxS = document.getElementById('npc-portrait-box');
+  if (pBoxS) pBoxS.innerHTML = getNpcPortraitSvg('scavenger');
+  if (titleEl) titleEl.textContent = locNpcName(uiState.activeNpcModalRef, 'scavenger');
+  if (subEl) subEl.textContent = t('scav.sub');
+  if (dlgEl) {
+    dlgEl.style.borderLeftColor = 'var(--gold-bright)';
+    dlgEl.textContent = (nq.boughtSecretMap && nq.boughtBellSatchel) ? t('scav.dlgDone') : t('scav.dlgIntro');
+  }
+  if (echoBar) echoBar.textContent = t('smith.echoHold', echoes);
+  listEl.innerHTML = '';
+  const goods = [
+    { id: 'secret_map', cost: 160, owned: !!nq.boughtSecretMap, title: t('scav.mapTitle'), desc: t('scav.mapDesc'), buy: () => { nq.boughtSecretMap = true; G.minimapDirty = true; } },
+    { id: 'bell_satchel', cost: 120, owned: !!nq.boughtBellSatchel, title: t('scav.satchelTitle'), desc: t('scav.satchelDesc'), buy: () => { nq.boughtBellSatchel = true; if (G.player) { G.player.maxHp = getPlayerMaxHp(); G.player.hp = G.player.maxHp; G.player.maxSoul = getPlayerMaxSoul(); G.player.soul = G.player.maxSoul; } } }
+  ];
+  for (const item of goods) {
+    const canBuy = !item.owned && echoes >= item.cost;
+    const card = document.createElement('div');
+    card.className = `smith-card npc-quest-card${item.owned ? ' done' : canBuy ? ' ready' : ''}`;
+    const info = document.createElement('div');
+    info.className = 'smith-card-info';
+    info.innerHTML = `<div class="smith-card-title"><span>${item.owned ? '✦ ' : ''}${item.title}</span><span class="smith-lv-pill">${item.owned ? t('scav.owned') : `✦ ${item.cost}`}</span></div><div class="smith-card-desc">${item.desc}</div>`;
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'smith-buy-btn';
+    btn.disabled = item.owned || !canBuy;
+    btn.textContent = item.owned ? t('scav.btnOwned') : t('scav.btnBuy', item.cost);
+    if (canBuy) {
+      btn.addEventListener('click', () => {
+        G.worldState.echoes -= item.cost; item.buy();
+        audio.playRelicRefine(); triggerHaptic('shieldBreak', 0.85);
+        saveProgress(true); renderScavengerModal(); uiHooks.syncHUD(true);
+      });
+    }
+    card.append(info, btn); listEl.appendChild(card);
   }
 }
 
@@ -231,6 +431,8 @@ export function renderChroniclerModal() {
   const claims = nq.chroniclerClaims;
   const echoes = G.worldState.echoes || 0;
 
+  const pBoxC = document.getElementById('npc-portrait-box');
+  if (pBoxC) pBoxC.innerHTML = getNpcPortraitSvg('chronicler');
   if (titleEl) titleEl.textContent = locNpcName(uiState.activeNpcModalRef, 'chronicler');
   if (subEl) subEl.textContent = t('mochen.sub', readCnt, LORE_TABLETS.length, seenCnt, BESTIARY_ENTRIES.length, expPct);
 
@@ -403,6 +605,8 @@ export function renderKeeperModal() {
   const blessed = !!nq.keeperBlessingActive;
   const echoes = G.worldState.echoes || 0;
 
+  const pBoxK = document.getElementById('npc-portrait-box');
+  if (pBoxK) pBoxK.innerHTML = getNpcPortraitSvg('keeper');
   if (titleEl) titleEl.textContent = locNpcName(uiState.activeNpcModalRef, 'keeper');
   if (subEl) subEl.textContent = t('xi.sub');
 
@@ -676,6 +880,57 @@ export function openPauseModal() {
 
 
 export function renderSettingsModal() {
+  const tabsEl = document.getElementById('settings-tabs');
+  const sysPane = document.getElementById('settings-pane-system');
+  const cdxPane = document.getElementById('settings-pane-codex');
+  const mapLink = document.getElementById('btn-settings-to-map');
+  const inWorld = !!G.worldState && G.gameState !== 'title';
+  if (!inWorld && settingsActiveTab !== 'settings') settingsActiveTab = 'settings';
+  if (mapLink) mapLink.style.display = inWorld ? 'inline-flex' : 'none';
+
+  if (tabsEl) {
+    const c = inWorld ? ensureCodexState() : null;
+    let seenFoes = 0;
+    if (c) { for (const e of BESTIARY_ENTRIES) { if (c.bestiary[e.kind] && c.bestiary[e.kind].seen) seenFoes++; } }
+    const unlWeapons = inWorld ? WEAPON_ORDER.filter(id => isWeaponUnlocked(id)).length : 1;
+    tabsEl.innerHTML = '';
+    const tabList = inWorld
+      ? [
+          { id: 'settings', label: t('settings.tabSystem') },
+          { id: 'weapons',  label: t('settings.tabWeapons', unlWeapons, WEAPON_ORDER.length) },
+          { id: 'bestiary', label: t('settings.tabBestiary', seenFoes, BESTIARY_ENTRIES.length) },
+          { id: 'archive',  label: t('settings.tabArchive', c ? c.achievements.length : 0, ACHIEVEMENTS_DEF.length) }
+        ]
+      : [{ id: 'settings', label: t('settings.tabSystem') }];
+    tabList.forEach(tb => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `codex-tab-btn${settingsActiveTab === tb.id ? ' active' : ''}`;
+      btn.textContent = tb.label;
+      btn.addEventListener('click', () => {
+        settingsActiveTab = tb.id;
+        const sm = document.querySelector('#settings-modal .modal-card');
+        if (sm) sm.scrollTop = 0;
+        renderSettingsModal();
+      });
+      tabsEl.appendChild(btn);
+    });
+  }
+
+  const showSystem = settingsActiveTab === 'settings';
+  const closeBtn = document.getElementById('btn-close-settings');
+  if (closeBtn) closeBtn.textContent = showSystem ? t('settings.saveClose') : t('codex.close');
+  if (sysPane) {
+    sysPane.classList.toggle('hidden', !showSystem);
+    sysPane.style.display = showSystem ? '' : 'none';
+  }
+  if (cdxPane) {
+    cdxPane.classList.toggle('hidden', showSystem);
+    cdxPane.style.display = showSystem ? 'none' : '';
+    if (!showSystem && inWorld) renderCodexModal(cdxPane, settingsActiveTab);
+  }
+  if (!showSystem) return;
+
   const curLoc = getLocale();
   const bZh = document.getElementById('btn-lang-zh');
   const bEn = document.getElementById('btn-lang-en');

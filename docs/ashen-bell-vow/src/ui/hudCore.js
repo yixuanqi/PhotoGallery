@@ -150,11 +150,14 @@ export function refreshTitleSaveUI() {
     const wingTag = (data.abilities && data.abilities.doubleJump ? ` · ${t('hud.abilityWings')}` : '') + (data.abilities && data.abilities.shadeDash ? ` · ${t('hud.abilityShade')}` : '') + (eCnt > 0 ? t('slot.endTag', eCnt) : '');
     HUD_DOM.titleSaveInfo.textContent = t('slot.selectedInfo', G.activeSaveSlot + 1, locAltar(altar, 'shortName'), pct, relicCount, RELICS.length, bossTag, wingTag);
     HUD_DOM.titleSaveInfo.style.display = 'block';
-    HUD_DOM.btnContinue.style.display = 'inline-block';
+    HUD_DOM.btnContinue.style.display = 'block';
+    HUD_DOM.btnContinue.classList.add('primary-entry');
+    HUD_DOM.btnStart.classList.remove('primary-entry');
     HUD_DOM.btnStart.textContent = t('btn.startOverwrite', G.activeSaveSlot + 1);
   } else {
     HUD_DOM.titleSaveInfo.style.display = 'none';
     HUD_DOM.btnContinue.style.display = 'none';
+    HUD_DOM.btnStart.classList.add('primary-entry');
     HUD_DOM.btnStart.textContent = t('btn.startSlot', G.activeSaveSlot + 1);
   }
 }
@@ -189,8 +192,10 @@ export function syncHUD(force = false) {
   const grayCeil = G.player.grayHp >= 1 ? Math.ceil(G.player.grayHp) : 0;
   const realRatioNum = Math.round(Math.max(0, Math.min(1, G.player.hp / maxHp)) * 1000);
   const totalRatioNum = Math.round(Math.max(0, Math.min(1, (G.player.hp + G.player.grayHp) / maxHp)) * 1000);
+  const hasGrappleHook = !!(G.worldState && G.worldState.abilities.grappleHook);
   const hasDoubleJump = !!(G.worldState && G.worldState.abilities.doubleJump);
   const hasShadeDash = !!(G.worldState && G.worldState.abilities.shadeDash);
+  const hasBellDive = !!(G.worldState && G.worldState.abilities.bellDive);
   const hasDawnSigil = !!(G.worldState && G.worldState.keyItems && G.worldState.keyItems.dawnSigil);
 
   if (force || hudCache.realRatioNum !== realRatioNum) {
@@ -235,6 +240,10 @@ export function syncHUD(force = false) {
       if (sCnt > 0) setTextFast(HUD_DOM.realmSealsTag, t('hud.realmSealsShort', sCnt));
     }
   }
+  if (HUD_DOM.abilityGrappleTag && (force || hudCache.hasGrappleHook !== hasGrappleHook)) {
+    hudCache.hasGrappleHook = hasGrappleHook;
+    HUD_DOM.abilityGrappleTag.classList.toggle('unlocked', hasGrappleHook);
+  }
   if (force || hudCache.hasDoubleJump !== hasDoubleJump) {
     hudCache.hasDoubleJump = hasDoubleJump;
     HUD_DOM.abilityTag.classList.toggle('unlocked', hasDoubleJump);
@@ -242,6 +251,10 @@ export function syncHUD(force = false) {
   if (HUD_DOM.abilityShadeTag && (force || hudCache.hasShadeDash !== hasShadeDash)) {
     hudCache.hasShadeDash = hasShadeDash;
     HUD_DOM.abilityShadeTag.classList.toggle('unlocked', hasShadeDash);
+  }
+  if (HUD_DOM.abilityDiveTag && (force || hudCache.hasBellDive !== hasBellDive)) {
+    hudCache.hasBellDive = hasBellDive;
+    HUD_DOM.abilityDiveTag.classList.toggle('unlocked', hasBellDive);
   }
   if (HUD_DOM.keyDawnTag && (force || hudCache.hasDawnSigil !== hasDawnSigil)) {
     hudCache.hasDawnSigil = hasDawnSigil;

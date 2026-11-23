@@ -36,13 +36,21 @@
   "connections": [
     "r04_bell_well",
     "r02_corridor",
-    "r10_ink_woods"
+    "r10_ink_woods",
+    "r21_cistern_west"
   ],
   "solids": [
     {
       "x": 0,
       "y": 640,
-      "w": 1800,
+      "w": 1360,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 1500,
+      "y": 640,
+      "w": 300,
       "h": 140,
       "type": "ground"
     },
@@ -185,7 +193,8 @@
       "id": "river_crypt",
       "x": 850,
       "y": 628,
-      "w": 360
+      "w": 360,
+      "drainable": true
     }
   ],
   "grappleAnchors": [
@@ -287,6 +296,12 @@
       "x": 92,
       "y": 595,
       "text": "「← 西入幽林 · 枯墨古林根窟」"
+    },
+    {
+      "x": 450,
+      "y": 115,
+      "text": "「启闸开启地窖活板 · 永久贯通回礼拜堂前祭坛」",
+      "hideWhenSwitch": "cryptHatchOpen"
     }
   ],
   "props": {
@@ -432,6 +447,26 @@
       "y": 542,
       "w": 22,
       "h": 98
+    }
+  ],
+  "breakableFloors": [
+    {
+      "id": "floor_crypt_cistern",
+      "x": 1360,
+      "y": 640,
+      "w": 140,
+      "h": 140,
+      "style": "stone"
+    }
+  ],
+  "worldSwitches": [
+    {
+      "id": "switch_crypt_hatch",
+      "switchKey": "cryptHatchOpen",
+      "kind": "hatch",
+      "x": 450,
+      "y": 175,
+      "name": "残钟地窖回廊活板闸"
     }
   ]
 }

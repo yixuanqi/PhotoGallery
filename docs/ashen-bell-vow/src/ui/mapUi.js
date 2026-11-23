@@ -1,7 +1,7 @@
 // Minimap Fast Blit, Zoomable/Draggable Parchment Map, Ink Pins & Click-to-Warp (split from src/ui.js in v32.0)
 import {
   COLORS, RELICS, RELIC_SYNERGIES, VOW_CONSTRAINTS, DUMMY_MODES, SMITH_UPGRADES, ACTION_META, ROOMS, SOLIDS, ALTARS, NPCS, LORE_TABLETS, PICKUPS_DEF, ENEMIES_DEF, BOSSES_DEF,
-  SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, SKY_BRIDGE_GATE_DEF, FIRST_BELL_CORE_POS, VOID_BARRIERS,
+  SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, SKY_BRIDGE_GATE_DEF, FIRST_BELL_CORE_POS, VOID_BARRIERS, SLICK_WALLS, SWITCH_GATES, WORLD_SWITCHES_DEF,
   ABYSSAL_RIVERS, WIND_ZONES, BOUNCE_PADS, WORLD_MIN_X, WORLD_MIN_Y, WORLD_W, WORLD_H, WORLD_SPAN_W, WORLD_SPAN_H, FLOOR_Y, WELL_BOTTOM_Y,
   MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H, ECHO_GRADE_ORDER, SEVEN_BELLS_ORDER
 } from '../config.js';
@@ -12,7 +12,7 @@ import {
   ensureNpcQuests, hasKeeperBlessing,
   getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks, getPlayerMaxSeals,
   markMapExplored, getExplorationPercent, createLanterns,
-  createResonancePuzzles, createCrumblePlatforms, getAwakeBoss, getHudBoss, isBoss4Unlocked, isSkyBridgeOpen, clearOutcomeTimer, triggerBossBanner, setTextFast
+  createResonancePuzzles, createCrumblePlatforms, getAwakeBoss, getHudBoss, isBoss4Unlocked, isSkyBridgeOpen, isWorldSwitchOn, isRiverDrained, clearOutcomeTimer, triggerBossBanner, setTextFast
 } from '../state.js';
 import { audio } from '../audio.js';
 import {
@@ -151,17 +151,20 @@ export function renderParchmentMap(targetCanvas, detailed = false, omitPlayer = 
       foundry:  'rgba(245, 158, 11, 0.07)',
       chapel:   'rgba(248, 113, 113, 0.06)',
       crypt:    'rgba(167, 139, 250, 0.06)',
+      cistern:  'rgba(56, 189, 248, 0.08)',
       heart:    'rgba(253, 224, 71, 0.07)'
     };
     mctx.font = getCanvasFont(isEn() ? 8.8 : 9.8, false);
     mctx.textAlign = 'center';
     for (const rm of ROOMS) {
       const b = rm.bounds;
+      const isFocus = rm.id === focusRoomId;
+      const rStats = getRoomCollectibleStats(rm);
+      if (!isFocus && (!rStats || rStats.explorePct <= 0)) continue;
       const rx = mx(b.x);
       const ry = my(b.y);
       const rw = b.w * sx;
       const rh = b.h * sy;
-      const isFocus = rm.id === focusRoomId;
       const tint = BIOME_TINT[rm.theme];
       if (tint) {
         mctx.fillStyle = tint;
@@ -171,11 +174,11 @@ export function renderParchmentMap(targetCanvas, detailed = false, omitPlayer = 
         mctx.fillStyle = 'rgba(245, 158, 11, 0.11)';
         mctx.fillRect(rx, ry, rw, rh);
       }
-      mctx.strokeStyle = isFocus ? 'rgba(253, 224, 71, 0.72)' : 'rgba(216, 207, 184, 0.18)';
+      mctx.strokeStyle = isFocus ? 'rgba(253, 224, 71, 0.72)' : 'rgba(216, 207, 184, 0.24)';
       mctx.lineWidth = isFocus ? 1.5 : 1;
       mctx.setLineDash(isFocus ? [] : [4, 4]);
       mctx.strokeRect(rx, ry, rw, rh);
-      mctx.fillStyle = isFocus ? COLORS.goldBright : 'rgba(216, 207, 184, 0.76)';
+      mctx.fillStyle = isFocus ? COLORS.goldBright : 'rgba(216, 207, 184, 0.80)';
       const rName = locRoomName(rm);
       const maxChars = rw < 78 ? (isEn() ? 10 : 5) : (isEn() ? 14 : 8);
       const shortLbl = rName.length > maxChars ? rName.slice(0, maxChars - 1) + '…' : rName;
@@ -213,11 +216,22 @@ export function renderParchmentMap(targetCanvas, detailed = false, omitPlayer = 
     mctx.fillRect(mx(s.x), my(s.y), Math.max(2, s.w * sx), Math.max(2, s.h * sy));
   }
 
-  // Abyssal Rivers, Wind Updrafts & Forest Spore Bounce Caps Accent
-  mctx.fillStyle = 'rgba(56, 189, 248, 0.55)';
+  const drainedMap = isRiverDrained();
   for (const rv of ABYSSAL_RIVERS) {
     if (rv.w <= 0) continue;
+    mctx.fillStyle = (drainedMap && rv.drainable) ? 'rgba(56, 189, 248, 0.16)' : 'rgba(56, 189, 248, 0.55)';
     mctx.fillRect(mx(rv.x), my(rv.y), rv.w * sx, Math.max(2, 16 * sy));
+  }
+  for (const bf of (G.worldState.breakableFloors || [])) {
+    if (bf.broken) continue;
+    mctx.fillStyle = bf.style === 'ice' ? '#bae6fd' : COLORS.goldBright;
+    mctx.fillRect(mx(bf.x), my(bf.y), Math.max(3, bf.w * sx), Math.max(2.5, 16 * sy));
+  }
+  if (detailed) {
+    for (const sw of WORLD_SWITCHES_DEF) {
+      mctx.fillStyle = isWorldSwitchOn(sw.switchKey) ? 'rgba(253, 224, 71, 0.45)' : COLORS.goldBright;
+      mctx.beginPath(); mctx.arc(mx(sw.x), my(sw.y - 24), 3.4, 0, Math.PI * 2); mctx.fill();
+    }
   }
   if (detailed && WIND_ZONES.length > 0) {
     mctx.fillStyle = 'rgba(186, 230, 253, 0.16)';
@@ -245,6 +259,12 @@ export function renderParchmentMap(targetCanvas, detailed = false, omitPlayer = 
   mctx.fillStyle = G.worldState.bossDefeated ? 'rgba(56, 189, 248, 0.35)' : COLORS.crimsonBright;
   mctx.fillRect(gx2, gy2, Math.max(2.5, CHAPEL_EXIT_GATE_DEF.w * sx), Math.max(4, CHAPEL_EXIT_GATE_DEF.h * sy * (G.worldState.bossDefeated ? 0.25 : 1)));
 
+  // One-Way Bronze Switch Gates & Trapdoors (warm amber)
+  for (const sg of SWITCH_GATES) {
+    const opened = isWorldSwitchOn(sg.switchKey);
+    mctx.fillStyle = opened ? 'rgba(245, 158, 11, 0.28)' : '#f59e0b';
+    mctx.fillRect(mx(sg.x), my(sg.y), Math.max(2.6, sg.w * sx), Math.max(2.6, sg.h * sy));
+  }
   // Breakable Ink Walls
   for (const sw of G.worldState.secretWalls) {
     if (sw.broken) continue;
@@ -252,10 +272,16 @@ export function renderParchmentMap(targetCanvas, detailed = false, omitPlayer = 
     mctx.fillRect(mx(sw.x), my(sw.y), Math.max(2.5, sw.w * sx), Math.max(4, sw.h * sy));
   }
 
-  // Void Barriers (violet vertical markers)
+  // Void Barriers (violet/crimson vertical markers) & Thorny Slick Walls (crimson)
   for (const vb of VOID_BARRIERS) {
-    mctx.fillStyle = G.worldState.abilities.shadeDash ? 'rgba(216, 180, 254, 0.58)' : '#a855f7';
+    mctx.fillStyle = vb.sweeping ? '#f43f5e' : (G.worldState.abilities.shadeDash ? 'rgba(216, 180, 254, 0.58)' : '#a855f7');
     mctx.fillRect(mx(vb.x), my(vb.y), Math.max(2.6, vb.w * sx), Math.max(5, vb.h * sy));
+  }
+  if (detailed && SLICK_WALLS.length > 0) {
+    mctx.fillStyle = 'rgba(248, 113, 113, 0.72)';
+    for (const sw of SLICK_WALLS) {
+      mctx.fillRect(mx(sw.x), my(sw.y), Math.max(2.2, sw.w * sx), Math.max(5, sw.h * sy));
+    }
   }
 
   // Crumbling Stone Platforms
@@ -280,7 +306,7 @@ export function renderParchmentMap(targetCanvas, detailed = false, omitPlayer = 
 
   // Pickups
   for (const p of G.worldState.pickups) {
-    if (p.collected) continue;
+    if (p.collected || (p.requiresSwitch && !isWorldSwitchOn(p.requiresSwitch))) continue;
     const px = mx(p.x);
     const py = my(p.y - 24);
     mctx.fillStyle = p.kind === 'relic' ? COLORS.goldBright : COLORS.cyanBright;
@@ -358,7 +384,8 @@ export function renderParchmentMap(targetCanvas, detailed = false, omitPlayer = 
     const bd = bossDefsList[i];
     const defeated = bd.id === 'boss_hui' ? !!G.worldState.bossDefeated
       : bd.id === 'boss_ji' ? !!G.worldState.boss2Defeated
-      : bd.id === 'boss_yuan' ? !!G.worldState.boss3Defeated : false;
+      : bd.id === 'boss_yuan' ? !!G.worldState.boss3Defeated
+      : bd.id === 'boss_zhu' ? !!G.worldState.boss4Defeated : false;
     const bx = mx(bd.x + 28);
     const by = my(bd.y + 44);
     mctx.fillStyle = defeated ? (bd.id === 'boss_yuan' ? COLORS.goldBright : 'rgba(245, 158, 11, 0.58)') : COLORS.crimsonBright;
@@ -386,8 +413,8 @@ export function renderParchmentMap(targetCanvas, detailed = false, omitPlayer = 
     }
   }
 
-  // 2D Fog of War mask over unexplored grid cells (horizontal span-merged)
-  mctx.fillStyle = detailed ? 'rgba(9, 8, 7, 0.9)' : 'rgba(6, 8, 13, 0.92)';
+  // 2D Fog of War mask over unexplored grid cells (opaque so undiscovered rooms stay cleanly concealed)
+  mctx.fillStyle = detailed ? 'rgba(8, 7, 7, 0.985)' : 'rgba(6, 8, 13, 0.98)';
   for (let r = 0; r < MAP_ROWS; r++) {
     const row = G.worldState.explored[r];
     const ry = oy + r * MAP_CELL_H * sy;
@@ -400,6 +427,20 @@ export function renderParchmentMap(targetCanvas, detailed = false, omitPlayer = 
     }
   }
 
+  if (detailed && G.worldState.npcQuests && G.worldState.npcQuests.boughtSecretMap) {
+    mctx.save();
+    for (const sw of G.worldState.secretWalls) {
+      if (sw.broken) continue;
+      mctx.strokeStyle = '#38bdf8'; mctx.lineWidth = 1.6;
+      mctx.beginPath(); mctx.arc(mx(sw.x + sw.w * 0.5), my(sw.y + sw.h * 0.5), 4.6, 0, Math.PI * 2); mctx.stroke();
+    }
+    for (const bf of (G.worldState.breakableFloors || [])) {
+      if (bf.broken) continue;
+      mctx.strokeStyle = bf.style === 'ice' ? '#bae6fd' : COLORS.goldBright; mctx.lineWidth = 1.6;
+      mctx.beginPath(); mctx.arc(mx(bf.x + bf.w * 0.5), my(bf.y + 12), 4.8, 0, Math.PI * 2); mctx.stroke();
+    }
+    mctx.restore();
+  }
   // Lost Echo Lantern Shade Marker (always visible above fog so corpse-run route is clear)
   if (G.worldState.lostEchoes && G.worldState.lostEchoes.amount > 0) {
     const lx = mx(G.worldState.lostEchoes.x);

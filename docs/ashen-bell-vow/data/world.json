@@ -19,7 +19,8 @@
       },
       "connections": [
         "r02_corridor",
-        "r10_ink_woods"
+        "r10_ink_woods",
+        "r19_belfry_outer"
       ]
     },
     {
@@ -37,7 +38,8 @@
       "connections": [
         "r01_sanctuary",
         "r03_chapel",
-        "r06_crypt"
+        "r06_crypt",
+        "r18_rain_steps"
       ]
     },
     {
@@ -73,7 +75,9 @@
         "r03_chapel",
         "r05_foundry",
         "r06_crypt",
-        "r09_wind_spire"
+        "r09_wind_spire",
+        "r20_bell_galleries",
+        "r22_cistern_nave"
       ]
     },
     {
@@ -90,7 +94,8 @@
       },
       "connections": [
         "r04_bell_well",
-        "r07_ascent"
+        "r07_ascent",
+        "r09_wind_spire"
       ]
     },
     {
@@ -108,7 +113,8 @@
       "connections": [
         "r04_bell_well",
         "r02_corridor",
-        "r10_ink_woods"
+        "r10_ink_woods",
+        "r21_cistern_west"
       ]
     },
     {
@@ -127,7 +133,8 @@
         "r05_foundry",
         "r08_heart",
         "r09_wind_spire",
-        "r11_frost_ridge"
+        "r11_frost_ridge",
+        "r23_cistern_lock"
       ]
     },
     {
@@ -161,7 +168,8 @@
       "connections": [
         "r04_bell_well",
         "r07_ascent",
-        "r12_wind_bridge"
+        "r12_wind_bridge",
+        "r05_foundry"
       ]
     },
     {
@@ -197,7 +205,8 @@
       },
       "connections": [
         "r07_ascent",
-        "r16_frost_tomb"
+        "r16_frost_tomb",
+        "r24_frost_seep"
       ]
     },
     {
@@ -214,7 +223,8 @@
       },
       "connections": [
         "r09_wind_spire",
-        "r13_wind_peak"
+        "r13_wind_peak",
+        "r20_bell_galleries"
       ]
     },
     {
@@ -231,7 +241,8 @@
       },
       "connections": [
         "r12_wind_bridge",
-        "r17_frost_summit"
+        "r17_frost_summit",
+        "r25_mirror_abyss"
       ]
     },
     {
@@ -248,7 +259,8 @@
       },
       "connections": [
         "r10_ink_woods",
-        "r15_woods_heart"
+        "r15_woods_heart",
+        "r21_cistern_west"
       ]
     },
     {
@@ -299,6 +311,136 @@
       },
       "connections": [
         "r16_frost_tomb",
+        "r13_wind_peak"
+      ]
+    },
+    {
+      "id": "r18_rain_steps",
+      "name": "淋雨墓阶 · 残钟外廊",
+      "theme": "corridor",
+      "file": "./data/rooms/r18_rain_steps.json",
+      "bounds": {
+        "x": 940,
+        "y": -740,
+        "w": 1705,
+        "h": 740
+      },
+      "connections": [
+        "r02_corridor",
+        "r19_belfry_outer"
+      ]
+    },
+    {
+      "id": "r19_belfry_outer",
+      "name": "断索钟楼 · 外廊残钟",
+      "theme": "sanctuary",
+      "file": "./data/rooms/r19_belfry_outer.json",
+      "bounds": {
+        "x": 0,
+        "y": -740,
+        "w": 940,
+        "h": 740
+      },
+      "connections": [
+        "r18_rain_steps",
+        "r01_sanctuary"
+      ]
+    },
+    {
+      "id": "r20_bell_galleries",
+      "name": "悬索钟阁 · 风桥前廊",
+      "theme": "wind",
+      "file": "./data/rooms/r20_bell_galleries.json",
+      "bounds": {
+        "x": 3780,
+        "y": -740,
+        "w": 1780,
+        "h": 740
+      },
+      "connections": [
+        "r04_bell_well",
+        "r12_wind_bridge"
+      ]
+    },
+    {
+      "id": "r21_cistern_west",
+      "name": "沉钟水牢 · 渗水囚廊",
+      "theme": "cistern",
+      "file": "./data/rooms/r21_cistern_west.json",
+      "bounds": {
+        "x": 2680,
+        "y": 1520,
+        "w": 1600,
+        "h": 740
+      },
+      "connections": [
+        "r14_woods_cavern",
+        "r06_crypt",
+        "r22_cistern_nave"
+      ]
+    },
+    {
+      "id": "r22_cistern_nave",
+      "name": "沉钟水牢 · 淹钟巨厅",
+      "theme": "cistern",
+      "file": "./data/rooms/r22_cistern_nave.json",
+      "bounds": {
+        "x": 4280,
+        "y": 1520,
+        "w": 1880,
+        "h": 740
+      },
+      "connections": [
+        "r21_cistern_west",
+        "r04_bell_well",
+        "r23_cistern_lock"
+      ]
+    },
+    {
+      "id": "r23_cistern_lock",
+      "name": "沉钟水牢 · 断索水闸",
+      "theme": "cistern",
+      "file": "./data/rooms/r23_cistern_lock.json",
+      "bounds": {
+        "x": 6160,
+        "y": 1520,
+        "w": 1780,
+        "h": 740
+      },
+      "connections": [
+        "r22_cistern_nave",
+        "r07_ascent",
+        "r24_frost_seep"
+      ]
+    },
+    {
+      "id": "r24_frost_seep",
+      "name": "霜渊冰窖 · 暗河源洞",
+      "theme": "mountain",
+      "file": "./data/rooms/r24_frost_seep.json",
+      "bounds": {
+        "x": 7940,
+        "y": 1520,
+        "w": 1740,
+        "h": 740
+      },
+      "connections": [
+        "r23_cistern_lock",
+        "r11_frost_ridge"
+      ]
+    },
+    {
+      "id": "r25_mirror_abyss",
+      "name": "初铸镜渊 · 终极隐藏殿堂",
+      "theme": "heart",
+      "file": "./data/rooms/r25_mirror_abyss.json",
+      "bounds": {
+        "x": 7460,
+        "y": -1480,
+        "w": 1600,
+        "h": 740
+      },
+      "connections": [
         "r13_wind_peak"
       ]
     }

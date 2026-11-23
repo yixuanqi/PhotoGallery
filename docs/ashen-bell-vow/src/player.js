@@ -1,8 +1,8 @@
 // Player movement, buffering, combo/iai/parry/grapple/spell state machine
 import {
-  COLORS, GRAVITY, FLOOR_Y, ALTARS, NPCS, LORE_TABLETS, SHORTCUT_GATE_DEF, VOID_BARRIERS, FIRST_BELL_CORE_POS, ABYSSAL_RIVERS, PUDDLES, DUMMY_MODES, WIND_ZONES, BOUNCE_PADS
+  COLORS, GRAVITY, FLOOR_Y, ALTARS, NPCS, LORE_TABLETS, SHORTCUT_GATE_DEF, VOID_BARRIERS, FIRST_BELL_CORE_POS, ABYSSAL_RIVERS, PUDDLES, PENDULUMS, DUMMY_MODES, WIND_ZONES, BOUNCE_PADS, WORLD_SWITCHES_DEF, SLICK_WALLS
 } from './config.js';
-import { G, hooks, getLivingFoes, getRelicStats, getActiveWeapon, getFlaskHealPct, hasKeeperBlessing, isSkillNodeUnlocked, markMapExplored, addShake, punchZoom, triggerBossBanner, triggerHitstop, damp } from './state.js';
+import { G, hooks, getLivingFoes, getRelicStats, getActiveWeapon, getActiveWeaponId, getFlaskHealPct, hasKeeperBlessing, isSkillNodeUnlocked, isWorldSwitchOn, isSwitchUnlocked, isRiverDrained, isWindZoneActive, isBouncePadAwake, getEffectiveNpcPos, markMapExplored, addShake, punchZoom, triggerBossBanner, triggerBossIntro, createFoundryCrucibles, triggerHitstop, damp } from './state.js';
 import { audio } from './audio.js';
 import { isActionHeld, consumeActionPress, consumeActionRelease } from './input.js';
 import {
@@ -14,7 +14,8 @@ import {
   findBestGrappleTarget, performExecution, updatePlayerActiveAttack,
   evaluatePlayerSealLunge, triggerPlayerAttack, openSkywayShortcut,
   collectPickup, isPickupUnlocked, ringResonanceBell, castBellQuake, triggerMiniBellQuake,
-  damageEnemyHP, addPostureToEnemy, reclaimLostEchoes, triggerWeaponResonanceUltimate
+  damageEnemyHP, addPostureToEnemy, applyEnemyHitFeel, reclaimLostEchoes, triggerWeaponResonanceUltimate, triggerHammerAirSlamImpact, tryQuellChapelTideByLantern,
+  activateWorldSwitch, toggleWindVane, triggerIcePillarDrop, triggerBellDiveImpact, severFoundryCrucible
 } from './combat.js';
 import { recordBestiaryEvent } from './codex.js';
 import { t, locDummyMode, locBoss } from './i18n.js';
@@ -80,6 +81,7 @@ export function updatePlayer(dt) {
   else G.player.comboStep = 0;
   if (G.player.riposteWindow > 0) G.player.riposteWindow -= dt;
   if (G.player.switchStrikeWindow > 0) G.player.switchStrikeWindow = Math.max(0, G.player.switchStrikeWindow - dt);
+  if (G.player.grappleStrikeWindow > 0) G.player.grappleStrikeWindow = Math.max(0, G.player.grappleStrikeWindow - dt);
   if (G.player.shieldArmorTimer > 0) G.player.shieldArmorTimer = Math.max(0, G.player.shieldArmorTimer - dt);
   if (G.player.weaponSwapCd > 0) G.player.weaponSwapCd = Math.max(0, G.player.weaponSwapCd - dt);
   if (G.player.bellSealCd > 0) G.player.bellSealCd = Math.max(0, G.player.bellSealCd - dt);
@@ -100,6 +102,7 @@ export function updatePlayer(dt) {
     }
   }
   if (G.player.barrierHintCd > 0) G.player.barrierHintCd = Math.max(0, G.player.barrierHintCd - dt);
+  if (G.player.thornGraceTimer > 0) G.player.thornGraceTimer = Math.max(0, G.player.thornGraceTimer - dt);
   if (G.player.iframeTimer > 0) G.player.iframeTimer -= dt;
   if (G.player.hurtTimer > 0) {
     G.player.hurtTimer -= dt;
@@ -156,7 +159,8 @@ export function updatePlayer(dt) {
     }
 
     for (const npc of NPCS) {
-      if (Math.hypot(px - npc.x, py - npc.y) < 88) {
+      const pos = getEffectiveNpcPos(npc);
+      if (Math.hypot(px - pos.x, py - pos.y) < 88) {
         hooks.openNpcModal(npc);
         return;
       }
@@ -174,6 +178,12 @@ export function updatePlayer(dt) {
     if (G.worldState && !G.worldState.shortcutOpen && Math.hypot(px - SHORTCUT_GATE_DEF.leverX, py - SHORTCUT_GATE_DEF.leverY) < 76) {
       openSkywayShortcut();
       return;
+    }
+    for (const sw of WORLD_SWITCHES_DEF) {
+      if (isSwitchUnlocked(sw) && !isWorldSwitchOn(sw.switchKey) && Math.hypot(px - sw.x, py - sw.y) < 82) {
+        activateWorldSwitch(sw);
+        return;
+      }
     }
 
     for (const lt of LORE_TABLETS) {
@@ -230,8 +240,15 @@ export function updatePlayer(dt) {
   const moveR = isActionHeld('right');
   const moveDir = (moveR ? 1 : 0) - (moveL ? 1 : 0);
 
-  // Grapple Hook [I / F / Right-Click] (buffered)
+  // Grapple Hook [I / F / Right-Click] (Route A: unlocked after defeating Boss 1 Hui!)
   if (G.player.grappleBufTimer > 0 && G.player.grappleCd <= 0 && G.player.grappleState === 'none' && G.player.healTimer <= 0 && G.player.detonateLungeTimer <= 0) {
+    if (!(G.worldState && G.worldState.abilities && G.worldState.abilities.grappleHook)) {
+      G.player.grappleBufTimer = 0;
+      if ((G.player.barrierHintCd || 0) <= 0) {
+        G.player.barrierHintCd = 1.6;
+        spawnFloatText(G.player.x + G.player.w * 0.5, G.player.y - 26, t('combat.needGrappleHook'), COLORS.goldBright, 15, 1.2);
+      }
+    } else {
     const target = G.grapplePreviewTarget;
     if (target) {
       G.player.grappleBufTimer = 0;
@@ -257,12 +274,22 @@ export function updatePlayer(dt) {
       audio.playGrappleLaunch();
       spawnParticles(G.player.x + G.player.w / 2 + G.player.facing * 12, G.player.y + 22, 10, { color: COLORS.cyanBright, speed: 170, spark: true, life: 0.24, grav: 0 });
     }
+    }
   }
 
-  // Dual Soul Spells: [W + R/U] Bell-Quake (anti-air & 360° AoE) | [R/U] Soul Bell-Wave (piercing)
+  // Tri-Soul Spells: [Air S + R/U] Bell Dive | [W + R/U] Bell-Quake | [R/U] Soul Bell-Wave
   const rsCast = getRelicStats();
-  const canCast = G.player.castBufTimer > 0 && G.player.castCd <= 0 && G.player.dashTimer <= 0 && G.player.detonateLungeTimer <= 0 && G.player.iaiLungeTimer <= 0 && G.player.grappleState === 'none' && G.player.healTimer <= 0;
-  if (canCast && isActionHeld('up') && G.player.soul >= rsCast.quakeCost) {
+  const diveCost = Math.max(16, Math.round(24 * (rsCast.spellCost / 30)));
+  const canCast = G.player.castBufTimer > 0 && G.player.castCd <= 0 && G.player.dashTimer <= 0 && G.player.detonateLungeTimer <= 0 && G.player.iaiLungeTimer <= 0 && G.player.grappleState === 'none' && G.player.airSlamState === 'none' && G.player.diveState === 'none' && G.player.healTimer <= 0;
+  if (canCast && !G.player.grounded && isActionHeld('down') && G.worldState && G.worldState.abilities.bellDive && G.player.soul >= diveCost) {
+    G.player.castBufTimer = 0; G.player.soul = Math.max(0, G.player.soul - diveCost); G.player.castCd = 0.45;
+    G.player.diveState = 'hang'; G.player.diveTimer = 0.11; G.player.diveHitIds = new Set();
+    G.player.iframeTimer = Math.max(G.player.iframeTimer, 0.52);
+    G.player.parryActive = false; G.player.activeAttack = null; G.player.isCharging = false; G.player.chargeTime = 0; G.player.chargeReadyPlayed = false;
+    G.player.vx *= 0.2; G.player.vy = -120; G.player.squashX = 0.78; G.player.squashY = 1.28;
+    audio.playBellToll();
+    spawnShockwave(G.player.x + G.player.w * 0.5, G.player.y + 26, 72, COLORS.goldBright, 3.4, 0.24);
+  } else if (canCast && isActionHeld('up') && G.player.soul >= rsCast.quakeCost) {
     G.player.castBufTimer = 0;
     if (moveDir !== 0) G.player.facing = moveDir;
     castBellQuake();
@@ -372,8 +399,50 @@ export function updatePlayer(dt) {
     }
   }
 
+  const hasPogoPropBelow = () => {
+    const pxC = G.player.x + G.player.w * 0.5;
+    const pyB = G.player.y + G.player.h;
+    for (let i = 0; i < G.lanterns.length; i++) {
+      const l = G.lanterns[i];
+      const lx = l.x + Math.sin(l.angle) * l.len;
+      const ly = l.anchorY + Math.cos(l.angle) * l.len;
+      if (Math.abs(lx - pxC) < 56 && ly >= pyB - 14 && ly <= pyB + 86) return true;
+    }
+    for (let i = 0; i < PENDULUMS.length; i++) {
+      const pd = PENDULUMS[i];
+      const ang = Math.sin(G.globalTime * pd.speed + pd.phase) * pd.amp;
+      const bx = pd.x + Math.sin(ang) * pd.len;
+      const by = pd.anchorY + Math.cos(ang) * pd.len;
+      if (Math.hypot(bx - pxC, by - (pyB + 16)) < pd.r + 44) return true;
+    }
+    for (let i = 0; i < SLICK_WALLS.length; i++) {
+      const sw = SLICK_WALLS[i];
+      if (pxC >= sw.x - 54 && pxC <= sw.x + sw.w + 54 && pyB + 64 >= sw.y && pyB - 10 <= sw.y + sw.h) return true;
+    }
+    return false;
+  };
+  const startHammerAirSlam = (empowered) => {
+    G.player.airSlamState = 'hang';
+    G.player.airSlamTimer = 0.095;
+    G.player.airSlamEmpowered = !!empowered;
+    G.player.airSlamHitIds = new Set();
+    G.player.parryActive = false;
+    G.player.activeAttack = null;
+    G.player.isCharging = false;
+    G.player.chargeTime = 0;
+    G.player.chargeReadyPlayed = false;
+    G.player.shieldArmorTimer = Math.max(G.player.shieldArmorTimer || 0, 0.50);
+    G.player.shieldArmorMult = 0.35;
+    G.player.vx *= 0.25;
+    G.player.vy = -100;
+    G.player.squashX = 0.78;
+    G.player.squashY = 1.28;
+    audio.playIaiReady();
+    spawnShockwave(G.player.x + G.player.w * 0.5, G.player.y + 26, empowered ? 66 : 48, COLORS.goldBright, 3.0, 0.22);
+  };
+
   // Attack / Execution / Charged Iai [J] (buffered)
-  const canAttack = G.player.dashTimer <= 0 && G.player.detonateLungeTimer <= 0 && G.player.iaiLungeTimer <= 0 && G.player.grappleState === 'none' && G.player.healTimer <= 0 && G.player.hurtTimer <= 0;
+  const canAttack = G.player.dashTimer <= 0 && G.player.detonateLungeTimer <= 0 && G.player.iaiLungeTimer <= 0 && G.player.grappleState === 'none' && G.player.airSlamState === 'none' && G.player.diveState === 'none' && G.player.healTimer <= 0 && G.player.hurtTimer <= 0;
 
   if (G.player.attackBufTimer > 0 && canAttack) {
     // 1. Priority: Check Posture-Broken Execution!
@@ -390,8 +459,15 @@ export function updatePlayer(dt) {
       if (G.player.riposteWindow > 0) {
         G.player.riposteWindow = 0;
         triggerPlayerAttack('counter');
+      } else if (G.player.grappleStrikeWindow > 0) {
+        G.player.grappleStrikeWindow = 0;
+        triggerPlayerAttack('grappleStrike');
       } else if (!G.player.grounded && isActionHeld('down')) {
-        triggerPlayerAttack('pogo');
+        if (getActiveWeaponId() === 'hammer' && !hasPogoPropBelow()) {
+          startHammerAirSlam(false);
+        } else {
+          triggerPlayerAttack('pogo');
+        }
       } else if (isActionHeld('up')) {
         triggerPlayerAttack('up');
       } else {
@@ -433,7 +509,11 @@ export function updatePlayer(dt) {
     G.player.chargeReadyPlayed = false;
     if (ready && canAttack) {
       if (moveDir !== 0) G.player.facing = moveDir;
-      triggerPlayerAttack('iai');
+      if (!G.player.grounded && getActiveWeaponId() === 'hammer') {
+        startHammerAirSlam(true);
+      } else {
+        triggerPlayerAttack('iai');
+      }
     }
   }
 
@@ -486,6 +566,20 @@ export function updatePlayer(dt) {
         G.player.grappleStuckTimer = 0;
       }
 
+      // v36.0 Grapple Snap-Strike (幽丝瞬斩): pressing Attack while reeling into an enemy cancels bounce into instant piercing cut!
+      if (gt && gt.type === 'enemy' && gt.ref.alive && G.player.attackBufTimer > 0 && dist <= 165) {
+        G.player.grappleState = 'none';
+        G.player.attackBufTimer = 0;
+        G.player.grappleStrikeWindow = 0;
+        G.player.dashCd = 0;
+        G.player.airJumpsLeft = 1;
+        G.player.pogoChain = 0;
+        G.player.bellAirStalls = 0;
+        G.player.facing = dx >= 0 ? 1 : -1;
+        G.player.vy = -125;
+        if (getRelicStats().synGaleThread) G.player.galeSurgeTimer = 2.6;
+        triggerPlayerAttack('grappleStrike');
+      } else {
       const arriveDist = (gt && gt.type === 'enemy') ? 54 : 36;
       if (dist <= arriveDist || G.player.grappleTimer <= 0 || G.player.grappleStuckTimer >= 0.065 || G.player.jumpBufTimer > 0) {
         G.player.grappleState = 'none';
@@ -506,10 +600,12 @@ export function updatePlayer(dt) {
         G.player.vx = moveDir !== 0 ? (moveDir * 315) : (Math.abs(naturalVx) < 90 ? G.player.facing * 165 : naturalVx);
         G.player.vy = -470;
 
+        G.player.bellAirStalls = 0;
         if (gt && gt.type === 'enemy' && gt.ref.alive) {
           const foe = gt.ref;
+          G.player.grappleStrikeWindow = 0.24;
           audio.playHit(false);
-          triggerHitstop(0.018);
+          applyEnemyHitFeel(foe, false, G.player.facing, 0);
           addShake(5.5);
           const boosted = G.player.shadeGrappleBoostTimer > 0;
           G.player.shadeGrappleBoostTimer = 0;
@@ -534,6 +630,12 @@ export function updatePlayer(dt) {
           gt.ref.angVel += G.player.facing * 5.0;
         } else if (gt && gt.type === 'resBell') {
           ringResonanceBell(gt.puzzle, gt.ref, G.player.facing);
+        } else if (gt && gt.type === 'windVane') {
+          toggleWindVane(gt.ref);
+        } else if (gt && gt.type === 'icePillar') {
+          triggerIcePillarDrop(gt.ref);
+        } else if (gt && gt.type === 'crucible') {
+          severFoundryCrucible(gt.ref);
         }
       } else {
         G.player.vx = (dx / dist) * 880;
@@ -541,6 +643,90 @@ export function updatePlayer(dt) {
         G.player.squashX = 1.24;
         G.player.squashY = 0.82;
       }
+      }
+    }
+  } else if (G.player.diveState !== 'none') {
+    if (G.player.diveState === 'hang') {
+      G.player.diveTimer -= dt; G.player.vx *= damp(0.74, dt); G.player.vy = Math.min(35, G.player.vy + 220 * dt);
+      if (G.player.diveTimer <= 0) { G.player.diveState = 'drop'; G.player.diveTimer = 0.85; G.player.vy = 1180; audio.playSlash(0.62, true); }
+    } else {
+      G.player.diveTimer -= dt; G.player.vx = moveDir * 95; G.player.vy = Math.min(1260, G.player.vy + GRAVITY * 1.3 * dt);
+      G.player.squashX = 0.76; G.player.squashY = 1.32;
+      G.player.afterimageCd = (G.player.afterimageCd || 0) - dt;
+      if (G.player.afterimageCd <= 0) {
+        G.player.afterimageCd = 0.032;
+        if (G.afterimages.length >= 7) G.afterimages.shift();
+        G.afterimages.push({ x: G.player.x, y: G.player.y, facing: G.player.facing, life: 0.16, maxLife: 0.16, color: COLORS.goldBright });
+      }
+      if (G.player.diveHitIds) {
+        const dBox = { x: G.player.x - 18, y: G.player.y + 8, w: G.player.w + 36, h: G.player.h + 14 };
+        for (const foe of getLivingFoes()) {
+          if (G.player.diveHitIds.has(foe.id)) continue;
+          if (aabbOverlap(dBox, foe)) {
+            G.player.diveHitIds.add(foe.id); damageEnemyHP(foe, 22, true); addPostureToEnemy(foe, 22);
+            applyEnemyHitFeel(foe, true, G.player.facing, 0); audio.playHit(true, 2);
+          }
+        }
+      }
+      if (G.player.diveTimer <= 0) G.player.diveState = 'none';
+    }
+  } else if (G.player.airSlamState !== 'none') {
+    if (G.player.airSlamState === 'hang') {
+      G.player.airSlamTimer -= dt;
+      G.player.vx *= damp(0.75, dt);
+      G.player.vy = Math.min(40, G.player.vy + 220 * dt);
+      if (G.player.airSlamTimer <= 0) {
+        G.player.airSlamState = 'drop';
+        G.player.airSlamTimer = 0.85;
+        G.player.vy = G.player.airSlamEmpowered ? 1220 : 1060;
+        audio.playSlash(0.68, true);
+      }
+    } else {
+      G.player.airSlamTimer -= dt;
+      G.player.vx = moveDir * 115;
+      G.player.vy = Math.min(1260, G.player.vy + GRAVITY * 1.4 * dt);
+      G.player.squashX = 0.78;
+      G.player.squashY = 1.30;
+      G.player.afterimageCd = (G.player.afterimageCd || 0) - dt;
+      if (G.player.afterimageCd <= 0) {
+        G.player.afterimageCd = 0.036;
+        if (G.afterimages.length >= 7) G.afterimages.shift();
+        G.afterimages.push({ x: G.player.x, y: G.player.y, facing: G.player.facing, life: 0.16, maxLife: 0.16, color: COLORS.goldBright });
+      }
+      // Mid-air Lantern / Pendulum safety pogo so Hammer never loses platforming bounces!
+      const pxS = G.player.x + G.player.w * 0.5;
+      const pyS = G.player.y + G.player.h;
+      let bouncedProp = false;
+      for (let li = 0; li < G.lanterns.length; li++) {
+        const l = G.lanterns[li];
+        if (l.hitCd > 0) continue;
+        const lx = l.x + Math.sin(l.angle) * l.len;
+        const ly = l.anchorY + Math.cos(l.angle) * l.len;
+        if (Math.abs(lx - pxS) < 46 && Math.abs(ly - pyS) < 42) {
+          l.hitCd = 0.25; l.angVel += G.player.facing * 6.5; l.ringFlash = 0.4;
+          G.player.airSlamState = 'none';
+          G.player.vy = -560; G.player.dashCd = 0; G.player.airJumpsLeft = 1; G.player.pogoChain = 0;
+          audio.playPogoLantern();
+          spawnShockwave(lx, ly, 62, COLORS.goldBright, 3.2, 0.24);
+          tryQuellChapelTideByLantern(l, lx, ly);
+          bouncedProp = true;
+          break;
+        }
+      }
+      if (!bouncedProp && G.player.airSlamHitIds) {
+        const diveBox = { x: G.player.x - 18, y: G.player.y + 10, w: G.player.w + 36, h: G.player.h + 14 };
+        for (const foe of getLivingFoes()) {
+          if (G.player.airSlamHitIds.has(foe.id)) continue;
+          if (aabbOverlap(diveBox, foe)) {
+            G.player.airSlamHitIds.add(foe.id);
+            damageEnemyHP(foe, 18, true);
+            addPostureToEnemy(foe, 16);
+            applyEnemyHitFeel(foe, true, G.player.facing, 0);
+            audio.playHit(true, 2);
+          }
+        }
+      }
+      if (G.player.airSlamTimer <= 0) G.player.airSlamState = 'none';
     }
   } else if (G.player.detonateLungeTimer > 0) {
     G.player.detonateLungeTimer -= dt;
@@ -594,10 +780,12 @@ export function updatePlayer(dt) {
     if (!(G.player.healTimer > 0 && !G.player.grounded && isSkillNodeUnlocked('air_flask'))) {
       G.player.vy += GRAVITY * dt;
     }
-    if (!G.player.grounded && G.player.wallDir !== 0 && G.player.vy > 115 && moveDir === G.player.wallDir) {
-      G.player.vy = 115;
-      if (Math.random() < 15 * dt) {
-        spawnParticles(G.player.x + (G.player.wallDir > 0 ? G.player.w : 0), G.player.y + 20, 1, { color: COLORS.parchment, speed: 40, grav: 80, life: 0.25 });
+    if (!G.player.grounded && G.player.wallDir !== 0 && moveDir === G.player.wallDir) {
+      if (G.player.wallSlick) {
+        if (Math.random() < 12 * dt) spawnParticles(G.player.x + (G.player.wallDir > 0 ? G.player.w : 0), G.player.y + 22, 1, { color: COLORS.crimsonBright, speed: 65, grav: 140, life: 0.22 });
+      } else if (G.player.vy > 115) {
+        G.player.vy = 115;
+        if (Math.random() < 15 * dt) spawnParticles(G.player.x + (G.player.wallDir > 0 ? G.player.w : 0), G.player.y + 20, 1, { color: COLORS.parchment, speed: 40, grav: 80, life: 0.25 });
       }
     }
     // Biome Wind Updrafts & Gale Streams (绝风断塔 / 霜骸圣脊)
@@ -606,6 +794,7 @@ export function updatePlayer(dt) {
       const pCy = G.player.y + G.player.h * 0.5;
       for (let wi = 0; wi < WIND_ZONES.length; wi++) {
         const wz = WIND_ZONES[wi];
+        if (!isWindZoneActive(wz)) continue;
         if (pCx >= wz.x && pCx <= wz.x + wz.w && pCy >= wz.y && pCy <= wz.y + wz.h) {
           if (wz.vy < 0) {
             const strength = Math.max(0.65, Math.min(1.6, Math.abs(wz.vy) / 1450));
@@ -649,6 +838,7 @@ export function updatePlayer(dt) {
       G.player.coyoteTimer = 0.11;
       G.player.airJumpsLeft = 1;
       G.player.pogoChain = 0;
+      G.player.bellAirStalls = 0;
     }
     if (G.player.jumpBufTimer > 0 && G.player.healTimer <= 0) {
       if (G.player.grounded && G.player.onPlatform && isActionHeld('down')) {
@@ -666,7 +856,7 @@ export function updatePlayer(dt) {
         G.player.squashX = 0.78;
         G.player.squashY = 1.26;
         spawnParticles(G.player.x + G.player.w / 2, G.player.y + G.player.h, 7, { color: COLORS.parchment, speed: 120, grav: 120, life: 0.28 });
-      } else if (!G.player.grounded && G.player.wallDir !== 0) {
+      } else if (!G.player.grounded && G.player.wallDir !== 0 && !G.player.wallSlick) {
         G.player.vy = -585;
         G.player.vx = -G.player.wallDir * 355;
         G.player.facing = -G.player.wallDir;
@@ -690,6 +880,10 @@ export function updatePlayer(dt) {
         spawnShockwave(wx, wy, 56, COLORS.cyanBright, 3.2, 0.24);
         spawnParticles(wx, wy, 12, { color: COLORS.ink, speed: 185, grav: 90, size: 3.4, angle: Math.PI * 0.5, spread: 2.2, life: 0.4 });
         spawnParticles(wx, wy, 10, { color: COLORS.cyanBright, speed: 170, spark: true, grav: 40, angle: Math.PI * 0.5, spread: 2.2, life: 0.34 });
+      } else if (!G.player.grounded && G.player.wallSlick && !(G.worldState && G.worldState.abilities.doubleJump) && (G.player.barrierHintCd || 0) <= 0) {
+        G.player.barrierHintCd = 1.6; G.player.jumpBufTimer = 0;
+        spawnParticles(G.player.x + (G.player.wallDir > 0 ? G.player.w : 0), G.player.y + 26, 8, { color: COLORS.crimsonBright, speed: 130, life: 0.28 });
+        spawnFloatText(G.player.x + G.player.w * 0.5, G.player.y - 24, t('combat.slickWallHint'), COLORS.crimsonBright, 15, 1.15);
       }
     }
 
@@ -710,6 +904,7 @@ export function updatePlayer(dt) {
       const bp = BOUNCE_PADS[bi];
       if (bp.cd > 0) continue;
       if (aabbOverlap(pBox, { x: bp.x - bp.w * 0.5, y: bp.y - bp.h, w: bp.w, h: bp.h })) {
+        if (!isBouncePadAwake(bp)) { bp.cd = 1.4; spawnFloatText(bp.x, bp.y - 44, t('combat.sporePadDormantHint'), '#c084fc', 15, 1.25); break; }
         bp.cd = 0.22;
         bp.squish = 1.0;
         G.player.y = bp.y - bp.h - G.player.h - 1;
@@ -718,7 +913,9 @@ export function updatePlayer(dt) {
         G.player.coyoteTimer = 0;
         G.player.airJumpsLeft = 1;
         G.player.pogoChain = 0;
+        G.player.bellAirStalls = 0;
         G.player.dashCd = 0;
+        G.player.airSlamState = 'none';
         G.player.squashX = 0.72;
         G.player.squashY = 1.34;
         audio.playSporeBounce();
@@ -787,7 +984,8 @@ export function updatePlayer(dt) {
   if (G.player.grounded) {
     const footCx = G.player.x + G.player.w * 0.5;
     const footY = G.player.y + G.player.h;
-    const inRiverZone = ABYSSAL_RIVERS.some(rv => rv.w > 0 && footCx >= rv.x - 10 && footCx <= rv.x + rv.w + 10 && footY >= rv.y - 6 && footY <= rv.y + 36);
+    const drainedNow = isRiverDrained();
+    const inRiverZone = ABYSSAL_RIVERS.some(rv => rv.w > 0 && !(drainedNow && rv.drainable) && footCx >= rv.x - 10 && footCx <= rv.x + rv.w + 10 && footY >= rv.y - 6 && footY <= rv.y + 36);
     if (!inRiverZone) {
       G.player.lastSafeX = G.player.x;
       G.player.lastSafeY = G.player.y;
@@ -816,7 +1014,18 @@ export function updatePlayer(dt) {
   const footBotY = G.player.y + G.player.h;
   const inPuddle = G.player.grounded && Math.abs(footBotY - FLOOR_Y) < 8 && PUDDLES.some(p => footMidX >= p.x && footMidX <= p.x + p.w);
 
-  if (!G.player.wasGrounded && G.player.grounded) {
+  if (G.player.grounded && G.player.diveState === 'drop') {
+    G.player.diveState = 'none'; G.player.diveHitIds = null; G.player.bellAirStalls = 0; G.player.pogoChain = 0;
+    triggerBellDiveImpact();
+  } else if (G.player.grounded && G.player.airSlamState === 'drop') {
+    const emp = !!G.player.airSlamEmpowered;
+    G.player.airSlamState = 'none';
+    G.player.airSlamHitIds = null;
+    G.player.bellAirStalls = 0;
+    G.player.pogoChain = 0;
+    triggerHammerAirSlamImpact(emp);
+  } else if (!G.player.wasGrounded && G.player.grounded) {
+    G.player.bellAirStalls = 0;
     G.player.squashX = 1.25;
     G.player.squashY = 0.78;
     G.player.landCrouch = Math.min(1, Math.max(0.45, Math.abs(preCollideVy) / 680));
@@ -936,28 +1145,21 @@ export function updatePlayer(dt) {
     }
   }
 
-  // Trigger Boss 1 Awakening upon entering Chapel of the Broken Bell
   if (G.boss && G.boss.alive && !G.boss.awake && G.player.x > 2740 && G.player.x < 3760 && G.player.y >= 0 && G.player.y < 700) {
-    G.boss.awake = true;
-    recordBestiaryEvent('boss', 'seen');
-    audio.playBellToll();
-    addShake(10);
-    triggerBossBanner(locBoss(G.boss, 'name'), t('boss.hui.awakeQuote'), COLORS.parchment, 2.6);
+    G.boss.awake = true; recordBestiaryEvent('boss', 'seen'); audio.playBellToll(); addShake(11);
+    spawnShockwave(G.boss.x + G.boss.w * 0.5, G.boss.y + 44, 195, COLORS.crimsonBright, 4.4, 0.45);
+    triggerBossIntro(G.boss, locBoss(G.boss, 'name'), t('boss.hui.awakeQuote'), COLORS.parchment, 1.55);
   }
-  // Trigger Boss 2 Awakening upon entering Abyssal Bell Foundry
   if (G.boss2 && G.boss2.alive && !G.boss2.awake && G.player.x > 5650 && G.player.x < 6720 && G.player.y > 880 && G.player.y < 1520) {
     G.boss2.awake = true;
-    recordBestiaryEvent('boss2', 'seen');
-    audio.playBellToll();
-    addShake(12);
-    triggerBossBanner(locBoss(G.boss2, 'name'), t('boss.ji.awakeQuote'), COLORS.goldBright, 2.6);
+    if (!G.foundryCrucibles || G.foundryCrucibles.length === 0) G.foundryCrucibles = createFoundryCrucibles();
+    recordBestiaryEvent('boss2', 'seen'); audio.playBellToll(); addShake(12);
+    spawnShockwave(G.boss2.x + G.boss2.w * 0.5, G.boss2.y + 48, 210, COLORS.goldBright, 4.8, 0.48);
+    triggerBossIntro(G.boss2, locBoss(G.boss2, 'name'), t('boss.ji.awakeQuote'), COLORS.goldBright, 1.55);
   }
-  // Trigger Final Boss Awakening upon entering Heart of the First Bell
   if (G.boss3 && G.boss3.alive && !G.boss3.awake && G.player.x > 8450 && G.player.x < 9660 && G.player.y >= 0 && G.player.y < 700) {
-    G.boss3.awake = true;
-    recordBestiaryEvent('boss3', 'seen');
-    audio.playBellToll();
-    addShake(14);
-    triggerBossBanner(locBoss(G.boss3, 'name'), t('boss.yuan.awakeQuote'), COLORS.goldBright, 2.9);
+    G.boss3.awake = true; recordBestiaryEvent('boss3', 'seen'); audio.playBellToll(); addShake(14);
+    spawnShockwave(G.boss3.x + G.boss3.w * 0.5, G.boss3.y + 52, 240, COLORS.goldBright, 5.2, 0.52);
+    triggerBossIntro(G.boss3, locBoss(G.boss3, 'name'), t('boss.yuan.awakeQuote'), COLORS.goldBright, 1.65);
   }
 }

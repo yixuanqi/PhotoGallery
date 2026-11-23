@@ -1,10 +1,11 @@
 // Asynchronous Room-Based JSON Data Stream loader & runtime hydrator
 import {
   ROOMS, SOLIDS, ALTARS, NPCS, ALTAR_POS, LORE_TABLETS,
-  SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, SKY_BRIDGE_GATE_DEF,
+  SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, SKY_BRIDGE_GATE_DEF, FOUNDRY_VENT_GATE_DEF, MIRROR_ABYSS_GATE_DEF,
   SECRET_WALLS_DEF, VOID_BARRIERS, PICKUPS_DEF, RESONANCE_PUZZLES_DEF, CRUMBLE_PLATFORMS_DEF,
   PENDULUMS, ABYSSAL_RIVERS, ABYSSAL_RIVER, WALL_INSCRIPTIONS, GRAPPLE_ANCHORS,
   LANTERNS_DEF, ENEMIES_DEF, BOSSES_DEF, PUDDLES, BANNERS, CANDLE_CLUSTERS, BONE_CAIRNS, STAMPS, WIND_ZONES, BOUNCE_PADS,
+  BREAKABLE_FLOORS_DEF, WORLD_SWITCHES_DEF, WIND_VANES, ICE_PILLARS_DEF, SLICK_WALLS, SWITCH_GATES,
   PREVIEW_STORAGE_KEY, setWorldMetrics
 } from './config.js';
 import { G } from './state.js';
@@ -77,6 +78,12 @@ export function hydrateWorldBundle(bundle) {
   resetArray(STAMPS);
   resetArray(WIND_ZONES);
   resetArray(BOUNCE_PADS);
+  resetArray(BREAKABLE_FLOORS_DEF);
+  resetArray(WORLD_SWITCHES_DEF);
+  resetArray(WIND_VANES);
+  resetArray(ICE_PILLARS_DEF);
+  resetArray(SLICK_WALLS);
+  resetArray(SWITCH_GATES);
 
   // Reset gate widths so removed gates do not leave phantom collisions
   SHORTCUT_GATE_DEF.w = 0;
@@ -89,6 +96,10 @@ export function hydrateWorldBundle(bundle) {
   FOUNDRY_EXIT_GATE_DEF.h = 0;
   SKY_BRIDGE_GATE_DEF.w = 0;
   SKY_BRIDGE_GATE_DEF.h = 0;
+  FOUNDRY_VENT_GATE_DEF.w = 0;
+  FOUNDRY_VENT_GATE_DEF.h = 0;
+  MIRROR_ABYSS_GATE_DEF.w = 0;
+  MIRROR_ABYSS_GATE_DEF.h = 0;
   ABYSSAL_RIVER.w = 0;
 
   let minX = 0;
@@ -197,6 +208,18 @@ export function hydrateWorldBundle(bundle) {
         Object.assign(FOUNDRY_EXIT_GATE_DEF, worldGate);
       } else if (g.role === 'skyBridge' || g.id === 'gate_sky_bridge') {
         Object.assign(SKY_BRIDGE_GATE_DEF, worldGate);
+      } else if (g.role === 'foundryValve' || g.id === 'gate_foundry_vent') {
+        Object.assign(FOUNDRY_VENT_GATE_DEF, worldGate);
+      } else if (g.role === 'mirrorAbyss' || g.id === 'gate_mirror_abyss') {
+        Object.assign(MIRROR_ABYSS_GATE_DEF, worldGate);
+      } else if (g.role === 'switchGate' && g.switchKey) {
+        SWITCH_GATES.push({
+          ...worldGate,
+          switchKey: g.switchKey,
+          orientation: g.orientation || (worldGate.w > worldGate.h ? 'horizontal' : 'vertical'),
+          type: 'pillar',
+          isSwitchGate: true
+        });
       }
     }
 
@@ -210,13 +233,21 @@ export function hydrateWorldBundle(bundle) {
     }
 
     for (const vb of (room.voidBarriers || [])) {
-      VOID_BARRIERS.push({
-        ...vb,
-        x: ox + vb.x,
-        y: oy + vb.y,
-        type: 'pillar',
-        isVoidBarrier: true,
-        roomId: room.id
+      const worldVb = { ...vb, x: ox + vb.x, y: oy + vb.y, type: 'pillar', isVoidBarrier: true, sweeping: !!vb.sweeping, roomId: room.id };
+      if (vb.sweeping) {
+        worldVb.sweepMinX = ox + (Number(vb.sweepMinX) || vb.x);
+        worldVb.sweepMaxX = ox + (Number(vb.sweepMaxX) || (vb.x + 240));
+        worldVb.sweepSpeed = Number(vb.sweepSpeed) || 1.3;
+        worldVb.sweepPhase = Number(vb.sweepPhase) || 0;
+      }
+      VOID_BARRIERS.push(worldVb);
+    }
+    for (const sw of (room.slickWalls || [])) {
+      SLICK_WALLS.push({
+        id: sw.id || `slick_${room.id}_${SLICK_WALLS.length}`,
+        x: ox + (Number(sw.x) || 0), y: oy + (Number(sw.y) || 0),
+        w: Number(sw.w) || 22, h: Number(sw.h) || 180,
+        side: sw.side || 'both', roomId: room.id
       });
     }
 
@@ -255,51 +286,70 @@ export function hydrateWorldBundle(bundle) {
     }
 
     for (const rv of (room.rivers || [])) {
-      const worldRv = { id: rv.id || `rv_${room.id}`, x: ox + rv.x, y: oy + rv.y, w: rv.w, roomId: room.id };
-      ABYSSAL_RIVERS.push(worldRv);
+      ABYSSAL_RIVERS.push({ id: rv.id || `rv_${room.id}`, x: ox + rv.x, y: oy + rv.y, w: rv.w, drainable: !!rv.drainable, roomId: room.id });
     }
-
     for (const wz of (room.windZones || [])) {
+      const baseVx = Number(wz.vx) || 0, baseVy = Number(wz.vy) || -980;
       WIND_ZONES.push({
-        id: wz.id || `wz_${room.id}_${WIND_ZONES.length}`,
-        x: ox + (Number(wz.x) || 0),
-        y: oy + (Number(wz.y) || 0),
-        w: Number(wz.w) || 120,
-        h: Number(wz.h) || 320,
-        vx: Number(wz.vx) || 0,
-        vy: Number(wz.vy) || -980,
-        roomId: room.id
+        id: wz.id || `wz_${room.id}_${WIND_ZONES.length}`, x: ox + (Number(wz.x) || 0), y: oy + (Number(wz.y) || 0),
+        w: Number(wz.w) || 120, h: Number(wz.h) || 320, vx: baseVx, vy: baseVy, baseVx, baseVy,
+        requiresSwitch: wz.requiresSwitch || null, requiresBoss4Unlocked: !!wz.requiresBoss4Unlocked, roomId: room.id
       });
     }
-
     for (const bp of (room.bouncePads || [])) {
       BOUNCE_PADS.push({
-        id: bp.id || `bp_${room.id}_${BOUNCE_PADS.length}`,
-        x: ox + (Number(bp.x) || 0),
-        y: oy + (Number(bp.y) || 0),
-        w: Number(bp.w) || 74,
-        h: Number(bp.h) || 26,
-        boostVy: Number(bp.boostVy) || -790,
-        squish: 0,
-        cd: 0,
-        roomId: room.id
+        id: bp.id || `bp_${room.id}_${BOUNCE_PADS.length}`, x: ox + (Number(bp.x) || 0), y: oy + (Number(bp.y) || 0),
+        w: Number(bp.w) || 74, h: Number(bp.h) || 26, boostVy: Number(bp.boostVy) || -790,
+        dormant: !!bp.dormant, squish: 0, cd: 0, roomId: room.id
+      });
+    }
+    for (const bf of (room.breakableFloors || [])) {
+      BREAKABLE_FLOORS_DEF.push({
+        id: bf.id || `bf_${room.id}_${BREAKABLE_FLOORS_DEF.length}`, x: ox + (Number(bf.x) || 0), y: oy + (Number(bf.y) || 0),
+        w: Number(bf.w) || 120, h: Number(bf.h) || 80, style: bf.style || 'stone', roomId: room.id
+      });
+    }
+    for (const sw of (room.worldSwitches || [])) {
+      WORLD_SWITCHES_DEF.push({ ...sw, id: sw.id || `sw_${room.id}_${WORLD_SWITCHES_DEF.length}`, x: ox + (Number(sw.x) || 0), y: oy + (Number(sw.y) || 0), roomId: room.id });
+    }
+    for (const wv of (room.windVanes || [])) {
+      WIND_VANES.push({
+        id: wv.id || `wv_${room.id}_${WIND_VANES.length}`, x: ox + (Number(wv.x) || 0), y: oy + (Number(wv.y) || 0),
+        dir: Number(wv.dir) === -1 ? -1 : 1, defaultDir: Number(wv.dir) === -1 ? -1 : 1,
+        boostVx: Number(wv.boostVx) || 140, targetZoneIds: Array.isArray(wv.targetZoneIds) ? [...wv.targetZoneIds] : [],
+        hitCd: 0, spinVel: 0, flash: 0, roomId: room.id
+      });
+    }
+    for (const ip of (room.icePillars || [])) {
+      ICE_PILLARS_DEF.push({
+        id: ip.id || `ip_${room.id}_${ICE_PILLARS_DEF.length}`, x: ox + (Number(ip.x) || 0), topY: oy + (Number(ip.topY) || 0),
+        len: Number(ip.len) || 140, bridgeX: ox + (Number(ip.bridgeX) || 0), bridgeY: oy + (Number(ip.bridgeY) || 0),
+        bridgeW: Number(ip.bridgeW) || 120, bridgeH: Number(ip.bridgeH) || 20, roomId: room.id
       });
     }
 
     for (const anc of (room.grappleAnchors || [])) {
-      const entry = { ...anc, x: ox + anc.x, y: oy + anc.y, roomId: room.id };
-      if (anc.topY !== undefined) entry.topY = oy + anc.topY;
+      const worldY = oy + anc.y;
+      const entry = {
+        ...anc,
+        id: anc.id || `anc_${room.id}_${GRAPPLE_ANCHORS.length}`,
+        x: ox + anc.x,
+        y: worldY,
+        topY: anc.topY !== undefined ? (oy + anc.topY) : Math.min(oy, worldY - 24),
+        roomId: room.id
+      };
       GRAPPLE_ANCHORS.push(entry);
     }
 
     for (const lan of (room.lanterns || [])) {
+      const worldAncY = oy + lan.anchorY;
       const entry = {
         ...lan,
         x: ox + lan.x,
-        anchorY: oy + lan.anchorY,
+        anchorY: worldAncY,
+        topY: lan.topY !== undefined ? (oy + lan.topY) : Math.min(oy, worldAncY),
         roomId: room.id
       };
-      if (lan.topY !== undefined) entry.topY = oy + lan.topY;
       LANTERNS_DEF.push(entry);
     }
 

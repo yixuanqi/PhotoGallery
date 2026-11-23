@@ -256,6 +256,27 @@ export function drawPuppet(x, y, facing, isGhost = false, ghostColor = null) {
     const bladeGold = G.player.chargeReadyPlayed || G.player.riposteWindow > 0;
     const bladeSealProc = !!G.player.freeSealProc;
 
+    if (G.player.diveState !== 'none') {
+      drawGlowSprite('gold', 0, -26, 62, 0.88);
+      drawGlowSprite('cyan', 0, -26, 38, 0.65);
+      G.ctx.save();
+      G.ctx.fillStyle = 'rgba(245, 158, 11, 0.24)'; G.ctx.strokeStyle = COLORS.goldBright; G.ctx.lineWidth = 2.6;
+      G.ctx.beginPath(); G.ctx.moveTo(-14, -56); G.ctx.lineTo(14, -56); G.ctx.quadraticCurveTo(24, -22, 28, 4);
+      G.ctx.lineTo(-28, 4); G.ctx.quadraticCurveTo(-24, -22, -14, -56); G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
+      G.ctx.restore();
+    }
+    // v36.0 Meteor Aura while diving in Hammer Air Slam
+    if (G.player.airSlamState !== 'none') {
+      drawGlowSprite('gold', 0, -24, 52, 0.84);
+      G.ctx.save();
+      G.ctx.strokeStyle = COLORS.goldBright;
+      G.ctx.lineWidth = 3.0;
+      G.ctx.beginPath();
+      G.ctx.moveTo(-18, -6); G.ctx.lineTo(0, 12); G.ctx.lineTo(18, -6);
+      G.ctx.stroke();
+      G.ctx.restore();
+    }
+
     // Hyper-Armor Golden Bell-Aura during heavy Hammer swings
     if (G.player.shieldArmorTimer > 0) {
       drawGlowSprite('gold', 0, -28, 38, 0.62);
@@ -273,7 +294,9 @@ export function drawPuppet(x, y, facing, isGhost = false, ghostColor = null) {
       ? (facing > 0 ? -2.28 : Math.PI + 2.28) // Two-handed shoulder rest for the heavy Bell-Maul!
       : (facing > 0 ? -0.35 : Math.PI + 0.35);
 
-    if (G.player.parryActive) {
+    if (G.player.airSlamState !== 'none' && weaponId === 'hammer') {
+      bladeAng = G.player.airSlamState === 'hang' ? (facing > 0 ? -2.65 : Math.PI + 2.65) : Math.PI * 0.5;
+    } else if (G.player.parryActive) {
       bladeAng = facing > 0 ? -1.15 : Math.PI + 1.15;
     } else if (G.player.isCharging && G.player.chargeTime > 0.14) {
       if (weaponId === 'bell') bladeAng = facing > 0 ? -1.05 : Math.PI + 1.05;

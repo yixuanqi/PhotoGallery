@@ -29,7 +29,8 @@
   "connections": [
     "r01_sanctuary",
     "r03_chapel",
-    "r06_crypt"
+    "r06_crypt",
+    "r18_rain_steps"
   ],
   "solids": [
     {
@@ -42,16 +43,16 @@
     {
       "x": 1040,
       "y": 580,
-      "w": 400,
+      "w": 120,
       "h": 160,
       "type": "ground"
     },
     {
-      "x": 1440,
+      "x": 1310,
       "y": 580,
-      "w": 100,
-      "h": 22,
-      "type": "platform"
+      "w": 130,
+      "h": 160,
+      "type": "ground"
     },
     {
       "x": 1540,
@@ -97,7 +98,7 @@
     },
     {
       "x": 1100,
-      "y": 430,
+      "y": 478,
       "w": 135,
       "h": 22,
       "type": "platform"
@@ -191,6 +192,16 @@
       "h": 245,
       "leverX": 555,
       "leverY": 245
+    },
+    {
+      "id": "gate_crypt_hatch",
+      "role": "switchGate",
+      "switchKey": "cryptHatchOpen",
+      "orientation": "horizontal",
+      "x": 1440,
+      "y": 580,
+      "w": 100,
+      "h": 26
     }
   ],
   "secretWalls": [],
@@ -267,19 +278,14 @@
       "y": 250
     },
     {
-      "id": "anc_3",
-      "x": 680,
-      "y": 155
-    },
-    {
-      "id": "anc_4",
-      "x": 1120,
-      "y": 170
-    },
-    {
       "id": "anc_5",
       "x": 1510,
       "y": 215
+    },
+    {
+      "x": 330,
+      "y": 82,
+      "id": "anc_r02_corridor_2"
     }
   ],
   "lanterns": [
@@ -370,6 +376,12 @@
       "y": 236,
       "text": "「礼拜堂暗阁 · 需幽影穿身」",
       "hideWhenShadeDash": true
+    },
+    {
+      "x": 1235,
+      "y": 532,
+      "text": "「裂石薄层 · 需以「镇岳下砸」垂直震破」",
+      "hideWhenFloorBroken": "floor_corridor_crypt"
     }
   ],
   "props": {
@@ -530,6 +542,34 @@
       "y": 150,
       "w": 22,
       "h": 120
+    }
+  ],
+  "breakableFloors": [
+    {
+      "id": "floor_corridor_crypt",
+      "x": 1160,
+      "y": 580,
+      "w": 150,
+      "h": 160,
+      "style": "stone"
+    }
+  ],
+  "slickWalls": [
+    {
+      "id": "slick_r02_mid",
+      "x": 440,
+      "y": 245,
+      "w": 38,
+      "h": 240,
+      "side": "both"
+    },
+    {
+      "id": "slick_r02_east",
+      "x": 1670,
+      "y": 270,
+      "w": 36,
+      "h": 210,
+      "side": "left"
     }
   ]
 }

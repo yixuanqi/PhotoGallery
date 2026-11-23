@@ -1,13 +1,13 @@
 // World Combat Interactions: Lantern Tide Quell, Secret Walls, Puzzles, Bell-Quake, Pickups & Ultimates (v32.0)
 import {
-  COLORS, RELICS, GRAPPLE_ANCHORS, PENDULUMS, VOID_BARRIERS, ABYSSAL_RIVERS, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, FIRST_BELL_CORE_POS, ENEMY_ECHO_REWARDS, DUMMY_MODES, SEVEN_BELLS_ORDER
+  COLORS, RELICS, GRAPPLE_ANCHORS, PENDULUMS, VOID_BARRIERS, ABYSSAL_RIVERS, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, FOUNDRY_VENT_GATE_DEF, FIRST_BELL_CORE_POS, ENEMY_ECHO_REWARDS, DUMMY_MODES, SEVEN_BELLS_ORDER, WIND_ZONES, BOUNCE_PADS, WIND_VANES, SWITCH_GATES
 } from '../config.js';
 import {
   G, hooks, getLivingFoes, getAwakeBoss, isWorldPosExplored, getRelicStats, getActiveVowStats, getCombatScaling, getBladeDamageMult, getSmithPostureMult,
   getActiveWeaponId, getActiveWeapon, isWeaponUnlocked, getUnlockedWeaponIds, unlockWeapon,
   hasActiveWeaponTrait,
   getBossBonusDamageMult, hasKeeperBlessing,
-  getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks, getRealmSealCount, hasThirdRelicSlot,
+  getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks, getRealmSealCount, hasThirdRelicSlot, isWorldSwitchOn, isSwitchUnlocked,
   scheduleOutcome, addShake, kickCamera, punchZoom, triggerBossBanner, triggerHitstop
 } from '../state.js';
 import { getRoomAt } from '../levelLoader.js';
@@ -21,7 +21,7 @@ import { recordBestiaryEvent, checkAchievements } from '../codex.js';
 import { t, isEn, locDummyMode, locPickup, locPuzzleName, locBoss, locRelic } from '../i18n.js';
 import { WEAPON_ORDER, normalizeWeaponId, getWeaponById, getWeaponMoveDef, getWeaponUltimateDef } from '../weapons.js';
 import {
-  reclaimLostEchoes, rallyPlayerGrayHp, damageEnemyHP, addPostureToEnemy
+  reclaimLostEchoes, rallyPlayerGrayHp, damageEnemyHP, addPostureToEnemy, applyEnemyHitFeel
 } from './damageCombat.js';
 
 export function tryQuellChapelTideByLantern(lantern, lx, ly) {
@@ -87,15 +87,179 @@ export function isPickupUnlocked(p) {
   if (p.requiresPuzzle) {
     if (!(G.worldState && G.worldState.solvedPuzzles && G.worldState.solvedPuzzles.has(p.requiresPuzzle))) return false;
   }
+  if (p.requiresSwitch && !isWorldSwitchOn(p.requiresSwitch)) return false;
   if (p.requiresBoss) {
     if (!G.worldState) return false;
     const bid = p.requiresBoss;
     if (bid === 'boss_hui') return !!G.worldState.bossDefeated;
     if (bid === 'boss_ji') return !!G.worldState.boss2Defeated;
     if (bid === 'boss_yuan') return !!G.worldState.boss3Defeated;
+    if (bid === 'boss_zhu') return !!G.worldState.boss4Defeated;
     return !!(G.worldState.defeatedMiniBosses && G.worldState.defeatedMiniBosses.has(bid));
   }
   return true;
+}
+
+export function activateWorldSwitch(sw) {
+  if (!sw || !G.worldState || !isSwitchUnlocked(sw)) return false;
+  if (!G.worldState.worldSwitches) G.worldState.worldSwitches = { riverDrained: false, foundryValveOpen: false };
+  if (G.worldState.worldSwitches[sw.switchKey]) return false;
+  G.worldState.worldSwitches[sw.switchKey] = true;
+  audio.playBellToll(); audio.playTideRoar();
+  triggerHaptic('execution', 1.0); addShake(14); punchZoom(1.048);
+  const col = sw.switchKey === 'riverDrained' ? COLORS.cyanBright : COLORS.goldBright;
+  G.screenFlash = { alpha: 0.26, color: col };
+  spawnShockwave(sw.x, sw.y - 26, 210, col, 5.0, 0.48);
+  spawnParticles(sw.x, sw.y - 26, 36, { color: col, speed: 290, spark: true, life: 0.65 });
+  if (sw.switchKey === 'riverDrained') {
+    triggerBossBanner(t('combat.switchRiverTitle'), t('combat.switchRiverQuote'), COLORS.cyanBright, 3.2);
+    spawnFloatText(sw.x, sw.y - 72, t('combat.switchRiverFloat'), COLORS.cyanBright, 21, 1.9);
+  } else if (sw.switchKey === 'foundryValveOpen') {
+    if (FOUNDRY_VENT_GATE_DEF.w > 0) spawnShockwave(FOUNDRY_VENT_GATE_DEF.x + FOUNDRY_VENT_GATE_DEF.w * 0.5, FOUNDRY_VENT_GATE_DEF.y + 20, 180, COLORS.goldBright, 4.8, 0.45);
+    triggerBossBanner(t('combat.switchValveTitle'), t('combat.switchValveQuote'), COLORS.goldBright, 3.2);
+    spawnFloatText(sw.x, sw.y - 72, t('combat.switchValveFloat'), COLORS.goldBright, 21, 1.9);
+  } else {
+    for (const sg of SWITCH_GATES) {
+      if (sg.switchKey === sw.switchKey) {
+        spawnShockwave(sg.x + sg.w * 0.5, sg.y + sg.h * 0.5, 160, COLORS.goldBright, 4.5, 0.42);
+      }
+    }
+    const isHatch = sw.kind === 'hatch';
+    spawnFloatText(sw.x, sw.y - 68, t(isHatch ? 'combat.switchHatchFloat' : 'combat.switchGateFloat'), COLORS.goldBright, 20, 1.75);
+  }
+  G.minimapDirty = true; hooks.saveProgress(true); hooks.syncHUD(true);
+  return true;
+}
+
+export function toggleWindVane(wv) {
+  if (!wv || wv.hitCd > 0) return false;
+  wv.hitCd = 0.28; wv.dir = wv.dir > 0 ? -1 : 1; wv.spinVel = wv.dir * 14; wv.flash = 0.65;
+  if (G.worldState) {
+    if (!G.worldState.windVaneDirs) G.worldState.windVaneDirs = {};
+    G.worldState.windVaneDirs[wv.id] = wv.dir;
+  }
+  for (let i = 0; i < (wv.targetZoneIds || []).length; i++) {
+    const wz = WIND_ZONES.find(z => z.id === wv.targetZoneIds[i]);
+    if (wz) wz.vx = wv.dir * (wv.boostVx || 145);
+  }
+  audio.playResonanceBell(wv.dir > 0 ? 587.33 : 440.0, false); audio.playWindBlade(); addShake(4.5);
+  spawnShockwave(wv.x, wv.y - 36, 86, '#7dd3fc', 3.4, 0.28);
+  spawnParticles(wv.x, wv.y - 36, 16, { color: '#bae6fd', speed: 220, spark: true, life: 0.36 });
+  spawnFloatText(wv.x, wv.y - 72, t(wv.dir > 0 ? 'combat.windVaneEast' : 'combat.windVaneWest'), '#7dd3fc', 18, 1.15);
+  hooks.saveProgress(false);
+  return true;
+}
+
+export function awakenDormantSporePad(bp) {
+  if (!bp || !bp.dormant || !G.worldState) return false;
+  if (!G.worldState.awakenedPads) G.worldState.awakenedPads = new Set();
+  if (G.worldState.awakenedPads.has(bp.id)) return false;
+  G.worldState.awakenedPads.add(bp.id); bp.squish = 1.0;
+  audio.playSporePurify(); audio.playSporeBounce(); addShake(7);
+  spawnShockwave(bp.x, bp.y - 16, 125, '#6ee7b7', 4.2, 0.36);
+  spawnParticles(bp.x, bp.y - 18, 28, { color: '#6ee7b7', speed: 240, spark: true, grav: -60, life: 0.55 });
+  spawnFloatText(bp.x, bp.y - 54, t('combat.sporePadAwakened'), '#6ee7b7', 19, 1.4);
+  hooks.saveProgress(true);
+  return true;
+}
+
+export function severFoundryCrucible(cr) {
+  if (!cr || cr.state !== 'hanging') return false;
+  cr.state = 'falling'; cr.vy = 160;
+  audio.playParry(true, 3); audio.playCrumble();
+  triggerHaptic('heavyHit', 0.9); addShake(7.5);
+  spawnShockwave(cr.x, cr.y - 34, 82, COLORS.goldBright, 3.6, 0.25);
+  spawnParticles(cr.x, cr.y - 34, 22, { color: COLORS.goldBright, speed: 270, spark: true, life: 0.42 });
+  spawnFloatText(cr.x, cr.y - 62, t('combat.crucibleSevered'), COLORS.goldBright, 19, 1.0);
+  return true;
+}
+
+export function triggerIcePillarDrop(ip) {
+  if (!ip || ip.state !== 'hanging') return false;
+  ip.state = 'falling'; ip.vy = 180; ip.fallY = ip.topY + ip.len; ip.hitIds = new Set(); ip.flash = 0.5;
+  audio.playFrostShatter(); addShake(7);
+  spawnShockwave(ip.x, ip.topY + ip.len * 0.6, 84, '#bae6fd', 3.4, 0.26);
+  spawnParticles(ip.x, ip.topY + ip.len * 0.5, 18, { color: '#e0f2fe', speed: 220, spark: true, life: 0.4 });
+  spawnFloatText(ip.x, ip.topY + ip.len + 12, t('combat.icePillarDrop'), '#bae6fd', 17, 0.9);
+  return true;
+}
+
+export function triggerBellDiveImpact() {
+  if (!G.player) return;
+  const px = G.player.x + G.player.w * 0.5, fy = G.player.y + G.player.h, rs = getRelicStats();
+  const isWetDive = !!(G.player && (G.player.wetTimer > 0 || rs.synTideClapper));
+  const radius = Math.round(192 * rs.spellRadiusMult * (isWetDive ? 1.14 : 1.0));
+  const dmg = Math.round(54 * rs.spellDmgMult * (isWetDive ? 1.15 : 1.0));
+  const posDmg = Math.round((50 + rs.spellPostureBonus) * (isWetDive ? 1.15 : 1.0));
+  if (isWetDive && rs.wetConductSoul > 0) G.player.soul = Math.min(G.player.maxSoul, G.player.soul + rs.wetConductSoul);
+  if (rs.synTideClapper) {
+    const tDmg = Math.round(34 * rs.spellDmgMult);
+    for (const dir of [-1, 1]) {
+      G.projectiles.push({
+        owner: 'player', kind: 'hammerWave', x: px + dir * 28, y: fy - 14,
+        vx: dir * 580, vy: 0, r: 28, dmg: tDmg, posture: 32, heavy: true, breaksShield: true,
+        life: 0.58, maxLife: 0.58, facing: dir, hitIds: new Set()
+      });
+    }
+  }
+  audio.playAirSlam(); audio.playBellQuake();
+  triggerHaptic('execution', 1.15); triggerHitstop(0.036, true); addShake(15); kickCamera(0, 10); punchZoom(1.048);
+  G.screenFlash = { alpha: 0.22, color: COLORS.goldBright };
+  G.player.iframeTimer = Math.max(G.player.iframeTimer, 0.34);
+  G.player.squashX = 1.36; G.player.squashY = 0.70; G.player.landCrouch = 1.0;
+  G.bellQuakes.push({ x: px, y: fy - 18, radius: radius * 0.95, life: 0.44, maxLife: 0.44 });
+  spawnShockwave(px, fy - 6, radius, COLORS.goldBright, 5.4, 0.38);
+  spawnShockwave(px, fy - 6, radius * 0.65, COLORS.cyanBright, 3.6, 0.28);
+  spawnParticles(px, fy - 6, 32, { color: COLORS.goldBright, speed: 340, spark: true, bounce: true, grav: 560, life: 0.48 });
+  spawnParticles(px, fy - 6, 18, { color: COLORS.cyanBright, speed: 260, spark: true, grav: -60, life: 0.42 });
+  spawnFloatText(px, G.player.y - 38, t('combat.bellDiveImpact'), COLORS.goldBright, 22, 1.0);
+
+  if (G.worldState && G.worldState.breakableFloors) {
+    let brokeFloor = false;
+    for (const bf of G.worldState.breakableFloors) {
+      if (bf.broken) continue;
+      if (px >= bf.x - 42 && px <= bf.x + bf.w + 42 && Math.abs(fy - bf.y) <= 46) {
+        bf.broken = true; brokeFloor = true; G.minimapDirty = true;
+        audio.playDetonate(); addShake(16);
+        const fcx = bf.x + bf.w * 0.5, fcy = bf.y + bf.h * 0.4;
+        spawnShockwave(fcx, fcy, 170, bf.style === 'ice' ? '#bae6fd' : COLORS.goldBright, 5.0, 0.42);
+        spawnParticles(fcx, fcy, 38, { color: bf.style === 'ice' ? '#bae6fd' : COLORS.parchment, speed: 320, grav: 480, life: 0.6 });
+        spawnFloatText(fcx, bf.y - 24, t(bf.style === 'ice' ? 'combat.iceFloorBroken' : 'combat.stoneFloorBroken'), bf.style === 'ice' ? '#bae6fd' : COLORS.goldBright, 22, 1.55);
+        G.player.grounded = false; G.player.y += 10; G.player.vy = 260;
+      }
+    }
+    if (brokeFloor) hooks.saveProgress(true);
+  }
+  for (const foe of getLivingFoes()) {
+    const fx = foe.x + foe.w * 0.5, fcy = foe.y + foe.h * 0.5;
+    if (Math.hypot(fx - px, fcy - (fy - 24)) <= radius + Math.max(foe.w, foe.h) * 0.35) {
+      const dir = fx >= px ? 1 : -1;
+      if ((foe.kind === 'golem' || foe.kind === 'warden_forest' || ((foe.kind === 'boss2' || foe.kind === 'dummy') && foe.shieldUp)) && foe.shieldBrokenTimer <= 0) {
+        foe.shieldBrokenTimer = foe.kind === 'warden_forest' ? 4.5 : 3.0;
+        if (foe.kind === 'boss2' || foe.kind === 'dummy') foe.shieldUp = false;
+        audio.playShieldBreak();
+      }
+      damageEnemyHP(foe, dmg, true); addPostureToEnemy(foe, posDmg); rallyPlayerGrayHp(18);
+      const launchSpd = foe.isBoss ? 0 : (foe.isMiniBoss ? 190 : 390);
+      if (!foe.isBoss && foe.state !== 'stagger') {
+        foe.vx = dir * launchSpd;
+        if (foe.kind !== 'wraith' && foe.kind !== 'falcon' && !foe.isMiniBoss) foe.vy = Math.min(foe.vy, -220);
+      }
+      applyEnemyHitFeel(foe, true, dir, foe.state === 'stagger' ? 0 : launchSpd);
+    }
+  }
+  for (const pr of G.projectiles) { if (pr.owner === 'enemy' && pr.life > 0 && Math.hypot(pr.x - px, pr.y - (fy - 20)) <= radius + pr.r) pr.life = 0; }
+  for (const bp of BOUNCE_PADS) { if (bp.dormant && Math.hypot(bp.x - px, bp.y - fy) <= radius + 48) awakenDormantSporePad(bp); }
+  for (const ip of (G.worldState ? (G.worldState.icePillars || []) : [])) { if (ip.state === 'hanging' && Math.abs(ip.x - px) <= radius + 40 && Math.abs(ip.topY + ip.len - fy) <= 320) triggerIcePillarDrop(ip); }
+  for (const wv of WIND_VANES) { if (Math.hypot(wv.x - px, (wv.y - 36) - (fy - 24)) <= radius + 30) toggleWindVane(wv); }
+  for (const cr of (G.foundryCrucibles || [])) { if (cr.state === 'hanging' && Math.hypot(cr.x - px, cr.y - (fy - 24)) <= radius + 60) severFoundryCrucible(cr); }
+  if (G.sporeClouds) {
+    for (let si = G.sporeClouds.length - 1; si >= 0; si--) {
+      if (Math.hypot(G.sporeClouds[si].x - px, G.sporeClouds[si].y - (fy - 20)) <= radius + G.sporeClouds[si].r) { G.sporeClouds.splice(si, 1); audio.playSporePurify(); }
+    }
+  }
+  if (G.worldState) { for (const w of G.worldState.secretWalls) { if (!w.broken && Math.hypot((w.x + w.w * 0.5) - px, (w.y + w.h * 0.5) - (fy - 20)) <= radius + 24) damageSecretWall(w, 3); } }
+  if (G.resonancePuzzles) { for (const pz of G.resonancePuzzles) { for (const b of pz.bells) { if (Math.hypot(b.x - px, b.y - (fy - 20)) <= radius + 40) ringResonanceBell(pz, b, b.x >= px ? 1 : -1); } } }
 }
 
 export function ringResonanceBell(puzzle, bell, impulseDir = 1) {
@@ -151,7 +315,21 @@ export function castBellQuake() {
   const rs = getRelicStats();
   const px = G.player.x + G.player.w / 2;
   const py = G.player.y + 24;
-  const isWetConduct = !!(G.player && G.player.wetTimer > 0);
+  const isWetConduct = !!(G.player && (G.player.wetTimer > 0 || rs.synTideClapper));
+  if (isWetConduct && rs.wetConductSoul > 0 && G.player) {
+    G.player.soul = Math.min(G.player.maxSoul, G.player.soul + rs.wetConductSoul);
+  }
+  if (rs.synTideClapper) {
+    const tDmg = Math.round(34 * rs.spellDmgMult);
+    for (const dir of [-1, 1]) {
+      G.projectiles.push({
+        owner: 'player', kind: 'hammerWave', x: px + dir * 24, y: G.player.y + G.player.h - 14,
+        vx: dir * 560, vy: 0, r: 26, dmg: tDmg, posture: 30, heavy: true, breaksShield: true,
+        life: 0.56, maxLife: 0.56, facing: dir, hitIds: new Set()
+      });
+    }
+    spawnFloatText(px, G.player.y - 52, t('combat.synTideClapper'), COLORS.cyanBright, 19, 0.95);
+  }
   const radius = Math.round(168 * rs.spellRadiusMult * (isWetConduct ? 1.18 : 1.0));
   const dmg = Math.round(38 * rs.spellDmgMult * (isWetConduct ? 1.15 : 1.0));
   const posDmg = Math.round((32 + rs.spellPostureBonus) * (isWetConduct ? 1.15 : 1.0));
@@ -283,6 +461,12 @@ export function castBellQuake() {
     }
   }
 
+  for (const bp of BOUNCE_PADS) { if (bp.dormant && Math.hypot(bp.x - px, bp.y - py) <= radius + 54) awakenDormantSporePad(bp); }
+  for (const ip of (G.worldState ? (G.worldState.icePillars || []) : [])) {
+    if (ip.state === 'hanging' && (Math.hypot(ip.x - px, (ip.topY + ip.len) - py) <= radius + 65 || (Math.abs(ip.x - px) <= radius * 0.8 && ip.topY + ip.len <= py && ip.topY + ip.len >= py - radius * 1.65))) triggerIcePillarDrop(ip);
+  }
+  for (const wv of WIND_VANES) { if (Math.hypot(wv.x - px, (wv.y - 36) - py) <= radius + 38) toggleWindVane(wv); }
+  for (const cr of (G.foundryCrucibles || [])) { if (cr.state === 'hanging' && Math.hypot(cr.x - px, (cr.y - 32) - py) <= radius + 75) severFoundryCrucible(cr); }
   // Ring all Resonance Puzzle Bells inside radius or overhead sonic pillar!
   if (G.resonancePuzzles) {
     for (const pz of G.resonancePuzzles) {
@@ -410,10 +594,19 @@ export function collectPickup(p) {
     G.worldState.abilities[p.abilityId] = true;
     G.player.airJumpsLeft = 1;
     if (p.abilityId === 'shadeDash') {
-      audio.playShadeDash();
-      punchZoom(1.05);
+      audio.playShadeDash(); punchZoom(1.05);
       spawnShockwave(p.x, p.y - 26, 160, COLORS.violetBright, 5.2, 0.5);
       spawnFloatText(p.x, p.y - 58, t('combat.unlockShade', pkName), COLORS.violetBright, 22, 2.4);
+    } else if (p.abilityId === 'grappleHook') {
+      audio.playGrappleLaunch(); audio.playBellToll(); punchZoom(1.055);
+      spawnShockwave(p.x, p.y - 26, 175, COLORS.cyanBright, 5.4, 0.52);
+      triggerBossBanner(t('combat.grappleBannerTitle'), t('combat.grappleBannerQuote'), COLORS.cyanBright, 3.2);
+      spawnFloatText(p.x, p.y - 58, t('combat.unlockGrapple', pkName), COLORS.cyanBright, 22, 2.4);
+    } else if (p.abilityId === 'bellDive') {
+      audio.playAirSlam(); punchZoom(1.055);
+      spawnShockwave(p.x, p.y - 26, 175, COLORS.goldBright, 5.4, 0.52);
+      triggerBossBanner(t('combat.bellDiveBannerTitle'), t('combat.bellDiveBannerQuote'), COLORS.goldBright, 3.2);
+      spawnFloatText(p.x, p.y - 58, t('combat.unlockDive', pkName), COLORS.goldBright, 22, 2.4);
     } else {
       audio.playWingJump();
       punchZoom(1.045);

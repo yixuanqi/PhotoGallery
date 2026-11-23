@@ -1,8 +1,8 @@
 // Projectiles, Slashes, Impact Bursts, Particles, Weather, Prompts & Cached Floating Texts Renderer (v32.0)
 import {
-  COLORS, ALTARS, NPCS, LORE_TABLETS, SHORTCUT_GATE_DEF, FIRST_BELL_CORE_POS, FLOOR_Y, DUMMY_MODES
+  COLORS, ALTARS, NPCS, LORE_TABLETS, SHORTCUT_GATE_DEF, FIRST_BELL_CORE_POS, FLOOR_Y, DUMMY_MODES, WORLD_SWITCHES_DEF
 } from '../config.js';
-import { G } from '../state.js';
+import { G, isWorldSwitchOn, isSwitchUnlocked, getEffectiveNpcPos } from '../state.js';
 import { getActionKeyLabel } from '../input.js';
 import { drawGlowSprite, boilLine, boilCircle, drawTaperedCrescent } from '../vfx.js';
 import { rgbStr } from '../renderParallax.js';
@@ -87,6 +87,14 @@ export function drawProjectiles() {
       G.ctx.beginPath();
       G.ctx.moveTo(8, -24); G.ctx.quadraticCurveTo(-38, 0, 8, 24); G.ctx.quadraticCurveTo(-8, 0, 8, -24);
       G.ctx.closePath(); G.ctx.fill();
+    } else if (pr.kind === 'yuanResonanceWave') {
+      const ang = Math.atan2(pr.vy, pr.vx);
+      G.ctx.rotate(ang);
+      drawGlowSprite('gold', 0, 0, pr.r * 3.1, pr.reflected ? 0.98 : 0.88);
+      drawTaperedCrescent(pr.r * 1.65, pr.r * 0.82, -1.25, 1.25, pr.reflected ? '#fef9c3' : COLORS.goldBright, '#ffffff');
+      G.ctx.strokeStyle = pr.reflected ? COLORS.cyanBright : '#fef08a';
+      G.ctx.lineWidth = 2.0;
+      G.ctx.beginPath(); G.ctx.arc(0, 0, pr.r * 0.95, -0.95, 0.95); G.ctx.stroke();
     } else if (pr.kind === 'boss4EchoOrb') {
       const col = pr.reflected ? COLORS.goldBright : (pr.stance === 'bell' ? COLORS.cyanBright : COLORS.goldBright);
       drawGlowSprite(pr.reflected ? 'gold' : (pr.stance === 'bell' ? 'cyan' : 'gold'), 0, 0, pr.r * 2.8, 0.90);
@@ -961,9 +969,10 @@ export function drawWorldPrompts() {
     }
   }
   for (const npc of NPCS) {
-    if (Math.hypot(px - npc.x, py - npc.y) < 88) {
-      const verb = npc.kind === 'chronicler' ? t('prompt.npcChron') : npc.kind === 'keeper' ? t('prompt.npcKeeper') : t('prompt.npcSmith');
-      drawPromptBadge(npc.x + 8, npc.y - 94, t('prompt.npcFull', ek, verb, locNpcName(npc)));
+    const pos = getEffectiveNpcPos(npc);
+    if (Math.hypot(px - pos.x, py - pos.y) < 88) {
+      const verb = npc.kind === 'chronicler' ? t('prompt.npcChron') : npc.kind === 'keeper' ? t('prompt.npcKeeper') : npc.kind === 'scavenger' ? t('prompt.npcScav') : t('prompt.npcSmith');
+      drawPromptBadge(pos.x + 8, pos.y - 94, t('prompt.npcFull', ek, verb, locNpcName(npc)));
     }
   }
   for (const e of G.enemies) {
@@ -974,6 +983,12 @@ export function drawWorldPrompts() {
   }
   if (G.worldState && !G.worldState.shortcutOpen && Math.hypot(px - SHORTCUT_GATE_DEF.leverX, py - SHORTCUT_GATE_DEF.leverY) < 76) {
     drawPromptBadge(SHORTCUT_GATE_DEF.leverX, SHORTCUT_GATE_DEF.leverY - 68, t('prompt.lever', ek));
+  }
+  for (const sw of WORLD_SWITCHES_DEF) {
+    if (isSwitchUnlocked(sw) && !isWorldSwitchOn(sw.switchKey) && Math.hypot(px - sw.x, py - sw.y) < 82) {
+      const pKey = sw.kind === 'sluice' ? 'prompt.switchSluice' : sw.kind === 'valve' ? 'prompt.switchValve' : sw.kind === 'hatch' ? 'prompt.switchHatch' : 'prompt.switchGateLever';
+      drawPromptBadge(sw.x, sw.y - 76, t(pKey, ek));
+    }
   }
   for (const lt of LORE_TABLETS) {
     if (Math.hypot(px - lt.x, py - lt.y) < 78) {

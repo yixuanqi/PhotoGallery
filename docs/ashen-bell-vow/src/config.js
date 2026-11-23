@@ -322,12 +322,43 @@ export const RELICS = [
       frostShatterPosture: 28,
       parryReflectDmg: 12
     }
+  },
+  {
+    id: 'tidebell',
+    name: '退潮沉钟印',
+    tag: '泄洪共鸣',
+    effect: '法术/下砸范围 +18% · 潮湿导电回魂 +12 · 暗河泄洪后法伤 +16% 且耗魂 -4',
+    refinedEffect: '范围 +26% · 导电回魂 +18 · 暗河泄洪后法伤 +24% 且耗魂 -6',
+    shortEffect: '法术+18%范围 · 泄洪法伤+16%/耗-4',
+    shortRefined: '法术+26%范围 · 泄洪法伤+24%/耗-6',
+    usage: '排干全境暗河后唤醒沉渊共鸣，大幅强化镇魂钟鸣与镇岳下砸',
+    hint: '沉钟水牢 · 开启暗河泄洪闸后于「断索水闸」干涸河底拾得',
+    desc: '沉于水牢河底的青铜泄洪古印：扩大法术与下砸范围 18%，潮湿导电额外回魂 12；一旦开启暗河泄洪青铜闸，常驻法术与下砸伤害 +16%、法术耗魂 -4。',
+    parryWindowMs: 140,
+    blockWindowMs: 260,
+    parryPostureMult: 1.05,
+    parryReflectDmg: 0,
+    grayDuration: 3.4,
+    rallyMult: 1.0,
+    maxFlasks: 3,
+    execHealPct: 0.14,
+    spellRadiusMult: 1.18,
+    wetConductSoul: 12,
+    drainedSpellDmgMult: 1.16,
+    drainedSpellCostReduce: 4,
+    hidden: true,
+    refined: {
+      spellRadiusMult: 1.26,
+      wetConductSoul: 18,
+      drainedSpellDmgMult: 1.24,
+      drainedSpellCostReduce: 6
+    }
   }
 ];
 
 export const GRAVITY = 1580;
 export const MAP_COLS = 52;
-export const MAP_ROWS = 16;
+export const MAP_ROWS = 32;
 
 // Live ES Module bindings updated automatically when levelLoader.js hydrates data/world.json + data/rooms/*.json
 export let WORLD_MIN_X = 0;
@@ -366,6 +397,8 @@ export const CHAPEL_EXIT_GATE_DEF = { id: 'gate_chapel_exit', x: 3740, y: 480, w
 export const FOUNDRY_ENTRY_GATE_DEF = { id: 'gate_foundry_entry', x: 5540, y: 1240, w: 0, h: 0 };
 export const FOUNDRY_EXIT_GATE_DEF = { id: 'gate_foundry_exit', x: 6700, y: 1240, w: 0, h: 0 };
 export const SKY_BRIDGE_GATE_DEF = { id: 'gate_sky_bridge', x: 8260, y: -320, w: 0, h: 0 };
+export const FOUNDRY_VENT_GATE_DEF = { id: 'gate_foundry_vent', x: 5835, y: 780, w: 0, h: 0 };
+export const MIRROR_ABYSS_GATE_DEF = { id: 'gate_mirror_abyss', x: 7960, y: -858, w: 0, h: 0 };
 export const FIRST_BELL_CORE_POS = { x: 9000, y: 580 };
 export const SECRET_WALLS_DEF = [];
 export const VOID_BARRIERS = [];
@@ -387,6 +420,12 @@ export const BONE_CAIRNS = [];
 export const STAMPS = [];
 export const WIND_ZONES = [];
 export const BOUNCE_PADS = [];
+export const BREAKABLE_FLOORS_DEF = [];
+export const WORLD_SWITCHES_DEF = [];
+export const WIND_VANES = [];
+export const ICE_PILLARS_DEF = [];
+export const SLICK_WALLS = [];
+export const SWITCH_GATES = [];
 
 export const RELIC_SYNERGIES = [
   {
@@ -452,6 +491,14 @@ export const RELIC_SYNERGIES = [
     flag: 'synFrostIron',
     desc: '居合一闪与重击终结技释放凛霜碎骨波，削势 +35% 并直接击碎重盾与盘根树铠。',
     shortDesc: '居合/重斩 碎骨波削势+35%破全盾',
+  },
+  {
+    id: 'tide_clapper',
+    relics: ['tidebell', 'clapper'],
+    name: '渊潮震鸣',
+    flag: 'synTideClapper',
+    desc: '镇魂钟鸣与镇岳下砸常驻触发潮湿导电增幅，并向两侧激荡双道破盾「渊潮震波」。',
+    shortDesc: '钟鸣/下砸 常驻导电 + 双向渊潮震波',
   }
 ];
 
@@ -594,6 +641,15 @@ export const ROOM_THEMES = {
     mist: [34, 48, 72],
     accent: [224, 242, 254],
     weather: 'snow'
+  },
+  cistern: {
+    label: '沉钟水牢',
+    skyTop: [4, 15, 24],
+    skyMid: [8, 32, 46],
+    skyBot: [3, 9, 16],
+    mist: [10, 48, 66],
+    accent: [56, 189, 248],
+    weather: 'mist'
   }
 };
 
@@ -671,8 +727,10 @@ export const ENEMY_ECHO_REWARDS = {
   priest: 28,
   fungus: 32,
   duelist: 36,
+  drowned: 34,
   golem: 42,
   frostguard: 46,
+  anchorite: 48,
   warden_wind: 150,
   warden_forest: 180,
   warden_mountain: 210,

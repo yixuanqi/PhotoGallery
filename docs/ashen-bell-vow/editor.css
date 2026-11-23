@@ -382,3 +382,129 @@
     font-size: 10.5px;
   }
   .audit-eco-grid strong { color: var(--cyan-b); }
+
+  /* ==================== v41.1 REAL-TIME TOPOLOGY AUDIT & VIOLATION HIGHLIGHT STYLES ==================== */
+  .ed-btn.audit-ok-btn {
+    border-color: rgba(110, 231, 183, 0.55);
+    color: #6ee7b7;
+  }
+  .ed-btn.audit-warn-btn {
+    border-color: rgba(245, 158, 11, 0.85);
+    color: #fde047;
+    background: rgba(120, 53, 15, 0.28);
+  }
+  .ed-btn.audit-err-btn {
+    border-color: rgba(248, 113, 113, 0.95);
+    color: #fecaca;
+    background: rgba(153, 27, 27, 0.42);
+    box-shadow: 0 0 12px rgba(248, 113, 113, 0.35);
+  }
+  .ed-btn.highlight-on {
+    border-color: #f87171;
+    color: #fef08a;
+    background: rgba(153, 27, 27, 0.48);
+    box-shadow: 0 0 12px rgba(248, 113, 113, 0.42);
+  }
+  .audit-topo-box {
+    padding: 8px 9px;
+    border-radius: 6px;
+    background: rgba(14, 21, 34, 0.92);
+    border: 1px solid rgba(56, 189, 248, 0.34);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .audit-topo-box.has-err {
+    border-color: rgba(248, 113, 113, 0.78);
+    background: rgba(34, 14, 20, 0.88);
+  }
+  .audit-topo-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--cyan-b);
+  }
+  .audit-topo-sub {
+    font-size: 10px;
+    color: var(--dim);
+  }
+  .audit-topo-tiers {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .audit-tier-chip {
+    padding: 4px 3px;
+    border-radius: 5px;
+    border: 1px solid rgba(216, 207, 184, 0.22);
+    background: rgba(10, 14, 22, 0.85);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 10.5px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    transition: all 0.12s;
+  }
+  .audit-tier-chip strong { font-size: 11px; color: var(--gold-b); }
+  .audit-tier-chip:hover { border-color: var(--cyan-b); background: rgba(56, 189, 248, 0.14); }
+  .audit-tier-chip.active {
+    border-color: var(--cyan-b);
+    background: rgba(14, 116, 144, 0.42);
+    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.5);
+  }
+  .audit-tier-chip.bad {
+    border-color: rgba(248, 113, 113, 0.85);
+    background: rgba(127, 29, 29, 0.45);
+  }
+  .audit-tier-chip.bad strong { color: #fecaca; }
+  .room-item.has-err {
+    border-color: rgba(248, 113, 113, 0.72);
+    background: rgba(127, 29, 29, 0.18);
+  }
+  .room-item.has-warn {
+    border-color: rgba(245, 158, 11, 0.58);
+  }
+  .room-audit-pill {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 0 5px;
+    border-radius: 999px;
+    font-size: 9.5px;
+    font-weight: 700;
+    vertical-align: middle;
+  }
+  .room-audit-pill.err { background: rgba(220, 38, 38, 0.38); border: 1px solid #f87171; color: #fecaca; }
+  .room-audit-pill.warn { background: rgba(180, 83, 9, 0.35); border: 1px solid #f59e0b; color: #fef08a; }
+
+  /* file:// Protocol Warning Overlay */
+  .ed-file-guard {
+    position: absolute; inset: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(6, 9, 15, 0.90);
+    padding: 20px;
+  }
+  .ed-file-guard.hidden { display: none; }
+  .ed-file-guard-card {
+    max-width: 560px; padding: 22px 26px; border-radius: 10px;
+    background: #101624; border: 1.5px solid #f59e0b;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.85);
+    color: var(--text); font-size: 13px; line-height: 1.65;
+  }
+  .ed-file-guard-title {
+    font-size: 16px; font-weight: 700; color: #fde047; margin-bottom: 10px;
+  }
+  .ed-file-guard-card code {
+    padding: 1px 6px; border-radius: 4px;
+    background: rgba(56, 189, 248, 0.14); border: 1px solid rgba(56, 189, 248, 0.35);
+    color: #bae6fd; font-family: ui-monospace, Menlo, monospace; font-size: 12px;
+  }
+  .ed-file-guard-steps {
+    margin-top: 12px; padding: 12px 14px; border-radius: 8px;
+    background: rgba(7, 10, 16, 0.85); border: 1px solid rgba(216, 207, 184, 0.20);
+    display: flex; flex-direction: column; gap: 6px;
+  }

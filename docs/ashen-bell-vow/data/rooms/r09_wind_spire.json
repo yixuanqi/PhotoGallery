@@ -36,7 +36,8 @@
   "connections": [
     "r04_bell_well",
     "r07_ascent",
-    "r12_wind_bridge"
+    "r12_wind_bridge",
+    "r05_foundry"
   ],
   "solids": [
     {
@@ -91,7 +92,14 @@
     {
       "x": 245,
       "y": 738,
-      "w": 665,
+      "w": 30,
+      "h": 42,
+      "type": "ground"
+    },
+    {
+      "x": 430,
+      "y": 738,
+      "w": 480,
       "h": 42,
       "type": "ground"
     }
@@ -211,9 +219,9 @@
   "rivers": [
     {
       "id": "river_wind_chasm",
-      "x": 255,
+      "x": 435,
       "y": 726,
-      "w": 645
+      "w": 465
     }
   ],
   "grappleAnchors": [
@@ -298,6 +306,17 @@
       "x": 580,
       "y": 515,
       "text": "脚下铁栅连通沉渊古炉 — 千年熔金热浪化作永续罡风，乘风直上可抵「千铃悬桥」"
+    },
+    {
+      "x": 545,
+      "y": 302,
+      "text": "「换向风铃 · 击鸣可反转双井罡风侧向气流」"
+    },
+    {
+      "x": 95,
+      "y": 520,
+      "text": "「启闸开启西侧铁闸 · 贯通回沉渊钟井上层」",
+      "hideWhenSwitch": "windWestOpen"
     }
   ],
   "props": {
@@ -421,5 +440,28 @@
       }
     ]
   },
-  "voidBarriers": []
+  "voidBarriers": [],
+  "windVanes": [
+    {
+      "id": "vane_wind_1",
+      "x": 495,
+      "y": 360,
+      "dir": 1,
+      "boostVx": 145,
+      "targetZoneIds": [
+        "wz_wind_1",
+        "wz_wind_2"
+      ]
+    }
+  ],
+  "worldSwitches": [
+    {
+      "id": "switch_wind_west",
+      "switchKey": "windWestOpen",
+      "kind": "gateLever",
+      "x": 95,
+      "y": 580,
+      "name": "断塔西廊捷径铁闸"
+    }
+  ]
 }

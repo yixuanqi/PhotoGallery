@@ -3,7 +3,7 @@ import { uiHooks } from './ui/uiShared.js';
 import { refreshTitleSaveUI, syncHUD } from './ui/hudCore.js';
 import {
   renderSettingsModal, renderCodexModal,
-  renderChroniclerModal, renderKeeperModal, renderDummyModal, renderLoreModal
+  renderChroniclerModal, renderKeeperModal, renderScavengerModal, renderDummyModal, renderLoreModal
 } from './ui/modalsUi.js';
 import { renderSmithModal, updateAndRenderSkillPreview } from './ui/skillTreeUi.js';
 import { renderAltarArmory, renderRelicChoices } from './ui/relicBoardUi.js';
@@ -20,6 +20,7 @@ Object.assign(uiHooks, {
   renderCodexModal,
   renderChroniclerModal,
   renderKeeperModal,
+  renderScavengerModal,
   renderSmithModal,
   renderDummyModal,
   renderLoreModal,
@@ -35,9 +36,9 @@ export { renderParchmentMap, initMapInteractions, openMapModal } from './ui/mapU
 export { refreshTitleSaveUI, continueSavedGame, syncHUD } from './ui/hudCore.js';
 export {
   openCodexModal, renderCodexModal,
-  openNpcModal, openChroniclerModal, openKeeperModal, openSmithModal,
+  openNpcModal, openChroniclerModal, openKeeperModal, openScavengerModal, openSmithModal,
   openDummyModal, renderDummyModal, openLoreModal, openPauseModal,
-  renderSettingsModal
+  renderSettingsModal, openSettingsJournal
 } from './ui/modalsUi.js';
 export { renderSmithModal, updateAndRenderSkillPreview } from './ui/skillTreeUi.js';
 export { renderAltarArmory, renderRelicChoices } from './ui/relicBoardUi.js';

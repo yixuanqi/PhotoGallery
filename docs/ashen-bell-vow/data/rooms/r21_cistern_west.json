@@ -1,0 +1,307 @@
+{
+  "id": "r21_cistern_west",
+  "name": "沉钟水牢 · 渗水囚廊",
+  "theme": "cistern",
+  "bounds": {
+    "x": 2680,
+    "y": 1520,
+    "w": 1600,
+    "h": 740
+  },
+  "connections": [
+    "r14_woods_cavern",
+    "r06_crypt",
+    "r22_cistern_nave"
+  ],
+  "solids": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 660,
+      "h": 34,
+      "type": "pillar"
+    },
+    {
+      "x": 800,
+      "y": 0,
+      "w": 800,
+      "h": 34,
+      "type": "pillar"
+    },
+    {
+      "x": 0,
+      "y": 600,
+      "w": 420,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 420,
+      "y": 660,
+      "w": 760,
+      "h": 80,
+      "type": "ground"
+    },
+    {
+      "x": 1180,
+      "y": 600,
+      "w": 420,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 480,
+      "y": 525,
+      "w": 175,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 745,
+      "y": 465,
+      "w": 190,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 990,
+      "y": 530,
+      "w": 155,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 635,
+      "y": 295,
+      "w": 205,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 595,
+      "y": 135,
+      "w": 115,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 165,
+      "y": 380,
+      "w": 220,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1220,
+      "y": 380,
+      "w": 240,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1214,
+      "y": 34,
+      "w": 34,
+      "h": 426,
+      "type": "pillar"
+    }
+  ],
+  "crumblePlatforms": [],
+  "gates": [],
+  "secretWalls": [],
+  "voidBarriers": [
+    {
+      "id": "vb_cistern_west",
+      "x": 1220,
+      "y": 460,
+      "w": 22,
+      "h": 140
+    }
+  ],
+  "altars": [],
+  "npcs": [],
+  "loreTablets": [
+    {
+      "id": "lore_cistern_west",
+      "x": 270,
+      "y": 600,
+      "title": "废钟溺铭",
+      "sub": "沉钟水牢 · 渗水囚廊",
+      "html": "“凡铸成而音裂者，皆沉于水牢深渊，不得见天日。<br>日久墨水倒灌，守牢的溺钟卒沉入浅滩化作<strong>溺钟潜行者</strong>，拖曳巨锚的刑卒沦为<strong>锈锚重锤兵</strong>。<br><br>切记：潜行者突袭带潮湿墨水，<strong>反借潮湿施展「镇魂钟鸣」可引发双倍导电震荡</strong>。”"
+    }
+  ],
+  "pickups": [],
+  "resonancePuzzles": [],
+  "lanterns": [
+    {
+      "id": "lan_cw_1",
+      "x": 560,
+      "anchorY": 34,
+      "len": 180,
+      "topY": 34
+    },
+    {
+      "id": "lan_cw_2",
+      "x": 1060,
+      "anchorY": 34,
+      "len": 190,
+      "topY": 34
+    }
+  ],
+  "grappleAnchors": [
+    {
+      "x": 730,
+      "y": 210,
+      "id": "anc_r21_cistern_west_0",
+      "topY": 34
+    },
+    {
+      "x": 840,
+      "y": 370,
+      "id": "anc_r21_cistern_west_1",
+      "topY": 34
+    }
+  ],
+  "pendulums": [],
+  "rivers": [
+    {
+      "id": "river_cistern_w",
+      "x": 420,
+      "y": 626,
+      "w": 760,
+      "drainable": true
+    }
+  ],
+  "enemies": [
+    {
+      "id": "l_cw_1",
+      "kind": "leech",
+      "x": 540,
+      "y": 72,
+      "minX": 440,
+      "maxX": 650
+    },
+    {
+      "id": "dr_cw_1",
+      "kind": "drowned",
+      "x": 220,
+      "y": 540,
+      "minX": 90,
+      "maxX": 370
+    },
+    {
+      "id": "p_cw_1",
+      "kind": "priest",
+      "x": 820,
+      "y": 405,
+      "minX": 755,
+      "maxX": 910
+    },
+    {
+      "id": "an_cw_1",
+      "kind": "anchorite",
+      "x": 1350,
+      "y": 522,
+      "minX": 1245,
+      "maxX": 1545
+    }
+  ],
+  "bosses": [],
+  "inscriptions": [
+    {
+      "x": 245,
+      "y": 530,
+      "text": "「沉钟水牢 · 昔日铸钟败品皆沉没于此渊底」"
+    },
+    {
+      "x": 110,
+      "y": 530,
+      "text": "「启闸开启西侧水牢铁闸 · 贯通回枯墨古林深窟」",
+      "hideWhenSwitch": "cisternWestOpen"
+    }
+  ],
+  "props": {
+    "puddles": [
+      {
+        "x": 90,
+        "w": 170,
+        "y": 600
+      },
+      {
+        "x": 1260,
+        "w": 180,
+        "y": 600
+      }
+    ],
+    "banners": [
+      {
+        "x": 300,
+        "y": 34,
+        "len": 150,
+        "color": "#0e2938"
+      },
+      {
+        "x": 1340,
+        "y": 34,
+        "len": 160,
+        "color": "#0e2938"
+      }
+    ],
+    "candles": [
+      {
+        "x": 360,
+        "y": 600,
+        "count": 3
+      },
+      {
+        "x": 1220,
+        "y": 600,
+        "count": 3
+      }
+    ],
+    "boneCairns": [],
+    "stamps": [
+      {
+        "type": "sunken_bell_giant",
+        "x": 230,
+        "y": 600,
+        "scale": 1.0,
+        "layer": "bg"
+      },
+      {
+        "type": "iron_cage",
+        "x": 620,
+        "y": 34,
+        "scale": 1.0,
+        "layer": "bg"
+      },
+      {
+        "type": "tide_pillar",
+        "x": 1410,
+        "y": 600,
+        "scale": 1.05,
+        "layer": "bg"
+      }
+    ]
+  },
+  "slickWalls": [
+    {
+      "id": "slick_r21_shaft",
+      "x": 1214,
+      "y": 54,
+      "w": 34,
+      "h": 386,
+      "side": "left"
+    }
+  ],
+  "worldSwitches": [
+    {
+      "id": "switch_cistern_west",
+      "switchKey": "cisternWestOpen",
+      "kind": "gateLever",
+      "x": 110,
+      "y": 600,
+      "name": "沉钟水牢西门铁闸"
+    }
+  ]
+}

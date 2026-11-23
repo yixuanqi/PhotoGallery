@@ -43,7 +43,7 @@ function getCachedSkyCanvas(tb, isPhase2) {
 function getVistaKey(theme) {
   if (theme === 'chapel') return 'chapel';
   if (theme === 'heart') return 'heart';
-  if (theme === 'bell_well' || theme === 'crypt') return 'abyss';
+  if (theme === 'bell_well' || theme === 'crypt' || theme === 'cistern') return 'abyss';
   if (theme === 'foundry' || theme === 'ascent') return 'foundry';
   if (theme === 'wind') return 'wind';
   if (theme === 'forest') return 'forest';

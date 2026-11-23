@@ -30,7 +30,12 @@ export const STAMP_DEFS = [
   // Mountain (霜骸圣脊)
   { id: 'ice_spire',        label: '寒霜冰晶簇', cat: '山',   w: 150, h: 185, ax: 0.5, ay: 1.0, defaultLayer: 'bg' },
   { id: 'frost_spike',      label: '寒脊冰棱柱', cat: '山',   w: 155, h: 195, ax: 0.5, ay: 1.0, defaultLayer: 'bg' },
-  { id: 'sword_mound',      label: '风雪残刃冢', cat: '山',   w: 185, h: 150, ax: 0.5, ay: 1.0, defaultLayer: 'bg' }
+  { id: 'sword_mound',      label: '风雪残刃冢', cat: '山',   w: 185, h: 150, ax: 0.5, ay: 1.0, defaultLayer: 'bg' },
+
+  // Cistern (沉钟水牢)
+  { id: 'sunken_bell_giant', label: '半沉巨钟',   cat: '渊',   w: 240, h: 175, ax: 0.5, ay: 1.0, defaultLayer: 'bg' },
+  { id: 'iron_cage',         label: '滴水铁囚笼', cat: '渊',   w: 120, h: 235, ax: 0.5, ay: 0.0, defaultLayer: 'bg', animated: 'pennant' },
+  { id: 'tide_pillar',       label: '潮汐水蚀柱', cat: '渊',   w: 130, h: 260, ax: 0.5, ay: 1.0, defaultLayer: 'bg' }
 ];
 
 const STAMP_DEF_MAP = Object.create(null);
@@ -733,6 +738,66 @@ const STAMP_PAINTERS = {
     c.beginPath();
     c.ellipse(cx, h - 4, w * 0.4, 9, 0, 0, Math.PI * 2);
     c.fill();
+  },
+
+  sunken_bell_giant(c, w, h, rng) {
+    const cx = w * 0.5;
+    c.fillStyle = 'rgba(10, 44, 62, 0.52)';
+    c.beginPath(); c.ellipse(cx, h - 7, w * 0.46, 13, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = 'rgba(56, 189, 248, 0.45)'; c.lineWidth = 1.4;
+    c.beginPath(); c.ellipse(cx, h - 7, w * 0.42, 9, 0, 0, Math.PI * 2); c.stroke();
+    c.save(); c.translate(cx - 6, h - 18); c.rotate(-0.26 + (rng() - 0.5) * 0.08);
+    const bg = c.createLinearGradient(-70, -120, 80, 20);
+    bg.addColorStop(0, '#2a2217'); bg.addColorStop(0.55, '#19222b'); bg.addColorStop(1, '#0b1018');
+    c.fillStyle = bg; c.strokeStyle = 'rgba(186, 230, 253, 0.46)'; c.lineWidth = 2.0;
+    c.beginPath(); c.moveTo(-42, -118); c.lineTo(42, -118); c.quadraticCurveTo(68, -58, 86, 8);
+    c.lineTo(-86, 8); c.quadraticCurveTo(-68, -58, -42, -118); c.closePath(); c.fill(); c.stroke();
+    c.strokeStyle = 'rgba(245, 158, 11, 0.48)'; c.lineWidth = 2.2;
+    c.beginPath(); c.moveTo(-58, -62); c.lineTo(58, -62); c.moveTo(-74, -18); c.lineTo(74, -18); c.stroke();
+    c.strokeStyle = '#070a10'; c.lineWidth = 3.2;
+    c.beginPath(); c.moveTo(14, -110); c.lineTo(4, -68); c.lineTo(22, -36); c.lineTo(8, 6); c.stroke();
+    c.strokeStyle = 'rgba(56, 189, 248, 0.65)'; c.lineWidth = 1.2; c.stroke();
+    c.strokeStyle = 'rgba(148, 163, 184, 0.52)'; c.lineWidth = 2.4;
+    c.beginPath(); c.moveTo(-52, -96); c.quadraticCurveTo(-8, -32, 72, -4); c.stroke();
+    c.restore();
+  },
+
+  iron_cage(c, w, h, rng) {
+    const cx = w * 0.5;
+    c.strokeStyle = 'rgba(148, 163, 184, 0.62)'; c.lineWidth = 2.2;
+    for (let y = 4; y < 86; y += 13) { c.beginPath(); c.ellipse(cx, y + 6, 4.2, 7, 0, 0, Math.PI * 2); c.stroke(); }
+    const topY = 88, botY = 198, hw = 34;
+    c.fillStyle = 'rgba(10, 16, 26, 0.72)'; c.strokeStyle = 'rgba(186, 230, 253, 0.48)'; c.lineWidth = 2.0;
+    c.beginPath(); c.moveTo(cx - hw * 0.6, topY); c.lineTo(cx + hw * 0.6, topY); c.lineTo(cx + hw, topY + 24);
+    c.lineTo(cx + hw - 4, botY); c.lineTo(cx - hw + 4, botY); c.lineTo(cx - hw, topY + 24); c.closePath(); c.fill(); c.stroke();
+    c.strokeStyle = 'rgba(148, 163, 184, 0.58)'; c.lineWidth = 1.8;
+    for (const bx of [-18, -6, 6, 18]) { c.beginPath(); c.moveTo(cx + bx, topY + 8); c.lineTo(cx + bx * 1.08, botY); c.stroke(); }
+    c.strokeStyle = 'rgba(245, 158, 11, 0.42)'; c.lineWidth = 2.2;
+    c.beginPath(); c.moveTo(cx - hw, topY + 28); c.lineTo(cx + hw, topY + 28); c.moveTo(cx - hw + 2, botY - 24); c.lineTo(cx + hw - 2, botY - 24); c.stroke();
+    c.fillStyle = 'rgba(56, 189, 248, 0.68)';
+    for (let k = 0; k < 3; k++) { c.beginPath(); c.arc(cx + (k - 1) * 16 + (rng() - 0.5) * 4, botY + 12 + k * 9, 2.2, 0, Math.PI * 2); c.fill(); }
+  },
+
+  tide_pillar(c, w, h, rng) {
+    const cx = w * 0.5, pw = 48;
+    const gr = c.createLinearGradient(cx - pw * 0.5, 0, cx + pw * 0.5, 0);
+    gr.addColorStop(0, '#0c1522'); gr.addColorStop(0.5, '#192a3c'); gr.addColorStop(1, '#09101a');
+    c.fillStyle = gr; c.strokeStyle = 'rgba(186, 230, 253, 0.36)'; c.lineWidth = 1.8;
+    c.fillRect(cx - pw * 0.5, 18, pw, h - 22); c.strokeRect(cx - pw * 0.5, 18, pw, h - 22);
+    c.fillStyle = '#121e2e';
+    c.fillRect(cx - pw * 0.68, 8, pw * 1.36, 16); c.strokeRect(cx - pw * 0.68, 8, pw * 1.36, 16);
+    c.fillRect(cx - pw * 0.72, h - 18, pw * 1.44, 18); c.strokeRect(cx - pw * 0.72, h - 18, pw * 1.44, 18);
+    const tideY = h * 0.58;
+    c.fillStyle = 'rgba(12, 74, 110, 0.44)'; c.fillRect(cx - pw * 0.5 + 1, tideY, pw - 2, h - tideY - 18);
+    c.strokeStyle = 'rgba(56, 189, 248, 0.55)'; c.lineWidth = 1.4;
+    c.beginPath(); c.moveTo(cx - pw * 0.5, tideY); c.lineTo(cx + pw * 0.5, tideY); c.stroke();
+    c.strokeStyle = 'rgba(245, 158, 11, 0.72)'; c.lineWidth = 2.4;
+    c.beginPath(); c.arc(cx, tideY - 26, 10, 0, Math.PI * 2); c.stroke();
+    c.strokeStyle = 'rgba(110, 231, 183, 0.40)'; c.lineWidth = 1.5;
+    for (let i = 0; i < 4; i++) {
+      const mx = cx - 18 + i * 12 + (rng() - 0.5) * 4;
+      c.beginPath(); c.moveTo(mx, tideY); c.lineTo(mx + (rng() - 0.5) * 5, tideY + 24 + rng() * 26); c.stroke();
+    }
   }
 };
 

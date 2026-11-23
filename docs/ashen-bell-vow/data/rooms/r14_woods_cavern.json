@@ -12,7 +12,8 @@
   },
   "connections": [
     "r10_ink_woods",
-    "r15_woods_heart"
+    "r15_woods_heart",
+    "r21_cistern_west"
   ],
   "subZones": [
     {
@@ -35,7 +36,14 @@
       "x": 1560,
       "y": 0,
       "w": 40,
-      "h": 740,
+      "h": 420,
+      "type": "pillar"
+    },
+    {
+      "x": 1560,
+      "y": 600,
+      "w": 40,
+      "h": 140,
       "type": "pillar"
     },
     {
@@ -67,23 +75,23 @@
       "type": "ground"
     },
     {
-      "x": 180,
+      "x": 325,
       "y": 430,
-      "w": 195,
+      "w": 135,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 205,
+      "x": 325,
       "y": 240,
-      "w": 180,
+      "w": 135,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 190,
-      "y": 45,
-      "w": 175,
+      "x": 325,
+      "y": 68,
+      "w": 125,
       "h": 22,
       "type": "platform"
     },
@@ -121,14 +129,47 @@
       "w": 190,
       "h": 22,
       "type": "platform"
+    },
+    {
+      "x": 1360,
+      "y": 110,
+      "w": 200,
+      "h": 20,
+      "type": "pillar"
+    },
+    {
+      "x": 1360,
+      "y": 270,
+      "w": 200,
+      "h": 20,
+      "type": "pillar"
     }
   ],
   "crumblePlatforms": [],
   "altars": [],
   "npcs": [],
   "secretWalls": [],
-  "voidBarriers": [],
-  "gates": [],
+  "voidBarriers": [
+    {
+      "id": "vb_woods_deep",
+      "x": 1365,
+      "y": 130,
+      "w": 22,
+      "h": 140
+    }
+  ],
+  "gates": [
+    {
+      "id": "gate_cistern_west",
+      "role": "switchGate",
+      "switchKey": "cisternWestOpen",
+      "orientation": "vertical",
+      "x": 1560,
+      "y": 420,
+      "w": 40,
+      "h": 180
+    }
+  ],
   "pickups": [
     {
       "id": "pickup_echo_woods_deep",
@@ -138,6 +179,18 @@
       "echoAmount": 115,
       "name": "渗池古铃残响",
       "desc": "沉没于暗河渗水断桥上的古铃残响（+115 残响）"
+    },
+    {
+      "id": "pickup_sunken_woods",
+      "kind": "statCore",
+      "requiresSwitch": "riverDrained",
+      "bonusHp": 15,
+      "bonusSoul": 10,
+      "echoAmount": 60,
+      "x": 1200,
+      "y": 670,
+      "name": "渗池古核 · 干涸菌髓",
+      "desc": "暗河泄洪后显露于渗池底部的荧光古核（生命 +15 · 魂火 +10 · +60 残响）"
     }
   ],
   "pendulums": [],
@@ -145,7 +198,7 @@
   "bouncePads": [
     {
       "id": "bp_wc_up1",
-      "x": 280,
+      "x": 390,
       "y": 600,
       "w": 84,
       "h": 28,
@@ -153,7 +206,7 @@
     },
     {
       "id": "bp_wc_up2",
-      "x": 295,
+      "x": 390,
       "y": 240,
       "w": 76,
       "h": 24,
@@ -169,11 +222,28 @@
     },
     {
       "id": "bp_wc_up3",
-      "x": 278,
-      "y": 45,
+      "x": 388,
+      "y": 68,
       "w": 78,
       "h": 24,
-      "boostVy": -780
+      "boostVy": -920
+    },
+    {
+      "id": "bp_wc_dormant",
+      "x": 730,
+      "y": 600,
+      "w": 88,
+      "h": 30,
+      "boostVy": -940,
+      "dormant": true
+    },
+    {
+      "id": "bp_wc_mid",
+      "x": 390,
+      "y": 430,
+      "w": 76,
+      "h": 24,
+      "boostVy": -880
     }
   ],
   "grappleAnchors": [
@@ -341,7 +411,8 @@
       "w": 560,
       "h": 48,
       "safeX": 845,
-      "safeY": 542
+      "safeY": 542,
+      "drainable": true
     }
   ],
   "inscriptions": [

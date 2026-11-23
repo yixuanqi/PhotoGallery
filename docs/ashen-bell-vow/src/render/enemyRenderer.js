@@ -27,11 +27,26 @@ function drawEnemyOverheadBars(e) {
 /* ---------- ENEMIES: SENTINEL, WRAITH, GOLEM, PRIEST, DUELIST, LEECH ---------- */
 export function drawEnemy(e) {
   if (!e.alive) return;
+  const sx = e.squashX !== undefined ? e.squashX : 1;
+  const sy = e.squashY !== undefined ? e.squashY : 1;
+  const lean = e.recoilLean || 0;
+  const frozen = (e.hitFreezeTimer || 0) > 0;
+  const hasDeform = frozen || Math.abs(sx - 1) > 0.008 || Math.abs(sy - 1) > 0.008 || Math.abs(lean) > 0.006;
+
+  if (hasDeform) {
+    const px = e.x + e.w * 0.5;
+    const py = (e.kind === 'wraith' || e.kind === 'falcon' || e.kind === 'leech') ? (e.y + e.h * 0.5) : (e.y + e.h);
+    const trem = frozen ? Math.sin(G.globalTime * 190 + e.x) * (e.hitTremor || 3.5) : 0;
+    G.ctx.save();
+    G.ctx.translate(px + trem, py);
+    if (lean) G.ctx.rotate(lean);
+    G.ctx.scale(sx, sy);
+    G.ctx.translate(-px, -py);
+  }
+
   if (e.kind === 'dummy') {
     drawDummy(e);
-    return;
-  }
-  if (e.kind === 'wraith') drawWraith(e);
+  } else if (e.kind === 'wraith') drawWraith(e);
   else if (e.kind === 'golem') drawGolem(e);
   else if (e.kind === 'priest') drawPriest(e);
   else if (e.kind === 'duelist') drawDuelist(e);
@@ -39,11 +54,15 @@ export function drawEnemy(e) {
   else if (e.kind === 'falcon') drawFalcon(e);
   else if (e.kind === 'fungus') drawFungus(e);
   else if (e.kind === 'frostguard') drawFrostguard(e);
+  else if (e.kind === 'drowned') drawDrowned(e);
+  else if (e.kind === 'anchorite') drawAnchorite(e);
   else if (e.kind === 'warden_wind') drawWardenWind(e);
   else if (e.kind === 'warden_forest') drawWardenForest(e);
   else if (e.kind === 'warden_mountain') drawWardenMountain(e);
   else drawSentinel(e);
+
   if (e.wardShield > 0) drawWardShieldOverlay(e);
+  if (hasDeform) G.ctx.restore();
 }
 
 function drawDummy(e) {
@@ -1139,3 +1158,86 @@ function drawWardenMountain(e) {
   if (isStagger) drawExecutionSigil(cx, e.y + 36);
 }
 
+
+function drawDrowned(e) {
+  const cx = e.x + e.w * 0.5, fy = e.y + e.h, isStagger = e.state === 'stagger';
+  const isRed = e.attackKind === 'redHookLunge' && (e.state === 'windup' || e.state === 'attack');
+  const alpha = e.submergeAlpha !== undefined ? e.submergeAlpha : 1;
+  G.ctx.save(); G.ctx.globalAlpha = alpha;
+  if (e.cloak && alpha > 0.35) drawCloakMesh(e.cloak, '#0b1e2d', 'rgba(56, 189, 248, 0.45)', 14, 710);
+  G.ctx.translate(cx + (e.hurtFlash > 0 ? (Math.random() - 0.5) * 6 : 0), fy);
+  if (isStagger) G.ctx.translate(0, 9);
+  G.ctx.strokeStyle = 'rgba(56, 189, 248, 0.42)'; G.ctx.lineWidth = 1.3;
+  G.ctx.beginPath(); G.ctx.ellipse(0, -1, 18 + Math.sin(G.globalTime * 5 + cx) * 3, 4, 0, 0, Math.PI * 2); G.ctx.stroke();
+  const dWalk = e.walkCycle || 0, dMoving = Math.abs(e.vx) > 14;
+  [-1, 1].forEach(side => {
+    const ph = dWalk + (side > 0 ? 0 : Math.PI);
+    const fx = isStagger ? side * 10 : (dMoving ? Math.sin(ph) * 11 : side * 6);
+    const fyL = isStagger ? 0 : (dMoving ? -Math.max(0, Math.cos(ph)) * 6 : 0);
+    const ik = solve2BoneIK(side * 4, -18, fx, fyL, 10, 10, e.facing);
+    G.ctx.strokeStyle = '#0e2436'; G.ctx.lineWidth = 4.6; G.ctx.lineCap = 'round';
+    G.ctx.beginPath(); G.ctx.moveTo(side * 4, -18); G.ctx.lineTo(ik.kx, ik.ky); G.ctx.lineTo(ik.ex, ik.ey); G.ctx.stroke();
+  });
+  G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#0f2030';
+  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : '#38bdf8'; G.ctx.lineWidth = 1.6;
+  G.ctx.beginPath(); G.ctx.moveTo(-13, -12); G.ctx.lineTo(-9, -40); G.ctx.lineTo(10, -40); G.ctx.lineTo(14, -12); G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
+  G.ctx.fillStyle = '#251d14'; G.ctx.strokeStyle = COLORS.gold; G.ctx.lineWidth = 1.7;
+  G.ctx.beginPath(); G.ctx.moveTo(-11, -39); G.ctx.quadraticCurveTo(-12, -57, 0, -59); G.ctx.quadraticCurveTo(12, -57, 11, -39); G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
+  drawGlowSprite(isRed ? 'crimson' : 'cyan', e.facing * 5, -48, 16, 0.72);
+  G.ctx.fillStyle = isRed ? COLORS.crimsonBright : '#7dd3fc';
+  G.ctx.fillRect(e.facing > 0 ? 1 : -8, -50, 7, 4);
+  const hookOff = e.state === 'windup' ? -12 : e.state === 'attack' ? 26 : 6;
+  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : '#bae6fd'; G.ctx.lineWidth = 2.4;
+  G.ctx.beginPath(); G.ctx.moveTo(e.facing * 6, -30); G.ctx.lineTo(e.facing * (24 + hookOff), -30);
+  G.ctx.quadraticCurveTo(e.facing * (34 + hookOff), -24, e.facing * (24 + hookOff), -18); G.ctx.stroke();
+  if (e.state === 'windup') {
+    if (isRed) { drawGlowSprite('crimson', 0, -76, 20, 0.8); drawCachedText(G.ctx, t('ren.dangerGlyph'), 0, -70, { size: isEn() ? 13 : 20, bold: true, color: COLORS.crimsonBright }); }
+    else if (e.stateTimer < 0.25) drawParryStarGlint(e.facing * 18, -32, 18, COLORS.goldBright);
+  }
+  G.ctx.restore(); drawEnemyOverheadBars(e);
+  if (isStagger) drawExecutionSigil(cx, e.y + 30);
+}
+
+function drawAnchorite(e) {
+  const cx = e.x + e.w * 0.5, fy = e.y + e.h, isStagger = e.state === 'stagger';
+  const isRed = e.attackKind === 'redAnchorSlam' && (e.state === 'windup' || e.state === 'attack');
+  G.ctx.save();
+  if (e.cloak) drawCloakMesh(e.cloak, '#141923', 'rgba(148, 163, 184, 0.42)', 18, 760);
+  G.ctx.translate(cx + (e.hurtFlash > 0 ? (Math.random() - 0.5) * 7 : 0), fy);
+  if (isStagger) G.ctx.translate(0, 12);
+  const aWalk = e.walkCycle || 0, aMoving = Math.abs(e.vx) > 10;
+  [-1, 1].forEach(side => {
+    const ph = aWalk + (side > 0 ? 0 : Math.PI);
+    const fx = isStagger ? side * 14 : (aMoving ? Math.sin(ph) * 13 : side * 9);
+    const fyL = isStagger ? 0 : (aMoving ? -Math.max(0, Math.cos(ph)) * 5 : 0);
+    const ik = solve2BoneIK(side * 7, -24, fx, fyL, 14, 14, e.facing);
+    G.ctx.strokeStyle = '#1b2230'; G.ctx.lineWidth = 7.5; G.ctx.lineCap = 'round';
+    G.ctx.beginPath(); G.ctx.moveTo(side * 7, -24); G.ctx.lineTo(ik.kx, ik.ky); G.ctx.lineTo(ik.ex, ik.ey); G.ctx.stroke();
+  });
+  G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#18212e';
+  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : '#94a3b8'; G.ctx.lineWidth = 2.0;
+  G.ctx.beginPath(); G.ctx.moveTo(-20, -18); G.ctx.lineTo(-22, -56); G.ctx.lineTo(22, -56); G.ctx.lineTo(20, -18); G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
+  G.ctx.strokeStyle = COLORS.gold; G.ctx.lineWidth = 2.4;
+  G.ctx.beginPath(); G.ctx.moveTo(-18, -52); G.ctx.quadraticCurveTo(0, -42, 18, -52); G.ctx.stroke();
+  G.ctx.fillStyle = '#241c16'; G.ctx.strokeStyle = COLORS.gold; G.ctx.lineWidth = 1.8;
+  G.ctx.fillRect(-13, -74, 26, 20); G.ctx.strokeRect(-13, -74, 26, 20);
+  drawGlowSprite(isRed ? 'crimson' : 'cyan', e.facing * 6, -64, 15, 0.72);
+  G.ctx.fillStyle = isRed ? COLORS.crimsonBright : '#38bdf8';
+  G.ctx.fillRect(e.facing > 0 ? 2 : -10, -66, 8, 3.5);
+  let ancAng = e.facing > 0 ? 2.55 : 0.59;
+  if (e.state === 'windup') ancAng = isRed ? -Math.PI * 0.5 : (e.facing > 0 ? 2.85 : 0.29);
+  else if (e.state === 'attack') ancAng = e.facing > 0 ? 0.12 : Math.PI - 0.12;
+  G.ctx.save(); G.ctx.translate(e.facing * 12, -44); G.ctx.rotate(ancAng);
+  G.ctx.strokeStyle = '#94a3b8'; G.ctx.lineWidth = 4.2; G.ctx.beginPath(); G.ctx.moveTo(0, 0); G.ctx.lineTo(54, 0); G.ctx.stroke();
+  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : COLORS.goldBright; G.ctx.lineWidth = 3.2;
+  G.ctx.beginPath(); G.ctx.arc(44, 0, 16, -1.25, 1.25); G.ctx.stroke();
+  G.ctx.fillStyle = '#332212'; G.ctx.strokeStyle = COLORS.gold; G.ctx.lineWidth = 1.6;
+  G.ctx.fillRect(36, -9, 14, 18); G.ctx.strokeRect(36, -9, 14, 18);
+  G.ctx.restore();
+  if (e.state === 'windup') {
+    if (isRed) { drawGlowSprite('crimson', 0, -96, 22, 0.85); drawCachedText(G.ctx, t('ren.dangerGlyph'), 0, -90, { size: isEn() ? 14 : 22, bold: true, color: COLORS.crimsonBright }); }
+    else if (e.stateTimer < 0.28) drawParryStarGlint(e.facing * 20, -48, 22, COLORS.goldBright);
+  }
+  G.ctx.restore(); drawEnemyOverheadBars(e);
+  if (isStagger) drawExecutionSigil(cx, e.y + 38);
+}

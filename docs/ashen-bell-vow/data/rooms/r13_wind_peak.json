@@ -12,7 +12,8 @@
   },
   "connections": [
     "r12_wind_bridge",
-    "r17_frost_summit"
+    "r17_frost_summit",
+    "r25_mirror_abyss"
   ],
   "subZones": [
     {
@@ -103,6 +104,16 @@
       "h": 450,
       "vx": -15,
       "vy": -1460
+    },
+    {
+      "id": "wz_mirror_ascent",
+      "x": 1220,
+      "y": -40,
+      "w": 160,
+      "h": 660,
+      "vx": 0,
+      "vy": -1720,
+      "requiresBoss4Unlocked": true
     }
   ],
   "bouncePads": [],
@@ -253,6 +264,11 @@
       "x": 1410,
       "y": 555,
       "text": "高空断桥直通「霜骸圣脊 · 绝脊霜台」"
+    },
+    {
+      "x": 1300,
+      "y": 545,
+      "text": "「集齐三境铭印且斩落初钟圣骸 · 镜渊金风将贯通天穹」"
     }
   ]
 }

@@ -827,16 +827,24 @@ export function drawWorldArchitecture() {
     }
   }
 
-  // 5. Corrosive Abyssal Ink Rivers Shimmer & Rising Bubbles
+  const drainA = (G.worldState && G.worldState.riverDrainAnim) ? G.worldState.riverDrainAnim : 0;
   for (let i = 0; i < ABYSSAL_RIVERS.length; i++) {
     const rv = ABYSSAL_RIVERS[i];
     if (rv.w <= 0) continue;
     if (rv.x + rv.w < camX - 40 || rv.x > camX + camW + 40 ||
         rv.y + 40 < camY || rv.y - 40 > camY + camH) continue;
-    ctx.fillStyle = 'rgba(12, 74, 110, 0.58)';
-    ctx.fillRect(rv.x, rv.y, rv.w, 16);
-    ctx.fillStyle = 'rgba(56, 189, 248, 0.28)';
-    ctx.fillRect(rv.x, rv.y, rv.w, 5);
+    const isDraining = !!(rv.drainable && drainA > 0.01);
+    if (isDraining && drainA >= 0.96) {
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.14)';
+      ctx.fillRect(rv.x + 10, rv.y + 12, Math.max(0, rv.w - 20), 3);
+      continue;
+    }
+    const levelDrop = isDraining ? drainA * 12 : 0;
+    const alphaScale = isDraining ? Math.max(0.15, 1 - drainA * 0.75) : 1;
+    ctx.fillStyle = `rgba(12, 74, 110, ${(0.58 * alphaScale).toFixed(2)})`;
+    ctx.fillRect(rv.x, rv.y + levelDrop, rv.w, Math.max(2, 16 - levelDrop));
+    ctx.fillStyle = `rgba(56, 189, 248, ${(0.28 * alphaScale).toFixed(2)})`;
+    ctx.fillRect(rv.x, rv.y + levelDrop, rv.w, Math.max(1, 5 - levelDrop * 0.3));
     ctx.strokeStyle = 'rgba(186, 230, 253, 0.58)';
     ctx.lineWidth = 1.6;
     for (let rx = rv.x + 12; rx < rv.x + rv.w - 30; rx += 84) {

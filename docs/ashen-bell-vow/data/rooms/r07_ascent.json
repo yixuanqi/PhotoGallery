@@ -44,7 +44,8 @@
     "r05_foundry",
     "r08_heart",
     "r09_wind_spire",
-    "r11_frost_ridge"
+    "r11_frost_ridge",
+    "r23_cistern_lock"
   ],
   "solids": [
     {
@@ -78,7 +79,14 @@
     {
       "x": 0,
       "y": 1380,
-      "w": 1620,
+      "w": 1010,
+      "h": 180,
+      "type": "ground"
+    },
+    {
+      "x": 1150,
+      "y": 1380,
+      "w": 470,
       "h": 180,
       "type": "ground"
     },
@@ -227,7 +235,18 @@
       "html": "“第一代守誓者并非背叛圣城——当他发现初钟每响一声，便以地下无数沉眠者的魂火为薪柴时，他亲手斩断了钟索。<br>然而初钟圣骸仍在东侧圣心中自行震鸣，召唤一代又一代提灯人偶前来续薪。<br><br>踏入东侧殿堂斩落<strong>「初钟圣骸 · 渊」</strong>后，你将面对最终抉择：<br><strong>续鸣残誓</strong>，以己身承接永夜之钟；抑或携藏于下方暗蚀结界中的<strong>「破晓初印」</strong>，一刃斩灭初钟，令晦渊重见晨曦。”"
     }
   ],
-  "gates": [],
+  "gates": [
+    {
+      "id": "gate_wind_ascent",
+      "role": "switchGate",
+      "switchKey": "windAscentOpen",
+      "orientation": "vertical",
+      "x": 0,
+      "y": 420,
+      "w": 40,
+      "h": 160
+    }
+  ],
   "secretWalls": [
     {
       "id": "wall_frost_entry",
@@ -245,6 +264,18 @@
       "y": 880,
       "w": 22,
       "h": 140
+    },
+    {
+      "id": "vb_ascent_sweep",
+      "x": 420,
+      "y": 875,
+      "w": 24,
+      "h": 145,
+      "sweeping": true,
+      "sweepMinX": 260,
+      "sweepMaxX": 780,
+      "sweepSpeed": 1.35,
+      "sweepPhase": 0.0
     }
   ],
   "pickups": [
@@ -287,7 +318,8 @@
       "id": "river_ascent",
       "x": 275,
       "y": 1368,
-      "w": 670
+      "w": 670,
+      "drainable": true
     }
   ],
   "grappleAnchors": [
@@ -403,6 +435,12 @@
       "x": 1465,
       "y": 1315,
       "text": "「寒霜暗壁 · 破冰踏入霜骸圣脊 →」"
+    },
+    {
+      "x": 125,
+      "y": 520,
+      "text": "「启闸开启绝风铁闸 · 贯通初钟圣阶与绝风断塔」",
+      "hideWhenSwitch": "windAscentOpen"
     }
   ],
   "props": {
@@ -540,5 +578,25 @@
         "seed": 1
       }
     ]
-  }
+  },
+  "breakableFloors": [
+    {
+      "id": "floor_ascent_cistern",
+      "x": 1010,
+      "y": 1380,
+      "w": 140,
+      "h": 140,
+      "style": "stone"
+    }
+  ],
+  "worldSwitches": [
+    {
+      "id": "switch_wind_ascent",
+      "switchKey": "windAscentOpen",
+      "kind": "gateLever",
+      "x": 125,
+      "y": 580,
+      "name": "圣阶西侧绝风铁闸"
+    }
+  ]
 }

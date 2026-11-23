@@ -119,6 +119,17 @@ export const ENTITIES_EN = {
       usage: 'Shrug off ridge frostbite and detonate glacial shatters on heavy finishes.',
       hint: 'Frost-Bone Ridge · Awarded upon defeating Lin, Frost-Marquis of the Broken Blade',
       desc: '-70% incoming Frostbite buildup; heavy blows, Iai Flash & Riposte deal +18 bonus glacial posture.'
+    },
+    tidebell: {
+      name: 'Ebbed Tide-Bell Seal',
+      tag: 'Sluice Resonance',
+      effect: 'Spell/Dive Radius +18% · Wet-Conduct +12 Soul · After Sluice Drained: +16% Spell DMG & -4 Cost',
+      refinedEffect: 'Radius +26% · Wet-Conduct +18 Soul · After Sluice Drained: +24% Spell DMG & -6 Cost',
+      shortEffect: 'Spell +18% Rad · Drained +16% DMG/-4',
+      shortRefined: 'Spell +26% Rad · Drained +24% DMG/-6',
+      usage: 'Drain the Abyssal Sluice to awaken sunken resonance, supercharging Requiem Chime & Bell Dive.',
+      hint: 'Sunken Bell Cistern · Exposed in the drained riverbed of Broken Sluice Lock',
+      desc: '+18% Spell & Bell Dive radius, +12 Soul on wet-conduct shock; once the Abyssal Sluice is drained, gain +16% Spell/Dive DMG and -4 Soul cost.'
     }
   },
 
@@ -162,6 +173,11 @@ export const ENTITIES_EN = {
       name: 'Glacial-Iron Sunder',
       desc: 'Iai Flash and heavy finishers unleash a frost-shatter wave dealing +35% glacial posture and shattering all shields & bark armor.',
       shortDesc: 'Iai/Heavy frost wave +35% posture & breaks all shields',
+    },
+    tide_clapper: {
+      name: 'Abyssal Tide-Resonance',
+      desc: 'Requiem Chime and Bell Dive always trigger full Wet-Conduct bonuses and launch twin shield-breaking tidal ground waves.',
+      shortDesc: 'Chime/Dive always conduct + twin tidal waves',
     }
   },
 
@@ -314,6 +330,20 @@ export const ENTITIES_EN = {
       tactic: 'Strikes inflict Frostbite buildup that triggers burst damage & chill at 100%; deflect standard sweeps and dodge crimson lunges.',
       lore: 'An oath-bound guard frozen solid atop the ridge, wielding a halberd edged in unmelting rime.'
     },
+    drowned: {
+      name: 'Drowned Bell-Lurker',
+      title: 'Cistern Stalker · Ink Ambush',
+      habitat: 'Sunken Bell Cistern',
+      tactic: 'Submerges into ink puddles to ambush beside you and inflicts Wet status; parry its twin hooks or turn Wetness into amplified Requiem Chime shocks!',
+      lore: 'A drowned cistern jailer encased in a cracked bronze diving bell, hunting trespassers with rusted gaff hooks.'
+    },
+    anchorite: {
+      name: 'Rusted Anchor-Warden',
+      title: 'Cistern Bruiser · Bell-Anchor',
+      habitat: 'Sunken Bell Cistern',
+      tactic: 'Parry its deliberate chain-drag sweeps for heavy posture damage; leap or dash over the ground wave unleashed by its crimson anchor smash.',
+      lore: 'A hulking penitent who once dragged failed bronze castings into the flooded cells, still swinging a colossal rusted bell-anchor.'
+    },
     warden_wind: {
       name: 'Shuo, Gale Spire Warden',
       title: 'Wind Biome Warden · Twin Gale Blades',
@@ -351,8 +381,8 @@ export const ENTITIES_EN = {
     boss_hui:            { name: 'Broken Bell Silenced',  desc: 'Fell Hui, Knight of the Broken Bell in the Chapel.' },
     boss_ji:             { name: 'Foundry Extinguished',  desc: 'Fell Ji, Abyssal Bell-Founder in the Abyssal Bell Foundry.' },
     boss_yuan:           { name: 'End of the First Toll', desc: 'Fell the final boss, Yuan, Relic of the First Bell.' },
-    all_tablets:         { name: 'Chronicler of the Abyss', desc: 'Find and inspect all 11 weathered steles across the Dim Abyss.' },
-    all_relics:          { name: 'Eleven Seals Attuned',  desc: 'Discover and unlock all 11 Relics across the Dim Abyss and hidden biomes.' },
+    all_tablets:         { name: 'Chronicler of the Abyss', desc: 'Find and inspect all 14 weathered steles across the Dim Abyss.' },
+    all_relics:          { name: 'Twelve Seals Attuned',  desc: 'Discover and unlock all 12 Relics across the Dim Abyss and hidden biomes.' },
     synergy_awakened:    { name: 'Twin-Seal Resonance',   desc: 'Attune two paired relics at an Altar to awaken a hidden synergy.' },
     no_hit_echo:         { name: 'Unscathed Oath',        desc: 'Clear any Vow Echo without taking damage to earn an S+ rank.' },
     rush_clear:          { name: 'Master of Three Bells', desc: 'Clear the “Trial of Three Bells (Hui → Ji → Yuan)” Boss Rush.' },

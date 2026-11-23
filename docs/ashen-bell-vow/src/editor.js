@@ -1,6 +1,7 @@
 // Zero-dependency Web Level Editor v34.0 for Full-Biome Room-Based JSON Data Stream
 import { COLORS, GRAVITY, PREVIEW_STORAGE_KEY, RELICS, ENEMY_ECHO_REWARDS, SMITH_UPGRADES, RELIC_REFINE_COST } from './config.js';
 import { STAMP_DEFS, getStampDef, drawStampPreview } from './stampAtlas.js';
+import { runTopologyAndShaftAudit } from './editorTopology.js';
 import { TERRAIN_OVERLAY_OPTIONS, drawEditorRoomBackdrop, drawEditorRoomSolids } from './renderTerrain.js';
 
 const canvas = document.getElementById('editorCanvas');
@@ -30,13 +31,15 @@ const ENEMY_META = {
   falcon:          { w: 44, h: 34, glyph: '隼', color: 'rgba(56, 189, 248, 0.86)', patrol: 0,   label: '衔铃风隼', flying: true },
   fungus:          { w: 40, h: 58, glyph: '菌', color: 'rgba(34, 197, 94, 0.82)',  patrol: 150, label: '孢蚀菌傀' },
   frostguard:      { w: 40, h: 68, glyph: '寒', color: 'rgba(125, 211, 252, 0.84)', patrol: 160, label: '寒戟骸卫' },
+  drowned:         { w: 36, h: 60, glyph: '溺', color: 'rgba(14, 165, 233, 0.86)',  patrol: 160, label: '溺钟潜行者' },
+  anchorite:       { w: 48, h: 78, glyph: '锚', color: 'rgba(148, 163, 184, 0.86)', patrol: 150, label: '锈锚重锤兵' },
   warden_wind:     { w: 44, h: 72, glyph: '朔', color: 'rgba(14, 165, 233, 0.90)', patrol: 240, label: '截风巡塔使·朔', isWarden: true },
   warden_forest:   { w: 64, h: 98, glyph: '枯', color: 'rgba(22, 163, 74, 0.90)',  patrol: 150, label: '盘根古钟精·枯', isWarden: true },
   warden_mountain: { w: 42, h: 74, glyph: '凛', color: 'rgba(96, 165, 250, 0.90)', patrol: 210, label: '断剑霜侯·凛',   isWarden: true }
 };
 
 const ENEMY_KINDS = Object.keys(ENEMY_META);
-const STAMP_CATS = ['全部', '通用', '风', '林', '火', '山'];
+const STAMP_CATS = ['全部', '通用', '风', '林', '火', '山', '渊'];
 
 const state = {
   bundle: null, // { world, rooms: [...] }
@@ -54,7 +57,13 @@ const state = {
   drag: null,
   hoverWorld: { x: 0, y: 0 },
   hoverInsideCanvas: false,
-  toastTimer: null
+  toastTimer: null,
+  auditHighlight: false,
+  auditTierOverlay: null, // null | 'T0_Start' .. 'T4_Endgame'
+  lastAuditIssues: [],
+  lastAuditTopo: null,
+  roomAuditMap: new Map(),
+  auditDebounceTimer: null
 };
 
 function showToast(msg) {
@@ -77,6 +86,7 @@ function pushUndo() {
   state.undoStack.push(cloneBundle());
   if (state.undoStack.length > 50) state.undoStack.shift();
   state.redoStack.length = 0;
+  scheduleLiveAudit();
 }
 
 function getActiveRoom() {
@@ -498,11 +508,12 @@ function drawRoomContents(rm, isGhost = false) {
     ctx.strokeRect(ox + vb.x, oy + vb.y, vb.w, vb.h);
   }
 
-  // Gates (incl. v34.0 skyBridgeGate frost-gold visual)
+  // Gates (incl. v34.0 skyBridgeGate & v41.0 one-way bronze switchGates)
   for (const g of (rm.gates || [])) {
     const isSky = g.role === 'skyBridge' || g.id === 'gate_sky_bridge';
-    ctx.fillStyle = isSky ? 'rgba(56, 189, 248, 0.28)' : 'rgba(220, 38, 38, 0.25)';
-    ctx.strokeStyle = isSky ? '#bae6fd' : COLORS.goldBright;
+    const isSwGate = g.role === 'switchGate';
+    ctx.fillStyle = isSky ? 'rgba(56, 189, 248, 0.28)' : isSwGate ? 'rgba(245, 158, 11, 0.30)' : 'rgba(220, 38, 38, 0.25)';
+    ctx.strokeStyle = isSky ? '#bae6fd' : isSwGate ? '#fde047' : COLORS.goldBright;
     ctx.lineWidth = 2 / state.cam.zoom;
     ctx.fillRect(ox + g.x, oy + g.y, g.w, g.h);
     ctx.strokeRect(ox + g.x, oy + g.y, g.w, g.h);
@@ -635,6 +646,31 @@ function drawRoomContents(rm, isGhost = false) {
     ctx.fillRect(ox + lt.x - 14, oy + lt.y - 50, 28, 50);
     ctx.strokeRect(ox + lt.x - 14, oy + lt.y - 50, 28, 50);
   }
+  for (const bf of (rm.breakableFloors || [])) {
+    ctx.fillStyle = bf.style === 'ice' ? 'rgba(56, 189, 248, 0.32)' : 'rgba(245, 158, 11, 0.32)';
+    ctx.strokeStyle = bf.style === 'ice' ? '#bae6fd' : COLORS.goldBright; ctx.lineWidth = 2 / state.cam.zoom;
+    ctx.fillRect(ox + bf.x, oy + bf.y, bf.w, bf.h); ctx.strokeRect(ox + bf.x, oy + bf.y, bf.w, bf.h);
+  }
+  for (const sw of (rm.worldSwitches || [])) {
+    ctx.strokeStyle = sw.kind === 'sluice' ? COLORS.cyanBright : COLORS.goldBright; ctx.lineWidth = 2.4 / state.cam.zoom;
+    ctx.beginPath(); ctx.arc(ox + sw.x, oy + sw.y - 36, 16, 0, Math.PI * 2); ctx.stroke();
+  }
+  for (const wv of (rm.windVanes || [])) {
+    ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 2.2 / state.cam.zoom;
+    ctx.beginPath(); ctx.moveTo(ox + wv.x, oy + wv.y); ctx.lineTo(ox + wv.x, oy + wv.y - 44); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ox + wv.x - 16, oy + wv.y - 38); ctx.lineTo(ox + wv.x + 16, oy + wv.y - 38); ctx.stroke();
+  }
+  for (const ip of (rm.icePillars || [])) {
+    ctx.fillStyle = 'rgba(125, 211, 252, 0.42)'; ctx.strokeStyle = '#e0f2fe'; ctx.lineWidth = 1.8 / state.cam.zoom;
+    ctx.beginPath(); ctx.moveTo(ox + ip.x - 16, oy + ip.topY); ctx.lineTo(ox + ip.x + 16, oy + ip.topY);
+    ctx.lineTo(ox + ip.x, oy + ip.topY + ip.len); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(186, 230, 253, 0.55)'; ctx.setLineDash([4, 4]);
+    ctx.strokeRect(ox + ip.bridgeX, oy + ip.bridgeY, ip.bridgeW, ip.bridgeH); ctx.setLineDash([]);
+  }
+  for (const sw of (rm.slickWalls || [])) {
+    ctx.fillStyle = 'rgba(185, 28, 28, 0.36)'; ctx.strokeStyle = '#f87171'; ctx.lineWidth = 2 / state.cam.zoom;
+    ctx.fillRect(ox + sw.x, oy + sw.y, sw.w, sw.h); ctx.strokeRect(ox + sw.x, oy + sw.y, sw.w, sw.h);
+  }
   for (const pk of (rm.pickups || [])) {
     const px = ox + pk.x;
     const py = oy + pk.y;
@@ -753,6 +789,102 @@ function drawRoomContents(rm, isGhost = false) {
   ctx.restore();
 }
 
+
+function drawAuditOverlays() {
+  if (!state.bundle) return;
+  const showViol = state.auditHighlight;
+  const activeTierId = state.auditTierOverlay;
+  if (!showViol && !activeTierId) return;
+
+  const rooms = state.bundle.rooms || [];
+  const z = Math.max(0.25, state.cam.zoom);
+
+  // 1. Optional 5-Tier Reachability Overlay
+  if (activeTierId && state.lastAuditTopo && state.lastAuditTopo.tiers) {
+    const tier = state.lastAuditTopo.tiers.find(t => t.id === activeTierId);
+    if (tier) {
+      ctx.save();
+      for (const rm of rooms) {
+        const b = rm.bounds;
+        const isSoft = tier.softlocked.has(rm.id);
+        const isLeak = tier.leaked.has(rm.id);
+        const isUnreach = tier.unreachable.has(rm.id);
+        const isVis = tier.visited.has(rm.id);
+        if (isSoft || isLeak || isUnreach) {
+          ctx.fillStyle = 'rgba(220, 38, 38, 0.28)';
+          ctx.strokeStyle = '#f87171';
+          ctx.lineWidth = 3.5 / z;
+        } else if (isVis) {
+          ctx.fillStyle = 'rgba(16, 185, 129, 0.14)';
+          ctx.strokeStyle = '#6ee7b7';
+          ctx.lineWidth = 2.4 / z;
+        } else {
+          ctx.fillStyle = 'rgba(6, 9, 15, 0.62)';
+          ctx.strokeStyle = 'rgba(148, 163, 184, 0.28)';
+          ctx.lineWidth = 1.2 / z;
+        }
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+        ctx.strokeRect(b.x, b.y, b.w, b.h);
+
+        const tag = isSoft ? '✖ 软锁' : isLeak ? '✖ 越界绕后' : isUnreach ? '✖ 终局孤岛' : isVis ? `✓ ${tier.short} 可达` : '🔒 未解锁';
+        const tagCol = (isSoft || isLeak || isUnreach) ? '#fecaca' : isVis ? '#6ee7b7' : '#94a3b8';
+        ctx.font = `bold ${Math.round(13 / Math.max(0.32, z))}px "Noto Serif SC", sans-serif`;
+        ctx.textAlign = 'right';
+        ctx.fillStyle = tagCol;
+        ctx.fillText(tag, b.x + b.w - 10 / z, b.y + 22 / Math.max(0.45, z));
+      }
+      ctx.restore();
+    }
+  }
+
+  // 2. Violating Rooms & Specific Conflict Boxes Highlight
+  if (showViol) {
+    ctx.save();
+    for (const rm of rooms) {
+      const st = state.roomAuditMap.get(rm.id);
+      if (!st || (st.err === 0 && st.warn === 0)) continue;
+      const b = rm.bounds;
+      const isErr = st.err > 0;
+      ctx.fillStyle = isErr ? 'rgba(220, 38, 38, 0.20)' : 'rgba(245, 158, 11, 0.15)';
+      ctx.strokeStyle = isErr ? '#f87171' : '#f59e0b';
+      ctx.lineWidth = (isErr ? 4.2 : 3.0) / z;
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+
+      const pillTxt = isErr ? `✖ 违规 ${st.err}${st.warn ? ` · ⚠${st.warn}` : ''}` : `⚠ 警告 ${st.warn}`;
+      const fontSize = Math.round(14 / Math.max(0.30, z));
+      ctx.font = `bold ${fontSize}px "Noto Serif SC", sans-serif`;
+      const tw = ctx.measureText(pillTxt).width + 14 / Math.max(0.35, z);
+      const th = fontSize + 8 / Math.max(0.35, z);
+      const px = b.x + 8 / Math.max(0.4, z);
+      const py = b.y + 8 / Math.max(0.4, z);
+      ctx.fillStyle = isErr ? 'rgba(127, 29, 29, 0.92)' : 'rgba(120, 53, 15, 0.90)';
+      ctx.fillRect(px, py, tw, th);
+      ctx.strokeStyle = isErr ? '#fca5a5' : '#fde047';
+      ctx.lineWidth = 1.4 / z;
+      ctx.strokeRect(px, py, tw, th);
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(pillTxt, px + 7 / Math.max(0.35, z), py + 4 / Math.max(0.35, z));
+      ctx.textBaseline = 'alphabetic';
+    }
+
+    for (const iss of state.lastAuditIssues) {
+      if (!iss.highlightBox) continue;
+      const hb = iss.highlightBox;
+      ctx.fillStyle = iss.sev === 'err' ? 'rgba(248, 113, 113, 0.28)' : 'rgba(253, 224, 71, 0.22)';
+      ctx.strokeStyle = iss.sev === 'err' ? '#ff4d4f' : '#fde047';
+      ctx.lineWidth = 2.6 / z;
+      ctx.setLineDash([8 / z, 4 / z]);
+      ctx.fillRect(hb.x, hb.y, hb.w, hb.h);
+      ctx.strokeRect(hb.x, hb.y, hb.w, hb.h);
+      ctx.setLineDash([]);
+    }
+    ctx.restore();
+  }
+}
+
 function draw() {
   if (!state.bundle) return;
   const rect = canvas.parentElement.getBoundingClientRect();
@@ -789,6 +921,8 @@ function draw() {
     const active = getActiveRoom();
     if (active) drawRoomContents(active, false);
   }
+
+  drawAuditOverlays();
 
   // Active Selection Outline, Resize Handles, Creation & Cursor Ghosts
   if (state.viewMode === 'room') {
@@ -932,12 +1066,19 @@ function renderRoomList() {
   roomListEl.innerHTML = '';
   state.bundle.rooms.forEach((rm, idx) => {
     const btn = document.createElement('button');
-    btn.className = `room-item${idx === state.activeRoomIdx ? ' active' : ''}`;
+    const st = state.roomAuditMap ? state.roomAuditMap.get(rm.id) : null;
+    const violCls = st && st.err > 0 ? ' has-err' : st && st.warn > 0 ? ' has-warn' : '';
+    btn.className = `room-item${idx === state.activeRoomIdx ? ' active' : ''}${violCls}`;
+    const badgeHtml = st && st.err > 0
+      ? `<span class="room-audit-pill err">✖${st.err}</span>`
+      : st && st.warn > 0
+        ? `<span class="room-audit-pill warn">⚠${st.warn}</span>`
+        : '';
     const count = (rm.solids || []).length + (rm.enemies || []).length + (rm.windZones || []).length +
       (rm.bouncePads || []).length + (rm.lanterns || []).length + (rm.pickups || []).length +
       ((rm.props && rm.props.stamps) ? rm.props.stamps.length : 0);
     btn.innerHTML = `
-      <div class="room-item-title"><span>${rm.name}</span><span style="font-size:10px;color:var(--dim);">${rm.id}</span></div>
+      <div class="room-item-title"><span>${rm.name}${badgeHtml}</span><span style="font-size:10px;color:var(--dim);">${rm.id}</span></div>
       <div class="room-item-meta">${rm.bounds.w}×${rm.bounds.h} · (${rm.bounds.x}, ${rm.bounds.y}) · ${count} 物件</div>
     `;
     btn.addEventListener('click', () => {
@@ -1175,10 +1316,13 @@ function renderInspector() {
       { value: 'chapelExit', label: '礼拜堂东门 (chapelExit)' },
       { value: 'foundryEntry', label: '铸钟殿入口 (foundryEntry)' },
       { value: 'foundryExit', label: '铸钟殿出口 (foundryExit)' },
-      { value: 'skyBridge', label: '天顶断桥石门 (skyBridge)' }
+      { value: 'skyBridge', label: '天顶断桥石门 (skyBridge)' },
+      { value: 'foundryValve', label: '古炉泄压铁闸 (foundryValve)' },
+      { value: 'mirrorAbyss', label: '初铸镜渊天门 (mirrorAbyss)' },
+      { value: 'switchGate', label: '单向机关闸门 (switchGate)' }
     ], v => { o.role = v; });
   }
-  if (o.kind !== undefined && sel.kind === 'npc') addField(grid, 'NPC类', o.kind, ['smith', 'chronicler', 'keeper'], v => { o.kind = v; });
+  if (o.kind !== undefined && sel.kind === 'npc') addField(grid, 'NPC类', o.kind, ['smith', 'chronicler', 'keeper', 'scavenger'], v => { o.kind = v; });
   if (o.kind !== undefined && sel.kind === 'pickup') {
     addField(grid, '秘宝类', o.kind, ['flaskCore', 'relic', 'realmSeal', 'ability', 'weapon', 'echoCache', 'statCore', 'keyItem'], v => {
       o.kind = v;
@@ -1215,7 +1359,7 @@ function renderInspector() {
     const relicOpts = RELICS.map(r => ({ value: r.id, label: `${r.name} (${r.id})` }));
     addField(grid, '圣物ID', o.relicId || RELICS[0].id, relicOpts, v => { o.relicId = v; });
   }
-  if (o.abilityId !== undefined) addField(grid, '能力ID', o.abilityId, ['doubleJump', 'shadeDash'], v => { o.abilityId = v; });
+  if (o.abilityId !== undefined) addField(grid, '能力ID', o.abilityId, ['grappleHook', 'doubleJump', 'shadeDash', 'bellDive'], v => { o.abilityId = v; });
   if (o.echoAmount !== undefined || (sel.kind === 'pickup' && (o.kind === 'echoCache' || o.kind === 'realmSeal'))) {
     addField(grid, '残响量', o.echoAmount !== undefined ? o.echoAmount : 0, 'number', v => { o.echoAmount = Math.max(0, Math.round(v || 0)); });
   }
@@ -2021,11 +2165,11 @@ function runWorldAudit() {
       roomIdx: 0
     });
   }
-  if (eco.total1x < 4600 || eco.total1x > 5500) {
+  if (eco.total1x < 5200 || eco.total1x > 7200) {
     issues.push({
       sev: 'warn',
       title: `全境 1× 残响经济偏离目标区间：${eco.total1x}`,
-      msg: `v34.0 紧凑经济目标为 4,600 ~ 5,500 残响（当前 ${eco.total1x}），建议核查 echoCache 与守誓奖励。`,
+      msg: `25 房经济目标为 5,200 ~ 7,200 残响（当前 ${eco.total1x}），建议核查 echoCache 与守誓奖励。`,
       roomIdx: 0
     });
   }
@@ -2039,72 +2183,217 @@ function runWorldAudit() {
     });
   }
 
+  // 7. v43.4 Real-Time 5-Tier Directed Topology, Anti-Softlock, Boss-Bypass & Shaft Clearance Audit
+  const topo = runTopologyAndShaftAudit(state.bundle);
+  state.lastAuditTopo = topo;
+  for (const tiss of topo.issues) {
+    issues.push(tiss);
+  }
+
+  // Build per-room violation map for instant canvas & sidebar highlighting
+  const rMap = new Map();
+  const addRoomIssue = (rid, sev) => {
+    if (!rid) return;
+    let rec = rMap.get(rid);
+    if (!rec) { rec = { err: 0, warn: 0 }; rMap.set(rid, rec); }
+    if (sev === 'err') rec.err++;
+    else rec.warn++;
+  };
+  for (const iss of issues) {
+    if (Array.isArray(iss.roomIds) && iss.roomIds.length > 0) {
+      for (const rid of iss.roomIds) addRoomIssue(rid, iss.sev);
+    } else if (iss.roomIdx !== undefined && rooms[iss.roomIdx]) {
+      addRoomIssue(rooms[iss.roomIdx].id, iss.sev);
+    }
+  }
+  state.roomAuditMap = rMap;
+  state.lastAuditIssues = issues;
+
   return issues;
 }
 
-function showAuditPanel() {
+function syncAuditToolbarButtons() {
+  const issues = state.lastAuditIssues || [];
+  const errCnt = issues.filter(i => i.sev === 'err').length;
+  const warnCnt = issues.filter(i => i.sev === 'warn').length;
+  const btn = document.getElementById('btn-audit');
+  if (btn) {
+    btn.classList.remove('audit-ok-btn', 'audit-warn-btn', 'audit-err-btn');
+    if (errCnt > 0) {
+      btn.classList.add('audit-err-btn');
+      btn.textContent = `🩺 体检 ✖${errCnt}`;
+    } else if (warnCnt > 0) {
+      btn.classList.add('audit-warn-btn');
+      btn.textContent = `🩺 体检 ⚠${warnCnt}`;
+    } else {
+      btn.classList.add('audit-ok-btn');
+      btn.textContent = '🩺 全境体检 ✓';
+    }
+  }
+  const hlBtns = [document.getElementById('btn-audit-highlight'), document.getElementById('btn-audit-highlight-top')];
+  for (const hb of hlBtns) {
+    if (!hb) continue;
+    hb.classList.toggle('highlight-on', !!state.auditHighlight);
+    hb.textContent = state.auditHighlight ? '🔦 高亮中 [G]' : '🔦 高亮违规房 [G]';
+  }
+}
+
+function toggleAuditHighlight(forceVal = null) {
+  state.auditHighlight = forceVal !== null ? !!forceVal : !state.auditHighlight;
+  if (state.auditHighlight) {
+    refreshLiveAudit(false);
+    const violRooms = [...state.roomAuditMap.entries()].filter(([, v]) => v.err > 0 || v.warn > 0);
+    state.viewMode = 'world';
+    const bRoom = document.getElementById('btn-view-room');
+    const bWorld = document.getElementById('btn-view-world');
+    if (bRoom) bRoom.classList.remove('active');
+    if (bWorld) bWorld.classList.add('active');
+    fitView();
+    showToast(violRooms.length > 0
+      ? `已高亮 ${violRooms.length} 个违规/告警房间（红框=错误 · 黄框=警告）`
+      : '当前全境 0 违规房间，保持实时监控高亮中');
+  } else {
+    showToast('已关闭违规房间高亮');
+  }
+  syncAuditToolbarButtons();
+  draw();
+}
+
+function refreshLiveAudit(openDrawer = false) {
+  if (!state.bundle) return;
   const issues = runWorldAudit();
   const errCnt = issues.filter(i => i.sev === 'err').length;
   const warnCnt = issues.filter(i => i.sev === 'warn').length;
-  if (auditSummaryEl) {
-    auditSummaryEl.textContent = `${state.bundle.rooms.length} 房 · ${errCnt} 错误 · ${warnCnt} 警告`;
-  }
-  if (auditListEl) {
-    auditListEl.innerHTML = '';
-    if (state.lastAuditEco) {
-      const e = state.lastAuditEco;
-      const inRange = e.total1x >= 4600 && e.total1x <= 5500;
-      const ecoEl = document.createElement('div');
-      ecoEl.className = `audit-eco${inRange ? '' : ' warn'}`;
-      ecoEl.innerHTML = `
-        <div class="audit-eco-head">
-          <span>✦ v34.0 残响经济总量体检 (1× 清图)</span>
-          <span style="color:${inRange ? 'var(--emerald)' : 'var(--red)'};">${e.total1x} 残响 (${inRange ? '达标' : '偏离'})</span>
-        </div>
-        <div class="audit-eco-grid">
-          <span>常规怪(${e.regCount}只): <strong>${e.regEnemies}</strong></span>
-          <span>三境守誓(3位): <strong>${e.wardens}</strong></span>
-          <span>主线/隐藏首领: <strong>${e.bosses}</strong></span>
-          <span>残响秘宝匣: <strong>${e.echoCaches}</strong></span>
-          <span>铭印/核心附赠: <strong>${e.otherPickups}</strong></span>
-          <span>NPC支线酬谢: <strong>${e.npcQuests}</strong></span>
-          <span>铁匠满级消耗: <strong>${e.smithTotal}</strong></span>
-          <span>3槽主力总耗: <strong>${e.coreSink}</strong></span>
-        </div>
-      `;
-      auditListEl.appendChild(ecoEl);
+  syncAuditToolbarButtons();
+  renderRoomList();
+
+  const drawerVisible = openDrawer || (auditPanelEl && !auditPanelEl.classList.contains('hidden'));
+  if (drawerVisible) {
+    if (auditSummaryEl) {
+      auditSummaryEl.textContent = `${state.bundle.rooms.length} 房 · ${errCnt} 错误 · ${warnCnt} 警告`;
     }
-    if (issues.length === 0) {
-      const okEl = document.createElement('div');
-      okEl.className = 'audit-ok';
-      okEl.innerHTML = `✦ 全境 ${state.bundle.rooms.length} 房间体检全部通过！<br>0 边界重叠 · 0 断链孤岛 · 铭印神龛 / 天顶石门 / 生态机关 / 经济总量均达标`;
-      auditListEl.appendChild(okEl);
-    } else {
-      for (const iss of issues) {
-        const btn = document.createElement('button');
-        btn.className = `audit-item ${iss.sev}`;
-        btn.innerHTML = `
-          <div class="audit-item-head"><span>${iss.sev === 'err' ? '✖' : '⚠'} ${iss.title}</span><span>定位 →</span></div>
-          <div class="audit-item-msg">${iss.msg}</div>
+    if (auditListEl) {
+      auditListEl.innerHTML = '';
+
+      if (state.lastAuditTopo && state.lastAuditTopo.tiers && state.lastAuditTopo.tiers.length > 0) {
+        const topoBox = document.createElement('div');
+        const anyBad = state.lastAuditTopo.tiers.some(t => t.hasViolation);
+        topoBox.className = `audit-topo-box${anyBad ? ' has-err' : ''}`;
+        const activeLbl = state.auditTierOverlay
+          ? `透视中: ${state.auditTierOverlay} (再点取消)`
+          : '点击阶梯透视可达范围';
+        topoBox.innerHTML = `
+          <div class="audit-topo-head">
+            <span>🧭 5阶有向可达图 · 防软锁 & 竖井净空</span>
+            <span class="audit-topo-sub">${activeLbl}</span>
+          </div>
+          <div class="audit-topo-tiers"></div>
         `;
-        btn.addEventListener('click', () => {
-          state.viewMode = 'room';
-          document.getElementById('btn-view-room').classList.add('active');
-          document.getElementById('btn-view-world').classList.remove('active');
-          state.activeRoomIdx = iss.roomIdx;
-          state.selection = iss.sel || null;
-          renderAllUI();
-          if (iss.wx !== undefined && iss.wy !== undefined) {
-            centerCameraOn(iss.wx, iss.wy, Math.max(0.85, state.cam.zoom));
-          } else {
-            fitView();
-          }
-        });
-        auditListEl.appendChild(btn);
+        const tiersRow = topoBox.querySelector('.audit-topo-tiers');
+        for (const t of state.lastAuditTopo.tiers) {
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = `audit-tier-chip${state.auditTierOverlay === t.id ? ' active' : ''}${t.hasViolation ? ' bad' : ''}`;
+          chip.title = `${t.label}：可达 ${t.visited.size}/${state.bundle.rooms.length} 房${t.softlocked.size ? ` · 软锁 ${t.softlocked.size}` : ''}${t.leaked.size ? ` · 绕后 ${t.leaked.size}` : ''}`;
+          chip.innerHTML = `<span>${t.short}</span><strong>${t.visited.size}/${state.bundle.rooms.length}</strong>`;
+          chip.addEventListener('click', () => {
+            state.auditTierOverlay = (state.auditTierOverlay === t.id) ? null : t.id;
+            if (state.auditTierOverlay) {
+              state.viewMode = 'world';
+              document.getElementById('btn-view-room').classList.remove('active');
+              document.getElementById('btn-view-world').classList.add('active');
+              fitView();
+            }
+            refreshLiveAudit(true);
+            draw();
+          });
+          tiersRow.appendChild(chip);
+        }
+        auditListEl.appendChild(topoBox);
+      }
+
+      if (state.lastAuditEco) {
+        const e = state.lastAuditEco;
+        const inRange = e.total1x >= 5200 && e.total1x <= 7200;
+        const ecoEl = document.createElement('div');
+        ecoEl.className = `audit-eco${inRange ? '' : ' warn'}`;
+        ecoEl.innerHTML = `
+          <div class="audit-eco-head">
+            <span>✦ 全境 1× 残响经济体检 (目标 5,200~7,200)</span>
+            <span style="color:${inRange ? 'var(--emerald)' : 'var(--red)'};">${e.total1x} 残响 (${inRange ? '达标' : '偏离'})</span>
+          </div>
+          <div class="audit-eco-grid">
+            <span>常规怪(${e.regCount}只): <strong>${e.regEnemies}</strong></span>
+            <span>三境守誓(3位): <strong>${e.wardens}</strong></span>
+            <span>主线/隐藏首领: <strong>${e.bosses}</strong></span>
+            <span>残响秘宝匣: <strong>${e.echoCaches}</strong></span>
+            <span>铭印/核心附赠: <strong>${e.otherPickups}</strong></span>
+            <span>NPC支线酬谢: <strong>${e.npcQuests}</strong></span>
+            <span>铁匠满级消耗: <strong>${e.smithTotal}</strong></span>
+            <span>3槽主力总耗: <strong>${e.coreSink}</strong></span>
+          </div>
+        `;
+        auditListEl.appendChild(ecoEl);
+      }
+
+      if (issues.length === 0) {
+        const okEl = document.createElement('div');
+        okEl.className = 'audit-ok';
+        okEl.innerHTML = `✦ 全境 ${state.bundle.rooms.length} 房间实时体检全部通过！<br>0 软锁 · 0 Boss绕后 · 0 横向暗墙 · 竖井净空 / 钩点 / 黑冲结界 / 经济均达标`;
+        auditListEl.appendChild(okEl);
+      } else {
+        for (const iss of issues) {
+          const btn = document.createElement('button');
+          btn.className = `audit-item ${iss.sev}`;
+          btn.innerHTML = `
+            <div class="audit-item-head"><span>${iss.sev === 'err' ? '✖' : '⚠'} ${iss.title}</span><span>定位 →</span></div>
+            <div class="audit-item-msg">${iss.msg}</div>
+          `;
+          btn.addEventListener('click', () => {
+            state.auditHighlight = true;
+            syncAuditToolbarButtons();
+            if (iss.tierId) {
+              state.auditTierOverlay = iss.tierId;
+              state.viewMode = 'world';
+              document.getElementById('btn-view-room').classList.remove('active');
+              document.getElementById('btn-view-world').classList.add('active');
+              state.activeRoomIdx = iss.roomIdx || 0;
+              renderAllUI();
+              fitView();
+            } else {
+              state.viewMode = 'room';
+              document.getElementById('btn-view-room').classList.add('active');
+              document.getElementById('btn-view-world').classList.remove('active');
+              state.activeRoomIdx = iss.roomIdx || 0;
+              state.selection = iss.sel || null;
+              renderAllUI();
+              if (iss.wx !== undefined && iss.wy !== undefined) {
+                centerCameraOn(iss.wx, iss.wy, Math.max(0.85, state.cam.zoom));
+              } else {
+                fitView();
+              }
+            }
+            draw();
+          });
+          auditListEl.appendChild(btn);
+        }
       }
     }
+    if (openDrawer && auditPanelEl) auditPanelEl.classList.remove('hidden');
   }
-  if (auditPanelEl) auditPanelEl.classList.remove('hidden');
+  if (state.auditHighlight || state.auditTierOverlay) draw();
+}
+
+function scheduleLiveAudit() {
+  if (state.auditDebounceTimer) clearTimeout(state.auditDebounceTimer);
+  state.auditDebounceTimer = setTimeout(() => {
+    state.auditDebounceTimer = null;
+    refreshLiveAudit(false);
+  }, 160);
+}
+
+function showAuditPanel() {
+  refreshLiveAudit(true);
 }
 
 // ==================== MOUSE & KEYBOARD INTERACTION ====================
@@ -2347,6 +2636,7 @@ window.addEventListener('keydown', e => {
   } else if (e.code === 'KeyV') setTool('select');
   else if (e.code === 'KeyF') fitView();
   else if (e.code === 'KeyM') toggleRenderMode();
+  else if (e.code === 'KeyG') toggleAuditHighlight();
   else if (e.code === 'KeyP') {
     e.preventDefault();
     if (state.hoverInsideCanvas) {
@@ -2393,6 +2683,7 @@ function doUndo() {
   state.activeRoomIdx = Math.min(state.activeRoomIdx, state.bundle.rooms.length - 1);
   state.selection = null;
   renderAllUI();
+  refreshLiveAudit(false);
   draw();
   showToast('已撤销');
 }
@@ -2403,6 +2694,7 @@ function doRedo() {
   state.bundle = state.redoStack.pop();
   state.selection = null;
   renderAllUI();
+  refreshLiveAudit(false);
   draw();
   showToast('已重做');
 }
@@ -2459,6 +2751,10 @@ document.getElementById('btn-undo').addEventListener('click', doUndo);
 document.getElementById('btn-redo').addEventListener('click', doRedo);
 document.getElementById('btn-audit').addEventListener('click', showAuditPanel);
 document.getElementById('btn-audit-rerun').addEventListener('click', showAuditPanel);
+const btnAuditHl = document.getElementById('btn-audit-highlight');
+if (btnAuditHl) btnAuditHl.addEventListener('click', () => toggleAuditHighlight());
+const btnAuditHlTop = document.getElementById('btn-audit-highlight-top');
+if (btnAuditHlTop) btnAuditHlTop.addEventListener('click', () => toggleAuditHighlight());
 document.getElementById('btn-audit-close').addEventListener('click', () => {
   if (auditPanelEl) auditPanelEl.classList.add('hidden');
 });
@@ -2654,8 +2950,9 @@ async function bootEditor() {
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
     renderAllUI();
+    refreshLiveAudit(false);
     fitView();
-    showToast(`v35.0 已载入 ${state.bundle.rooms.length} 个全境房间 JSON`);
+    showToast(`v43.4 已载入 ${state.bundle.rooms.length} 个全境房间 JSON · 实时拓扑体检就绪`);
   } catch (err) {
     showToast(`加载失败: ${err.message}（请通过 serve_local.py 启动）`);
   }

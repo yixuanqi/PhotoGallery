@@ -92,6 +92,12 @@ const RELIC_SVG_MAP = {
     <polygon points="18,6 24,15 21,29 15,29 12,15" fill="rgba(125,211,252,0.42)" stroke="#e0f2fe" stroke-width="1.5" stroke-linejoin="round"/>
     <path d="M18 7 V28 M11 16 L25 16 M13 11 L23 22 M23 11 L13 22" stroke="#f0f9ff" stroke-width="1.15" stroke-linecap="round"/>
   </svg>`,
+  tidebell: `<svg viewBox="0 0 36 36" class="relic-svg" aria-hidden="true">
+    <circle cx="18" cy="18" r="15.5" fill="rgba(12,68,94,0.45)" stroke="#38bdf8" stroke-width="1.5"/>
+    <path d="M12 10 H24 L27 22 H9 Z" fill="rgba(30,45,62,0.85)" stroke="#fde047" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M8 25 Q13 22 18 25 Q23 28 28 25" fill="none" stroke="#7dd3fc" stroke-width="1.6" stroke-linecap="round"/>
+    <circle cx="18" cy="22" r="2.6" fill="#fef08a"/>
+  </svg>`,
   locked: `<svg viewBox="0 0 36 36" class="relic-svg locked" aria-hidden="true">
     <circle cx="18" cy="18" r="15" fill="rgba(15,20,32,0.55)" stroke="rgba(148,163,184,0.35)" stroke-width="1.3" stroke-dasharray="3 3"/>
     <path d="M14 12 H22 L24.5 24 H11.5 Z" fill="rgba(30,41,59,0.7)" stroke="rgba(148,163,184,0.45)" stroke-width="1.4"/>
@@ -225,6 +231,18 @@ const BESTIARY_SVG_MAP = {
     <path d="M20 9 L26 14 L25 24 L20 27 Z" fill="#121521" stroke="#fde047" stroke-width="1.1"/>
     <rect x="21" y="16" width="3.5" height="2" fill="#fde047"/>
     <path d="M11 32 Q20 28 29 32" fill="none" stroke="#e6dec8" stroke-width="1.8" stroke-linecap="round"/>
+  </svg>`,
+  drowned: `<svg viewBox="0 0 40 40" class="codex-svg" aria-hidden="true">
+    <circle cx="20" cy="20" r="18" fill="rgba(8,28,42,0.92)" stroke="#38bdf8" stroke-width="1.5"/>
+    <path d="M13 13 Q20 7 27 13 L26 24 H14 Z" fill="#1e293b" stroke="#f59e0b" stroke-width="1.4"/>
+    <rect x="16" y="16" width="8" height="3.5" fill="#7dd3fc"/>
+    <path d="M10 30 Q15 27 20 30 Q25 33 30 30" fill="none" stroke="#38bdf8" stroke-width="1.6"/>
+  </svg>`,
+  anchorite: `<svg viewBox="0 0 40 40" class="codex-svg" aria-hidden="true">
+    <circle cx="20" cy="20" r="18" fill="rgba(18,24,36,0.94)" stroke="#94a3b8" stroke-width="1.6"/>
+    <line x1="20" y1="9" x2="20" y2="29" stroke="#e2e8f0" stroke-width="2.4"/>
+    <path d="M11 23 Q20 33 29 23" fill="none" stroke="#fde047" stroke-width="2.2" stroke-linecap="round"/>
+    <circle cx="20" cy="11" r="3" fill="none" stroke="#fde047" stroke-width="1.6"/>
   </svg>`,
   unknown: `<svg viewBox="0 0 40 40" class="codex-svg locked" aria-hidden="true">
     <circle cx="20" cy="20" r="18" fill="rgba(12,16,26,0.72)" stroke="rgba(148,163,184,0.38)" stroke-width="1.3" stroke-dasharray="3 3"/>

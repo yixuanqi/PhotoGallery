@@ -55,6 +55,15 @@ export function createPlayer(x = 340, y = FLOOR_Y - 56) {
     iaiLungeTimer: 0,
     riposteWindow: 0,
     switchStrikeWindow: 0,
+    grappleStrikeWindow: 0,
+    airSlamState: 'none',
+    airSlamTimer: 0,
+    airSlamEmpowered: false,
+    airSlamHitIds: null,
+    diveState: 'none',
+    diveTimer: 0,
+    diveHitIds: null,
+    bellAirStalls: 0,
     shieldArmorTimer: 0,
     shieldArmorMult: 1.0,
     weaponSwapCd: 0,
@@ -80,6 +89,7 @@ export function createPlayer(x = 340, y = FLOOR_Y - 56) {
     shadeHitIds: null,
     shadeGrappleBoostTimer: 0,
     barrierHintCd: 0,
+    thornGraceTimer: 0,
     detonateLungeTimer: 0,
     castTimer: 0,
     castCd: 0,
@@ -134,10 +144,10 @@ export function makeSentinel(id, x, y, minX, maxX) {
     vy: 0,
     facing: -1,
     minX, maxX,
-    hp: 115,
-    maxHp: 115,
+    hp: 88,
+    maxHp: 88,
     posture: 0,
-    maxPosture: 65,
+    maxPosture: 52,
     postureDecayDelay: 0,
     alive: true,
     state: 'patrol', // patrol, chase, windup, attack, recover, stagger
@@ -164,10 +174,10 @@ export function makeWraith(id, x, y) {
     vx: 0,
     vy: 0,
     facing: -1,
-    hp: 72,
-    maxHp: 72,
+    hp: 58,
+    maxHp: 58,
     posture: 0,
-    maxPosture: 45,
+    maxPosture: 38,
     postureDecayDelay: 0,
     alive: true,
     state: 'hover', // hover, windup, recover, stagger
@@ -191,10 +201,10 @@ export function makeGolem(id, x, y, minX, maxX) {
     vy: 0,
     facing: -1,
     minX, maxX,
-    hp: 165,
-    maxHp: 165,
+    hp: 155,
+    maxHp: 155,
     posture: 0,
-    maxPosture: 95,
+    maxPosture: 90,
     postureDecayDelay: 0,
     alive: true,
     state: 'patrol', // patrol, chase, windup, attack, recover, stagger
@@ -219,10 +229,10 @@ export function makePriest(id, x, y) {
     vx: 0,
     vy: 0,
     facing: -1,
-    hp: 86,
-    maxHp: 86,
+    hp: 72,
+    maxHp: 72,
     posture: 0,
-    maxPosture: 52,
+    maxPosture: 44,
     postureDecayDelay: 0,
     alive: true,
     state: 'idle', // idle, chant, pulse, recover, stagger
@@ -248,10 +258,10 @@ export function makeDuelist(id, x, y, minX, maxX) {
     vy: 0,
     facing: -1,
     minX, maxX,
-    hp: 138,
-    maxHp: 138,
+    hp: 126,
+    maxHp: 126,
     posture: 0,
-    maxPosture: 82,
+    maxPosture: 78,
     postureDecayDelay: 0,
     alive: true,
     state: 'patrol', // patrol, chase, windup, attack, recover, stagger
@@ -280,10 +290,10 @@ export function makeLeech(id, x, y) {
     vx: 0,
     vy: 0,
     facing: -1,
-    hp: 68,
-    maxHp: 68,
+    hp: 52,
+    maxHp: 52,
     posture: 0,
-    maxPosture: 42,
+    maxPosture: 34,
     postureDecayDelay: 0,
     alive: true,
     state: 'cling', // cling, telegraph, drop, crawl, climb, stagger
@@ -341,7 +351,16 @@ export function makeDummy(id, x, y, minX, maxX) {
 }
 
 function applyFoeScaling(ent) {
-  if (!ent || ent.isDummy) return ent;
+  if (!ent) return ent;
+  ent.squashX = 1;
+  ent.squashY = 1;
+  ent.recoilLean = 0;
+  ent.hitFreezeTimer = 0;
+  ent.hitTremor = 0;
+  ent.launchTimer = 0;
+  ent.launchDir = 0;
+  ent.launchHitIds = null;
+  if (ent.isDummy) return ent;
   const sc = getCombatScaling();
   ent.maxHp = Math.round(ent.maxHp * sc.hpMult);
   ent.hp = ent.maxHp;
@@ -363,10 +382,10 @@ export function makeFalcon(id, x, y) {
     vx: 0,
     vy: 0,
     facing: -1,
-    hp: 84,
-    maxHp: 84,
+    hp: 66,
+    maxHp: 66,
     posture: 0,
-    maxPosture: 52,
+    maxPosture: 42,
     postureDecayDelay: 0,
     alive: true,
     state: 'hover', // hover, windup, dive, recover, stagger
@@ -392,10 +411,10 @@ export function makeFungus(id, x, y, minX, maxX) {
     vy: 0,
     facing: -1,
     minX, maxX,
-    hp: 124,
-    maxHp: 124,
+    hp: 98,
+    maxHp: 98,
     posture: 0,
-    maxPosture: 68,
+    maxPosture: 56,
     postureDecayDelay: 0,
     alive: true,
     state: 'patrol', // patrol, chase, windup, attack, recover, stagger
@@ -422,10 +441,10 @@ export function makeFrostguard(id, x, y, minX, maxX) {
     vy: 0,
     facing: -1,
     minX, maxX,
-    hp: 152,
-    maxHp: 152,
+    hp: 140,
+    maxHp: 140,
     posture: 0,
-    maxPosture: 86,
+    maxPosture: 82,
     postureDecayDelay: 0,
     alive: true,
     state: 'patrol', // patrol, chase, windup, attack, recover, stagger
@@ -436,6 +455,70 @@ export function makeFrostguard(id, x, y, minX, maxX) {
     walkCycle: 0,
     cloak: createCloak(x, y + 20, 6, 9)
   };
+}
+
+
+export function makeDrowned(id, x, y, minX, maxX) {
+  return applyFoeScaling({
+    id,
+    kind: 'drowned',
+    x,
+    y,
+    w: 36,
+    h: 60,
+    vx: 0,
+    vy: 0,
+    facing: -1,
+    hp: 96,
+    maxHp: 96,
+    posture: 0,
+    maxPosture: 58,
+    postureDecayDelay: 0,
+    alive: true,
+    grounded: false,
+    state: 'patrol',
+    stateTimer: 0,
+    minX,
+    maxX,
+    attackKind: 'hookSwipe',
+    didHit: false,
+    submergeCd: 2.2,
+    submergeAlpha: 1,
+    ambushX: x,
+    hurtFlash: 0,
+    walkCycle: 0,
+    cloak: createCloak(x + 18, y + 16, 6, 9)
+  });
+}
+
+export function makeAnchorite(id, x, y, minX, maxX) {
+  return applyFoeScaling({
+    id,
+    kind: 'anchorite',
+    x,
+    y,
+    w: 48,
+    h: 78,
+    vx: 0,
+    vy: 0,
+    facing: -1,
+    hp: 158,
+    maxHp: 158,
+    posture: 0,
+    maxPosture: 96,
+    postureDecayDelay: 0,
+    alive: true,
+    grounded: false,
+    state: 'patrol',
+    stateTimer: 0,
+    minX,
+    maxX,
+    attackKind: 'anchorDrag',
+    didHit: false,
+    hurtFlash: 0,
+    walkCycle: 0,
+    cloak: createCloak(x + 24, y + 20, 7, 10)
+  });
 }
 
 export function makeWardenWind(id, x, y, minX, maxX) {
@@ -594,6 +677,10 @@ export function createSentinels() {
       ent = makeFungus(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 150, e.maxX !== undefined ? e.maxX : e.x + 150);
     } else if (e.kind === 'frostguard') {
       ent = makeFrostguard(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 160, e.maxX !== undefined ? e.maxX : e.x + 160);
+    } else if (e.kind === 'drowned') {
+      ent = makeDrowned(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 160, e.maxX !== undefined ? e.maxX : e.x + 160);
+    } else if (e.kind === 'anchorite') {
+      ent = makeAnchorite(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 150, e.maxX !== undefined ? e.maxX : e.x + 150);
     } else if (e.kind === 'warden_wind') {
       ent = makeWardenWind(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 220, e.maxX !== undefined ? e.maxX : e.x + 220);
     } else if (e.kind === 'warden_forest') {
@@ -782,13 +869,14 @@ export function createBoss3() {
 }
 
 
-export function createBoss4() {
-  const cfg = BOSSES_DEF.boss_yuan;
-  const bx = cfg ? cfg.x : 9220;
-  const by = cfg ? cfg.y + 8 : (FLOOR_Y - 108);
+export function createBoss4(forEcho = false) {
+  const cfg = (!forEcho && BOSSES_DEF.boss_zhu) ? BOSSES_DEF.boss_zhu : BOSSES_DEF.boss_yuan;
+  const bx = cfg ? cfg.x : 8720;
+  const by = cfg ? (forEcho ? cfg.y + 8 : cfg.y) : (-880 - 108);
+  const aliveInWorld = !forEcho && !(G.worldState && G.worldState.boss4Defeated);
   return applyFoeScaling({
     id: 'boss_zhu',
-    roomId: cfg ? cfg.roomId : 'r08_heart',
+    roomId: cfg ? cfg.roomId : 'r25_mirror_abyss',
     name: '初铸残影 · 铸',
     phase1Title: '第一幕 · 三刃初鸣',
     phase2Title: '第二幕 · 铃阵双映',
@@ -813,7 +901,7 @@ export function createBoss4() {
     postureDecayDelay: 0,
     phase: 1,
     awake: false,
-    alive: false,
+    alive: aliveInWorld,
     state: 'idle',
     stateTimer: 0.55,
     stance: 'blade',

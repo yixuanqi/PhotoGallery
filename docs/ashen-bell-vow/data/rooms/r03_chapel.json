@@ -37,6 +37,20 @@
       "w": 40,
       "h": 480,
       "type": "pillar"
+    },
+    {
+      "x": 155,
+      "y": 486,
+      "w": 140,
+      "h": 20,
+      "type": "platform"
+    },
+    {
+      "x": 765,
+      "y": 486,
+      "w": 140,
+      "h": 20,
+      "type": "platform"
     }
   ],
   "crumblePlatforms": [],
@@ -53,7 +67,18 @@
     }
   ],
   "secretWalls": [],
-  "pickups": [],
+  "pickups": [
+    {
+      "id": "pickup_grapple_hook",
+      "kind": "ability",
+      "abilityId": "grappleHook",
+      "requiresBoss": "boss_hui",
+      "x": 565,
+      "y": 580,
+      "name": "绝技 · 幽丝钩索",
+      "desc": "斩落断钟骑士·晦解封！按 [F/中键/I] 飞索拉向高空青铜钩环、悬灯或敌兵并派生「幽丝瞬斩」！"
+    }
+  ],
   "resonancePuzzles": [],
   "pendulums": [],
   "rivers": [],
@@ -103,7 +128,14 @@
       "arenaTopY": 0
     }
   ],
-  "inscriptions": [],
+  "inscriptions": [
+    {
+      "x": 565,
+      "y": 525,
+      "text": "「断钟骑士遗留的幽丝残环 · 破敌后可习得飞索绝技」",
+      "hideWhenBossDefeated": true
+    }
+  ],
   "props": {
     "puddles": [
       {

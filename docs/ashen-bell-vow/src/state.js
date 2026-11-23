@@ -1,7 +1,8 @@
 // Central mutable game state container (G) and cross-module hook registry (hooks)
 import {
   RELICS, RELIC_SYNERGIES, VOW_CONSTRAINTS, DEFAULT_KEYBINDS, ROOMS, ALTARS, FLOOR_Y, WORLD_MIN_X, WORLD_MIN_Y, MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H,
-  SECRET_WALLS_DEF, PICKUPS_DEF, RESONANCE_PUZZLES_DEF, CRUMBLE_PLATFORMS_DEF, LANTERNS_DEF
+  SECRET_WALLS_DEF, PICKUPS_DEF, RESONANCE_PUZZLES_DEF, CRUMBLE_PLATFORMS_DEF, LANTERNS_DEF,
+  BREAKABLE_FLOORS_DEF, ICE_PILLARS_DEF, WIND_ZONES, WIND_VANES
 } from './config.js';
 import { WEAPON_ORDER, normalizeWeaponId, getWeaponById, getForgeTraitById } from './weapons.js';
 
@@ -110,6 +111,12 @@ export const G = {
   boss3: null,
   boss4: null,
   bossBanner: null,
+  bossIntro: null,
+  bossKillSlowmo: null,
+  zoneBanner: null,
+  lastZoneName: '',
+  foundryCrucibles: [],
+  bestiaryToast: null,
   achievementBanner: null,
   achievementQueue: [],
   endingState: null,
@@ -138,6 +145,7 @@ export const hooks = {
   openNpcModal: () => {},
   openLoreModal: () => {},
   openMapModal: () => {},
+  cycleWeapon: () => {},
   openCodexModal: () => {},
   openPauseModal: () => {},
   returnToTitle: () => {},
@@ -176,6 +184,16 @@ export function createFreshWorldState() {
     foundryGateAnim: 0,
     foundryExitAnim: 0,
     skyBridgeGateAnim: 0,
+    riverDrainAnim: 0,
+    foundryVentAnim: 0,
+    mirrorAbyssAnim: 0,
+    switchGateAnims: {},
+    worldSwitches: {
+      riverDrained: false, foundryValveOpen: false,
+      belfryHatchOpen: false, forestHatchOpen: false, cryptHatchOpen: false,
+      windAscentOpen: false, windWestOpen: false,
+      galleryWindOpen: false, cisternWestOpen: false
+    },
     realmSeals: { wind: false, forest: false, mountain: false },
     echoRecords: { hui: null, ji: null, yuan: null, rush: null, warden_wind: null, warden_forest: null, warden_mountain: null, warden_rush: null, zhu: null, seven_bells: null },
     keyItems: { dawnSigil: false },
@@ -183,6 +201,10 @@ export function createFreshWorldState() {
     shortcutOpen: false,
     shortcutAnim: 0, // 0 = closed, 1 = fully raised
     secretWalls: SECRET_WALLS_DEF.map(w => ({ ...w, type: 'pillar', hp: w.maxHp, broken: false, shake: 0 })),
+    breakableFloors: BREAKABLE_FLOORS_DEF.map(f => ({ ...f, type: 'pillar', broken: false, shake: 0 })),
+    icePillars: ICE_PILLARS_DEF.map(ip => ({ ...ip, state: 'hanging', fallY: ip.topY + ip.len, vy: 0, hitIds: new Set(), flash: 0 })),
+    awakenedPads: new Set(),
+    windVaneDirs: {},
     pickups: PICKUPS_DEF.map(p => ({ ...p, collected: false })),
     solvedPuzzles: new Set(),
     bonusFlasks: 0,
@@ -199,7 +221,7 @@ export function createFreshWorldState() {
       keeperWickGifted: false,
       keeperBlessingActive: false
     },
-    abilities: { doubleJump: false, shadeDash: false },
+    abilities: { grappleHook: false, doubleJump: false, shadeDash: false, bellDive: false },
     equippedWeapon: 'blade',
     unlockedWeapons: new Set(['blade']),
     weaponTraits: { blade: null, hammer: null, bell: null },
@@ -301,6 +323,44 @@ export function hasThirdRelicSlot() {
   return getRealmSealCount() >= 3;
 }
 
+export function isWorldSwitchOn(key) {
+  return !!(key && G.worldState && G.worldState.worldSwitches && G.worldState.worldSwitches[key]);
+}
+export function isRiverDrained() { return isWorldSwitchOn('riverDrained'); }
+export function isWindZoneActive(wz) {
+  if (!wz) return false;
+  if (wz.requiresSwitch && !isWorldSwitchOn(wz.requiresSwitch)) return false;
+  if (wz.requiresBoss4Unlocked && !isBoss4Unlocked()) return false;
+  return true;
+}
+export function isBouncePadAwake(bp) { return !!(bp && (!bp.dormant || (G.worldState && G.worldState.awakenedPads && G.worldState.awakenedPads.has(bp.id)))); }
+export function isSwitchUnlocked(sw) {
+  if (!sw) return false;
+  if (!sw.requiresBoss) return true;
+  if (!G.worldState) return false;
+  if (sw.requiresBoss === 'boss_hui') return !!G.worldState.bossDefeated;
+  if (sw.requiresBoss === 'boss_ji') return !!G.worldState.boss2Defeated;
+  if (sw.requiresBoss === 'boss_yuan') return !!G.worldState.boss3Defeated;
+  return !!(G.worldState.defeatedMiniBosses && G.worldState.defeatedMiniBosses.has(sw.requiresBoss));
+}
+export function syncWindVanesFromWorldState() {
+  const dirs = (G.worldState && G.worldState.windVaneDirs) ? G.worldState.windVaneDirs : {};
+  for (let i = 0; i < WIND_ZONES.length; i++) {
+    WIND_ZONES[i].vx = WIND_ZONES[i].baseVx !== undefined ? WIND_ZONES[i].baseVx : WIND_ZONES[i].vx;
+  }
+  for (let i = 0; i < WIND_VANES.length; i++) {
+    const wv = WIND_VANES[i];
+    const saved = dirs[wv.id];
+    wv.dir = (saved === 1 || saved === -1) ? saved : (wv.defaultDir || 1);
+    if (saved === 1 || saved === -1) {
+      for (let j = 0; j < wv.targetZoneIds.length; j++) {
+        const wz = WIND_ZONES.find(z => z.id === wv.targetZoneIds[j]);
+        if (wz) wz.vx = wv.dir * wv.boostVx;
+      }
+    }
+  }
+}
+
 export function isSkyBridgeOpen() {
   if (!G.worldState) return false;
   const dm = G.worldState.defeatedMiniBosses;
@@ -367,7 +427,8 @@ function _ensureRelicCache() {
   const wId = getActiveWeaponId();
   const wTrait = getActiveWeaponTraitId(wId) || '';
   const sealCnt = getRealmSealCount();
-  const key = `${r0 ? r0.id : ''}:${ref0}|${r1 ? r1.id : ''}:${ref1}|${r2 ? r2.id : ''}:${ref2}|${pMult}|${wId}|${wTrait}|${sealCnt}`;
+  const drainedFlag = isRiverDrained() ? 1 : 0;
+  const key = `${r0 ? r0.id : ''}:${ref0}|${r1 ? r1.id : ''}:${ref1}|${r2 ? r2.id : ''}:${ref2}|${pMult}|${wId}|${wTrait}|${sealCnt}|${drainedFlag}`;
   if (key === _relicCacheKey && _cachedRelicStats) return;
   _relicCacheKey = key;
 
@@ -404,12 +465,15 @@ function _ensureRelicCache() {
   let execHealPct = Math.max(...active.map(r => r.execHealPct || 0.12));
   let execFullSoul = has('ember');
   let grappleCd = Math.min(0.52, ...active.map(r => r.grappleCd || 0.52));
-  let spellCost = Math.max(14, Math.round(Math.min(30, ...active.map(r => r.spellCost || 30)) * (wp.spellCostMult || 1.0)));
-  let quakeCost = Math.max(20, Math.round(Math.min(40, ...active.map(r => r.quakeCost || (r.id === 'bellthread' ? 32 : 40))) * (wp.spellCostMult || 1.0)));
+  const drainedSpellReduce = drainedFlag ? active.reduce((acc, r) => acc + (r.drainedSpellCostReduce || 0), 0) : 0;
+  const drainedSpellMult = drainedFlag ? active.reduce((acc, r) => acc * (r.drainedSpellDmgMult || 1.0), 1.0) : 1.0;
+  let spellCost = Math.max(12, Math.round(Math.min(30, ...active.map(r => r.spellCost || 30)) * (wp.spellCostMult || 1.0)) - drainedSpellReduce);
+  let quakeCost = Math.max(18, Math.round(Math.min(40, ...active.map(r => r.quakeCost || (r.id === 'bellthread' ? 32 : 40))) * (wp.spellCostMult || 1.0)) - drainedSpellReduce);
   let spellPostureBonus = active.reduce((acc, r) => acc + (r.spellPostureBonus || 0), 0);
   let heavySkillMult = active.reduce((acc, r) => acc * (r.heavySkillMult || 1.0), 1.0);
   let soulGainMult = active.reduce((acc, r) => acc * (r.soulGainMult || 1.0), 1.0) * (wp.soulGainMult || 1.0);
-  let spellDmgMult = active.reduce((acc, r) => acc * (r.spellDmgMult || 1.0), 1.0) * (wp.spellDmgMult || 1.0) * traitSpellMult;
+  let spellDmgMult = active.reduce((acc, r) => acc * (r.spellDmgMult || 1.0), 1.0) * (wp.spellDmgMult || 1.0) * traitSpellMult * drainedSpellMult;
+  let wetConductSoul = active.reduce((acc, r) => acc + (r.wetConductSoul || 0), 0);
   let spellRadiusMult = active.reduce((acc, r) => acc * (r.spellRadiusMult || 1.0), 1.0);
   let postureDmgMult = active.reduce((acc, r) => acc * (r.postureDmgMult || 1.0), 1.0) * (wp.postureDmgMult || 1.0);
   let iaiChargeTime = Math.max(0.24, Math.min(0.42, ...active.map(r => r.iaiChargeTime || 0.42)) * (wp.chargeTimeMult || 1.0));
@@ -431,7 +495,7 @@ function _ensureRelicCache() {
     grappleCd, spellCost, quakeCost, spellPostureBonus, heavySkillMult,
     soulGainMult, spellDmgMult, spellRadiusMult, postureDmgMult,
     iaiChargeTime, moveSpeedMult, aerialDmgMult, sporeImmune, sporePurifySoul, sporePurifyHeal,
-    frostResistMult, frostShatterPosture, bellTimerBonus, shadeDashCd, shadeBurstMult, shadePassHeal,
+    frostResistMult, frostShatterPosture, bellTimerBonus, shadeDashCd, shadeBurstMult, shadePassHeal, wetConductSoul,
     synergies,
     synGrappleQuake: !!synFlags.synGrappleQuake,
     synMirrorEmber: !!synFlags.synMirrorEmber,
@@ -441,9 +505,11 @@ function _ensureRelicCache() {
     synGaleThread: !!synFlags.synGaleThread,
     synSporeClapper: !!synFlags.synSporeClapper,
     synFrostIron: !!synFlags.synFrostIron,
+    synTideClapper: !!synFlags.synTideClapper,
     hasGalefather: has('galefather'),
     hasSporeseal: has('sporeseal'),
-    hasFrostcore: has('frostcore')
+    hasFrostcore: has('frostcore'),
+    hasTidebell: has('tidebell')
   };
 }
 
@@ -467,16 +533,27 @@ export function ensureNpcQuests() {
   if (!G.worldState) return null;
   if (!G.worldState.npcQuests || typeof G.worldState.npcQuests !== 'object') {
     G.worldState.npcQuests = {
-      metChronicler: false,
-      chroniclerClaims: [],
-      metKeeper: false,
-      keeperWickGifted: false,
-      keeperBlessingActive: false
+      metChronicler: false, chroniclerClaims: [], metKeeper: false, keeperWickGifted: false, keeperBlessingActive: false,
+      metScavenger: false, boughtSecretMap: false, boughtBellSatchel: false
     };
   }
   const nq = G.worldState.npcQuests;
   if (!Array.isArray(nq.chroniclerClaims)) nq.chroniclerClaims = [];
+  if (nq.metScavenger === undefined) nq.metScavenger = false;
+  if (nq.boughtSecretMap === undefined) nq.boughtSecretMap = false;
+  if (nq.boughtBellSatchel === undefined) nq.boughtBellSatchel = false;
   return nq;
+}
+
+export function getEffectiveNpcPos(npc) {
+  if (!npc) return { x: 0, y: 0, roomId: 'r01_sanctuary', migrated: false };
+  const nq = G.worldState && G.worldState.npcQuests;
+  if (nq) {
+    if (npc.kind === 'chronicler' && Array.isArray(nq.chroniclerClaims) && nq.chroniclerClaims.length >= 1) return { x: 455, y: 580, roomId: 'r01_sanctuary', migrated: true };
+    if (npc.kind === 'keeper' && nq.keeperWickGifted) return { x: 565, y: 580, roomId: 'r01_sanctuary', migrated: true };
+    if (npc.kind === 'scavenger' && nq.metScavenger) return { x: 675, y: 580, roomId: 'r01_sanctuary', migrated: true };
+  }
+  return { x: npc.x, y: npc.y, roomId: npc.roomId, migrated: false };
 }
 
 export function getBossBonusDamageMult() {
@@ -506,12 +583,14 @@ export function getSmithPostureMult() {
 
 export function getPlayerMaxHp() {
   const forgeLv = (G.worldState && G.worldState.smithUpgrades) ? (G.worldState.smithUpgrades.forge || 0) : 0;
-  return 100 + (G.worldState ? (G.worldState.bonusMaxHp || 0) : 0) + forgeLv * 15;
+  const satchel = (G.worldState && G.worldState.npcQuests && G.worldState.npcQuests.boughtBellSatchel) ? 15 : 0;
+  return 100 + (G.worldState ? (G.worldState.bonusMaxHp || 0) : 0) + forgeLv * 15 + satchel;
 }
 
 export function getPlayerMaxSoul() {
   const forgeLv = (G.worldState && G.worldState.smithUpgrades) ? (G.worldState.smithUpgrades.forge || 0) : 0;
-  return 100 + (G.worldState ? (G.worldState.bonusMaxSoul || 0) : 0) + forgeLv * 15;
+  const satchel = (G.worldState && G.worldState.npcQuests && G.worldState.npcQuests.boughtBellSatchel) ? 15 : 0;
+  return 100 + (G.worldState ? (G.worldState.bonusMaxSoul || 0) : 0) + forgeLv * 15 + satchel;
 }
 
 let _vowCacheKey = '';
@@ -610,15 +689,29 @@ export function createCrumblePlatforms() {
 
 export function markMapExplored(px, py = FLOOR_Y - 60) {
   if (!G.worldState) return;
+  // Strictly clip revealed fog cells to the room currently containing (px, py) so fog NEVER bleeds through stone ceilings or into empty void!
+  let curBounds = null;
+  for (let i = 0; i < ROOMS.length; i++) {
+    const b = ROOMS[i].bounds;
+    if (px >= b.x && px <= b.x + b.w && py >= b.y && py <= b.y + b.h) {
+      curBounds = b;
+      break;
+    }
+  }
   const col = Math.floor((px - WORLD_MIN_X) / MAP_CELL_W);
   const row = Math.floor((py - WORLD_MIN_Y) / MAP_CELL_H);
   let changed = false;
   for (let dr = -2; dr <= 2; dr++) {
     const r = row + dr;
     if (r < 0 || r >= MAP_ROWS) continue;
+    const cellCy = WORLD_MIN_Y + (r + 0.5) * MAP_CELL_H;
+    if (curBounds && (cellCy < curBounds.y - 12 || cellCy > curBounds.y + curBounds.h + 12)) continue;
     for (let dc = -2; dc <= 2; dc++) {
       const c = col + dc;
-      if (c >= 0 && c < MAP_COLS && !G.worldState.explored[r][c]) {
+      if (c < 0 || c >= MAP_COLS) continue;
+      const cellCx = WORLD_MIN_X + (c + 0.5) * MAP_CELL_W;
+      if (curBounds && (cellCx < curBounds.x - 12 || cellCx > curBounds.x + curBounds.w + 12)) continue;
+      if (!G.worldState.explored[r][c]) {
         G.worldState.explored[r][c] = true;
         changed = true;
       }
@@ -677,6 +770,33 @@ export function createLanterns() {
 
 export function triggerBossBanner(title, quote = '', color = '#fde047', duration = 2.6) {
   G.bossBanner = { title, quote, color, life: duration, maxLife: duration };
+}
+
+export function createFoundryCrucibles() {
+  return [
+    { id: 'crucible_west', x: 5880, y: 1005, baseY: 1005, anchorY: 820, vy: 0, state: 'hanging', respawnTimer: 0, roomId: 'r05_foundry' },
+    { id: 'crucible_east', x: 6420, y: 1005, baseY: 1005, anchorY: 820, vy: 0, state: 'hanging', respawnTimer: 0, roomId: 'r05_foundry' }
+  ];
+}
+
+export function triggerBossIntro(boss, title, quote = '', color = '#fde047', duration = 1.55) {
+  triggerBossBanner(title, quote, color, Math.max(2.6, duration + 1.1));
+  if (G.benchActive || !boss) return;
+  G.bossIntro = { boss, timer: duration, maxTimer: duration, color };
+  if (G.player) {
+    G.player.iframeTimer = Math.max(G.player.iframeTimer, duration + 0.35);
+    G.player.vx = 0;
+  }
+}
+
+export function triggerBossKillSlowmo(duration = 0.85) {
+  if (G.benchActive) return;
+  G.bossKillSlowmo = { timer: duration, maxTimer: duration };
+}
+
+export function triggerZoneBanner(title, sub = '', color = '#fde047', duration = 2.85) {
+  if (!title || G.benchActive) return;
+  G.zoneBanner = { title, sub, color, life: duration, maxLife: duration };
 }
 
 export function isPlayerInRoomId(roomId, pad = 24) {

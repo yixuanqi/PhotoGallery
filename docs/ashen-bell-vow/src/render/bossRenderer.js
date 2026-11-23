@@ -7,6 +7,19 @@ import { drawSlowBladeRing, drawParryStarGlint, drawExecutionSigil } from './ren
 import { drawCachedText } from './glyphAtlas.js';
 import { getBoss4MirrorGradientStrip } from './backdropCache.js';
 
+function applyBossHitDeform(b, cx, fy) {
+  const sx = b.squashX !== undefined ? b.squashX : 1;
+  const sy = b.squashY !== undefined ? b.squashY : 1;
+  const lean = b.recoilLean || 0;
+  const frozen = (b.hitFreezeTimer || 0) > 0;
+  if (!frozen && Math.abs(sx - 1) <= 0.008 && Math.abs(sy - 1) <= 0.008 && Math.abs(lean) <= 0.006) return;
+  const trem = frozen ? Math.sin(G.globalTime * 190 + cx) * (b.hitTremor || 4.0) : 0;
+  G.ctx.translate(cx + trem, fy);
+  if (lean) G.ctx.rotate(lean);
+  G.ctx.scale(sx, sy);
+  G.ctx.translate(-cx, -fy);
+}
+
 /* ---------- BOSS 1: 残甲重骑士 · 晦 (Hunched Broken-Armor Veteran Knight + Tattered Back-Banner) ---------- */
 export function drawBoss(b) {
   if (!b.alive) return;
@@ -17,6 +30,7 @@ export function drawBoss(b) {
   const isRed = (b.moveKind === 'redLeap' || b.moveKind === 'inkTide') && (b.state === 'windup' || b.state === 'strike');
 
   G.ctx.save();
+  applyBossHitDeform(b, cx, fy);
   drawCloakMesh(b.cloak, isP2 ? '#290d14' : '#131722', isP2 ? 'rgba(248, 113, 113, 0.52)' : 'rgba(216, 207, 184, 0.42)', 28, 800);
 
   const joltX = b.hurtFlash > 0 ? (Math.random() - 0.5) * 6 : 0;
@@ -227,6 +241,7 @@ export function drawBoss2(b) {
   const now = G.globalTime;
 
   G.ctx.save();
+  applyBossHitDeform(b, cx, cy);
   drawGlowSprite(isP2 ? 'crimson' : 'gold', cx, cy, isP2 ? 96 : 68, isP2 ? 0.54 : 0.34);
 
   const joltX = b.hurtFlash > 0 ? (Math.random() - 0.5) * 6 : 0;
@@ -401,6 +416,7 @@ export function drawBoss3(b) {
   const coreCol = isP3 ? '#fef08a' : isP2 ? COLORS.violetBright : COLORS.goldBright;
 
   G.ctx.save();
+  applyBossHitDeform(b, cx, fy);
   G.ctx.globalAlpha = Math.max(0.15, b.blinkAlpha !== undefined ? b.blinkAlpha : 1);
 
   // Subtle Ground Astral Seal Ring beneath levitating Reliquary Husk (NO humanoid legs!)
@@ -579,46 +595,31 @@ export function drawBoss3(b) {
 /* ---------- ARENA 4 MIRROR FLOOR: 炉心镜渊实时墨镜水面与倒影 ---------- */
 export function drawBoss4MirrorFloor() {
   if (!G.boss4 || !G.boss4.alive) return;
-  const ctx = G.ctx;
-  const now = G.globalTime;
-  const x0 = 8360;
-  const w = 1320;
+  const ctx = G.ctx, now = G.globalTime;
+  const floorY = G.boss4.arenaFloorY !== undefined ? G.boss4.arenaFloorY : FLOOR_Y;
+  const x0 = G.boss4.arenaMinX !== undefined ? G.boss4.arenaMinX - 18 : 8360;
+  const w = (G.boss4.arenaMaxX !== undefined && G.boss4.arenaMinX !== undefined) ? (G.boss4.arenaMaxX - G.boss4.arenaMinX + 36) : 1320;
   const st = G.boss4.stance || 'blade';
   const stCol = st === 'bell' ? COLORS.cyanBright : st === 'hammer' ? COLORS.gold : COLORS.goldBright;
-
   ctx.save();
-  // Glossy black obsidian mirror water surface across Room 8 floor (pre-baked gradient strip, 0 per-frame allocations)
-  ctx.drawImage(getBoss4MirrorGradientStrip(), x0, FLOOR_Y, w, 96);
-
-  // Shimmering water-edge horizon highlight
-  ctx.strokeStyle = stCol;
-  ctx.globalAlpha = 0.45;
-  ctx.lineWidth = 1.6;
-  ctx.beginPath(); ctx.moveTo(x0, FLOOR_Y + 0.5); ctx.lineTo(x0 + w, FLOOR_Y + 0.5); ctx.stroke();
-
-  // Inverted mirrored ink silhouettes for Boss 4 and Player + concentric ripples
+  ctx.drawImage(getBoss4MirrorGradientStrip(), x0, floorY, w, 96);
+  ctx.strokeStyle = stCol; ctx.globalAlpha = 0.45; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(x0, floorY + 0.5); ctx.lineTo(x0 + w, floorY + 0.5); ctx.stroke();
   const drawMirrorEntity = (ex, ew, eh, col, isWide) => {
     const cx = ex + ew * 0.5;
-    ctx.save();
-    ctx.globalAlpha = 0.26;
-    ctx.fillStyle = col;
-    ctx.beginPath();
-    ctx.moveTo(cx - (isWide ? 18 : 11), FLOOR_Y + 3);
-    ctx.lineTo(cx + (isWide ? 18 : 11), FLOOR_Y + 3);
-    ctx.lineTo(cx + (isWide ? 12 : 7), FLOOR_Y + eh * 0.62);
-    ctx.lineTo(cx - (isWide ? 12 : 7), FLOOR_Y + eh * 0.62);
-    ctx.closePath();
-    ctx.fill();
-    // Concentric surface ripple under feet
+    ctx.save(); ctx.globalAlpha = 0.26; ctx.fillStyle = col;
+    ctx.beginPath(); ctx.moveTo(cx - (isWide ? 18 : 11), floorY + 3); ctx.lineTo(cx + (isWide ? 18 : 11), floorY + 3);
+    ctx.lineTo(cx + (isWide ? 12 : 7), floorY + eh * 0.62); ctx.lineTo(cx - (isWide ? 12 : 7), floorY + eh * 0.62);
+    ctx.closePath(); ctx.fill();
     const rp = (now * 1.4) % 1;
-    ctx.strokeStyle = col;
-    ctx.globalAlpha = 0.42 * (1 - rp);
-    ctx.lineWidth = 1.3;
-    ctx.beginPath(); ctx.ellipse(cx, FLOOR_Y + 2, 16 + rp * 34, 3 + rp * 5, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = col; ctx.globalAlpha = 0.42 * (1 - rp); ctx.lineWidth = 1.3;
+    ctx.beginPath(); ctx.ellipse(cx, floorY + 2, 16 + rp * 34, 3 + rp * 5, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.restore();
   };
   drawMirrorEntity(G.boss4.x, G.boss4.w, G.boss4.h, stCol, true);
-  if (G.player && G.player.hp > 0) drawMirrorEntity(G.player.x, G.player.w, G.player.h, '#bae6fd', false);
+  if (G.player && G.player.hp > 0 && Math.abs((G.player.y + G.player.h) - floorY) < 260) {
+    drawMirrorEntity(G.player.x, G.player.w, G.player.h, '#bae6fd', false);
+  }
   ctx.restore();
 }
 
@@ -636,6 +637,7 @@ export function drawBoss4(b) {
   const now = G.globalTime;
 
   G.ctx.save();
+  applyBossHitDeform(b, cx, fy);
   G.ctx.globalAlpha = Math.max(0.22, b.blinkAlpha !== undefined ? b.blinkAlpha : 1);
   drawGlowSprite(glowKey, cx, b.y + 48, isP3 ? 98 : 74, (isP3 ? 0.54 : 0.36) + (b.stanceFlash > 0 ? 0.28 : 0));
 

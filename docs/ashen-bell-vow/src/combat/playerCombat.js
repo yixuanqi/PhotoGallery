@@ -1,13 +1,13 @@
 // Player Weapon Equip, Grapple Targeting, Execution, Active Hitboxes & Attack Triggers (v32.0)
 import {
-  COLORS, RELICS, GRAPPLE_ANCHORS, PENDULUMS, VOID_BARRIERS, ABYSSAL_RIVERS, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, FIRST_BELL_CORE_POS, ENEMY_ECHO_REWARDS, DUMMY_MODES, SEVEN_BELLS_ORDER
+  COLORS, RELICS, GRAPPLE_ANCHORS, PENDULUMS, VOID_BARRIERS, ABYSSAL_RIVERS, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, FIRST_BELL_CORE_POS, ENEMY_ECHO_REWARDS, DUMMY_MODES, SEVEN_BELLS_ORDER, WORLD_SWITCHES_DEF, WIND_VANES, SWITCH_GATES, SLICK_WALLS
 } from '../config.js';
 import {
   G, hooks, getLivingFoes, getAwakeBoss, isWorldPosExplored, getRelicStats, getActiveVowStats, getCombatScaling, getBladeDamageMult, getSmithPostureMult,
   getActiveWeaponId, getActiveWeapon, isWeaponUnlocked, getUnlockedWeaponIds, unlockWeapon,
   hasActiveWeaponTrait, isSkillNodeUnlocked, getSwitchStrikeWindowSec,
   getBossBonusDamageMult, hasKeeperBlessing,
-  getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks,
+  getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks, isWorldSwitchOn,
   scheduleOutcome, addShake, kickCamera, punchZoom, triggerBossBanner, triggerHitstop
 } from '../state.js';
 import { getRoomAt } from '../levelLoader.js';
@@ -21,10 +21,11 @@ import { recordBestiaryEvent, checkAchievements } from '../codex.js';
 import { t, isEn, locDummyMode, locPickup, locPuzzleName, locBoss, locRelic } from '../i18n.js';
 import { WEAPON_ORDER, normalizeWeaponId, getWeaponById, getWeaponMoveDef, getWeaponUltimateDef } from '../weapons.js';
 import {
-  reclaimLostEchoes, rallyPlayerGrayHp, damageEnemyHP, addPostureToEnemy, applyIncomingAttackToPlayer
+  reclaimLostEchoes, rallyPlayerGrayHp, damageEnemyHP, addPostureToEnemy, applyIncomingAttackToPlayer, applyEnemyHitFeel
 } from './damageCombat.js';
 import {
-  tryQuellChapelTideByLantern, openSkywayShortcut, damageSecretWall, ringResonanceBell
+  tryQuellChapelTideByLantern, openSkywayShortcut, damageSecretWall, ringResonanceBell,
+  activateWorldSwitch, toggleWindVane, triggerIcePillarDrop, severFoundryCrucible
 } from './worldCombat.js';
 
 // Three-Weapon Archetype Equip, Unlock Gate & Switch Strike (切刃派生技)
@@ -83,7 +84,7 @@ export function cycleWeapon(step = 1) {
    9. PLAYER UPDATE (MOVEMENT, EXPANDED SWORD KIT, SPELL & GRAPPLE)
    ========================================================================= */
 export function findBestGrappleTarget() {
-  if (!G.player) return null;
+  if (!G.player || !(G.worldState && G.worldState.abilities && G.worldState.abilities.grappleHook)) return null;
   const px = G.player.x + G.player.w * 0.5;
   const py = G.player.y + 22;
   const activeBoss = getAwakeBoss();
@@ -169,6 +170,9 @@ export function findBestGrappleTarget() {
     const a = GRAPPLE_ANCHORS[i];
     evalCandidate('anchor', a, a.x, a.y, 0.96, null);
   }
+  for (const wv of WIND_VANES) { if (!(wv.roomId && G.roomOcclusion && G.roomOcclusion[wv.roomId] > 0.85)) evalCandidate('windVane', wv, wv.x, wv.y - 38, 0.94, null); }
+  for (const ip of (G.worldState ? (G.worldState.icePillars || []) : [])) { if (ip.state === 'hanging' && !(ip.roomId && G.roomOcclusion && G.roomOcclusion[ip.roomId] > 0.85)) evalCandidate('icePillar', ip, ip.x, ip.topY + ip.len * 0.72, 0.92, null); }
+  for (const cr of (G.foundryCrucibles || [])) { if (cr.state === 'hanging') evalCandidate('crucible', cr, cr.x, cr.y - 26, 0.86, null); }
   if (G.resonancePuzzles) {
     for (let i = 0; i < G.resonancePuzzles.length; i++) {
       const pz = G.resonancePuzzles[i];
@@ -295,7 +299,9 @@ export function evaluatePlayerActiveAttack() {
       audio.playHit(atk.heavy, stepIdx);
       G.player.switchStrikeWindow = getSwitchStrikeWindowSec();
       triggerHaptic(atk.type === 'iai' || atk.type === 'counter' ? 'iai' : atk.heavy ? 'heavyHit' : 'lightHit');
-      triggerHitstop(atk.type === 'iai' || atk.type === 'counter' ? 0.042 : atk.heavy ? 0.032 : 0.018, true);
+      const isBigSkill = atk.type === 'iai' || atk.type === 'counter' || atk.type === 'grappleStrike';
+      if (isBigSkill) triggerHitstop(0.036, true);
+      else if (atk.heavy) triggerHitstop(0.018, true);
       addShake(atk.heavy ? 7.5 : 3.8);
       kickCamera(
         atk.type === 'pogo' ? 0 : G.player.facing * (atk.heavy ? 7.5 : 4.2),
@@ -431,11 +437,15 @@ export function evaluatePlayerActiveAttack() {
       rallyPlayerGrayHp(atk.rally);
       G.player.soul = Math.min(G.player.maxSoul, G.player.soul + Math.round((atk.heavy ? 24 : 14) * rs.soulGainMult));
 
+      const rawKb = atk.knockbackVx || (atk.heavy ? 240 : 105);
+      const kbMult = foe.isMiniBoss ? 0.42 : 1.0;
+      const launchSpd = foe.isBoss ? 0 : rawKb * kbMult;
       if (!foe.isBoss && foe.state !== 'stagger') {
-        const kbMult = foe.isMiniBoss ? 0.42 : 1.0;
-        foe.vx = G.player.facing * (atk.knockbackVx || (atk.heavy ? 180 : 95)) * kbMult;
+        foe.vx = G.player.facing * launchSpd;
         if (atk.knockupVy && foe.kind !== 'wraith' && foe.kind !== 'falcon' && !foe.isMiniBoss) foe.vy = Math.min(foe.vy, atk.knockupVy);
+        else if (launchSpd >= 260 && foe.kind !== 'wraith' && foe.kind !== 'falcon' && !foe.isMiniBoss) foe.vy = Math.min(foe.vy, -135);
       }
+      applyEnemyHitFeel(foe, atk.heavy || atk.type === 'iai' || atk.type === 'counter' || atk.type === 'grappleStrike', G.player.facing, foe.state === 'stagger' ? 0 : launchSpd);
 
       const hx = foe.x + foe.w / 2;
       const hy = foe.y + foe.h * 0.45;
@@ -589,6 +599,69 @@ export function evaluatePlayerActiveAttack() {
     }
   }
 
+  // v41.6 Hollow Knight-Style Thorn-Spike Wall Pogo Bounce & Metallic Spark Recoil!
+  if (SLICK_WALLS.length > 0) {
+    for (let i = 0; i < SLICK_WALLS.length; i++) {
+      const sw = SLICK_WALLS[i];
+      if (atk.hitIds.has(sw.id)) continue;
+      if (sw.roomId && G.roomOcclusion && G.roomOcclusion[sw.roomId] > 0.85) continue;
+      let sx0 = sw.x - 14, swW = sw.w + 28;
+      if (sw.side === 'left') { sx0 = sw.x - 14; swW = 20; }
+      else if (sw.side === 'right') { sx0 = sw.x + sw.w - 6; swW = 20; }
+      const spikeAtkBox = { x: sx0, y: sw.y - 6, w: swW, h: sw.h + 12 };
+      if (!aabbOverlap(box, spikeAtkBox)) continue;
+
+      atk.hitIds.add(sw.id);
+      const isPogo = atk.type === 'pogo';
+      const pushDir = sw.side === 'right' ? 1 : sw.side === 'left' ? -1 : (px >= sw.x + sw.w * 0.5 ? 1 : -1);
+      const sparkX = pushDir > 0 ? (sw.x + sw.w + 6) : (sw.x - 6);
+      const rawY = isPogo ? (G.player.y + G.player.h + 6) : (G.player.y + 26);
+      const sparkY = Math.max(sw.y + 8, Math.min(sw.y + sw.h - 8, rawY));
+      sw.clangFlash = 0.24;
+      sw.clangY = sparkY;
+
+      audio.playSpikeClang(isPogo);
+      triggerHaptic(isPogo ? 'parry' : 'lightHit', isPogo ? 0.65 : 0.55);
+      addShake(isPogo ? 3.8 : 2.8);
+      spawnImpactBurst(sparkX, sparkY, 'parry', isPogo ? 0.72 : 0.56);
+      spawnShockwave(sparkX, sparkY, isPogo ? 50 : 38, '#e2e8f0', isPogo ? 2.8 : 2.2, 0.17);
+      const sprayAng = isPogo ? (pushDir > 0 ? -0.65 : Math.PI + 0.65) : (pushDir > 0 ? -0.25 : Math.PI + 0.25);
+      spawnParticles(sparkX, sparkY, isPogo ? 14 : 11, {
+        color: '#f8fafc', speed: isPogo ? 290 : 250, spark: true, bounce: true, grav: 520,
+        angle: sprayAng, spread: 1.05, life: 0.30
+      });
+      spawnParticles(sparkX, sparkY, 7, {
+        color: COLORS.goldBright, speed: 230, spark: true, bounce: true, grav: 480,
+        angle: sprayAng, spread: 1.25, life: 0.28
+      });
+
+      if (isPogo && !atk.pogoBounced) {
+        atk.pogoBounced = true;
+        G.player.vy = -530;
+        G.player.vx = pushDir * Math.max(155, Math.abs(G.player.vx) * 0.65);
+        G.player.dashCd = 0;
+        G.player.airJumpsLeft = 1;
+        G.player.pogoChain = 0;
+        G.player.bellAirStalls = 0;
+        G.player.thornGraceTimer = Math.max(G.player.thornGraceTimer || 0, 0.18);
+        G.player.squashX = 0.78;
+        G.player.squashY = 1.26;
+        triggerHitstop(0.026);
+        kickCamera(pushDir * 2.5, 4.5);
+      } else {
+        G.player.iaiLungeTimer = 0;
+        G.player.vx = pushDir * (atk.heavy ? 310 : 245);
+        if (!G.player.grounded) G.player.vy = Math.min(G.player.vy, -135);
+        G.player.thornGraceTimer = Math.max(G.player.thornGraceTimer || 0, 0.14);
+        G.player.squashX = 0.86;
+        G.player.squashY = 1.14;
+        triggerHitstop(0.018);
+        kickCamera(pushDir * 4.5, 0);
+      }
+      break;
+    }
+  }
+
   // Melee clang feedback against impenetrable Void Barriers
   for (let i = 0; i < VOID_BARRIERS.length; i++) {
     const vb = VOID_BARRIERS[i];
@@ -601,6 +674,22 @@ export function evaluatePlayerActiveAttack() {
     }
   }
 
+  for (const wv of WIND_VANES) { if (!atk.hitIds.has(wv.id) && aabbOverlap(box, { x: wv.x - 24, y: wv.y - 64, w: 48, h: 64 })) { atk.hitIds.add(wv.id); toggleWindVane(wv); } }
+  for (const ip of (G.worldState ? (G.worldState.icePillars || []) : [])) { if (ip.state === 'hanging' && !atk.hitIds.has(ip.id) && aabbOverlap(box, { x: ip.x - 26, y: ip.topY, w: 52, h: ip.len + 18 })) { atk.hitIds.add(ip.id); triggerIcePillarDrop(ip); } }
+  for (const cr of (G.foundryCrucibles || [])) { if (cr.state === 'hanging' && !atk.hitIds.has(cr.id) && aabbOverlap(box, { x: cr.x - 32, y: cr.anchorY, w: 64, h: (cr.y - cr.anchorY) + 26 })) { atk.hitIds.add(cr.id); severFoundryCrucible(cr); } }
+  for (const sw of WORLD_SWITCHES_DEF) { if (!atk.hitIds.has(sw.id) && aabbOverlap(box, { x: sw.x - 28, y: sw.y - 62, w: 56, h: 62 })) { atk.hitIds.add(sw.id); activateWorldSwitch(sw); } }
+  for (const sg of SWITCH_GATES) {
+    if (!isWorldSwitchOn(sg.switchKey) && !atk.hitIds.has(sg.id) && aabbOverlap(box, sg)) {
+      atk.hitIds.add(sg.id); audio.playParry(false);
+      spawnFloatText(sg.x + sg.w * 0.5, sg.y - 18, t('combat.oneWayGateLocked'), COLORS.goldBright, 16, 1.2);
+    }
+  }
+  for (const bf of (G.worldState ? (G.worldState.breakableFloors || []) : [])) {
+    if (!bf.broken && !atk.hitIds.has(bf.id) && aabbOverlap(box, { x: bf.x, y: bf.y - 10, w: bf.w, h: bf.h + 10 })) {
+      atk.hitIds.add(bf.id); bf.shake = 0.22; audio.playParry(false);
+      spawnFloatText(bf.x + bf.w * 0.5, bf.y - 26, t((G.worldState.abilities && G.worldState.abilities.bellDive) ? 'combat.diveFloorHintReady' : 'combat.diveFloorHintLocked'), bf.style === 'ice' ? '#bae6fd' : COLORS.goldBright, 16, 1.15);
+    }
+  }
   // Strike Breakable Ink Walls & Shortcut Lever with Melee
   if (G.worldState) {
     for (const w of G.worldState.secretWalls) {
@@ -695,11 +784,13 @@ function spawnWeaponMoveProjectiles(weapon, move, px, py, moveType = '') {
   const bladeMult = getBladeDamageMult();
   const count = p.count || 1;
   const dmg = Math.round(p.dmg * bladeMult * (p.kind === 'bellHoming' ? rs.heavySkillMult : 1));
+  const isAirBell = weapon.id === 'bell' && !G.player.grounded;
   if (p.kind === 'bellHoming') {
     const useFour = weapon.id === 'bell' && hasActiveWeaponTrait('soul_gather') && count >= 3;
-    const angles = useFour ? [-0.54, -0.18, 0.18, 0.54] : (count === 3 ? [-0.42, 0, 0.42] : [0]);
+    const angles = useFour ? [-0.54, -0.18, 0.18, 0.54] : (count === 3 ? [-0.42, 0, 0.42] : (count === 2 ? [-0.26, 0.26] : [0]));
+    const airTilt = isAirBell ? (G.player.facing > 0 ? 0.34 : -0.34) : 0;
     for (let i = 0; i < angles.length; i++) {
-      const baseA = (G.player.facing > 0 ? 0 : Math.PI) + angles[i];
+      const baseA = (G.player.facing > 0 ? 0 : Math.PI) + angles[i] + airTilt;
       G.projectiles.push({
         owner: 'player',
         kind: 'bellHoming',
@@ -738,8 +829,8 @@ function spawnWeaponMoveProjectiles(weapon, move, px, py, moveType = '') {
         kind: 'bellWave',
         x: px + G.player.facing * (24 + offX),
         y: py + offY,
-        vx: G.player.facing * spd,
-        vy: count > 1 ? (i === 0 ? -38 : 38) : 0,
+        vx: G.player.facing * (isAirBell ? Math.round(spd * 0.94) : spd),
+        vy: (isAirBell ? 175 : 0) + (count > 1 ? (i === 0 ? -42 : 42) : 0),
         r: Math.round((p.r || 16) * rs.spellRadiusMult),
         dmg,
         posture: p.posture || 10,
@@ -784,7 +875,30 @@ export function triggerPlayerAttack(type) {
   }
 
   // Tactile Audio, Squash, Camera & Special Effects per Archetype Move
-  if (type === 'switch') {
+  if (type === 'grappleStrike') {
+    if (weaponId === 'hammer') {
+      audio.playShieldBash(true);
+      addShake(12);
+      punchZoom(1.04);
+      spawnShockwave(px + G.player.facing * 32, py + 10, move.shockwaveR || 126, COLORS.goldBright, 4.4, 0.30);
+    } else if (weaponId === 'bell') {
+      audio.playBellChimeCast(3);
+      addShake(6.5);
+      G.player.vy = -210;
+    } else {
+      audio.playIaiSlash();
+      addShake(8.5);
+      punchZoom(1.042);
+      spawnShockwave(px + G.player.facing * 24, py, 78, COLORS.cyanBright, 3.6, 0.24);
+    }
+    if (move.bonusSoul) {
+      G.player.soul = Math.min(G.player.maxSoul, G.player.soul + Math.round(move.bonusSoul * getRelicStats().soulGainMult));
+    }
+    G.player.squashX = weaponId === 'bell' ? 0.84 : 1.32;
+    G.player.squashY = weaponId === 'bell' ? 1.22 : 0.76;
+    triggerHaptic('iai', 0.95);
+    if (move.floatKey) spawnFloatText(px, G.player.y - 34, t(move.floatKey), weaponId === 'blade' ? COLORS.cyanBright : weapon.color, 21, 0.88);
+  } else if (type === 'switch') {
     if (weaponId === 'hammer') {
       audio.playShieldBash(true);
       addShake(11);
@@ -861,6 +975,12 @@ export function triggerPlayerAttack(type) {
     if (weaponId === 'bell') {
       audio.playBellChimeCast(3);
       audio.playSoulCast();
+      if (!G.player.grounded) {
+        G.player.vx = -G.player.facing * 255;
+        G.player.vy = -255;
+        G.player.iframeTimer = Math.max(G.player.iframeTimer, 0.22);
+        spawnShockwave(px, py + 12, 64, COLORS.cyanBright, 3.0, 0.24);
+      }
     } else if (weaponId === 'hammer') {
       audio.playShieldBash(true);
       audio.playBellQuake();
@@ -897,7 +1017,8 @@ export function triggerPlayerAttack(type) {
       spawnShockwave(px + G.player.facing * 18, py, 64, COLORS.crimsonBright, 3.6, 0.24);
       spawnFloatText(px, G.player.y - 26, t('combat.synBloodIai'), COLORS.crimsonBright, 22, 0.95);
     } else if (move.floatKey) {
-      spawnFloatText(px, G.player.y - 24, t(move.floatKey), weaponId === 'bell' ? COLORS.cyanBright : COLORS.goldBright, 21, 0.80);
+      const iaiKey = (weaponId === 'bell' && !G.player.grounded) ? 'combat.bellAirVolley' : move.floatKey;
+      spawnFloatText(px, G.player.y - 24, t(iaiKey), weaponId === 'bell' ? COLORS.cyanBright : COLORS.goldBright, 21, 0.80);
     }
   } else if (type === 'pogo') {
     if (weaponId === 'bell') audio.playResonanceBell(493.88, false);
@@ -947,6 +1068,16 @@ export function triggerPlayerAttack(type) {
     G.player.squashY = weaponId === 'hammer' ? 0.86 : 0.94;
   }
 
+  // Bell Staff aerial micro-hover kite on airborne slash1/2/3 (capped at 3 stalls per jump)
+  if (weaponId === 'bell' && !G.player.grounded && (type === 'slash1' || type === 'slash2' || type === 'slash3')) {
+    if ((G.player.bellAirStalls || 0) < 3) {
+      G.player.bellAirStalls = (G.player.bellAirStalls || 0) + 1;
+      G.player.vy = Math.min(G.player.vy, -120);
+      G.player.vx = -G.player.facing * 105;
+      spawnParticles(px, G.player.y + G.player.h, 6, { color: COLORS.cyanBright, speed: 95, grav: 120, life: 0.22 });
+    }
+  }
+
   // Spawn Bell Staff harmonic rings / homing darts / Hammer waves
   spawnWeaponMoveProjectiles(weapon, move, px, py, type);
 
@@ -982,8 +1113,8 @@ export function triggerPlayerAttack(type) {
     x1: px + G.player.facing * 135,
     offX: slashOffX,
     offY: slashOffY,
-    followPlayer: type !== 'iai' && type !== 'counter' && type !== 'switch',
-    isIaiTrack: (type === 'iai' || type === 'switch') && weaponId === 'blade',
+    followPlayer: type !== 'iai' && type !== 'counter' && type !== 'switch' && type !== 'grappleStrike',
+    isIaiTrack: (type === 'iai' || type === 'switch' || type === 'grappleStrike') && weaponId === 'blade',
     facing: G.player.facing,
     type: move.slashType || type,
     weaponId,
@@ -1015,3 +1146,90 @@ export function triggerPlayerAttack(type) {
   evaluatePlayerActiveAttack();
 }
 
+
+
+// ==================== v36.0 HAMMER AERIAL METEOR SLAM (镇渊钟锤 · 陨星坠) ====================
+export function triggerHammerAirSlamImpact(empowered = false) {
+  if (!G.player) return;
+  const px = G.player.x + G.player.w * 0.5;
+  const fy = G.player.y + G.player.h;
+  const rs = getRelicStats();
+  const bladeMult = getBladeDamageMult();
+  const radius = empowered ? 185 : 148;
+  const dmg = Math.round((empowered ? 64 : 46) * bladeMult * (rs.aerialDmgMult || 1.0));
+  const posDmg = Math.round((empowered ? 58 : 44) * (hasActiveWeaponTrait('quake_echo') ? 1.22 : 1.0));
+
+  audio.playAirSlam();
+  triggerHaptic('execution', empowered ? 1.15 : 0.95);
+  triggerHitstop(empowered ? 0.036 : 0.022, true);
+  addShake(empowered ? 15 : 11);
+  kickCamera(0, empowered ? 10 : 7);
+  punchZoom(empowered ? 1.048 : 1.032);
+
+  G.player.squashX = 1.38;
+  G.player.squashY = 0.68;
+  G.player.landCrouch = 1.0;
+  G.player.attackCd = 0.24;
+  G.player.switchStrikeWindow = getSwitchStrikeWindowSec();
+  G.player.shieldArmorTimer = Math.max(G.player.shieldArmorTimer || 0, 0.22);
+
+  spawnShockwave(px, fy - 6, radius, COLORS.goldBright, empowered ? 5.6 : 4.4, 0.36);
+  spawnShockwave(px, fy - 6, radius * 0.62, '#fef9c3', 3.4, 0.26);
+  spawnParticles(px, fy - 4, empowered ? 32 : 22, { color: COLORS.goldBright, speed: 340, spark: true, bounce: true, grav: 580, life: 0.48 });
+  spawnParticles(px, fy - 4, 16, { color: COLORS.parchment, speed: 240, grav: 440, life: 0.42 });
+  G.slashes.push({ x: px, y: fy - 24, facing: G.player.facing, type: 'hammerQuake', life: 0.32, maxLife: 0.32 });
+  spawnFloatText(px, G.player.y - 34, t(empowered ? 'combat.hammerAirSlamFull' : 'combat.hammerAirSlam'), COLORS.goldBright, empowered ? 22 : 19, 0.95);
+
+  const foes = getLivingFoes();
+  for (let i = 0; i < foes.length; i++) {
+    const foe = foes[i];
+    const fx = foe.x + foe.w * 0.5;
+    const fyFoe = foe.y + foe.h * 0.5;
+    if (Math.abs(fx - px) <= radius + foe.w * 0.4 && Math.abs(fyFoe - (fy - 24)) <= 105) {
+      const dir = fx >= px ? 1 : -1;
+      if ((foe.kind === 'golem' || foe.kind === 'warden_forest' || ((foe.kind === 'boss2' || foe.kind === 'dummy') && foe.shieldUp)) && foe.shieldBrokenTimer <= 0) {
+        foe.shieldBrokenTimer = foe.kind === 'warden_forest' ? 4.5 : 3.0;
+        if (foe.kind === 'boss2' || foe.kind === 'dummy') foe.shieldUp = false;
+        audio.playShieldBreak();
+        spawnFloatText(fx, foe.y - 26, foe.kind === 'warden_forest' ? t('combat.barkBreak') : t('combat.shieldBreak'), COLORS.goldBright, 19, 0.95);
+      }
+      damageEnemyHP(foe, dmg, true);
+      addPostureToEnemy(foe, posDmg + (rs.frostShatterPosture || 0));
+      rallyPlayerGrayHp(18);
+      G.player.soul = Math.min(G.player.maxSoul, G.player.soul + Math.round(14 * rs.soulGainMult));
+      const launchSpd = foe.isBoss ? 0 : (foe.isMiniBoss ? 220 : (empowered ? 480 : 410));
+      if (!foe.isBoss && foe.state !== 'stagger') {
+        foe.vx = dir * launchSpd;
+        if (foe.kind !== 'wraith' && foe.kind !== 'falcon' && !foe.isMiniBoss) foe.vy = Math.min(foe.vy, empowered ? -280 : -230);
+      }
+      applyEnemyHitFeel(foe, true, dir, foe.state === 'stagger' ? 0 : launchSpd);
+      spawnHitMark(fx, fyFoe, dir * 0.4, COLORS.goldBright, 96, 8);
+    }
+  }
+
+  // Twin seismic waves when empowered or with quake_echo trait!
+  if (empowered || hasActiveWeaponTrait('quake_echo')) {
+    const wDmg = Math.round((empowered ? 30 : 22) * bladeMult);
+    spawnHammerWaveDir(px, 1, wDmg, 28, 520, 0.52);
+    spawnHammerWaveDir(px, -1, wDmg, 28, 520, 0.52);
+  }
+
+  // Crack secret walls, clear enemy projectiles, ring nearby puzzle bells & lanterns
+  if (G.worldState) {
+    for (const w of G.worldState.secretWalls) {
+      if (!w.broken && Math.hypot((w.x + w.w * 0.5) - px, (w.y + w.h * 0.5) - (fy - 20)) <= radius + 24) {
+        damageSecretWall(w, 3);
+      }
+    }
+  }
+  for (const pr of G.projectiles) {
+    if (pr.owner === 'enemy' && pr.life > 0 && Math.hypot(pr.x - px, pr.y - (fy - 20)) <= radius + pr.r) pr.life = 0;
+  }
+  if (G.resonancePuzzles) {
+    for (const pz of G.resonancePuzzles) {
+      for (const b of pz.bells) {
+        if (Math.hypot(b.x - px, b.y - (fy - 20)) <= radius + 40) ringResonanceBell(pz, b, b.x >= px ? 1 : -1);
+      }
+    }
+  }
+}

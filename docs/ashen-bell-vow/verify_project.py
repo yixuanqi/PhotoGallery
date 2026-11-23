@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Zero-dependency static verifier for Ashen Bell Vow v35.0
+"""Zero-dependency static verifier for Ashen Bell Vow v43.4
 Checks:
 1. JS lexical & bracket syntax across all src/**/*.js
 2. ES Module import/export path existence, explicit .js suffix, exact case sensitivity & symbol verification
@@ -504,8 +504,14 @@ def check_rooms_and_locales(file_texts):
             if ry >= b['y'] + b['h'] - 190:
                 for br in below:
                     ob = br['bounds']
-                    if min(rx1, ob['x'] + ob['w']) - max(rx0, ob['x']) > 40:
-                        errors.append(f"{rid}: River '{rv.get('id')}' blocks vertical drop into '{br['id']}'")
+                    ov0, ov1 = max(rx0, ob['x']), min(rx1, ob['x'] + ob['w'])
+                    if ov1 - ov0 > 40:
+                        covered_by_ceiling = any(
+                            s.get('y', 999) <= 20 and (ob['x'] + s['x']) <= ov0 + 8 and (ob['x'] + s['x'] + s['w']) >= ov1 - 8
+                            for s in br.get('solids', [])
+                        )
+                        if not covered_by_ceiling:
+                            errors.append(f"{rid}: River '{rv.get('id')}' blocks vertical drop into '{br['id']}'")
 
         for ins in rm.get('inscriptions', []):
             txt = ins.get('text', '')
@@ -610,10 +616,10 @@ def check_v34_economy_relics_i18n(file_texts):
     npc_echo = sum(int(x) for x in re.findall(r'G\.worldState\.echoes\s*=\s*\(G\.worldState\.echoes\s*\|\|\s*0\)\s*\+\s*(\d+);', modals))
     total_1x = reg_echo + warden_echo + boss_echo + cache_echo + other_pickup_echo + npc_echo
     core_sink = smith_total + 140 * 3 + 180 + 220 + 200 + refine_cost * 3
-    full_sink = smith_total + 140 * 6 + 180 + 220 + 200 + refine_cost * 11
+    full_sink = smith_total + 140 * 6 + 180 + 220 + 200 + refine_cost * 12
 
-    if not (4600 <= total_1x <= 5500):
-        errors.append(f"Economy: 1x total income {total_1x} outside v34.0 compact range [4600, 5500]")
+    if not (5200 <= total_1x <= 7200):
+        errors.append(f"Economy: 1x total income {total_1x} outside v38.0 25-room range [5200, 7200]")
     if realm_seals != {'wind', 'forest', 'mountain'}:
         errors.append(f"Rooms: Incomplete realmSeal set {sorted(realm_seals)}")
     if sky_gates < 1:
@@ -627,35 +633,45 @@ def check_v34_economy_relics_i18n(file_texts):
         r_body = m_relics.group(1)
         relic_ids = re.findall(r"^\s+id:\s*'([^']+)'", r_body, re.M)
         refined_count = len(re.findall(r'^\s+refined:\s*\{', r_body, re.M))
-    if len(relic_ids) != 11 or refined_count != len(relic_ids):
-        errors.append(f"Relics: Expected 11 relics all with refined blocks, found {len(relic_ids)} relics / {refined_count} refined")
+    if len(relic_ids) != 12 or refined_count != len(relic_ids):
+        errors.append(f"Relics: Expected 12 relics all with refined blocks, found {len(relic_ids)} relics / {refined_count} refined")
+    if 'updateDrowned' not in file_texts.get('src/ai/enemiesAi.js', '') or 'updateAnchorite' not in file_texts.get('src/ai/enemiesAi.js', ''):
+        errors.append("v42.0: Missing cistern exclusive enemies drowned/anchorite AI")
+    if 'sunken_bell_giant' not in file_texts.get('src/stampAtlas.js', '') or 'tidebell' not in cfg:
+        errors.append("v42.0: Missing cistern stamps or tidebell relic")
+    for split_mod in ('src/locales/uiZh.js', 'src/locales/uiEn.js', 'src/audioSfxBank.js', 'src/worldCamera.js', 'src/render/worldBackdropRenderer.js'):
+        if split_mod not in file_texts:
+            errors.append(f"v43.0: Missing modular split file '{split_mod}'")
+    if 'cycleOverlayTab' not in file_texts.get('src/uiNav.js', '') or 'scrollOverlay' not in file_texts.get('src/uiNav.js', ''):
+        errors.append("v43.0: Missing full gamepad tab-cycling / scrolling in src/uiNav.js")
 
     en_refined_count = len(re.findall(r"^\s+refinedEffect:\s*'", ent_loc, re.M))
     if en_refined_count != len(relic_ids):
         errors.append(f"Locales: Expected {len(relic_ids)} refinedEffect entries in src/locales/entities.js, found {en_refined_count}")
 
-    # 11. Bilingual UI Dictionary Key Parity (zh-CN vs en-US)
-    zh_idx = ui_loc.find("'zh-CN': {")
-    en_idx = ui_loc.find("'en-US': {")
-    if zh_idx >= 0 and en_idx > zh_idx:
-        zh_keys = set(re.findall(r"^\s+'([^']+)'\s*:", ui_loc[zh_idx:en_idx], re.M))
-        en_keys = set(re.findall(r"^\s+'([^']+)'\s*:", ui_loc[en_idx:], re.M))
+    # 11. Bilingual UI Dictionary Key Parity (zh-CN vs en-US — v43.0 split uiZh.js / uiEn.js)
+    ui_zh_src = file_texts.get('src/locales/uiZh.js', '')
+    ui_en_src = file_texts.get('src/locales/uiEn.js', '')
+    if ui_zh_src and ui_en_src:
+        zh_keys = set(re.findall(r"^\s+'([^']+)'\s*:", ui_zh_src, re.M))
+        en_keys = set(re.findall(r"^\s+'([^']+)'\s*:", ui_en_src, re.M))
+    else:
+        zh_keys, en_keys = set(), set()
+        errors.append("src/locales/uiZh.js / uiEn.js: Missing split locale dictionaries")
+    if zh_keys or en_keys:
         miss_en = sorted(zh_keys - en_keys)
         miss_zh = sorted(en_keys - zh_keys)
         if miss_en:
-            errors.append(f"src/locales/ui.js: Missing en-US keys ({len(miss_en)}): {', '.join(miss_en[:8])}")
+            errors.append(f"src/locales/uiEn.js: Missing en-US keys ({len(miss_en)}): {', '.join(miss_en[:8])}")
         if miss_zh:
-            errors.append(f"src/locales/ui.js: Missing zh-CN keys ({len(miss_zh)}): {', '.join(miss_zh[:8])}")
-    else:
-        zh_keys, en_keys = set(), set()
-        errors.append("src/locales/ui.js: Could not locate zh-CN / en-US dictionary blocks")
+            errors.append(f"src/locales/uiZh.js: Missing zh-CN keys ({len(miss_zh)}): {', '.join(miss_zh[:8])}")
 
     # 12. Editor v34/v35, Visual Bell-Vein Skill Tree, Relic Synergy Constellation & Save v35 Check
     for tok in ('realmSeal', 'requiresBoss', 'skyBridge'):
         if tok not in editor_code:
             errors.append(f"src/editor.js: Missing editor feature '{tok}'")
-    if 'v: 35' not in save_code or 'refinedRelics' not in save_code or 'skillNodes' not in save_code:
-        errors.append("src/save.js: Missing v35 save version, refinedRelics, or skillNodes persistence")
+    if 'refinedRelics' not in save_code or 'skillNodes' not in save_code:
+        errors.append("src/save.js: Missing refinedRelics or skillNodes persistence")
     skill_data = file_texts.get('src/skillTree.js', '')
     skill_ui = file_texts.get('src/ui/skillTreeUi.js', '')
     relic_ui = file_texts.get('src/ui/relicBoardUi.js', '')
@@ -666,6 +682,66 @@ def check_v34_economy_relics_i18n(file_texts):
         errors.append("src/ui/skillTreeUi.js: Missing live action preview canvas")
     if 'relic-synergy-svg' not in relic_ui or 'updateSynergyOverlay' not in relic_ui:
         errors.append("src/ui/relicBoardUi.js: Missing interactive SVG synergy constellation overlay")
+    dmg_code = file_texts.get('src/combat/damageCombat.js', '')
+    eai_code = file_texts.get('src/ai/enemiesAi.js', '')
+    pc_code = file_texts.get('src/combat/playerCombat.js', '')
+    if 'applyEnemyHitFeel' not in dmg_code or 'updateEnemyLaunchPhysics' not in eai_code or 'triggerHammerAirSlamImpact' not in pc_code:
+        errors.append("v36.0: Missing hit-feel, wall-slam launch physics, or hammer air-slam implementation")
+    wc_code = file_texts.get('src/combat/worldCombat.js', '')
+    for fn_name in ('triggerBellDiveImpact', 'activateWorldSwitch', 'toggleWindVane', 'awakenDormantSporePad', 'triggerIcePillarDrop'):
+        if fn_name not in wc_code:
+            errors.append(f"v37.0: Missing '{fn_name}' in src/combat/worldCombat.js")
+    if 'v: 42' not in save_code or 'grappleHook' not in save_code or 'belfryHatchOpen' not in save_code or 'windAscentOpen' not in save_code:
+        errors.append("src/save.js: Missing v42 save version, grappleHook, or v41 one-way switch persistence")
+    ed_topo = file_texts.get('src/editorTopology.js', '')
+    ed_code = file_texts.get('src/editor.js', '')
+    if 'runTopologyAndShaftAudit' not in ed_topo or 'toggleAuditHighlight' not in ed_code or 'drawAuditOverlays' not in ed_code:
+        errors.append("v41.2: Missing editor live topology audit or violation highlight integration")
+    # v40.2 Regression Guard: every grappleAnchor in oy!=0 rooms must have topY & id; every static voidBarrier must be topSealed!
+    for entry in world.get('rooms', []):
+        rpath = os.path.join(BASE_DIR, entry['file'].lstrip('./'))
+        if os.path.isfile(rpath):
+            rm_d = json.load(open(rpath, encoding='utf-8'))
+            oy_r = rm_d['bounds']['y']
+            for anc in rm_d.get('grappleAnchors', []):
+                if not anc.get('id') or (oy_r != 0 and 'topY' not in anc):
+                    errors.append(f"{rm_d['id']}: Grapple anchor missing id or topY (oy={oy_r})")
+            for lan in rm_d.get('lanterns', []):
+                if oy_r != 0 and 'topY' not in lan:
+                    errors.append(f"{rm_d['id']}: Lantern '{lan.get('id')}' missing topY (oy={oy_r})")
+            for sw in rm_d.get('slickWalls', []):
+                sx0, sy0, sx1, sy1 = sw['x'], sw['y'], sw['x'] + sw['w'], sw['y'] + sw['h']
+                has_backing = any(
+                    s['type'] != 'platform' and s['x'] < sx1 + 4 and s['x'] + s['w'] > sx0 - 4 and s['y'] < sy1 + 4 and s['y'] + s['h'] > sy0 - 4
+                    for s in rm_d.get('solids', [])
+                )
+                if not has_backing:
+                    errors.append(f"{rm_d['id']}: Thorn/slickWall '{sw.get('id')}' floats in mid-air without solid stone backing!")
+            for vb in rm_d.get('voidBarriers', []):
+                if vb.get('sweeping'): continue
+                vx, vy, vw = vb['x'], vb['y'], vb.get('w', 22)
+                top_ok = any(s['type'] != 'platform' and s['x'] <= vx + 6 and s['x']+s['w'] >= vx+vw - 6 and abs((s['y']+s['h']) - vy) <= 12 for s in rm_d.get('solids', []))
+                if not top_ok:
+                    errors.append(f"{rm_d['id']}: Static voidBarrier '{vb.get('id')}' is not top-sealed and can be jumped over!")
+    modals_code = file_texts.get('src/ui/modalsUi.js', '')
+    if 'openSettingsJournal' not in modals_code or 'renderWeaponCodexInto' not in modals_code:
+        errors.append("v40.0: Missing 4-tab settings journal or weapon codex renderer")
+    vb_total = 0
+    sw_total = 0
+    for entry in world.get('rooms', []):
+        rpath = os.path.join(BASE_DIR, entry['file'].lstrip('./'))
+        if os.path.isfile(rpath):
+            rm_d = json.load(open(rpath, encoding='utf-8'))
+            vb_total += len(rm_d.get('voidBarriers', []))
+            sw_total += len(rm_d.get('slickWalls', []))
+    if vb_total < 15 or sw_total < 8:
+        errors.append(f"v40.0: Expected >=15 voidBarriers & >=8 slickWalls, found {vb_total} / {sw_total}")
+    if len(world.get('rooms', [])) < 25:
+        errors.append(f"data/world.json: Expected >=25 rooms in v38/v39, found {len(world.get('rooms', []))}")
+    cin_code = file_texts.get('src/render/cinematicRenderer.js', '')
+    por_code = file_texts.get('src/npcPortraits.js', '')
+    if 'drawFoundryCrucibles' not in cin_code or 'drawZoneCalligraphyBanner' not in cin_code or 'getNpcPortraitSvg' not in por_code:
+        errors.append("v39.0: Missing cinematic renderer or NPC portraits module")
 
     eco_summary = {
         'reg_cnt': reg_cnt,
@@ -686,16 +762,327 @@ def check_v34_economy_relics_i18n(file_texts):
     return eco_summary, errors, warnings
 
 
+
+
+def check_world_topology_and_shafts():
+    errors = []
+    world = json.load(open(os.path.join(BASE_DIR, 'data', 'world.json'), encoding='utf-8'))
+    rooms = {}
+    for entry in world.get('rooms', []):
+        rpath = os.path.join(BASE_DIR, entry['file'].lstrip('./'))
+        if os.path.isfile(rpath):
+            rm = json.load(open(rpath, encoding='utf-8'))
+            rooms[rm['id']] = rm
+
+    # LAW 1: No horizontal secretWalls (w > h) — horizontal floor hatches must be switchGates or breakableFloors!
+    for rid, rm in rooms.items():
+        for sw in rm.get('secretWalls', []):
+            if sw.get('w', 0) > sw.get('h', 0):
+                errors.append(f"Topology Law 1: {rid} has horizontal secretWall '{sw.get('id')}' ({sw['w']}x{sw['h']}) — convert to switchGate or breakableFloor!")
+
+    # LAW 2: Vertical shaft drop clearance — bouncePads in top 200px of bottom room must leave >= 90px unobstructed drop lane!
+    def subtract_seg(segs, a, b):
+        out = []
+        for s0, s1 in segs:
+            if b <= s0 or a >= s1:
+                out.append((s0, s1))
+            else:
+                if a > s0: out.append((s0, a))
+                if b < s1: out.append((b, s1))
+        return out
+
+    for rid, top_rm in rooms.items():
+        tb = top_rm['bounds']
+        for cid in top_rm.get('connections', []):
+            if cid not in rooms: continue
+            bot_rm = rooms[cid]
+            bb = bot_rm['bounds']
+            if abs((tb['y'] + tb['h']) - bb['y']) > 24: continue
+            ov0, ov1 = max(tb['x'], bb['x']), min(tb['x'] + tb['w'], bb['x'] + bb['w'])
+            if ov1 - ov0 < 40: continue
+            intervals = [(ov0, ov1)]
+            for s in top_rm.get('solids', []):
+                if s['type'] != 'platform' and s['y'] + s['h'] >= tb['h'] - 25:
+                    intervals = subtract_seg(intervals, tb['x'] + s['x'], tb['x'] + s['x'] + s['w'])
+            for s in bot_rm.get('solids', []):
+                if s['type'] != 'platform' and s['y'] <= 40:
+                    intervals = subtract_seg(intervals, bb['x'] + s['x'], bb['x'] + s['x'] + s['w'])
+            for a, b in intervals:
+                if b - a < 60: continue
+                free = [(a, b)]
+                has_pad = False
+                for bp in bot_rm.get('bouncePads', []):
+                    if bp['y'] < 200:
+                        bx0, bx1 = bb['x'] + bp['x'] - bp['w'] / 2, bb['x'] + bp['x'] + bp['w'] / 2
+                        if bx1 > a and bx0 < b:
+                            has_pad = True
+                            free = subtract_seg(free, bx0, bx1)
+                if has_pad:
+                    max_free = max((x1 - x0 for x0, x1 in free), default=0)
+                    if max_free < 90:
+                        errors.append(f"Topology Law 2: BouncePad blocks drop shaft {rid}->{cid} [{a}..{b}] (maxFreeDrop={max_free:.0f}px < 90px)")
+
+    # LAW 3, 4 & 5: 5-Tier Directed BFS Reachability, Strict Post-Ji Anti-Bypass & Strong Connectivity Anti-Softlock!
+    switch_room = {}
+    switch_req_boss = {}
+    for rid, rm in rooms.items():
+        for sw in rm.get('worldSwitches', []):
+            switch_room[sw['switchKey']] = rid
+            if sw.get('requiresBoss'):
+                switch_req_boss[sw['switchKey']] = sw['requiresBoss']
+
+    def edge_open(u, v, caps, active_switches):
+        pair = (u, v)
+        if pair in (('r03_chapel', 'r04_bell_well'), ('r04_bell_well', 'r03_chapel')):
+            return caps['boss1']
+        if pair in (('r04_bell_well', 'r05_foundry'), ('r05_foundry', 'r04_bell_well')):
+            return caps['doubleJump']
+        if pair in (('r05_foundry', 'r07_ascent'), ('r07_ascent', 'r05_foundry')):
+            return caps['boss2']
+        if pair == ('r02_corridor', 'r18_rain_steps'):
+            return caps['grapple']
+        if pair == ('r04_bell_well', 'r20_bell_galleries'):
+            return caps['grapple']
+        if pair in (('r04_bell_well', 'r22_cistern_nave'), ('r22_cistern_nave', 'r04_bell_well'),
+                    ('r06_crypt', 'r21_cistern_west'), ('r21_cistern_west', 'r06_crypt'),
+                    ('r07_ascent', 'r23_cistern_lock'), ('r23_cistern_lock', 'r07_ascent'),
+                    ('r11_frost_ridge', 'r24_frost_seep'), ('r24_frost_seep', 'r11_frost_ridge')):
+            return caps['bellDive']
+        sw_pairs = {
+            ('r01_sanctuary', 'r19_belfry_outer'): 'belfryHatchOpen',
+            ('r19_belfry_outer', 'r01_sanctuary'): 'belfryHatchOpen',
+            ('r01_sanctuary', 'r10_ink_woods'): 'forestHatchOpen',
+            ('r10_ink_woods', 'r01_sanctuary'): 'forestHatchOpen',
+            ('r02_corridor', 'r06_crypt'): 'cryptHatchOpen',
+            ('r06_crypt', 'r02_corridor'): 'cryptHatchOpen',
+            ('r05_foundry', 'r09_wind_spire'): 'foundryValveOpen',
+            ('r09_wind_spire', 'r05_foundry'): 'foundryValveOpen',
+            ('r07_ascent', 'r09_wind_spire'): 'windAscentOpen',
+            ('r09_wind_spire', 'r07_ascent'): 'windAscentOpen',
+            ('r04_bell_well', 'r09_wind_spire'): 'windWestOpen',
+            ('r09_wind_spire', 'r04_bell_well'): 'windWestOpen',
+            ('r20_bell_galleries', 'r12_wind_bridge'): 'galleryWindOpen',
+            ('r12_wind_bridge', 'r20_bell_galleries'): 'galleryWindOpen',
+            ('r14_woods_cavern', 'r21_cistern_west'): 'cisternWestOpen',
+            ('r21_cistern_west', 'r14_woods_cavern'): 'cisternWestOpen',
+        }
+        if pair in sw_pairs:
+            return sw_pairs[pair] in active_switches
+        if pair in (('r13_wind_peak', 'r25_mirror_abyss'), ('r25_mirror_abyss', 'r13_wind_peak')):
+            return caps['boss4Unlocked']
+        if pair in (('r13_wind_peak', 'r17_frost_summit'), ('r17_frost_summit', 'r13_wind_peak')):
+            return caps['boss2']
+        return True
+
+    def solve_tier(caps):
+        active_switches = set()
+        while True:
+            visited = {'r01_sanctuary'}
+            queue = ['r01_sanctuary']
+            while queue:
+                u = queue.pop(0)
+                for v in rooms[u].get('connections', []):
+                    if v in rooms and v not in visited and edge_open(u, v, caps, active_switches):
+                        visited.add(v)
+                        queue.append(v)
+            new_sw = False
+            for sk, srm in switch_room.items():
+                if sk in active_switches or srm not in visited: continue
+                rb = switch_req_boss.get(sk)
+                if rb == 'boss_ji' and not caps['boss2']: continue
+                active_switches.add(sk)
+                new_sw = True
+            if not new_sw:
+                break
+        can_return = {'r01_sanctuary'}
+        rqueue = ['r01_sanctuary']
+        while rqueue:
+            v = rqueue.pop(0)
+            for u in visited:
+                if u not in can_return and v in rooms[u].get('connections', []) and edge_open(u, v, caps, active_switches):
+                    can_return.add(u)
+                    rqueue.append(u)
+        softlocked = sorted(visited - can_return)
+        return visited, softlocked
+
+    tiers = [
+        ('T0_Start',   dict(boss1=False, grapple=False, doubleJump=False, shadeDash=False, boss2=False, bellDive=False, boss4Unlocked=False)),
+        ('T1_Grapple', dict(boss1=True,  grapple=True,  doubleJump=False, shadeDash=False, boss2=False, bellDive=False, boss4Unlocked=False)),
+        ('T2_PreJi',   dict(boss1=True,  grapple=True,  doubleJump=True,  shadeDash=True,  boss2=False, bellDive=False, boss4Unlocked=False)),
+        ('T3_PostJi',  dict(boss1=True,  grapple=True,  doubleJump=True,  shadeDash=True,  boss2=True,  bellDive=True,  boss4Unlocked=False)),
+        ('T4_Endgame', dict(boss1=True,  grapple=True,  doubleJump=True,  shadeDash=True,  boss2=True,  bellDive=True,  boss4Unlocked=True)),
+    ]
+    post_ji_forbidden = {
+        'r07_ascent', 'r08_heart', 'r09_wind_spire', 'r11_frost_ridge', 'r12_wind_bridge',
+        'r13_wind_peak', 'r16_frost_tomb', 'r17_frost_summit',
+        'r21_cistern_west', 'r22_cistern_nave', 'r23_cistern_lock', 'r24_frost_seep', 'r25_mirror_abyss'
+    }
+    tier_summary = []
+    for tname, caps in tiers:
+        vis, soft = solve_tier(caps)
+        tier_summary.append(f"{tname}={len(vis)}")
+        if soft:
+            errors.append(f"Topology Softlock ({tname}): Cannot return to Sanctuary from {soft}")
+        if not caps['boss1']:
+            if vis != {'r01_sanctuary', 'r02_corridor', 'r03_chapel'}:
+                errors.append(f"Topology Sequence-Break ({tname}): Reached outside T0 starter zone before defeating Boss 1 Hui: {sorted(vis)}")
+        if not caps['boss2']:
+            leaked = sorted(vis & post_ji_forbidden)
+            if leaked:
+                errors.append(f"Topology Sequence-Break ({tname}): Reached post-Ji rooms before defeating Boss 2 Ji: {leaked}")
+        if tname == 'T4_Endgame' and len(vis) < len(rooms):
+            missing = sorted(set(rooms.keys()) - vis)
+            errors.append(f"Topology Unreachable ({tname}): Rooms unreachable at Endgame: {missing}")
+
+    return ' | '.join(tier_summary), errors
+
+
+
+def _strip_js_literals_and_comments(code):
+    out = []
+    i = 0
+    n = len(code)
+    in_str = None
+    tmpl_stack = []
+    depth = 0
+    while i < n:
+        ch = code[i]
+        nxt = code[i + 1] if i + 1 < n else ''
+        if in_str:
+            if ch == '\\':
+                i += 2
+                continue
+            if in_str == '`' and ch == '$' and nxt == '{':
+                tmpl_stack.append(depth)
+                depth += 1
+                in_str = None
+                out.append(' ')
+                i += 2
+                continue
+            if ch == in_str:
+                in_str = None
+                out.append(' ')
+            elif ch == '\n':
+                out.append('\n')
+            i += 1
+            continue
+        if ch == '/' and nxt == '/':
+            while i < n and code[i] != '\n':
+                i += 1
+            continue
+        if ch == '/' and nxt == '*':
+            i += 2
+            while i + 1 < n and not (code[i] == '*' and code[i + 1] == '/'):
+                if code[i] == '\n':
+                    out.append('\n')
+                i += 1
+            i += 2
+            continue
+        if ch in ("'", '"', '`'):
+            in_str = ch
+            out.append(' ')
+            i += 1
+            continue
+        if ch == '{':
+            depth += 1
+        elif ch == '}':
+            depth = max(0, depth - 1)
+            if tmpl_stack and depth == tmpl_stack[-1]:
+                tmpl_stack.pop()
+                in_str = '`'
+                out.append(' ')
+                i += 1
+                continue
+        out.append(ch)
+        i += 1
+    return ''.join(out)
+
+
+def check_undefined_js_calls(file_texts):
+    errors = []
+    cfg_src = file_texts.get('src/config.js', '')
+    cfg_consts = set(re.findall(r'^export\s+(?:const|let|var)\s+([A-Z][A-Z0-9_]{2,})\b', cfg_src, re.M))
+    builtins = {
+        'if','for','while','switch','catch','function','return','typeof','instanceof','new','throw','await','async','yield','delete','void','case','in','of',
+        'Math','Number','String','Boolean','Array','Object','Set','Map','WeakMap','WeakSet','JSON','Date','RegExp','Error','Event','ErrorEvent','MouseEvent','Promise','Symbol','BigInt',
+        'parseInt','parseFloat','isNaN','isFinite','encodeURIComponent','decodeURIComponent','eval','atob','btoa',
+        'console','window','document','navigator','localStorage','sessionStorage','location','history','performance','fetch','URL','URLSearchParams','Blob','FileReader','Image','Audio','AudioContext','webkitAudioContext','OffscreenCanvas','Path2D','DOMMatrix','ResizeObserver','MutationObserver','IntersectionObserver',
+        'requestAnimationFrame','cancelAnimationFrame','setTimeout','clearTimeout','setInterval','clearInterval','queueMicrotask','alert','confirm','prompt','getComputedStyle','matchMedia','structuredClone',
+        'Float32Array','Float64Array','Uint8Array','Uint16Array','Uint32Array','Int32Array','Uint8ClampedArray','ArrayBuffer'
+    }
+    for rel, code in sorted(file_texts.items()):
+        if not rel.endswith('.js') or 'locales/' in rel:
+            continue
+        clean = _strip_js_literals_and_comments(code)
+        declared = set(builtins)
+        for m in re.finditer(r'import\s*\{([^}]+)\}\s*from', clean):
+            for p in m.group(1).split(','):
+                p = p.strip()
+                if p:
+                    declared.add(p.split(' as ')[-1].strip())
+        for m in re.finditer(r'import\s+([A-Za-z_$][\w$]*)\s+from', clean):
+            declared.add(m.group(1))
+        for m in re.finditer(r'\b(?:export\s+)?(?:async\s+)?(?:function|class|const|let|var)\s+([A-Za-z_$][\w$]*)', clean):
+            declared.add(m.group(1))
+        for m in re.finditer(r'(?:const|let|var)\s*\{([^}]+)\}', clean):
+            for p in m.group(1).split(','):
+                p = p.strip().split('=')[0].strip()
+                if ':' in p:
+                    p = p.split(':')[1].strip()
+                if re.match(r'^[A-Za-z_$][\w$]*$', p):
+                    declared.add(p)
+        for m in re.finditer(r'\bfunction\s+[A-Za-z_$][\w$]*\s*\(([^)]*)\)', clean):
+            for p in m.group(1).split(','):
+                p = p.strip().lstrip('.').split('=')[0].strip()
+                if re.match(r'^[A-Za-z_$][\w$]*$', p):
+                    declared.add(p)
+        for m in re.finditer(r'(?:^|\n)\s*(?:async\s+)?([A-Za-z_$][\w$]*)\s*\(([^)]*)\)\s*\{', clean):
+            declared.add(m.group(1))
+            for p in m.group(2).split(','):
+                p = p.strip().lstrip('.').split('=')[0].strip()
+                if re.match(r'^[A-Za-z_$][\w$]*$', p):
+                    declared.add(p)
+        for m in re.finditer(r'\(([^)]*)\)\s*=>', clean):
+            for p in m.group(1).split(','):
+                p = p.strip().lstrip('.').split('=')[0].strip()
+                if re.match(r'^[A-Za-z_$][\w$]*$', p):
+                    declared.add(p)
+        for m in re.finditer(r'\b([A-Za-z_$][\w$]*)\s*=>', clean):
+            declared.add(m.group(1))
+
+        seen_err = set()
+        for m in re.finditer(r'(?<![.\w$])([A-Za-z_$][\w$]*)\s*\(', clean):
+            fn = m.group(1)
+            before = clean[max(0, m.start() - 18):m.start()]
+            if re.search(r'\b(function|class|get|set|async)\s+$', before):
+                continue
+            if re.match(r'^[^)]*\)\s*\{', clean[m.end():m.end() + 80]):
+                continue
+            if fn not in declared and fn not in seen_err:
+                seen_err.add(fn)
+                errors.append(f"{rel}: Undefined function call '{fn}()'")
+
+        # v43.4 Guard: verify every config.js exported constant referenced in a module is explicitly imported/declared
+        clean_no_reexp = re.sub(r'export\s*\{[^}]*\}\s*from\s*[^;\n]+', '', clean)
+        for sym in sorted(cfg_consts):
+            if sym in declared:
+                continue
+            if re.search(rf'(?<![.\w$]){re.escape(sym)}(?!\s*:)(?![\w$])', clean_no_reexp):
+                errors.append(f"{rel}: Missing import for config constant '{sym}'")
+    return errors
+
 def main():
     js_cnt, file_texts, line_counts, cyc_cnt, js_errs, js_warns = check_js_modules()
     rm_cnt, st_cnt, rm_errs, rm_warns = check_rooms_and_locales(file_texts)
     lnch_errs = check_launchers_and_python()
     eco, v34_errs, v34_warns = check_v34_economy_relics_i18n(file_texts)
 
-    all_errs = js_errs + rm_errs + lnch_errs + v34_errs
+    topo_summary, topo_errs = check_world_topology_and_shafts()
+    undef_errs = check_undefined_js_calls(file_texts)
+    all_errs = js_errs + rm_errs + lnch_errs + v34_errs + topo_errs + undef_errs
     all_warns = js_warns + rm_warns + v34_warns
 
-    print(f"[Ashen Bell Vow v35.0 Verifier] JS modules: {js_cnt} | Cycles: {cyc_cnt} | Rooms: {rm_cnt} | Stamps: {st_cnt}")
+    print(f"[Ashen Bell Vow v43.4 Verifier] JS modules: {js_cnt} | Cycles: {cyc_cnt} | Rooms: {rm_cnt} | Stamps: {st_cnt}")
     print(
         f"Economy (1x): {eco['total_1x']} echoes "
         f"[Foes({eco['reg_cnt']}): {eco['reg_echo']} | Wardens: {eco['warden_echo']} | Bosses: {eco['boss_echo']} | "
@@ -705,6 +1092,7 @@ def main():
         f"Sinks: Smith={eco['smith_total']} | Core 3-Slot Build={eco['core_sink']} | Full Completion={eco['full_sink']} | "
         f"Refined Relics={eco['relics_refined']}/{eco['relics_total']} | i18n Keys={eco['i18n_keys']} (zh=en)"
     )
+    print(f"Topology BFS (0 softlocks, 0 post-Ji bypasses): {topo_summary}")
     print("Top 6 largest JS modules:")
     for cnt, rel in line_counts[:6]:
         tag = " [OVER]" if cnt > LARGE_MODULE_WARN_LINES and not rel.endswith('editor.js') else ""

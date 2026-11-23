@@ -8,7 +8,7 @@ import {
   hasActiveWeaponTrait, isSkillNodeUnlocked,
   getBossBonusDamageMult, hasKeeperBlessing, isSkyBridgeOpen,
   getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks,
-  scheduleOutcome, addShake, kickCamera, punchZoom, triggerBossBanner, triggerHitstop
+  scheduleOutcome, addShake, kickCamera, punchZoom, triggerBossBanner, triggerBossKillSlowmo, triggerHitstop
 } from '../state.js';
 import { getRoomAt } from '../levelLoader.js';
 import { audio } from '../audio.js';
@@ -104,6 +104,42 @@ function clearPriestWards() {
   }
 }
 
+// v36.0 Asymmetric Hit-Freeze, Directional Squash/Recoil Deformation & Launch Tagging
+export function applyEnemyHitFeel(enemy, heavy = false, hitDir = 0, launchSpeed = 0) {
+  if (!enemy || !enemy.alive) return;
+  const dir = hitDir || (G.player ? ((enemy.x + enemy.w * 0.5) >= (G.player.x + G.player.w * 0.5) ? 1 : -1) : 1);
+  const hsMode = (G.settings && G.settings.hitstopMode) || 'standard';
+  const freezeScale = hsMode === 'off' ? 0 : hsMode === 'light' ? 0.4 : 1.0;
+  const freezeDur = (heavy ? 0.056 : 0.032) * freezeScale;
+  if (freezeDur > 0 && !enemy.isDummy) {
+    enemy.hitFreezeTimer = Math.max(enemy.hitFreezeTimer || 0, enemy.isBoss ? freezeDur * 0.72 : freezeDur);
+  }
+  enemy.hitTremor = Math.max(enemy.hitTremor || 0, heavy ? 5.2 : 2.8);
+  const deformScale = enemy.isBoss ? 0.46 : enemy.isMiniBoss ? 0.65 : enemy.isDummy ? 0.55 : 1.0;
+  enemy.squashX = 1 - (heavy ? 0.26 : 0.14) * deformScale;
+  enemy.squashY = 1 + (heavy ? 0.24 : 0.13) * deformScale;
+  enemy.recoilLean = dir * (heavy ? 0.24 : 0.12) * deformScale;
+
+  // Brief hit-stun interrupt on light trash mobs when struck by heavy attacks (unless crimson peril windup)
+  if (heavy && !enemy.isBoss && !enemy.isMiniBoss && !enemy.isDummy && enemy.state !== 'stagger') {
+    const isPeril = enemy.state === 'windup' && (
+      enemy.attackKind === 'redLunge' || enemy.attackKind === 'redBash' ||
+      enemy.attackKind === 'redDash' || enemy.attackKind === 'frostLunge'
+    );
+    if (!isPeril && enemy.kind !== 'golem') {
+      enemy.state = 'recover';
+      enemy.stateTimer = Math.max(enemy.stateTimer || 0, 0.30);
+    }
+  }
+
+  // Launch tag for Dead-Cells-style Wall-Slam & Bowling Chain knockback!
+  if (!enemy.isBoss && !enemy.isDummy && launchSpeed >= 260) {
+    enemy.launchTimer = enemy.isMiniBoss ? 0.24 : 0.44;
+    enemy.launchDir = dir;
+    enemy.launchHitIds = new Set();
+  }
+}
+
 export function damageEnemyHP(enemy, amount, showNum = true) {
   if (!enemy || !enemy.alive) return;
   if (enemy.kind) recordBestiaryEvent(enemy.kind, 'seen');
@@ -142,6 +178,9 @@ export function damageEnemyHP(enemy, amount, showNum = true) {
   }
   enemy.hp = Math.max(0, enemy.hp - finalAmt);
   enemy.hurtFlash = 0.13;
+  if ((enemy.hitFreezeTimer || 0) <= 0.005) {
+    applyEnemyHitFeel(enemy, finalAmt >= 28, 0, 0);
+  }
   if (showNum) {
     const numCol = enemy.wardShield > 0 ? COLORS.goldBright : COLORS.parchment;
     const txt = enemy.wardShield > 0 ? t('combat.shieldTag', Math.round(finalAmt)) : `${Math.round(finalAmt)}`;
@@ -276,11 +315,11 @@ export function killEnemy(enemy) {
     triggerBossBanner(locBoss(enemy, 'name'), bannerQuote, COLORS.goldBright, 3.0);
   }
   if (enemy.isBoss) {
-    G.chapelTide = null;
-    G.groundWaves = [];
-    audio.playBellToll();
-    triggerHaptic('execution', 1.2);
-    addShake(16);
+    G.chapelTide = null; G.groundWaves = [];
+    triggerBossKillSlowmo(0.85);
+    G.screenFlash = { alpha: 0.36, color: '#fef9c3' };
+    spawnShockwave(enemy.x + enemy.w * 0.5, enemy.y + enemy.h * 0.45, 290, COLORS.goldBright, 6.0, 0.62);
+    audio.playBellToll(); triggerHaptic('execution', 1.25); addShake(18);
     if (G.echoSession) {
       if (enemy.id === 'boss_zhu' && G.worldState) {
         G.worldState.boss4Defeated = true;
@@ -306,15 +345,27 @@ export function killEnemy(enemy) {
     if (enemy.id === 'boss_hui') {
       if (G.worldState) {
         G.worldState.bossDefeated = true;
-        G.minimapDirty = true;
-        checkAchievements();
-        hooks.saveProgress(false);
+        for (const pk of G.worldState.pickups) {
+          if (!pk.collected && pk.requiresBoss === 'boss_hui') {
+            spawnShockwave(pk.x, pk.y - 28, 165, COLORS.cyanBright, 4.8, 0.52);
+            spawnParticles(pk.x, pk.y - 28, 30, { color: COLORS.cyanBright, speed: 240, spark: true, life: 0.65 });
+            spawnFloatText(pk.x, pk.y - 68, t('combat.shrineUnsealedFloat'), COLORS.cyanBright, 19, 2.2);
+          }
+        }
+        G.minimapDirty = true; checkAchievements(); hooks.saveProgress(false);
       }
       spawnFloatText(CHAPEL_EXIT_GATE_DEF.x, CHAPEL_EXIT_GATE_DEF.y - 34, t('combat.gateChapelOpen'), COLORS.cyanBright, 20, 2.0);
       scheduleOutcome(() => hooks.showVictory('boss_hui'), 1100, true);
     } else if (enemy.id === 'boss_ji') {
       if (G.worldState) {
         G.worldState.boss2Defeated = true;
+        for (const pk of G.worldState.pickups) {
+          if (!pk.collected && pk.requiresBoss === 'boss_ji') {
+            spawnShockwave(pk.x, pk.y - 28, 165, COLORS.goldBright, 4.8, 0.52);
+            spawnParticles(pk.x, pk.y - 28, 30, { color: COLORS.goldBright, speed: 240, spark: true, life: 0.65 });
+            spawnFloatText(pk.x, pk.y - 68, t('combat.shrineUnsealedFloat'), COLORS.goldBright, 19, 2.2);
+          }
+        }
         G.minimapDirty = true;
         checkAchievements();
         hooks.saveProgress(false);
@@ -331,6 +382,20 @@ export function killEnemy(enemy) {
       spawnShockwave(FIRST_BELL_CORE_POS.x, FIRST_BELL_CORE_POS.y - 54, 240, COLORS.goldBright, 5.2, 0.65);
       triggerBossBanner(t('combat.yuanDefeatedTitle'), t('combat.yuanDefeatedQuote'), COLORS.goldBright, 3.2);
       scheduleOutcome(() => hooks.openEndingChoice(), 2100, true);
+    } else if (enemy.id === 'boss_zhu') {
+      if (G.worldState) {
+        G.worldState.boss4Defeated = true;
+        for (const pk of G.worldState.pickups) {
+          if (!pk.collected && pk.requiresBoss === 'boss_zhu') {
+            spawnShockwave(pk.x, pk.y - 28, 195, COLORS.goldBright, 5.2, 0.55);
+            spawnParticles(pk.x, pk.y - 28, 36, { color: COLORS.goldBright, speed: 260, spark: true, life: 0.7 });
+            spawnFloatText(pk.x, pk.y - 68, t('combat.shrineUnsealedFloat'), COLORS.goldBright, 20, 2.3);
+          }
+        }
+        G.minimapDirty = true; checkAchievements(); hooks.saveProgress(true);
+      }
+      triggerBossBanner(t('combat.zhuDefeatedTitle'), t('combat.zhuDefeatedQuote'), COLORS.goldBright, 3.4);
+      scheduleOutcome(() => hooks.showVictory('boss_zhu'), 1450, true);
     }
   }
 }

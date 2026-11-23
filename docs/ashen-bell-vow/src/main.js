@@ -5,6 +5,7 @@ import { G, hooks, createFreshWorldState, markMapExplored, createLanterns, creat
 import { loadWorldData, getPreviewSpawnRoomId } from './levelLoader.js';
 import { audio } from './audio.js';
 import { buildParchmentPattern, buildGlowSprites, initAmbientMotes } from './vfx.js';
+import { startTitleIntro, skipTitleIntro, isTitleIntroActive, updateTitleIntro, beginSceneFade } from './render/titleIntro.js';
 import {
   clearFrameInputs, syncControlModeUI, pollGamepad, initInputListeners,
   updateMobileOrientationLayout, requestMobileLandscapeFullscreen,
@@ -12,7 +13,7 @@ import {
 } from './input.js';
 import { capturePlayerInputBuffers, updatePlayer } from './player.js';
 import { equipWeapon, cycleWeapon } from './combat.js';
-import { updateEnemy, updateBoss, updateBoss2, updateBoss3, updateBoss4, triggerBoss4UltimateReaction, resetWardenState } from './ai.js';
+import { updateEnemy, updateEnemyHitFeel, updateBoss, updateBoss2, updateBoss3, updateBoss4, triggerBoss4UltimateReaction, resetWardenState } from './ai.js';
 import { updateWorldEffects, updateCamera, updateAmbientOnly, snapCameraToPlayer } from './world.js';
 import { render } from './renderer.js';
 import { prewarmStampsForList } from './stampAtlas.js';
@@ -24,7 +25,7 @@ import { isBenchmarkActive, startCombatBenchmark, cancelCombatBenchmark, tickCom
 import { readSaveData, saveProgress, loadUserSettings, saveUserSettings } from './save.js';
 import { t, setLocale, toggleLocale, loadSavedLocale, onLocaleChange } from './i18n.js';
 import {
-  HUD_DOM, refreshTitleSaveUI, refreshActiveModalI18n, syncHUD, openModal, closeModal, renderParchmentMap, renderSettingsModal,
+  HUD_DOM, refreshTitleSaveUI, refreshActiveModalI18n, syncHUD, openModal, closeModal, renderParchmentMap, renderSettingsModal, openSettingsJournal,
   openSmithModal, openNpcModal, openDummyModal, openLoreModal, openMapModal, openCodexModal, openPauseModal, returnToTitle, interactWithAltar, respawnAtActiveAltar,
   startEchoChallenge, advanceEchoRushStage2, advanceEchoRushStage3, advanceWardenRushStage2, advanceWardenRushStage3, advanceSevenBellsNext, showDeath, showVictory,
   startGame, startNewGamePlus, continueSavedGame, continueIntoBellWell,
@@ -52,6 +53,7 @@ Object.assign(hooks, {
   openDummyModal,
   openLoreModal,
   openMapModal,
+  cycleWeapon,
   openCodexModal,
   openPauseModal,
   returnToTitle,
@@ -293,17 +295,23 @@ function runGameFrame(timestamp) {
       ? (curHudBoss.kind === 'boss4' && curHudBoss.phase >= 3 ? 4 : (curHudBoss.phase || 1))
       : 0;
     audio.updateAmbience(dt, !!curHudBoss, bossPhaseAmb, inCombat, G.player ? G.player.parryStreak : 0, curBiome);
-    if (G.hitstopTimer > 0) {
+    let simDt = dt;
+    if (G.bossKillSlowmo && G.bossKillSlowmo.timer > 0) {
+      G.bossKillSlowmo.timer = Math.max(0, G.bossKillSlowmo.timer - dt);
+      simDt = dt * 0.24;
+      if (G.bossKillSlowmo.timer <= 0) G.bossKillSlowmo = null;
+    }
+    if (G.bossIntro && G.bossIntro.timer > 0 && G.player) {
+      G.bossIntro.timer = Math.max(0, G.bossIntro.timer - dt);
+      G.player.iframeTimer = Math.max(G.player.iframeTimer, 0.25);
+      updateWorldEffects(dt); updateCamera(dt);
+      if (G.bossIntro.timer <= 0) G.bossIntro = null;
+    } else if (G.hitstopTimer > 0) {
       G.hitstopTimer = Math.max(0, G.hitstopTimer - dt);
-      // Keep camera & hit/weather VFX smoothly alive during hitstop so impacts feel crisp instead of frozen!
-      if (G.player) {
-        updateWorldEffects(dt * 0.35);
-        updateCamera(dt);
-      }
+      if (G.player) { updateWorldEffects(dt * 0.85); updateCamera(dt); }
     } else if (G.player) {
-      updatePlayer(dt);
-      const px = G.player.x;
-      const py = G.player.y;
+      updatePlayer(simDt);
+      const px = G.player.x, py = G.player.y;
       for (let i = 0; i < G.enemies.length; i++) {
         const enemy = G.enemies[i];
         if (!enemy || !enemy.alive) continue;
@@ -311,13 +319,13 @@ function runGameFrame(timestamp) {
           if (enemy.isMiniBoss && enemy.awake && !G.echoSession) resetWardenState(enemy);
           continue;
         }
-        updateEnemy(enemy, dt);
+        updateEnemy(enemy, simDt);
       }
-      updateBoss(G.boss, dt);
-      updateBoss2(G.boss2, dt);
-      updateBoss3(G.boss3, dt);
-      updateBoss4(G.boss4, dt);
-      updateWorldEffects(dt);
+      if (G.boss && G.boss.alive && !updateEnemyHitFeel(G.boss, simDt)) updateBoss(G.boss, simDt);
+      if (G.boss2 && G.boss2.alive && !updateEnemyHitFeel(G.boss2, simDt)) updateBoss2(G.boss2, simDt);
+      if (G.boss3 && G.boss3.alive && !updateEnemyHitFeel(G.boss3, simDt)) updateBoss3(G.boss3, simDt);
+      if (G.boss4 && G.boss4.alive && !updateEnemyHitFeel(G.boss4, simDt)) updateBoss4(G.boss4, simDt);
+      updateWorldEffects(simDt);
       updateCamera(dt);
     }
     prof.addModuleTime('update', Math.max(0, (performance.now() - updT0) - prof._cur.audio));
@@ -340,7 +348,14 @@ function runGameFrame(timestamp) {
       lantern.angVel = (lantern.angVel - 14.5 * Math.sin(lantern.angle) * dt + wind * dt) * lDmp;
       lantern.angle += lantern.angVel * dt;
     }
+    if (ALTARS[0]) {
+      const targetCamX = Math.max(0, ALTARS[0].x - G.canvasW * 0.64 + Math.sin(G.globalTime * 0.24) * 18);
+      const targetCamY = Math.max(0, ALTARS[0].y - G.canvasH * 0.72 + Math.cos(G.globalTime * 0.20) * 6);
+      G.cam.x += (targetCamX - G.cam.x) * Math.min(1, dt * 2.5);
+      G.cam.y += (targetCamY - G.cam.y) * Math.min(1, dt * 2.5);
+    }
   }
+  updateTitleIntro(dt);
 
   if (G.activeModal === 'ending-cinematic') updateAndRenderEndingCinematic(dt);
   if (G.activeModal === 'smith') updateAndRenderSkillPreview(dt);
@@ -379,13 +394,55 @@ function runGameFrame(timestamp) {
 // Wire DOM UI actions
 initInputListeners();
 document.getElementById('btn-continue').addEventListener('click', () => {
+  if (isTitleIntroActive()) { skipTitleIntro(); return; }
   requestMobileLandscapeFullscreen();
-  continueSavedGame();
+  audio.init();
+  audio.playBellToll();
+  beginSceneFade(() => continueSavedGame(), 0.44);
 });
 document.getElementById('btn-start').addEventListener('click', () => {
+  if (isTitleIntroActive()) { skipTitleIntro(); return; }
   requestMobileLandscapeFullscreen();
-  startGame();
+  if (readSaveData()) {
+    if (!window.confirm(t('confirm.overwriteSlot', G.activeSaveSlot + 1))) return;
+  }
+  audio.init();
+  audio.playBellToll();
+  beginSceneFade(() => startGame(), 0.44);
 });
+const btnTitleSlots = document.getElementById('btn-title-slots');
+const slotsDrawer = document.getElementById('title-slots-drawer');
+const btnCloseSlotsDrawer = document.getElementById('btn-close-slots-drawer');
+if (btnTitleSlots && slotsDrawer) {
+  btnTitleSlots.addEventListener('click', () => {
+    refreshTitleSaveUI();
+    slotsDrawer.classList.toggle('hidden');
+  });
+}
+if (btnCloseSlotsDrawer && slotsDrawer) {
+  btnCloseSlotsDrawer.addEventListener('click', () => slotsDrawer.classList.add('hidden'));
+}
+const btnTitleControls = document.getElementById('btn-title-controls');
+if (btnTitleControls) {
+  btnTitleControls.addEventListener('click', () => openModal('help'));
+}
+const btnTitleSettings = document.getElementById('btn-title-settings');
+if (btnTitleSettings) {
+  btnTitleSettings.addEventListener('click', () => openModal('settings'));
+}
+const btnTitleReplayIntro = document.getElementById('btn-title-replay-intro');
+if (btnTitleReplayIntro) {
+  btnTitleReplayIntro.addEventListener('click', () => {
+    audio.init();
+    startTitleIntro(false);
+  });
+}
+const titleScreenEl = document.getElementById('title-screen');
+if (titleScreenEl) {
+  titleScreenEl.addEventListener('mousedown', () => {
+    if (isTitleIntroActive()) skipTitleIntro();
+  });
+}
 document.getElementById('btn-ctrl').addEventListener('click', () => {
   G.controlMode = G.controlMode === 'kbmouse' ? 'keyboard' : 'kbmouse';
   syncControlModeUI();
@@ -414,7 +471,7 @@ if (fsBtn) {
 document.getElementById('btn-map').addEventListener('click', openMapModal);
 document.getElementById('minimap-strip').addEventListener('click', openMapModal);
 document.getElementById('btn-help').addEventListener('click', () => openModal('help'));
-document.getElementById('btn-settings').addEventListener('click', () => openModal('settings'));
+document.getElementById('btn-settings').addEventListener('click', () => openSettingsJournal('settings'));
 document.getElementById('btn-close-settings').addEventListener('click', () => {
   saveUserSettings();
   closeModal('settings');
@@ -449,13 +506,15 @@ wireVolSlider('vol-sfx', 'sfxVol');
 document.getElementById('btn-pause-resume').addEventListener('click', () => closeModal('pause'));
 const pauseCodexBtn = document.getElementById('btn-pause-codex');
 if (pauseCodexBtn) pauseCodexBtn.addEventListener('click', () => openCodexModal());
-document.getElementById('btn-pause-settings').addEventListener('click', () => openModal('settings'));
+document.getElementById('btn-pause-settings').addEventListener('click', () => openSettingsJournal('settings'));
 const mapToCodex = document.getElementById('btn-map-to-codex');
 if (mapToCodex) mapToCodex.addEventListener('click', () => openCodexModal());
 const altarToCodex = document.getElementById('btn-altar-to-codex');
 if (altarToCodex) altarToCodex.addEventListener('click', () => openCodexModal());
 const codexToMap = document.getElementById('btn-codex-to-map');
 if (codexToMap) codexToMap.addEventListener('click', () => openMapModal());
+const settingsToMap = document.getElementById('btn-settings-to-map');
+if (settingsToMap) settingsToMap.addEventListener('click', () => openMapModal());
 const closeCodexBtn = document.getElementById('btn-close-codex');
 if (closeCodexBtn) closeCodexBtn.addEventListener('click', () => closeModal('codex'));
 document.getElementById('btn-pause-respawn').addEventListener('click', respawnAtActiveAltar);
@@ -625,16 +684,21 @@ window.addEventListener('keydown', e => {
     else if (e.code === 'Digit2') equipWeapon('hammer');
     else if (e.code === 'Digit3') equipWeapon('bell');
     else cycleWeapon(1);
-  } else if (e.code === 'KeyB' && (G.gameState === 'playing' || G.activeModal === 'codex' || G.activeModal === 'map')) {
+  } else if (e.code === 'KeyB' && (G.gameState === 'playing' || G.activeModal === 'codex' || G.activeModal === 'settings' || G.activeModal === 'map')) {
     e.preventDefault();
     if (!e.repeat) openCodexModal();
   } else if (e.code === 'Escape' && G.gameState === 'playing' && !e.repeat) {
     openPauseModal();
   } else if (e.code === 'Escape' && G.gameState === 'modal' && G.activeModal && !e.repeat) {
     closeModal(G.activeModal);
-  } else if (e.code === 'Enter' && G.gameState === 'title') {
-    if (readSaveData()) continueSavedGame();
-    else startGame();
+  } else if (G.gameState === 'title' && isTitleIntroActive() && !e.repeat) {
+    e.preventDefault();
+    skipTitleIntro();
+  } else if (e.code === 'Enter' && G.gameState === 'title' && !e.repeat) {
+    audio.init();
+    audio.playBellToll();
+    if (readSaveData()) beginSceneFade(() => continueSavedGame(), 0.44);
+    else beginSceneFade(() => startGame(), 0.44);
   }
 });
 
@@ -690,10 +754,18 @@ async function bootstrapGame() {
   G.crumblePlatforms = createCrumblePlatforms();
   initAmbientMotes();
   renderParchmentMap(HUD_DOM.minimapCanvas, false);
+  G.player = null;
+  if (ALTARS[0]) {
+    G.cam.x = Math.max(0, ALTARS[0].x - G.canvasW * 0.64);
+    G.cam.y = Math.max(0, ALTARS[0].y - G.canvasH * 0.72);
+  }
   if (G.isEditorPreview) {
+    startTitleIntro(true);
     const pill = document.getElementById('editor-preview-pill');
     if (pill) pill.classList.remove('hidden');
     startGame();
+  } else {
+    startTitleIntro(false);
   }
   requestAnimationFrame(gameLoop);
 }
