@@ -143,6 +143,13 @@ export function applyEnemyHitFeel(enemy, heavy = false, hitDir = 0, launchSpeed 
 export function damageEnemyHP(enemy, amount, showNum = true) {
   if (!enemy || !enemy.alive) return;
   if (enemy.kind) recordBestiaryEvent(enemy.kind, 'seen');
+  if ((enemy.isBoss || enemy.isMiniBoss) && enemy.state !== 'stagger' && G.player) {
+    const pDist = Math.abs((G.player.x + G.player.w * 0.5) - (enemy.x + enemy.w * 0.5));
+    if (pDist < 155) {
+      enemy.greedHits = Math.min(8, (enemy.greedHits || 0) + 1);
+      enemy.greedDecayTimer = 2.8;
+    }
+  }
   let finalAmt = (enemy.isBoss || enemy.isMiniBoss) ? Math.round(amount * getBossBonusDamageMult()) : amount;
   if (enemy.isBoss && enemy.state === 'phaseShift') {
     finalAmt = Math.max(2, Math.round(finalAmt * 0.35));
@@ -251,6 +258,13 @@ export function killEnemy(enemy) {
   if (enemy.kind === 'fungus' && G.sporeClouds && (!G.player || G.player.execTimer <= 0)) {
     G.sporeClouds.push({ x: enemy.x + enemy.w * 0.5, y: enemy.y + enemy.h - 22, r: 58, life: 2.8, maxLife: 2.8, dmg: 8 });
     spawnShockwave(enemy.x + enemy.w * 0.5, enemy.y + enemy.h - 22, 62, '#4ade80', 2.8, 0.26);
+  }
+  if (enemy.kind === 'crawler' && G.delayedStrikes) {
+    const bx = enemy.x + enemy.w * 0.5;
+    const by = enemy.y + enemy.h * 0.5;
+    audio.playDangerAlert();
+    G.delayedStrikes.push({ kind: 'cinderBlast', x: bx, y: by, radius: 112, timer: 0.85, maxTimer: 0.85, playerDmg: 24, dmg: 38, posture: 32, facing: 1 });
+    spawnFloatText(bx, enemy.y - 32, t('combat.crawlerBlastWarn'), '#fb923c', 18, 0.9);
   }
   if (enemy.isMiniBoss) {
     if (G.wardenArenaFx) {
@@ -572,6 +586,15 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
             attacker.vx = -dir * 130;
             attacker.vy = 260;
             spawnFloatText(attacker.x + attacker.w / 2, attacker.y - 24, t('combat.falconCrash'), '#7dd3fc', 17, 0.85);
+          } else if (attacker.kind === 'crawler' && attacker.attackKind === 'emberRoll') {
+            attacker.flippedTimer = 2.4;
+            attacker.state = 'stagger';
+            attacker.stateTimer = 2.4;
+            attacker.vx = -dir * 160;
+            attacker.vy = -190;
+            addPostureToEnemy(attacker, 45);
+            audio.playShieldBreak();
+            spawnFloatText(attacker.x + attacker.w / 2, attacker.y - 28, t('combat.crawlerFlip'), COLORS.goldBright, 19, 1.0);
           } else {
             attacker.state = 'recover';
             attacker.stateTimer = 0.65;
@@ -707,7 +730,12 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
     }
     spawnImpactBurst(G.player.x + G.player.w / 2 + G.player.facing * 16, G.player.y + 24, 'block', 1.05);
     spawnParticles(G.player.x + G.player.w / 2, G.player.y + 24, 14, { color: COLORS.goldBright, speed: 220, spark: true, life: 0.34 });
-    if (hasActiveWeaponTrait('iron_bulwark')) {
+    if (attacker && (attacker.isBoss || attacker.isMiniBoss) && attacker.state !== 'stagger') {
+      attacker.greedHits = Math.min(8, (attacker.greedHits || 0) + 1.5);
+      attacker.greedDecayTimer = 3.0;
+    }
+    if (hasActiveWeaponTrait('iron_bulwark') && (G.player.bulwarkCd || 0) <= 0) {
+      G.player.bulwarkCd = 2.8;
       const bx = G.player.x + G.player.w * 0.5;
       const by = G.player.y + 26;
       audio.playShieldBash(true);
@@ -717,8 +745,8 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
       spawnFloatText(bx, G.player.y - 34, t('combat.traitIronBulwark'), COLORS.goldBright, 19, 0.90);
       for (const foe of getLivingFoes()) {
         if (Math.hypot((foe.x + foe.w * 0.5) - bx, (foe.y + foe.h * 0.5) - by) <= 155) {
-          damageEnemyHP(foe, Math.round(28 * getBladeDamageMult()), true);
-          addPostureToEnemy(foe, 34);
+          damageEnemyHP(foe, Math.round(24 * getBladeDamageMult()), true);
+          addPostureToEnemy(foe, 28);
           if (!foe.isBoss && foe.state !== 'stagger') foe.vx = ((foe.x + foe.w * 0.5) >= bx ? 1 : -1) * 230;
         }
       }
@@ -749,7 +777,19 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
   G.player.activeAttack = null;
   G.player.healTimer = 0;
   G.player.hurtTimer = 0.24;
-  G.player.iframeTimer = 0.55;
+  G.player.iframeTimer = 0.38;
+  // v45.0 Anti-Facetank: Clean direct Boss/Warden hits restore enemy posture & charge close-range red punish!
+  if (!isDummyHit && attacker && (attacker.isBoss || attacker.isMiniBoss) && attacker.state !== 'stagger' && attacker.maxPosture > 0) {
+    const prevPos = attacker.posture || 0;
+    const recAmt = Math.round(attacker.maxPosture * (isUnparryable ? 0.16 : 0.12));
+    attacker.posture = Math.max(0, prevPos - recAmt);
+    attacker.postureDecayDelay = 0;
+    attacker.greedHits = Math.min(8, (attacker.greedHits || 0) + 1.5);
+    attacker.greedDecayTimer = 3.0;
+    if (prevPos - attacker.posture >= 14) {
+      spawnFloatText(attacker.x + attacker.w * 0.5, attacker.y - 26, t('combat.bossPostureRegen'), COLORS.crimsonBright, 14, 0.85);
+    }
+  }
   if (G.player.grayHp >= 4) {
     audio.playGrayShatter();
     spawnParticles(G.player.x + G.player.w / 2, G.player.y + 20, 12, { color: '#cbd5e1', speed: 210, spark: true, life: 0.42 });

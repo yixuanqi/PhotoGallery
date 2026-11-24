@@ -50,7 +50,7 @@ export function drawBoss(b) {
       tx = isFront ? b.facing * 17 : -b.facing * 15; ty = isFront ? -10 : -4;
     } else if (bMoving) {
       const ph = bWalk + (isFront ? 0 : Math.PI);
-      tx = Math.sin(ph) * 21; ty = -Math.max(0, Math.cos(ph)) * 9;
+      tx = Math.sin(ph) * 21 * b.facing; ty = -Math.max(0, Math.cos(ph)) * 9;
     } else {
       const spread = bCrouch > 5 ? 20 : 15;
       tx = isFront ? b.facing * spread : -b.facing * spread; ty = 0;
@@ -676,7 +676,7 @@ export function drawBoss4(b) {
     let tx, ty;
     if (isStagger) { tx = isFront ? b.facing * 18 : -b.facing * 22; ty = 0; }
     else if (!b.grounded) { tx = isFront ? b.facing * 18 : -b.facing * 14; ty = isFront ? -14 : -5; }
-    else if (moving) { const ph = wCyc + (isFront ? 0 : Math.PI); tx = Math.sin(ph) * 22; ty = -Math.max(0, Math.cos(ph)) * 12; }
+    else if (moving) { const ph = wCyc + (isFront ? 0 : Math.PI); tx = Math.sin(ph) * 22 * b.facing; ty = -Math.max(0, Math.cos(ph)) * 12; }
     else { tx = (isFront ? 1 : -1) * b.facing * 15; ty = 0; }
     const ik = solve2BoneIK(hx, hipY, tx, ty, 18.5, 18.5, b.facing);
     G.ctx.strokeStyle = isFront ? '#e6dec8' : 'rgba(148, 138, 124, 0.68)';

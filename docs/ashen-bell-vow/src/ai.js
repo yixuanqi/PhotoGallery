@@ -2,7 +2,8 @@
 import { getCombatScaling } from './state.js';
 import {
   updateEnemyHitFeel, updateEnemyLaunchPhysics, applyEnemyBiomeCoupling, updateDummy, updatePriest, updateDuelist, updateLeech,
-  updateWraith, updateSentinel, updateGolem, updateFalcon, updateFungus, updateFrostguard, updateDrowned, updateAnchorite
+  updateWraith, updateSentinel, updateGolem, updateFalcon, updateFungus, updateFrostguard, updateDrowned, updateAnchorite,
+  updateWeaver, updateCrawler, updateCantor
 } from './ai/enemiesAi.js';
 import {
   resetWardenState, updateWardenWind, updateWardenForest, updateWardenMountain
@@ -39,6 +40,9 @@ export function updateEnemy(e, dt) {
   else if (e.kind === 'frostguard') updateFrostguard(e, effDt);
   else if (e.kind === 'drowned') updateDrowned(e, effDt);
   else if (e.kind === 'anchorite') updateAnchorite(e, effDt);
+  else if (e.kind === 'weaver') updateWeaver(e, effDt);
+  else if (e.kind === 'crawler') updateCrawler(e, effDt);
+  else if (e.kind === 'cantor') updateCantor(e, effDt);
   else if (e.kind === 'warden_wind') updateWardenWind(e, effDt);
   else if (e.kind === 'warden_forest') updateWardenForest(e, effDt);
   else if (e.kind === 'warden_mountain') updateWardenMountain(e, effDt);
@@ -50,6 +54,7 @@ export function updateEnemy(e, dt) {
 export {
   updateEnemyHitFeel, updateDummy, updatePriest, updateDuelist, updateLeech,
   updateWraith, updateSentinel, updateGolem, updateFalcon, updateFungus, updateFrostguard, updateDrowned, updateAnchorite,
+  updateWeaver, updateCrawler, updateCantor,
   resetWardenState, updateWardenWind, updateWardenForest, updateWardenMountain,
   updateBoss, updateBoss2, updateBoss3, triggerBoss4UltimateReaction, updateBoss4
 };

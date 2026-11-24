@@ -730,7 +730,7 @@ export const ENEMY_ECHO_REWARDS = {
   drowned: 34,
   golem: 42,
   frostguard: 46,
-  anchorite: 48,
+  anchorite: 48, weaver: 34, crawler: 40, cantor: 44,
   warden_wind: 150,
   warden_forest: 180,
   warden_mountain: 210,

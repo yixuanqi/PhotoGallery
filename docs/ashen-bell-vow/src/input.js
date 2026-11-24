@@ -129,7 +129,7 @@ export function formatKeyCode(code) {
 const GAMEPAD_LABELS = {
   left: '←', right: '→', up: '↑', down: '↓',
   jump: 'A', attack: 'X/RB', parry: 'LB', dash: 'B',
-  spell: 'Y', grapple: 'LT', seal: 'RT', heal: '↑键',
+  spell: 'Y', grapple: 'LT', seal: 'RT', heal: 'D-Up',
   interact: 'R3/↓', map: 'View'
 };
 
@@ -144,8 +144,8 @@ function setActiveInputDevice(dev) {
 }
 
 export function getActionKeyLabel(action) {
-  if (G.inputDevice === 'gamepad' && GAMEPAD_LABELS[action]) {
-    return action === 'heal' ? t('input.gpHeal') : GAMEPAD_LABELS[action];
+  if (G.inputDevice === 'gamepad' && (action === 'heal' ? t('gp.healKey') : GAMEPAD_LABELS[action])) {
+    return action === 'heal' ? t('input.gpHeal') : (action === 'heal' ? t('gp.healKey') : GAMEPAD_LABELS[action]);
   }
   return formatKeyCode(getActionKeyCode(action));
 }

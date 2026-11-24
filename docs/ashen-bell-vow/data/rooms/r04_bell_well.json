@@ -513,12 +513,12 @@
       "y": 1225
     },
     {
-      "id": "sent_3",
-      "kind": "sentinel",
-      "x": 1210,
-      "y": 1318,
-      "minX": 1180,
-      "maxX": 1330
+      "id": "crawler_well_1",
+      "kind": "crawler",
+      "x": 1120,
+      "y": 1338,
+      "minX": 860,
+      "maxX": 1300
     },
     {
       "id": "priest_well",
@@ -527,12 +527,12 @@
       "y": 514
     },
     {
-      "id": "duelist_well",
-      "kind": "duelist",
-      "x": 1160,
-      "y": 960,
-      "minX": 960,
-      "maxX": 1440
+      "id": "crawler_well_2",
+      "kind": "crawler",
+      "x": 1120,
+      "y": 978,
+      "minX": 920,
+      "maxX": 1420
     }
   ],
   "bosses": [],

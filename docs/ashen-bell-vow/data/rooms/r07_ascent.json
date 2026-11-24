@@ -388,10 +388,10 @@
       "maxX": 1460
     },
     {
-      "id": "priest_asc",
-      "kind": "priest",
+      "id": "cantor_asc_1",
+      "kind": "cantor",
       "x": 1445,
-      "y": 1149
+      "y": 1110
     },
     {
       "id": "duelist_asc",
@@ -402,10 +402,10 @@
       "maxX": 900
     },
     {
-      "id": "wraith_asc",
-      "kind": "wraith",
+      "id": "cantor_asc_2",
+      "kind": "cantor",
       "x": 1180,
-      "y": 875
+      "y": 860
     },
     {
       "id": "leech_asc",

@@ -79,10 +79,10 @@
       "kind": "statCore",
       "x": 150,
       "y": 410,
-      "bonusHp": 15,
+      "bonusHp": 10,
       "bonusSoul": 15,
       "name": "古根生息核",
-      "desc": "枯木树窟深处凝结的生机魂核（生命上限 +15 · 魂火上限 +15）",
+      "desc": "枯木树窟深处凝结的生机魂核（生命上限 +10 · 魂火上限 +15）",
       "requiresBoss": "warden_forest_boss"
     },
     {

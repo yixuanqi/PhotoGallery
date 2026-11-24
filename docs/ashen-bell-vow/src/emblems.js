@@ -244,6 +244,24 @@ const BESTIARY_SVG_MAP = {
     <path d="M11 23 Q20 33 29 23" fill="none" stroke="#fde047" stroke-width="2.2" stroke-linecap="round"/>
     <circle cx="20" cy="11" r="3" fill="none" stroke="#fde047" stroke-width="1.6"/>
   </svg>`,
+  weaver: `<svg viewBox="0 0 40 40" class="codex-svg" aria-hidden="true">
+    <circle cx="20" cy="20" r="18" fill="rgba(10,30,24,0.92)" stroke="#6ee7b7" stroke-width="1.5"/>
+    <ellipse cx="17" cy="18" rx="6" ry="7" fill="#112920" stroke="#fde047" stroke-width="1.3"/>
+    <circle cx="25" cy="22" r="4" fill="#0f172a" stroke="#6ee7b7" stroke-width="1.3"/>
+    <path d="M12 15 L6 10 M11 21 L5 23 M13 26 L8 31 M22 15 L29 10 M28 21 L34 22 M26 26 L32 31" stroke="#86efac" stroke-width="1.5" stroke-linecap="round"/>
+  </svg>`,
+  crawler: `<svg viewBox="0 0 40 40" class="codex-svg" aria-hidden="true">
+    <circle cx="20" cy="20" r="18" fill="rgba(36,18,10,0.94)" stroke="#fb923c" stroke-width="1.6"/>
+    <path d="M9 26 Q10 11 20 11 Q30 11 31 26 Z" fill="#2c1810" stroke="#f59e0b" stroke-width="1.5"/>
+    <rect x="15" y="17" width="10" height="5" fill="#fef08a"/>
+    <path d="M11 26 L9 31 M16 26 L15 31 M24 26 L25 31 M29 26 L31 31" stroke="#cbd5e1" stroke-width="1.8" stroke-linecap="round"/>
+  </svg>`,
+  cantor: `<svg viewBox="0 0 40 40" class="codex-svg" aria-hidden="true">
+    <circle cx="20" cy="20" r="18" fill="rgba(26,22,32,0.94)" stroke="#fde047" stroke-width="1.6"/>
+    <circle cx="20" cy="12" r="5" fill="#ebe4d1" stroke="#fde047" stroke-width="1.3"/>
+    <path d="M14 18 L26 18 L24 33 L20 29 L16 33 Z" fill="#23222b" stroke="#fde047" stroke-width="1.4"/>
+    <circle cx="9" cy="20" r="2.2" fill="#fde047"/><circle cx="31" cy="20" r="2.2" fill="#fde047"/>
+  </svg>`,
   unknown: `<svg viewBox="0 0 40 40" class="codex-svg locked" aria-hidden="true">
     <circle cx="20" cy="20" r="18" fill="rgba(12,16,26,0.72)" stroke="rgba(148,163,184,0.38)" stroke-width="1.3" stroke-dasharray="3 3"/>
     <text x="20" y="25" text-anchor="middle" fill="rgba(148,163,184,0.65)" font-size="16" font-weight="bold">?</text>

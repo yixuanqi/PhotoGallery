@@ -98,13 +98,13 @@
       "id": "pickup_zhu_crown",
       "kind": "statCore",
       "requiresBoss": "boss_zhu",
-      "bonusHp": 25,
+      "bonusHp": 15,
       "bonusSoul": 25,
       "echoAmount": 150,
       "x": 960,
       "y": 600,
       "name": "初铸绝响 · 双面金冕",
-      "desc": "斩落初铸残影·铸后解封！生命 +25 · 魂火 +25 · +150 残响"
+      "desc": "斩落初铸残影·铸后解封！生命 +15 · 魂火 +25 · +150 残响"
     }
   ],
   "resonancePuzzles": [],

@@ -133,6 +133,22 @@ export function drawProjectiles() {
       G.ctx.lineTo(0, pr.r * 0.55);
       G.ctx.closePath();
       G.ctx.fill(); G.ctx.stroke();
+    } else if (pr.kind === 'webOrb') {
+      drawGlowSprite(pr.reflected ? 'gold' : 'cyan', 0, 0, pr.r * 2.4, 0.78);
+      G.ctx.fillStyle = pr.reflected ? '#fef08a' : '#d1fae5';
+      G.ctx.strokeStyle = pr.reflected ? COLORS.goldBright : '#6ee7b7';
+      G.ctx.lineWidth = 1.8;
+      G.ctx.beginPath(); G.ctx.arc(0, 0, pr.r * 0.85, 0, Math.PI * 2); G.ctx.fill(); G.ctx.stroke();
+      for (let k = 0; k < 4; k++) {
+        const a = (k / 4) * Math.PI + G.globalTime * 4;
+        G.ctx.beginPath(); G.ctx.moveTo(Math.cos(a) * -pr.r, Math.sin(a) * -pr.r); G.ctx.lineTo(Math.cos(a) * pr.r, Math.sin(a) * pr.r); G.ctx.stroke();
+      }
+    } else if (pr.kind === 'emberGlob') {
+      drawGlowSprite('gold', 0, 0, pr.r * 2.8, 0.88);
+      G.ctx.fillStyle = '#fef08a';
+      G.ctx.strokeStyle = '#f97316';
+      G.ctx.lineWidth = 2.2;
+      G.ctx.beginPath(); G.ctx.arc(0, 0, pr.r * 0.9, 0, Math.PI * 2); G.ctx.fill(); G.ctx.stroke();
     }
     G.ctx.restore();
   }
@@ -410,6 +426,18 @@ export function drawDelayedStrikes() {
     const p = 1 - Math.max(0, ds.timer / Math.max(0.01, ds.maxTimer));
     G.ctx.save();
     G.ctx.translate(ds.x, ds.y);
+    if (ds.kind === 'cinderBlast') {
+      const r = ds.radius || 112;
+      drawGlowSprite('crimson', 0, 0, r * (0.45 + p * 0.55), 0.32 + p * 0.48);
+      G.ctx.fillStyle = `rgba(249, 115, 22, ${(0.08 + p * 0.22).toFixed(3)})`;
+      G.ctx.beginPath(); G.ctx.arc(0, 0, r * p, 0, Math.PI * 2); G.ctx.fill();
+      G.ctx.strokeStyle = p > 0.72 ? COLORS.crimsonBright : '#fb923c';
+      G.ctx.lineWidth = 2.2 + p * 1.8;
+      boilCircle(G.ctx, 0, 0, r, 9120, 1.8, 22);
+      G.ctx.stroke();
+      G.ctx.restore();
+      continue;
+    }
     drawGlowSprite('cyan', 0, 0, 36 + p * 24, 0.45 + p * 0.4);
     G.ctx.strokeStyle = COLORS.cyanBright;
     G.ctx.lineWidth = 1.6 + p * 2.2;
@@ -555,7 +583,54 @@ export function drawSlashes() {
     G.ctx.save();
     G.ctx.globalAlpha = Math.min(1, a * 1.35);
 
-    if (s.type === 'hammerQuake' || s.type === 'hammerSlam' || s.type === 'hammerCounter') {
+    if (s.type === 'dashThrust' || s.type === 'hammerRam') {
+      const isHammer = s.type === 'hammerRam';
+      G.ctx.translate(s.x, s.y);
+      G.ctx.scale(s.facing, 1);
+      const len = (isHammer ? 104 : 118) * (0.55 + headEase * 0.52);
+      const halfH = (isHammer ? 28 : 13) * a;
+      drawGlowSprite(isHammer ? 'gold' : 'cyan', len * 0.45, 0, isHammer ? 76 : 52, 0.85 * a);
+      G.ctx.fillStyle = 'rgba(8, 12, 20, 0.82)';
+      G.ctx.beginPath();
+      G.ctx.moveTo(-22, 0);
+      G.ctx.quadraticCurveTo(len * 0.35, -halfH * 1.32, len + 8, 0);
+      G.ctx.quadraticCurveTo(len * 0.35, halfH * 1.32, -22, 0);
+      G.ctx.closePath(); G.ctx.fill();
+      G.ctx.fillStyle = isHammer ? 'rgba(245, 158, 11, 0.92)' : 'rgba(186, 230, 253, 0.92)';
+      G.ctx.beginPath();
+      G.ctx.moveTo(-14, 0);
+      G.ctx.quadraticCurveTo(len * 0.42, -halfH, len, 0);
+      G.ctx.quadraticCurveTo(len * 0.42, halfH, -14, 0);
+      G.ctx.closePath(); G.ctx.fill();
+      G.ctx.strokeStyle = isHammer ? '#fef9c3' : '#ffffff';
+      G.ctx.lineWidth = (isHammer ? 4.2 : 2.6) * a;
+      G.ctx.beginPath(); G.ctx.moveTo(-10, 0); G.ctx.lineTo(len * 0.96, 0); G.ctx.stroke();
+      G.ctx.strokeStyle = isHammer ? 'rgba(253, 224, 71, 0.72)' : 'rgba(56, 189, 248, 0.72)';
+      G.ctx.lineWidth = 2.0 * a;
+      [0.28, 0.58].forEach((f, idx) => {
+        G.ctx.beginPath();
+        G.ctx.ellipse(len * f, 0, (6 + idx * 4) * a, halfH * (1.15 - idx * 0.25), 0, 0, Math.PI * 2);
+        G.ctx.stroke();
+      });
+    } else if (s.type === 'airSpin' || s.type === 'hammerAirSpin' || s.type === 'bellAirSpin') {
+      const isHam = s.type === 'hammerAirSpin';
+      const isBel = s.type === 'bellAirSpin';
+      G.ctx.translate(s.x, s.y);
+      const r = (isBel ? 96 : isHam ? 84 : 74) * (0.76 + p * 0.28);
+      const rot = s.facing * p * Math.PI * 2.2;
+      drawGlowSprite(isBel ? 'cyan' : 'gold', 0, 0, r * 0.92, 0.78 * a);
+      G.ctx.rotate(rot);
+      const outerCol = 'rgba(8, 11, 18, 0.82)';
+      const mainCol = isBel ? 'rgba(56, 189, 248, 0.90)' : isHam ? 'rgba(245, 158, 11, 0.92)' : 'rgba(226, 220, 202, 0.92)';
+      const coreCol = isBel ? '#e0f2fe' : isHam ? '#fef9c3' : '#ffffff';
+      [0, Math.PI].forEach(baseA => {
+        drawTaperedCrescent(r + 4, (isHam ? 26 : 19) * a, baseA, baseA + Math.PI * 1.15, outerCol, null);
+        drawTaperedCrescent(r, (isHam ? 18 : 13) * a, baseA + 0.06, baseA + Math.PI * 1.10, mainCol, coreCol);
+      });
+      G.ctx.strokeStyle = isBel ? COLORS.goldBright : (isHam ? '#fef08a' : COLORS.cyanBright);
+      G.ctx.lineWidth = 2.0 * a;
+      G.ctx.beginPath(); G.ctx.arc(0, 0, r * 0.70, 0, Math.PI * 2); G.ctx.stroke();
+    } else if (s.type === 'hammerQuake' || s.type === 'hammerSlam' || s.type === 'hammerCounter') {
       // Colossal Two-Handed Bell-Maul Overhead Ground-Shattering Impact!
       const isBig = s.type === 'hammerQuake' || s.type === 'hammerCounter';
       G.ctx.translate(s.x, s.y);
@@ -761,8 +836,8 @@ export function drawSlashes() {
       const isSlash2 = s.type === 'slash2';
       const isSlash3 = s.type === 'slash3';
 
-      // slash1 sweeps UP (inverted Y), slash2 sweeps horizontal/down, slash3 is huge golden heavy overhead cleave
-      G.ctx.scale(s.facing, isSlash1 ? -1 : 1);
+      // slash1 sweeps UP (inverted Y), slash2 is a sleek horizontal cross-cut (squashed Y), slash3 is a colossal golden-crimson cleave!
+      G.ctx.scale(s.facing, isSlash1 ? -1 : (isSlash2 ? 0.56 : 1));
 
       const r = isSlash3 ? 68 : isSlash2 ? 55 : 51;
       const spanStart = isSlash3 ? -1.65 : isSlash2 ? -1.15 : -1.25;

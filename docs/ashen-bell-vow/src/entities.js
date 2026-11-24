@@ -49,6 +49,10 @@ export function createPlayer(x = 340, y = FLOOR_Y - 56) {
     sealLunge: null,
     comboStep: 0,
     comboResetTimer: 0,
+    airComboStep: 0,
+    airComboResetTimer: 0,
+    airHoverStalls: 0,
+    dashAttackWindow: 0,
     isCharging: false,
     chargeTime: 0,
     chargeReadyPlayed: false,
@@ -66,6 +70,7 @@ export function createPlayer(x = 340, y = FLOOR_Y - 56) {
     bellAirStalls: 0,
     shieldArmorTimer: 0,
     shieldArmorMult: 1.0,
+    bulwarkCd: 0,
     weaponSwapCd: 0,
     bellSwing: 0,
     bellSealHits: 0,
@@ -110,6 +115,7 @@ export function createPlayer(x = 340, y = FLOOR_Y - 56) {
     riverCd: 0,
     frostMeter: 0,
     frostChilledTimer: 0,
+    webSlowTimer: 0,
     wetTimer: 0,
     wetHintCd: 0,
     sporeDmgCd: 0,
@@ -521,6 +527,107 @@ export function makeAnchorite(id, x, y, minX, maxX) {
   });
 }
 
+
+export function makeWeaver(id, x, y, minX, maxX) {
+  return applyFoeScaling({
+    id,
+    kind: 'weaver',
+    x,
+    y,
+    w: 44,
+    h: 36,
+    vx: 0,
+    vy: 0,
+    facing: -1,
+    hp: 92,
+    maxHp: 92,
+    posture: 0,
+    maxPosture: 52,
+    postureDecayDelay: 0,
+    alive: true,
+    grounded: false,
+    state: 'patrol',
+    stateTimer: 0,
+    minX,
+    maxX,
+    attackKind: 'fangCombo',
+    comboIdx: 0,
+    didHit: false,
+    webCd: 1.6,
+    dropCd: 2.2,
+    silkTopY: y - 165,
+    hurtFlash: 0,
+    walkCycle: 0
+  });
+}
+
+export function makeCrawler(id, x, y, minX, maxX) {
+  return applyFoeScaling({
+    id,
+    kind: 'crawler',
+    x,
+    y,
+    w: 50,
+    h: 42,
+    vx: 0,
+    vy: 0,
+    facing: -1,
+    hp: 118,
+    maxHp: 118,
+    posture: 0,
+    maxPosture: 68,
+    postureDecayDelay: 0,
+    alive: true,
+    grounded: false,
+    state: 'patrol',
+    stateTimer: 0,
+    minX,
+    maxX,
+    attackKind: 'emberRoll',
+    didHit: false,
+    spitCd: 1.8,
+    flippedTimer: 0,
+    hurtFlash: 0,
+    walkCycle: 0
+  });
+}
+
+export function makeCantor(id, x, y) {
+  return applyFoeScaling({
+    id,
+    kind: 'cantor',
+    x,
+    y,
+    homeX: x,
+    homeY: y,
+    w: 36,
+    h: 72,
+    vx: 0,
+    vy: 0,
+    facing: -1,
+    hp: 114,
+    maxHp: 114,
+    posture: 0,
+    maxPosture: 62,
+    postureDecayDelay: 0,
+    alive: true,
+    grounded: false,
+    state: 'hover',
+    stateTimer: 0.75,
+    attackKind: 'triChimeVolley',
+    volleyLeft: 0,
+    volleySubTimer: 0,
+    blinkCd: 2.0,
+    repelCd: 0,
+    quickHits: 0,
+    quickHitDecay: 0,
+    bobPhase: Math.random() * Math.PI * 2,
+    didHit: false,
+    hurtFlash: 0,
+    cloak: createCloak(x + 18, y + 22, 7, 10)
+  });
+}
+
 export function makeWardenWind(id, x, y, minX, maxX) {
   return {
     id,
@@ -541,10 +648,10 @@ export function makeWardenWind(id, x, y, minX, maxX) {
     vx: 0,
     vy: 0,
     facing: -1,
-    hp: 440,
-    maxHp: 440,
+    hp: 500,
+    maxHp: 500,
     posture: 0,
-    maxPosture: 145,
+    maxPosture: 160,
     postureDecayDelay: 0,
     alive: true,
     state: 'idle', // idle, stalk, windup, strike, recover, stagger
@@ -585,10 +692,10 @@ export function makeWardenForest(id, x, y, minX, maxX) {
     vx: 0,
     vy: 0,
     facing: -1,
-    hp: 520,
-    maxHp: 520,
+    hp: 640,
+    maxHp: 640,
     posture: 0,
-    maxPosture: 175,
+    maxPosture: 200,
     postureDecayDelay: 0,
     alive: true,
     barkArmor: true,
@@ -629,10 +736,10 @@ export function makeWardenMountain(id, x, y, minX, maxX) {
     vx: 0,
     vy: 0,
     facing: -1,
-    hp: 580,
-    maxHp: 580,
+    hp: 740,
+    maxHp: 740,
     posture: 0,
-    maxPosture: 190,
+    maxPosture: 225,
     postureDecayDelay: 0,
     alive: true,
     state: 'idle', // idle, stalk, windup, strike, recover, stagger
@@ -681,6 +788,12 @@ export function createSentinels() {
       ent = makeDrowned(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 160, e.maxX !== undefined ? e.maxX : e.x + 160);
     } else if (e.kind === 'anchorite') {
       ent = makeAnchorite(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 150, e.maxX !== undefined ? e.maxX : e.x + 150);
+    } else if (e.kind === 'weaver') {
+      ent = makeWeaver(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 150, e.maxX !== undefined ? e.maxX : e.x + 150);
+    } else if (e.kind === 'crawler') {
+      ent = makeCrawler(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 160, e.maxX !== undefined ? e.maxX : e.x + 160);
+    } else if (e.kind === 'cantor') {
+      ent = makeCantor(e.id, e.x, e.y);
     } else if (e.kind === 'warden_wind') {
       ent = makeWardenWind(e.id, e.x, e.y, e.minX !== undefined ? e.minX : e.x - 220, e.maxX !== undefined ? e.maxX : e.x + 220);
     } else if (e.kind === 'warden_forest') {
@@ -776,10 +889,10 @@ export function createBoss2() {
     vx: 0,
     vy: 0,
     facing: -1,
-    hp: 790,
-    maxHp: 790,
+    hp: 820,
+    maxHp: 820,
     posture: 0,
-    maxPosture: 210,
+    maxPosture: 215,
     postureDecayDelay: 0,
     phase: 1,
     awake: false,
@@ -834,10 +947,10 @@ export function createBoss3() {
     vx: 0,
     vy: 0,
     facing: -1,
-    hp: 1260,
-    maxHp: 1260,
+    hp: 1320,
+    maxHp: 1320,
     posture: 0,
-    maxPosture: 285,
+    maxPosture: 295,
     postureDecayDelay: 0,
     phase: 1,
     awake: false,
@@ -894,10 +1007,10 @@ export function createBoss4(forEcho = false) {
     vx: 0,
     vy: 0,
     facing: -1,
-    hp: 1480,
-    maxHp: 1480,
+    hp: 1600,
+    maxHp: 1600,
     posture: 0,
-    maxPosture: 315,
+    maxPosture: 335,
     postureDecayDelay: 0,
     phase: 1,
     awake: false,

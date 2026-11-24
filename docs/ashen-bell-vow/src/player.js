@@ -79,10 +79,14 @@ export function updatePlayer(dt) {
   }
   if (G.player.comboResetTimer > 0) G.player.comboResetTimer -= dt;
   else G.player.comboStep = 0;
+  if (G.player.airComboResetTimer > 0) G.player.airComboResetTimer -= dt;
+  else G.player.airComboStep = 0;
+  if (G.player.dashAttackWindow > 0) G.player.dashAttackWindow = Math.max(0, G.player.dashAttackWindow - dt);
   if (G.player.riposteWindow > 0) G.player.riposteWindow -= dt;
   if (G.player.switchStrikeWindow > 0) G.player.switchStrikeWindow = Math.max(0, G.player.switchStrikeWindow - dt);
   if (G.player.grappleStrikeWindow > 0) G.player.grappleStrikeWindow = Math.max(0, G.player.grappleStrikeWindow - dt);
   if (G.player.shieldArmorTimer > 0) G.player.shieldArmorTimer = Math.max(0, G.player.shieldArmorTimer - dt);
+  if (G.player.bulwarkCd > 0) G.player.bulwarkCd = Math.max(0, G.player.bulwarkCd - dt);
   if (G.player.weaponSwapCd > 0) G.player.weaponSwapCd = Math.max(0, G.player.weaponSwapCd - dt);
   if (G.player.bellSealCd > 0) G.player.bellSealCd = Math.max(0, G.player.bellSealCd - dt);
   if (G.player.parryCooldown > 0) G.player.parryCooldown -= dt;
@@ -103,6 +107,12 @@ export function updatePlayer(dt) {
   }
   if (G.player.barrierHintCd > 0) G.player.barrierHintCd = Math.max(0, G.player.barrierHintCd - dt);
   if (G.player.thornGraceTimer > 0) G.player.thornGraceTimer = Math.max(0, G.player.thornGraceTimer - dt);
+  if (G.player.webSlowTimer > 0) {
+    G.player.webSlowTimer = Math.max(0, G.player.webSlowTimer - dt);
+    if (Math.random() < 12 * dt) {
+      spawnParticles(G.player.x + G.player.w * 0.5, G.player.y + 30, 1, { color: '#6ee7b7', speed: 40, grav: 80, life: 0.25 });
+    }
+  }
   if (G.player.iframeTimer > 0) G.player.iframeTimer -= dt;
   if (G.player.hurtTimer > 0) {
     G.player.hurtTimer -= dt;
@@ -225,8 +235,10 @@ export function updatePlayer(dt) {
       spawnFloatText(G.player.x + G.player.w / 2, G.player.y - 16, `+${healAmt}`, COLORS.cyanBright, 18);
     }
   } else if (consumeActionPress('heal') && G.player.flasks > 0 && (G.player.grounded || canAirHeal) && G.player.dashTimer <= 0 && G.player.detonateLungeTimer <= 0 && G.player.iaiLungeTimer <= 0 && G.player.grappleState === 'none') {
-    G.player.healTimer = !G.player.grounded ? 0.44 : 0.52;
+    // v45.0 Anti-Facetank Heal: 0.38s ground windup (0.62s total) & cancels post-hit i-frames so healing requires real spacing/openings!
+    G.player.healTimer = !G.player.grounded ? 0.50 : 0.62;
     G.player.healDone = false;
+    G.player.iframeTimer = 0;
     G.player.isCharging = false;
     G.player.chargeTime = 0;
     if (!G.player.grounded) {
@@ -341,6 +353,7 @@ export function updatePlayer(dt) {
     const triggerShadeBurst = hasShade && G.player.shadeDashCd <= 0;
     G.player.dashTimer = hasShade ? 0.18 : 0.16;
     G.player.dashCd = 0.44;
+    G.player.dashAttackWindow = 0.36;
     G.player.shadePassTimer = hasShade ? 0.24 : 0;
     G.player.shadeDashActive = triggerShadeBurst;
     if (triggerShadeBurst) {
@@ -442,7 +455,8 @@ export function updatePlayer(dt) {
   };
 
   // Attack / Execution / Charged Iai [J] (buffered)
-  const canAttack = G.player.dashTimer <= 0 && G.player.detonateLungeTimer <= 0 && G.player.iaiLungeTimer <= 0 && G.player.grappleState === 'none' && G.player.airSlamState === 'none' && G.player.diveState === 'none' && G.player.healTimer <= 0 && G.player.hurtTimer <= 0;
+  const dashTailCancel = G.player.dashTimer <= 0.06;
+  const canAttack = dashTailCancel && G.player.detonateLungeTimer <= 0 && G.player.iaiLungeTimer <= 0 && G.player.grappleState === 'none' && G.player.airSlamState === 'none' && G.player.diveState === 'none' && G.player.healTimer <= 0 && G.player.hurtTimer <= 0;
 
   if (G.player.attackBufTimer > 0 && canAttack) {
     // 1. Priority: Check Posture-Broken Execution!
@@ -494,6 +508,15 @@ export function updatePlayer(dt) {
         }
       } else if (isActionHeld('up')) {
         triggerPlayerAttack('up');
+      } else if (G.player.dashAttackWindow > 0) {
+        G.player.dashAttackWindow = 0;
+        G.player.dashTimer = 0;
+        G.player.shadeDashActive = false;
+        triggerPlayerAttack('dashAttack');
+      } else if (!G.player.grounded) {
+        G.player.airComboStep = (G.player.airComboStep % 2) + 1;
+        G.player.airComboResetTimer = 0.56;
+        triggerPlayerAttack('air' + G.player.airComboStep);
       } else {
         const maxCombo = (getActiveWeapon().comboCount) || 3;
         G.player.comboStep = (G.player.comboStep % maxCombo) + 1;
@@ -598,7 +621,7 @@ export function updatePlayer(dt) {
         G.player.dashCd = 0;
         G.player.airJumpsLeft = 1;
         G.player.pogoChain = 0;
-        G.player.bellAirStalls = 0;
+        G.player.bellAirStalls = 0; G.player.airHoverStalls = 0; G.player.airComboStep = 0;
         G.player.facing = dx >= 0 ? 1 : -1;
         G.player.vy = -125;
         if (getRelicStats().synGaleThread) G.player.galeSurgeTimer = 2.6;
@@ -624,7 +647,7 @@ export function updatePlayer(dt) {
         G.player.vx = moveDir !== 0 ? (moveDir * 315) : (Math.abs(naturalVx) < 90 ? G.player.facing * 165 : naturalVx);
         G.player.vy = -470;
 
-        G.player.bellAirStalls = 0;
+        G.player.bellAirStalls = 0; G.player.airHoverStalls = 0; G.player.airComboStep = 0;
         if (gt && gt.type === 'enemy' && gt.ref.alive) {
           const foe = gt.ref;
           G.player.grappleStrikeWindow = 0.24;
@@ -785,12 +808,14 @@ export function updatePlayer(dt) {
     if (G.player.dashTimer <= 0) {
       G.player.shadeDashActive = false;
       G.player.shadeHitIds = null;
+      G.player.dashAttackWindow = Math.max(G.player.dashAttackWindow || 0, 0.24);
     }
   } else {
     // Standard Run & Air Control (Frostbite Chill reduces speed by 28%)
     const chillMult = (G.player.frostChilledTimer > 0) ? 0.72 : 1.0;
+    const webMult = (G.player.webSlowTimer > 0) ? 0.68 : 1.0;
     const surgeMult = (G.player.surgeTimer > 0) ? 1.20 : 1.0;
-    const spdMult = (getRelicStats().moveSpeedMult || 1.0) * chillMult * surgeMult;
+    const spdMult = (getRelicStats().moveSpeedMult || 1.0) * chillMult * webMult * surgeMult;
     const maxSpd = (G.player.isCharging && G.player.chargeTime > 0.16 ? 130 : G.player.parryActive ? 95 : 310) * spdMult;
     if (G.player.wallJumpLock <= 0 && G.player.hurtTimer <= 0 && G.player.healTimer <= 0) {
       const targetVx = moveDir * maxSpd;
@@ -862,7 +887,7 @@ export function updatePlayer(dt) {
       G.player.coyoteTimer = 0.11;
       G.player.airJumpsLeft = 1;
       G.player.pogoChain = 0;
-      G.player.bellAirStalls = 0;
+      G.player.bellAirStalls = 0; G.player.airHoverStalls = 0; G.player.airComboStep = 0;
     }
     if (G.player.jumpBufTimer > 0 && G.player.healTimer <= 0) {
       if (G.player.grounded && G.player.onPlatform && isActionHeld('down')) {
@@ -937,7 +962,7 @@ export function updatePlayer(dt) {
         G.player.coyoteTimer = 0;
         G.player.airJumpsLeft = 1;
         G.player.pogoChain = 0;
-        G.player.bellAirStalls = 0;
+        G.player.bellAirStalls = 0; G.player.airHoverStalls = 0; G.player.airComboStep = 0;
         G.player.dashCd = 0;
         G.player.airSlamState = 'none';
         G.player.squashX = 0.72;
@@ -1039,17 +1064,17 @@ export function updatePlayer(dt) {
   const inPuddle = G.player.grounded && Math.abs(footBotY - FLOOR_Y) < 8 && PUDDLES.some(p => footMidX >= p.x && footMidX <= p.x + p.w);
 
   if (G.player.grounded && G.player.diveState === 'drop') {
-    G.player.diveState = 'none'; G.player.diveHitIds = null; G.player.bellAirStalls = 0; G.player.pogoChain = 0;
+    G.player.diveState = 'none'; G.player.diveHitIds = null; G.player.bellAirStalls = 0; G.player.airHoverStalls = 0; G.player.airComboStep = 0; G.player.pogoChain = 0;
     triggerBellDiveImpact();
   } else if (G.player.grounded && G.player.airSlamState === 'drop') {
     const emp = !!G.player.airSlamEmpowered;
     G.player.airSlamState = 'none';
     G.player.airSlamHitIds = null;
-    G.player.bellAirStalls = 0;
+    G.player.bellAirStalls = 0; G.player.airHoverStalls = 0; G.player.airComboStep = 0;
     G.player.pogoChain = 0;
     triggerHammerAirSlamImpact(emp);
   } else if (!G.player.wasGrounded && G.player.grounded) {
-    G.player.bellAirStalls = 0;
+    G.player.bellAirStalls = 0; G.player.airHoverStalls = 0; G.player.airComboStep = 0;
     G.player.squashX = 1.25;
     G.player.squashY = 0.78;
     G.player.landCrouch = Math.min(1, Math.max(0.45, Math.abs(preCollideVy) / 680));
@@ -1063,7 +1088,17 @@ export function updatePlayer(dt) {
   let targetLean = 0;
   let brakeWhip = 0;
   if (G.player.dashTimer > 0 || G.player.iaiLungeTimer > 0 || G.player.detonateLungeTimer > 0) {
-    targetLean = G.player.facing * 0.32;
+    targetLean = G.player.facing * 0.36;
+  } else if (G.player.attackTimer > 0) {
+    const atkP = 1 - G.player.attackTimer / Math.max(0.01, G.player.attackDuration || 0.2);
+    const aType = G.player.attackType;
+    if (aType === 'dashAttack') targetLean = G.player.facing * 0.42;
+    else if (aType === 'slash1' || aType === 'air1') targetLean = G.player.facing * (0.24 - atkP * 0.36);
+    else if (aType === 'slash2') targetLean = G.player.facing * 0.34;
+    else if (aType === 'slash3') targetLean = G.player.facing * (atkP < 0.30 ? -0.22 : 0.38);
+    else if (aType === 'up') targetLean = -G.player.facing * 0.18;
+    else if (aType === 'counter' || aType === 'iai') targetLean = G.player.facing * 0.36;
+    else targetLean = G.player.facing * 0.18;
   } else if (G.player.isCharging && G.player.chargeTime > 0.14) {
     targetLean = G.player.facing * 0.22;
   } else if (G.player.parryActive) {

@@ -344,6 +344,27 @@ export const ENTITIES_EN = {
       tactic: 'Parry its deliberate chain-drag sweeps for heavy posture damage; leap or dash over the ground wave unleashed by its crimson anchor smash.',
       lore: 'A hulking penitent who once dragged failed bronze castings into the flooded cells, still swinging a colossal rusted bell-anchor.'
     },
+    weaver: {
+      name: 'Ink-Silk Weaver',
+      title: 'Woods Arachnid · Silk Snare',
+      habitat: 'Withered Ink Woods',
+      tactic: 'Deflect its twin mandible snaps and dodge crimson silk-drop dives; slash or parry its sticky ink-web orbs before they slow you.',
+      lore: 'A six-legged ink-blighted arachnid housing a cracked temple bell as its abdomen, spinning snares beneath the mossy canopy.'
+    },
+    crawler: {
+      name: 'Cinder-Bell Crawler',
+      title: 'Vault Beast · Molten Crucible',
+      habitat: 'Crypt of Shards / Bell Well',
+      tactic: 'Perfect-Parry its blazing furnace roll to flip it helplessly onto its back! Step clear of its delayed crucible detonation on death—or use it to blast nearby foes.',
+      lore: 'A hunched quadruped fused with a glowing bronze smelting bell, scuttling through dark vaults leaving trails of live embers.'
+    },
+    cantor: {
+      name: 'Gilded Belfry Cantor',
+      title: 'Spire Acolyte · Tri-Chime Halo',
+      habitat: 'First Bell Ascent / Belfries',
+      tactic: 'Deflect its 3-bolt golden chime volleys and watch for teleporting back-slashes when kiting; two rapid melee hits trigger a golden repel pulse followed by a clean opening.',
+      lore: 'A tall, faceless legless acolyte drifting along the upper belfries, accompanied by three orbiting bronze bells that toll without hands.'
+    },
     warden_wind: {
       name: 'Shuo, Gale Spire Warden',
       title: 'Wind Biome Warden · Twin Gale Blades',

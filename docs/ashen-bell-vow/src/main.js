@@ -171,16 +171,17 @@ const profSparkCtx = profSparkCanvas ? profSparkCanvas.getContext('2d') : null;
 
 // Build F8 profiler DOM rows ONCE (zero innerHTML / zero detached DOM node leak / zero C++ GC churn!)
 const PROF_MOD_META = [
-  ['update', '逻辑/AI'],
-  ['audio', '音频'],
-  ['lighting', '动态光影'],
-  ['world', '地形/背景'],
-  ['entities', '角色/怪物'],
-  ['vfx', '特效/字形'],
-  ['hud', 'HUD DOM']
+  ['update', 'prof.modUpdate'],
+  ['audio', 'prof.modAudio'],
+  ['lighting', 'prof.modLighting'],
+  ['world', 'prof.modWorld'],
+  ['entities', 'prof.modEntities'],
+  ['vfx', 'prof.modVfx'],
+  ['hud', 'prof.modHud']
 ];
 let _profDomInit = false;
 let _profMetaNode = null;
+const _profLblNodes = [];
 const _profFills = [];
 const _profValNodes = [];
 
@@ -198,7 +199,9 @@ function ensureProfilerDom() {
     row.className = 'prof-bar-row';
     const lbl = document.createElement('span');
     lbl.className = 'prof-lbl';
-    lbl.appendChild(document.createTextNode(PROF_MOD_META[i][1]));
+    const lblNode = document.createTextNode(t(PROF_MOD_META[i][1]));
+    lbl.appendChild(lblNode);
+    _profLblNodes.push(lblNode);
     const track = document.createElement('span');
     track.className = 'prof-track';
     const fill = document.createElement('span');
@@ -220,7 +223,7 @@ function ensureProfilerDom() {
 
 function renderLiveProfilerUI(stats, divisor) {
   if (!perfEl || !stats) return;
-  setTextFast(perfEl, `${Math.round(stats.avgFps)} FPS · 1%低 ${Math.round(stats.onePctLowFps)} · P99 ${stats.p99.toFixed(1)}ms · JS ${stats.jsP99.toFixed(1)}ms`);
+  setTextFast(perfEl, t('prof.hudPill', Math.round(stats.avgFps), Math.round(stats.onePctLowFps), stats.p99.toFixed(1), stats.jsP99.toFixed(1)));
 
   const showDetail = !!(G.settings && G.settings.showPerf && G.settings.showProfilerDetail && !isBenchmarkActive());
   if (profDrawerEl) profDrawerEl.classList.toggle('hidden', !showDetail);
@@ -228,11 +231,15 @@ function renderLiveProfilerUI(stats, divisor) {
 
   if (profStatsEl) {
     ensureProfilerDom();
+    for (let i = 0; i < PROF_MOD_META.length; i++) {
+      if (_profLblNodes[i]) _profLblNodes[i].nodeValue = t(PROF_MOD_META[i][1]);
+    }
     const m = stats.modules;
-    const stallTxt = stats.longStalls > 0 ? ` · 长顿 ${stats.longStalls}(${Math.round(stats.maxStallMs)}ms)` : '';
+    const stallTxt = stats.longStalls > 0 ? t('prof.stallSeg', stats.longStalls, Math.round(stats.maxStallMs)) : '';
+    const heapTxt = stats.heapMB > 0 ? ` · ${stats.heapMB.toFixed(0)}MB` : '';
     const gSt = getGlyphAtlasStats();
     const bSt = getBackdropCacheStats();
-    _profMetaNode.nodeValue = `刷频 ${prof.getRefreshHz()}Hz (1/${divisor}) · P50 ${stats.p50.toFixed(1)}ms · P95 ${stats.p95.toFixed(1)}ms · 掉帧 ${stats.dropPct.toFixed(1)}% · GC ${stats.gcDrops}${stallTxt}${stats.heapMB > 0 ? ` · ${stats.heapMB.toFixed(0)}MB` : ''} · 字图集 ${gSt.hitRate.toFixed(0)}%(${gSt.entries}) · 背景块 ${bSt.panels}`;
+    _profMetaNode.nodeValue = t('prof.metaLine', prof.getRefreshHz(), divisor, stats.p50.toFixed(1), stats.p95.toFixed(1), stats.dropPct.toFixed(1), stats.gcDrops, stallTxt, heapTxt, gSt.hitRate.toFixed(0), gSt.entries, bSt.panels);
     const denom = Math.max(2.0, stats.budgetMs * 0.5);
     for (let i = 0; i < PROF_MOD_META.length; i++) {
       const mv = m[PROF_MOD_META[i][0]];

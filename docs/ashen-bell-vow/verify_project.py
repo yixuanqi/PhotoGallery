@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Zero-dependency static verifier for Ashen Bell Vow v44.8
+"""Zero-dependency static verifier for Ashen Bell Vow v45.3
 Checks:
 1. JS lexical & bracket syntax across all src/**/*.js
 2. ES Module import/export path existence, explicit .js suffix, exact case sensitivity & symbol verification
@@ -615,8 +615,9 @@ def check_v34_economy_relics_i18n(file_texts):
     boss_echo = sum(rewards.get(k, 0) for k in ('boss', 'boss2', 'boss3', 'boss4'))
     npc_echo = sum(int(x) for x in re.findall(r'G\.worldState\.echoes\s*=\s*\(G\.worldState\.echoes\s*\|\|\s*0\)\s*\+\s*(\d+);', modals))
     total_1x = reg_echo + warden_echo + boss_echo + cache_echo + other_pickup_echo + npc_echo
-    core_sink = smith_total + 140 * 3 + 180 + 220 + 200 + refine_cost * 3
-    full_sink = smith_total + 140 * 6 + 180 + 220 + 200 + refine_cost * 12
+    # True sink accounting: Smith(2180) + Traits(140*3 or *6) + SkillNodes(180+220) + Scavenger(160+120) + Mochen/Xi(120+80) + Relics(450*3 or *12)
+    core_sink = smith_total + 140 * 3 + 180 + 220 + 280 + refine_cost * 3
+    full_sink = smith_total + 140 * 6 + 180 + 220 + 280 + 200 + refine_cost * 12
 
     if not (5200 <= total_1x <= 7200):
         errors.append(f"Economy: 1x total income {total_1x} outside v38.0 25-room range [5200, 7200]")
@@ -645,16 +646,25 @@ def check_v34_economy_relics_i18n(file_texts):
     if 'cycleOverlayTab' not in file_texts.get('src/uiNav.js', '') or 'scrollOverlay' not in file_texts.get('src/uiNav.js', ''):
         errors.append("v43.0: Missing full gamepad tab-cycling / scrolling in src/uiNav.js")
     if '__ABV_OFFLINE_WORLD__' not in file_texts.get('src/levelLoader.js', ''):
-        errors.append("v44.8: Missing offline pre-bundled world fast-path in src/levelLoader.js")
+        errors.append("v45.3: Missing offline pre-bundled world fast-path in src/levelLoader.js")
     if not os.path.isfile(os.path.join(BASE_DIR, 'tools', 'build_release.py')):
-        errors.append("v44.8: Missing tools/build_release.py offline release builder")
+        errors.append("v45.3: Missing tools/build_release.py offline release builder")
     for pwa_f in ('manifest.webmanifest', 'sw.js', 'icon.svg', 'icon-192.png', 'icon-512.png'):
         if not os.path.isfile(os.path.join(BASE_DIR, pwa_f)):
-            errors.append(f"v44.8: Missing PWA asset '{pwa_f}'")
+            errors.append(f"v45.3: Missing PWA asset '{pwa_f}'")
     if 'keepAliveResume' not in file_texts.get('src/audio.js', '') or 'mobileEcoMode' not in file_texts.get('src/state.js', ''):
-        errors.append("v44.8: Missing audio keepAliveResume or mobileEcoMode implementation")
+        errors.append("v45.3: Missing audio keepAliveResume or mobileEcoMode implementation")
     if 'auxBtn' in file_texts.get('src/main.js', '') or 'auxWrap' in file_texts.get('src/main.js', ''):
-        errors.append("v44.8: Stale undeclared reference to removed auxBtn/auxWrap in src/main.js")
+        errors.append("v45.3: Stale undeclared reference to removed auxBtn/auxWrap in src/main.js")
+    if 'tickBossGreedPressure' not in file_texts.get('src/ai/bossesAi.js', '') or 'tickWardenGreedPressure' not in file_texts.get('src/ai/wardensAi.js', ''):
+        errors.append("v45.3: Missing anti-facetank greed punish in bossesAi.js / wardensAi.js")
+    if 'bulwarkCd' not in file_texts.get('src/combat/damageCombat.js', '') or 'cistern:' not in file_texts.get('src/locales/world.js', ''):
+        errors.append("v45.3: Missing iron_bulwark cooldown or cistern English biome ambience")
+    if 'dashAttack' not in file_texts.get('src/weapons.js', '') or 'getAttackPose' not in file_texts.get('src/render/playerRenderer.js', ''):
+        errors.append("v45.3: Missing dashAttack moveset or articulated playerRenderer attack poses")
+    for v451_mod in ('src/render/wardenRenderer.js', 'src/ai/biomeEnemiesAi.js', 'src/render/exoticEnemyRenderer.js', 'src/ai/exoticEnemiesAi.js'):
+        if v451_mod not in file_texts:
+            errors.append(f"v45.3: Missing modular split file '{v451_mod}'")
 
     en_refined_count = len(re.findall(r"^\s+refinedEffect:\s*'", ent_loc, re.M))
     if en_refined_count != len(relic_ids):
@@ -1073,7 +1083,7 @@ def check_undefined_js_calls(file_texts):
                 seen_err.add(fn)
                 errors.append(f"{rel}: Undefined function call '{fn}()'")
 
-        # v44.8 Guard: verify every config.js exported constant referenced in a module is explicitly imported/declared
+        # v45.3 Guard: verify every config.js exported constant referenced in a module is explicitly imported/declared
         clean_no_reexp = re.sub(r'export\s*\{[^}]*\}\s*from\s*[^;\n]+', '', clean)
         for sym in sorted(cfg_consts):
             if sym in declared:
@@ -1093,7 +1103,7 @@ def main():
     all_errs = js_errs + rm_errs + lnch_errs + v34_errs + topo_errs + undef_errs
     all_warns = js_warns + rm_warns + v34_warns
 
-    print(f"[Ashen Bell Vow v44.8 Verifier] JS modules: {js_cnt} | Cycles: {cyc_cnt} | Rooms: {rm_cnt} | Stamps: {st_cnt}")
+    print(f"[Ashen Bell Vow v45.3 Verifier] JS modules: {js_cnt} | Cycles: {cyc_cnt} | Rooms: {rm_cnt} | Stamps: {st_cnt}")
     print(
         f"Economy (1x): {eco['total_1x']} echoes "
         f"[Foes({eco['reg_cnt']}): {eco['reg_echo']} | Wardens: {eco['warden_echo']} | Bosses: {eco['boss_echo']} | "

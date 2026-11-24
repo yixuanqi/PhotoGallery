@@ -73,6 +73,22 @@ function consumeBossAntiAirTrigger(b, cd = 3.2) {
   b.antiAirCd = cd;
 }
 
+function tickBossGreedPressure(b, dt, absDx) {
+  if (b.greedPunishCd > 0) b.greedPunishCd = Math.max(0, b.greedPunishCd - dt);
+  if (b.greedDecayTimer > 0) {
+    b.greedDecayTimer = Math.max(0, b.greedDecayTimer - dt);
+  } else if (b.greedHits > 0) {
+    b.greedHits = Math.max(0, b.greedHits - dt * 1.4);
+  }
+  return b.greedPunishCd <= 0 && (b.greedHits || 0) >= 4 && absDx < 175;
+}
+
+function consumeBossGreedTrigger(b, cd = 5.4) {
+  b.greedHits = 0;
+  b.greedDecayTimer = 0;
+  b.greedPunishCd = cd;
+}
+
 
 export function updateBoss(b, dt) {
   if (!b || !b.alive) return;
@@ -426,6 +442,7 @@ export function updateBoss2(b, dt) {
   const b2Aggro = (b.state === 'recover' || b.state === 'stalk' || b.state === 'idle') ? getCombatScaling().aggroMult : 1;
   b.stateTimer -= dt * b2Aggro;
   const b2WantsAntiAir = tickBossOverheadPressure(b, dt);
+  const b2WantsGreedPunish = tickBossGreedPressure(b, dt, absDx);
   if (b.phase === 2 && b.novaCd > 0) b.novaCd -= dt * b2Aggro;
 
   if (b.state === 'phaseShift') {
@@ -493,13 +510,20 @@ export function updateBoss2(b, dt) {
         audio.playDangerAlert(); audio.playBellToll(); addShake(9);
         spawnFloatText(bx, b.y - 54, t('boss.ji.novaWarnCrucible'), COLORS.goldBright, 21, 1.65);
       } else {
-        const chosen = pickWeightedBossMove(b.lastMoveKind, [
-          { kind: 'chainDropSlam', w: 28 },
-          { kind: 'bellShieldCharge', w: absDx > 160 ? 30 : 20 },
-          { kind: 'bellBarrage', w: 22 },
-          { kind: 'twinBellCross', w: 24 },
-          { kind: 'redSweepHook', w: absDx < 250 ? 26 : 16 }
-        ]);
+        let chosen;
+        if (b2WantsGreedPunish) {
+          consumeBossGreedTrigger(b, 5.4);
+          chosen = 'redSweepHook';
+          spawnFloatText(bx, b.y - 48, t('combat.greedPunish'), COLORS.crimsonBright, 17, 0.9);
+        } else {
+          chosen = pickWeightedBossMove(b.lastMoveKind, [
+            { kind: 'chainDropSlam', w: 28 },
+            { kind: 'bellShieldCharge', w: absDx > 160 ? 30 : 20 },
+            { kind: 'bellBarrage', w: 22 },
+            { kind: 'twinBellCross', w: 24 },
+            { kind: 'redSweepHook', w: absDx < 250 ? 26 : 16 }
+          ]);
+        }
         b.moveKind = chosen;
         b.lastMoveKind = chosen;
         b.comboIdx = 0;
@@ -607,7 +631,7 @@ export function updateBoss2(b, dt) {
             G.projectiles.push({
               owner: 'enemy', source: b, kind: 'wraithOrb',
               x: ox, y: oy, vx: Math.cos(ang) * 375, vy: Math.sin(ang) * 375,
-              r: 13, dmg: 20, posture: 28, life: 2.6, maxLife: 2.6, reflected: false, hitIds: new Set()
+              r: 13, dmg: 22, posture: 28, life: 2.6, maxLife: 2.6, reflected: false, hitIds: new Set()
             });
           }
         });
@@ -628,7 +652,7 @@ export function updateBoss2(b, dt) {
             vx: Math.cos(a) * (b.phase === 2 ? 380 : 335),
             vy: Math.sin(a) * (b.phase === 2 ? 380 : 335),
             r: 13,
-            dmg: 20,
+            dmg: 22,
             posture: 28,
             life: 2.8,
             maxLife: 2.8,
@@ -637,19 +661,7 @@ export function updateBoss2(b, dt) {
           });
         }
         spawnShockwave(bx, b.y + 42, 74, COLORS.goldBright, 3.2, 0.24);
-      } else if (b.moveKind === 'antiAirRise') {
-      if (!b.didHit) {
-        const aaBox = { x: bx - 96, y: b.y - 72, w: 192, h: 146 };
-        if (aabbOverlap(aaBox, G.player)) {
-          b.didHit = true;
-          applyIncomingAttackToPlayer(b, 28, true, 290);
-        }
-      }
-      if (b.stateTimer <= 0) {
-        b.state = 'recover';
-        b.stateTimer = 0.68;
-      }
-    } else if (b.moveKind === 'redSweepHook') {
+      } else if (b.moveKind === 'redSweepHook') {
         b.stateTimer = 0.26;
         b.y = floorTop;
         b.vx = b.facing * 260;
@@ -658,12 +670,24 @@ export function updateBoss2(b, dt) {
       }
     }
   } else if (b.state === 'strike') {
-    if (b.moveKind === 'chainDropSlam') {
+    if (b.moveKind === 'antiAirRise') {
+      if (!b.didHit) {
+        const aaBox = { x: bx - 96, y: b.y - 72, w: 192, h: 146 };
+        if (aabbOverlap(aaBox, G.player)) {
+          b.didHit = true;
+          applyIncomingAttackToPlayer(b, 32, true, 290);
+        }
+      }
+      if (b.stateTimer <= 0) {
+        b.state = 'recover';
+        b.stateTimer = 0.68;
+      }
+    } else if (b.moveKind === 'chainDropSlam') {
       b.y += b.vy * dt;
       const slamBox = { x: b.x - 16, y: b.y + 18, w: b.w + 32, h: b.h - 10 };
       if (!b.didHit && aabbOverlap(slamBox, G.player)) {
         b.didHit = true;
-        applyIncomingAttackToPlayer(b, 26, false, 270);
+        applyIncomingAttackToPlayer(b, 28, false, 270);
       }
       if (b.y >= floorTop) {
         b.y = floorTop;
@@ -684,7 +708,7 @@ export function updateBoss2(b, dt) {
       const chargeBox = { x: b.x - 10, y: b.y + 6, w: b.w + 20, h: b.h - 8 };
       if (!b.didHit && aabbOverlap(chargeBox, G.player)) {
         b.didHit = true;
-        applyIncomingAttackToPlayer(b, 24, false, 290);
+        applyIncomingAttackToPlayer(b, 26, false, 290);
       }
       if (b.stateTimer <= 0) {
         b.shieldUp = false;
@@ -705,7 +729,7 @@ export function updateBoss2(b, dt) {
         };
         if (aabbOverlap(sweepBox, G.player)) {
           b.didHit = true;
-          applyIncomingAttackToPlayer(b, 30, true, 290);
+          applyIncomingAttackToPlayer(b, 36, true, 290);
         }
       }
       if (b.stateTimer <= 0) {
@@ -790,6 +814,7 @@ export function updateBoss3(b, dt) {
   const b3Aggro = (b.state === 'recover' || b.state === 'stalk' || b.state === 'idle') ? getCombatScaling().aggroMult : 1;
   b.stateTimer -= dt * b3Aggro;
   const b3WantsAntiAir = tickBossOverheadPressure(b, dt);
+  const b3WantsGreedPunish = tickBossGreedPressure(b, dt, absDx);
   if (b.phase >= 2 && b.tideCd > 0) b.tideCd -= dt * b3Aggro;
 
   if (b.state === 'phaseShift') {
@@ -866,7 +891,14 @@ export function updateBoss3(b, dt) {
           { kind: 'crimsonArc', w: 26 }
         ];
       }
-      const chosen = pickWeightedBossMove(b.lastMoveKind, pool);
+      let chosen;
+      if (b3WantsGreedPunish) {
+        consumeBossGreedTrigger(b, 5.2);
+        chosen = 'crimsonArc';
+        spawnFloatText(bxCenter, b.y - 50, t('combat.greedPunish'), COLORS.crimsonBright, 18, 0.9);
+      } else {
+        chosen = pickWeightedBossMove(b.lastMoveKind, pool);
+      }
       b.moveKind = chosen;
       b.lastMoveKind = chosen;
       b.comboIdx = 0;
@@ -967,7 +999,7 @@ export function updateBoss3(b, dt) {
           G.projectiles.push({
             owner: 'enemy', source: b, kind: 'wraithOrb',
             x: bxCenter, y: b.y - 12, vx: Math.cos(a) * 380, vy: Math.sin(a) * 380,
-            r: 12, dmg: 20, posture: 26, life: 1.7, maxLife: 1.7, reflected: false, hitIds: new Set()
+            r: 12, dmg: 24, posture: 26, life: 1.7, maxLife: 1.7, reflected: false, hitIds: new Set()
           });
         });
       } else if (b.moveKind === 'shadowCloneStrike') {
@@ -987,7 +1019,7 @@ export function updateBoss3(b, dt) {
             x: bxCenter + Math.cos(a) * 32, y: by + Math.sin(a) * 32,
             vx: Math.cos(a) * (b.phase === 3 ? 395 : 355),
             vy: Math.sin(a) * (b.phase === 3 ? 395 : 355),
-            r: 13, dmg: 22, posture: 30, life: 2.8, maxLife: 2.8, reflected: false, hitIds: new Set()
+            r: 13, dmg: 26, posture: 30, life: 2.8, maxLife: 2.8, reflected: false, hitIds: new Set()
           });
         }
         spawnShockwave(bxCenter, by, 82, COLORS.goldBright, 3.4, 0.25);
@@ -1043,7 +1075,7 @@ export function updateBoss3(b, dt) {
           owner: 'enemy', source: b, kind: 'yuanResonanceWave', beatNum,
           x: bxCenter + b.facing * 24, y: b.y + 46,
           vx: Math.cos(aimAng) * wSpd, vy: Math.sin(aimAng) * wSpd,
-          r: 22, dmg: 24, posture: 26, life: 2.4, maxLife: 2.4, reflected: false, hitIds: new Set()
+          r: 22, dmg: 28, posture: 28, life: 2.4, maxLife: 2.4, reflected: false, hitIds: new Set()
         });
       }
     }
@@ -1062,7 +1094,7 @@ export function updateBoss3(b, dt) {
             };
         if (aabbOverlap(hitBox, G.player)) {
           b.didHit = true;
-          const dmg = isRed ? 34 : b.moveKind === 'shadowCloneStrike' ? 28 : (b.comboIdx === b.comboTotal - 1 ? 26 : 21);
+          const dmg = isRed ? 44 : b.moveKind === 'shadowCloneStrike' ? 34 : (b.comboIdx === b.comboTotal - 1 ? 33 : 28);
           applyIncomingAttackToPlayer(b, dmg, isRed, 280);
         }
       }
@@ -1222,7 +1254,7 @@ export function updateBoss4(b, dt) {
       G.projectiles.push({
         owner: 'enemy', source: b, kind: 'boss4EchoOrb', stance: 'bell',
         x: bxCenter, y: byMid - 10, vx: Math.cos(a) * 350, vy: Math.sin(a) * 350,
-        r: 13, dmg: 20, posture: 24, life: 2.2, maxLife: 2.2, reflected: false, hitIds: new Set()
+        r: 13, dmg: 24, posture: 26, life: 2.2, maxLife: 2.2, reflected: false, hitIds: new Set()
       });
     }
   }
@@ -1250,6 +1282,7 @@ export function updateBoss4(b, dt) {
   const aggro = (b.state === 'recover' || b.state === 'stalk' || b.state === 'idle') ? getCombatScaling().aggroMult : 1;
   b.stateTimer -= dt * aggro;
   const b4WantsAntiAir = tickBossOverheadPressure(b, dt);
+  const b4WantsGreedPunish = tickBossGreedPressure(b, dt, absDx);
 
   if (b.state === 'phaseShift') {
     b.vx *= damp(0.8, dt);
@@ -1333,7 +1366,16 @@ export function updateBoss4(b, dt) {
           { kind: 'bellRingSweep', w: absDx < 270 ? 46 : 26 }
         ];
       }
-      const chosen = pickWeightedBossMove(b.lastMoveKind, pool);
+      let chosen;
+      if (b4WantsGreedPunish) {
+        consumeBossGreedTrigger(b, 5.0);
+        b.stance = 'hammer';
+        b.stanceFlash = 0.45;
+        chosen = 'hammerQuakeLeap';
+        spawnFloatText(bxCenter, b.y - 48, t('combat.greedPunish'), COLORS.crimsonBright, 18, 0.9);
+      } else {
+        chosen = pickWeightedBossMove(b.lastMoveKind, pool);
+      }
       b.moveKind = chosen;
       b.lastMoveKind = chosen;
       b.comboIdx = 0;
@@ -1405,7 +1447,7 @@ export function updateBoss4(b, dt) {
             G.projectiles.push({
               owner: 'enemy', source: b, kind: 'boss4EchoOrb', stance: 'bell',
               x: bxCenter, y: b.y - 12, vx: Math.cos(a) * 410, vy: Math.sin(a) * 410,
-              r: 13, dmg: 20, posture: 26, life: 1.8, maxLife: 1.8, reflected: false, hitIds: new Set()
+              r: 13, dmg: 24, posture: 26, life: 1.8, maxLife: 1.8, reflected: false, hitIds: new Set()
             });
           });
         }
@@ -1455,7 +1497,7 @@ export function updateBoss4(b, dt) {
             owner: 'enemy', source: b, kind: 'boss4EchoOrb', stance: 'bell',
             x: bxCenter + b.facing * 24, y: byMid - 10,
             vx: Math.cos(a) * 375, vy: Math.sin(a) * 375,
-            r: 13, dmg: 19, posture: 22, life: 2.2, maxLife: 2.2, reflected: false, hitIds: new Set()
+            r: 13, dmg: 24, posture: 24, life: 2.2, maxLife: 2.2, reflected: false, hitIds: new Set()
           });
         }
         spawnShockwave(bxCenter + b.facing * 20, byMid - 8, 66, COLORS.cyanBright, 3.0, 0.22);
@@ -1468,7 +1510,7 @@ export function updateBoss4(b, dt) {
           owner: 'enemy', source: b, kind: 'boss4EchoOrb', stance: 'bell',
           x: bxCenter + b.facing * 30, y: byMid,
           vx: b.facing * 420, vy: 0,
-          r: 14, dmg: 20, posture: 24, life: 1.9, maxLife: 1.9, reflected: false, hitIds: new Set()
+          r: 14, dmg: 25, posture: 26, life: 1.9, maxLife: 1.9, reflected: false, hitIds: new Set()
         });
       } else if (b.moveKind === 'triResonanceFinale') {
         if (b.comboIdx === 0) {
@@ -1499,7 +1541,7 @@ export function updateBoss4(b, dt) {
               owner: 'enemy', source: b, kind: 'boss4EchoOrb', stance: 'bell',
               x: bxCenter + b.facing * 24, y: byMid - 8,
               vx: Math.cos(a) * 410, vy: Math.sin(a) * 410,
-              r: 14, dmg: 22, posture: 26, life: 2.3, maxLife: 2.3, reflected: false, hitIds: new Set()
+              r: 14, dmg: 26, posture: 28, life: 2.3, maxLife: 2.3, reflected: false, hitIds: new Set()
             });
           });
           spawnShockwave(bxCenter, byMid, 128, COLORS.cyanBright, 4.2, 0.30);
@@ -1538,7 +1580,7 @@ export function updateBoss4(b, dt) {
           };
       if (aabbOverlap(hitBox, G.player)) {
         b.didHit = true;
-        const dmg = isRed ? 34 : b.moveKind === 'iaiDash' ? 28 : b.stance === 'hammer' ? 27 : 22;
+        const dmg = isRed ? 48 : b.moveKind === 'iaiDash' ? 36 : b.stance === 'hammer' ? 35 : 30;
         applyIncomingAttackToPlayer(b, dmg, isRed, 275);
       }
     }

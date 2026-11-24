@@ -85,13 +85,13 @@
     {
       "id": "pickup_core_belfry",
       "kind": "statCore",
-      "bonusHp": 15,
+      "bonusHp": 10,
       "bonusSoul": 10,
       "echoAmount": 55,
       "x": 225,
       "y": 215,
       "name": "钟楼古核 · 断索灵晶",
-      "desc": "生命 +15 · 魂火 +10 · +55 残响"
+      "desc": "生命 +10 · 魂火 +10 · +55 残响"
     }
   ],
   "resonancePuzzles": [],
@@ -129,12 +129,10 @@
   "rivers": [],
   "enemies": [
     {
-      "id": "d_belfry_1",
-      "kind": "duelist",
+      "id": "cantor_belfry_1",
+      "kind": "cantor",
       "x": 380,
-      "y": 530,
-      "minX": 140,
-      "maxX": 660
+      "y": 492
     }
   ],
   "bosses": [],

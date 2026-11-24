@@ -184,13 +184,13 @@
       "id": "pickup_sunken_woods",
       "kind": "statCore",
       "requiresSwitch": "riverDrained",
-      "bonusHp": 15,
+      "bonusHp": 10,
       "bonusSoul": 10,
       "echoAmount": 60,
       "x": 1200,
       "y": 670,
       "name": "渗池古核 · 干涸菌髓",
-      "desc": "暗河泄洪后显露于渗池底部的荧光古核（生命 +15 · 魂火 +10 · +60 残响）"
+      "desc": "暗河泄洪后显露于渗池底部的荧光古核（生命 +10 · 魂火 +10 · +60 残响）"
     }
   ],
   "pendulums": [],
@@ -302,16 +302,20 @@
       "y": 42
     },
     {
-      "id": "leech_wc_2",
-      "kind": "leech",
-      "x": 1260,
-      "y": 42
+      "id": "weaver_wc_2",
+      "kind": "weaver",
+      "x": 1080,
+      "y": 634,
+      "minX": 940,
+      "maxX": 1420
     },
     {
-      "id": "priest_wc_1",
-      "kind": "priest",
-      "x": 880,
-      "y": 284
+      "id": "weaver_wc_1",
+      "kind": "weaver",
+      "x": 860,
+      "y": 314,
+      "minX": 800,
+      "maxX": 925
     }
   ],
   "bosses": [],

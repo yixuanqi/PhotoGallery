@@ -33,6 +33,9 @@ const ENEMY_META = {
   frostguard:      { w: 40, h: 68, glyph: '寒', color: 'rgba(125, 211, 252, 0.84)', patrol: 160, label: '寒戟骸卫' },
   drowned:         { w: 36, h: 60, glyph: '溺', color: 'rgba(14, 165, 233, 0.86)',  patrol: 160, label: '溺钟潜行者' },
   anchorite:       { w: 48, h: 78, glyph: '锚', color: 'rgba(148, 163, 184, 0.86)', patrol: 150, label: '锈锚重锤兵' },
+  weaver:          { w: 44, h: 36, glyph: '蛛', color: 'rgba(110, 231, 183, 0.86)', patrol: 150, label: '墨丝织蛛' },
+  crawler:         { w: 50, h: 42, glyph: '炉', color: 'rgba(251, 146, 60, 0.88)',  patrol: 160, label: '熔铜炉奴' },
+  cantor:          { w: 36, h: 72, glyph: '侍', color: 'rgba(253, 224, 71, 0.88)',  patrol: 0,   label: '金钟执灯侍', flying: true },
   warden_wind:     { w: 44, h: 72, glyph: '朔', color: 'rgba(14, 165, 233, 0.90)', patrol: 240, label: '截风巡塔使·朔', isWarden: true },
   warden_forest:   { w: 64, h: 98, glyph: '枯', color: 'rgba(22, 163, 74, 0.90)',  patrol: 150, label: '盘根古钟精·枯', isWarden: true },
   warden_mountain: { w: 42, h: 74, glyph: '凛', color: 'rgba(96, 165, 250, 0.90)', patrol: 210, label: '断剑霜侯·凛',   isWarden: true }
@@ -2183,7 +2186,7 @@ function runWorldAudit() {
     });
   }
 
-  // 7. v44.8 Real-Time 5-Tier Directed Topology, Anti-Softlock, Boss-Bypass & Shaft Clearance Audit
+  // 7. v45.3 Real-Time 5-Tier Directed Topology, Anti-Softlock, Boss-Bypass & Shaft Clearance Audit
   const topo = runTopologyAndShaftAudit(state.bundle);
   state.lastAuditTopo = topo;
   for (const tiss of topo.issues) {
@@ -2952,7 +2955,7 @@ async function bootEditor() {
     renderAllUI();
     refreshLiveAudit(false);
     fitView();
-    showToast(`v44.8 已载入 ${state.bundle.rooms.length} 个全境房间 JSON · 实时拓扑体检就绪`);
+    showToast(`v45.3 已载入 ${state.bundle.rooms.length} 个全境房间 JSON · 实时拓扑体检就绪`);
   } catch (err) {
     showToast(`加载失败: ${err.message}（请通过 serve_local.py 启动）`);
   }

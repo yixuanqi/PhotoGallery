@@ -231,12 +231,10 @@
       "maxX": 1640
     },
     {
-      "id": "s_gal_1",
-      "kind": "sentinel",
+      "id": "cantor_gal_1",
+      "kind": "cantor",
       "x": 1420,
-      "y": 558,
-      "minX": 1120,
-      "maxX": 1680
+      "y": 515
     }
   ],
   "bosses": [],

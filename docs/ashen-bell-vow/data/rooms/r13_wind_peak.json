@@ -66,10 +66,10 @@
       "kind": "statCore",
       "x": 1228,
       "y": 430,
-      "bonusHp": 15,
+      "bonusHp": 10,
       "bonusSoul": 15,
       "name": "风淬魂核",
-      "desc": "受罡风千年涤荡的魂火凝核（生命上限 +15 · 魂火上限 +15）",
+      "desc": "受罡风千年涤荡的魂火凝核（生命上限 +10 · 魂火上限 +15）",
       "requiresBoss": "warden_wind_boss"
     },
     {

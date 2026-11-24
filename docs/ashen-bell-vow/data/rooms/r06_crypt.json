@@ -255,18 +255,20 @@
       "y": 8
     },
     {
-      "id": "priest_crypt",
-      "kind": "priest",
-      "x": 265,
-      "y": 344
+      "id": "crawler_crypt_2",
+      "kind": "crawler",
+      "x": 240,
+      "y": 368,
+      "minX": 145,
+      "maxX": 320
     },
     {
-      "id": "duelist_crypt",
-      "kind": "duelist",
+      "id": "crawler_crypt_1",
+      "kind": "crawler",
       "x": 580,
-      "y": 580,
+      "y": 598,
       "minX": 220,
-      "maxX": 800
+      "maxX": 820
     }
   ],
   "bosses": [],

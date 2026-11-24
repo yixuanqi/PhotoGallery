@@ -74,10 +74,10 @@
       "kind": "statCore",
       "x": 710,
       "y": 340,
-      "bonusHp": 15,
+      "bonusHp": 10,
       "bonusSoul": 15,
       "name": "霜髓冰核",
-      "desc": "绝脊孤峰千年不融的寒髓魂核（生命上限 +15 · 魂火上限 +15）",
+      "desc": "绝脊孤峰千年不融的寒髓魂核（生命上限 +10 · 魂火上限 +15）",
       "requiresBoss": "warden_mountain_boss"
     },
     {

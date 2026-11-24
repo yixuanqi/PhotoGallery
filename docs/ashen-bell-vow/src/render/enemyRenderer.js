@@ -5,9 +5,11 @@ import { drawGlowSprite, boilLine, boilCircle, drawCloakMesh, solve2BoneIK } fro
 import { t, isEn, locDummyMode } from '../i18n.js';
 import { drawSlowBladeRing, drawParryStarGlint, drawExecutionSigil } from './renderShared.js';
 import { drawCachedText, drawCachedBadge } from './glyphAtlas.js';
+import { drawWardenWind, drawWardenForest, drawWardenMountain } from './wardenRenderer.js';
+import { drawWeaver, drawCrawler, drawCantor } from './exoticEnemyRenderer.js';
 
 function drawEnemyOverheadBars(e) {
-  if (e.isBoss || (e.isMiniBoss && e.awake) || !e.alive) return;
+  if (e._isPortrait || e.isBoss || (e.isMiniBoss && e.awake) || !e.alive) return;
   // Hide untouched dormant enemy HP bars so patrolling guards & ceiling leech ambushes stay atmospheric
   const alerted = e.hp < e.maxHp || e.posture > 0 || (e.state !== 'patrol' && e.state !== 'cling' && e.state !== 'idle' && e.state !== 'hover');
   if (!alerted) return;
@@ -35,7 +37,7 @@ export function drawEnemy(e) {
 
   if (hasDeform) {
     const px = e.x + e.w * 0.5;
-    const py = (e.kind === 'wraith' || e.kind === 'falcon' || e.kind === 'leech') ? (e.y + e.h * 0.5) : (e.y + e.h);
+    const py = (e.kind === 'wraith' || e.kind === 'falcon' || e.kind === 'leech' || e.kind === 'cantor') ? (e.y + e.h * 0.5) : (e.y + e.h);
     const trem = frozen ? Math.sin(G.globalTime * 190 + e.x) * (e.hitTremor || 3.5) : 0;
     G.ctx.save();
     G.ctx.translate(px + trem, py);
@@ -56,6 +58,9 @@ export function drawEnemy(e) {
   else if (e.kind === 'frostguard') drawFrostguard(e);
   else if (e.kind === 'drowned') drawDrowned(e);
   else if (e.kind === 'anchorite') drawAnchorite(e);
+  else if (e.kind === 'weaver') drawWeaver(e, drawEnemyOverheadBars);
+  else if (e.kind === 'crawler') drawCrawler(e, drawEnemyOverheadBars);
+  else if (e.kind === 'cantor') drawCantor(e, drawEnemyOverheadBars);
   else if (e.kind === 'warden_wind') drawWardenWind(e);
   else if (e.kind === 'warden_forest') drawWardenForest(e);
   else if (e.kind === 'warden_mountain') drawWardenMountain(e);
@@ -91,41 +96,38 @@ function drawDummy(e) {
   // Subtle ambient resonance glow when active
   drawGlowSprite(isRed ? 'crimson' : (e.active ? 'gold' : 'cyan'), 0, -40, e.active ? 44 : 26, e.active ? 0.34 : 0.16);
 
-  // Mechanical Bronze Tripod / Striding Rail Legs
+  // Cross-Braced Timber & Bronze Sparring Plinth Base
   const stride = Math.abs(e.vx) > 12 ? Math.sin(e.walkCycle || 0) * 9 : 0;
+  G.ctx.fillStyle = '#241a12';
   G.ctx.strokeStyle = '#9b8359';
-  G.ctx.lineWidth = 4.2;
+  G.ctx.lineWidth = 2.0;
+  G.ctx.fillRect(-16, -6, 32, 6); G.ctx.strokeRect(-16, -6, 32, 6);
+  G.ctx.strokeStyle = '#9b8359';
+  G.ctx.lineWidth = 3.8;
   G.ctx.lineCap = 'round';
   G.ctx.beginPath();
-  G.ctx.moveTo(-5, -18); G.ctx.lineTo(-9 - stride, 0);
-  G.ctx.moveTo(5, -18); G.ctx.lineTo(9 + stride, 0);
+  G.ctx.moveTo(-5, -18); G.ctx.lineTo(-11 - stride * 0.6, -5);
+  G.ctx.moveTo(5, -18); G.ctx.lineTo(11 + stride * 0.6, -5);
+  G.ctx.moveTo(-9, -11); G.ctx.lineTo(9, -11);
   G.ctx.stroke();
-  // Wheel/foot joints
-  G.ctx.fillStyle = COLORS.gold;
-  G.ctx.beginPath();
-  G.ctx.arc(-9 - stride, -2, 3, 0, Math.PI * 2);
-  G.ctx.arc(9 + stride, -2, 3, 0, Math.PI * 2);
-  G.ctx.fill();
+  G.ctx.fillStyle = COLORS.goldBright;
+  G.ctx.beginPath(); G.ctx.arc(0, -13, 3.2, 0, Math.PI * 2); G.ctx.fill();
 
-  // Bronze Bell-Resonator Torso
+  // Bronze Bell-Resonator Torso + Concentric Bullseye Target Rings
   G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#261e16';
   G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : (e.active ? COLORS.goldBright : 'rgba(216, 207, 184, 0.72)');
   G.ctx.lineWidth = 2.0;
   G.ctx.beginPath();
-  G.ctx.moveTo(-14, -17);
-  G.ctx.lineTo(-10, -48);
-  G.ctx.lineTo(10, -48);
-  G.ctx.lineTo(14, -17);
+  G.ctx.moveTo(-15, -17);
+  G.ctx.lineTo(-11, -48);
+  G.ctx.lineTo(11, -48);
+  G.ctx.lineTo(15, -17);
   G.ctx.closePath();
-  G.ctx.fill();
-  G.ctx.stroke();
-
-  // Glowing resonance rune line on chest bell
+  G.ctx.fill(); G.ctx.stroke();
   G.ctx.strokeStyle = e.active ? (isRed ? COLORS.crimsonBright : COLORS.goldBright) : COLORS.cyan;
-  G.ctx.lineWidth = 1.6;
-  G.ctx.beginPath();
-  G.ctx.moveTo(0, -44); G.ctx.lineTo(-3, -34); G.ctx.lineTo(3, -25);
-  G.ctx.stroke();
+  G.ctx.lineWidth = 1.4;
+  G.ctx.beginPath(); G.ctx.arc(0, -33, 8.5, 0, Math.PI * 2); G.ctx.stroke();
+  G.ctx.beginPath(); G.ctx.arc(0, -33, 3.5, 0, Math.PI * 2); G.ctx.stroke();
 
   // Cracked Bronze Automaton Bell-Head
   G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#33271a';
@@ -188,20 +190,21 @@ function drawDummy(e) {
     }
   }
 
-  // Mode Nameplate above Automaton (only when active or nearby & not colliding with [E] prompt badge)
-  const dDummy = G.player ? Math.hypot((G.player.x + G.player.w * 0.5) - cx, (G.player.y + G.player.h) - fy) : 999;
-  if ((e.active && dDummy >= 94) || (!e.active && dDummy >= 94 && dDummy < 220)) {
-    drawCachedText(G.ctx, e.active ? t('ren.dummyActive', locDummyMode(modeObj, 'label')) : t('ren.dummyIdle'), 0, -90, {
-      size: 11, bold: false, color: e.active ? 'rgba(253, 224, 71, 0.84)' : 'rgba(186, 230, 253, 0.66)'
-    });
+  // Mode Nameplate above Automaton (suppressed inside Bestiary portrait!)
+  if (!e._isPortrait) {
+    const dDummy = G.player ? Math.hypot((G.player.x + G.player.w * 0.5) - cx, (G.player.y + G.player.h) - fy) : 999;
+    if ((e.active && dDummy >= 94) || (!e.active && dDummy >= 94 && dDummy < 220)) {
+      drawCachedText(G.ctx, e.active ? t('ren.dummyActive', locDummyMode(modeObj, 'label')) : t('ren.dummyIdle'), 0, -90, {
+        size: 11, bold: false, color: e.active ? 'rgba(253, 224, 71, 0.84)' : 'rgba(186, 230, 253, 0.66)'
+      });
+    }
   }
   G.ctx.restore();
 
-  if (e.active || e.hp < e.maxHp || e.posture > 0) {
+  if (!e._isPortrait && (e.active || e.hp < e.maxHp || e.posture > 0)) {
     drawEnemyOverheadBars(e);
   }
-  // v28.0 Live Diegetic DPS & Posture-Per-Second Plaque above Training Dummy
-  if (e.meter && (G.globalTime - e.meter.lastHitTime) < 6.0 && (e.meter.totalDmg > 0 || e.meter.totalPosture > 0)) {
+  if (!e._isPortrait && e.meter && (G.globalTime - e.meter.lastHitTime) < 6.0 && (e.meter.totalDmg > 0 || e.meter.totalPosture > 0)) {
     const fade = Math.min(1, (6.0 - (G.globalTime - e.meter.lastHitTime)) * 1.4);
     const pyPlaque = e.y - 54;
     const txt = t('ren.dummyMeter', Math.round(e.meter.dps), Math.round(e.meter.pps), Math.round(e.meter.maxHit));
@@ -241,13 +244,16 @@ function drawPriest(e) {
   const isChant = e.state === 'chant';
   G.ctx.save();
 
-  // Golden Bell-Chant Tether Beam to Blessed Ally
-  if (isChant && e.chantTargetId) {
-    const ally = G.enemies.find(a => a && a.alive && a.id === e.chantTargetId);
+  // Golden Bell-Chant & Persistent Active Ward Tether Beam (guides player to focus Priest!)
+  const linkId = (isChant && e.chantTargetId) ? e.chantTargetId : e.blessedAllyId;
+  if (!e._isPortrait && linkId) {
+    const ally = G.enemies.find(a => a && a.alive && a.id === linkId && (isChant || a.wardShield > 0));
     if (ally) {
-      G.ctx.strokeStyle = 'rgba(253, 224, 71, 0.65)';
-      G.ctx.lineWidth = 2.2;
-      boilLine(G.ctx, cx, e.y + 8, ally.x + ally.w * 0.5, ally.y + ally.h * 0.45, 9200, 3.2, 6);
+      G.ctx.strokeStyle = isChant ? 'rgba(253, 224, 71, 0.72)' : 'rgba(253, 224, 71, 0.36)';
+      G.ctx.lineWidth = isChant ? 2.4 : 1.5;
+      boilLine(G.ctx, cx, e.y + 8, ally.x + ally.w * 0.5, ally.y + ally.h * 0.45, 9200, isChant ? 3.2 : 2.0, 6);
+    } else if (!isChant) {
+      e.blessedAllyId = null;
     }
   }
 
@@ -296,8 +302,8 @@ function drawPriest(e) {
   G.ctx.beginPath(); G.ctx.moveTo(-4, -28); G.ctx.lineTo(4, -28); G.ctx.lineTo(8, -16); G.ctx.lineTo(-8, -16); G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
   G.ctx.restore();
 
-  if (e.state === 'pulse' && e.stateTimer < 0.28) {
-    drawParryStarGlint(0, -42, 20, COLORS.goldBright);
+  if ((e.state === 'pulse' || e.state === 'ripple') && e.stateTimer < 0.28) {
+    drawParryStarGlint(e.state === 'ripple' ? e.facing * 14 : 0, e.state === 'ripple' ? -10 : -42, 20, COLORS.goldBright);
   }
   G.ctx.restore();
   drawEnemyOverheadBars(e);
@@ -305,75 +311,97 @@ function drawPriest(e) {
 }
 
 function drawDuelist(e) {
+  // v45.1 Complete Silhouette Overhaul: Deeply Crouched Ronin Assassin (tilted low hat + scarf + asymmetric tanto & trailing katana)
   const cx = e.x + e.w / 2;
   const fy = e.y + e.h;
   const isStagger = e.state === 'stagger';
   const isRed = e.attackKind === 'redDash' && (e.state === 'windup' || e.state === 'attack');
+  const isCounter = e.attackKind === 'counterIai' && (e.state === 'windup' || e.state === 'attack');
   G.ctx.save();
 
-  drawCloakMesh(e.cloak, '#3b111c', 'rgba(248, 113, 113, 0.55)', 12, 740);
+  drawCloakMesh(e.cloak, '#4c111e', 'rgba(248, 113, 113, 0.62)', 10, 740);
   const joltX = e.hurtFlash > 0 ? (Math.random() - 0.5) * 6 : 0;
   G.ctx.translate(cx + joltX, fy);
   if (isStagger) G.ctx.translate(0, 10);
 
-  // 2-Bone IK Agile Stride Legs
   const dWalk = e.walkCycle || 0;
   const dMoving = Math.abs(e.vx) > 15;
   [-1, 1].forEach(side => {
     const ph = dWalk + (side > 0 ? 0 : Math.PI);
-    const fx = isStagger ? side * 12 : (dMoving ? Math.sin(ph) * 13 : side * 7);
-    const fyL = isStagger ? 0 : (dMoving ? -Math.max(0, Math.cos(ph)) * 7 : 0);
-    const ik = solve2BoneIK(side * 3.5, -20, fx, fyL, 11, 11, e.facing);
-    G.ctx.strokeStyle = side < 0 ? 'rgba(150, 142, 130, 0.82)' : COLORS.parchment;
-    G.ctx.lineWidth = 3.1;
+    const baseStance = side > 0 ? e.facing * 13 : -e.facing * 11;
+    const fx = isStagger ? side * 12 : (dMoving ? Math.sin(ph) * 14 * e.facing + e.facing * 2 : baseStance);
+    const fyL = isStagger ? 0 : (dMoving ? -Math.max(0, Math.cos(ph)) * 6 : 0);
+    const ik = solve2BoneIK(side * 4, -18, fx, fyL, 12, 12, e.facing);
+    G.ctx.strokeStyle = side < 0 ? 'rgba(148, 138, 128, 0.85)' : COLORS.parchment;
+    G.ctx.lineWidth = 3.0;
     G.ctx.lineCap = 'round';
-    G.ctx.beginPath(); G.ctx.moveTo(side * 3.5, -20); G.ctx.lineTo(ik.kx, ik.ky); G.ctx.lineTo(ik.ex, ik.ey); G.ctx.stroke();
+    G.ctx.beginPath(); G.ctx.moveTo(side * 4, -18); G.ctx.lineTo(ik.kx, ik.ky); G.ctx.lineTo(ik.ex, ik.ey); G.ctx.stroke();
   });
 
-  // Lean Ronin Haori Torso
+  G.ctx.save();
+  G.ctx.translate(e.facing * 3, -17);
+  G.ctx.rotate(e.facing * (isStagger ? 0.12 : 0.28));
+
+  const scarfWave = Math.sin((G.globalTime || 0) * 9 + cx * 0.05) * 4;
+  G.ctx.fillStyle = '#7f1d1d';
+  G.ctx.strokeStyle = '#f87171';
+  G.ctx.lineWidth = 1.3;
+  G.ctx.beginPath();
+  G.ctx.moveTo(-e.facing * 4, -22);
+  G.ctx.quadraticCurveTo(-e.facing * 22, -26 + scarfWave, -e.facing * 36, -15 - scarfWave * 0.7);
+  G.ctx.lineTo(-e.facing * 28, -9 - scarfWave * 0.4);
+  G.ctx.quadraticCurveTo(-e.facing * 16, -16 + scarfWave * 0.5, -e.facing * 3, -16);
+  G.ctx.closePath();
+  G.ctx.fill(); G.ctx.stroke();
+
   G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#141824';
-  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : 'rgba(216, 207, 184, 0.82)';
+  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : (isCounter ? COLORS.goldBright : 'rgba(216, 207, 184, 0.82)');
   G.ctx.lineWidth = 1.9;
   G.ctx.beginPath();
-  G.ctx.moveTo(-11, -15); G.ctx.lineTo(-9, -43); G.ctx.lineTo(9, -43); G.ctx.lineTo(11, -15);
+  G.ctx.moveTo(-10, 0); G.ctx.lineTo(-9, -24); G.ctx.lineTo(9, -24); G.ctx.lineTo(10, 0);
   G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
-  // Bamboo-Iron Conical Kasa Hat
-  G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#1e2434';
-  G.ctx.beginPath();
-  G.ctx.moveTo(-21, -48); G.ctx.lineTo(0, -64); G.ctx.lineTo(21, -48); G.ctx.closePath();
-  G.ctx.fill(); G.ctx.stroke();
-  // Fierce Glowing Slit Eyes under Hat
-  G.ctx.fillStyle = isRed ? COLORS.crimsonBright : COLORS.goldBright;
-  G.ctx.fillRect(e.facing > 0 ? 1 : -8, -48, 7, 2.5);
 
-  // Twin Curved Dark Blades
-  const drawDuelBlade = (ox, oy, ang) => {
+  G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#1c2231';
+  G.ctx.beginPath();
+  G.ctx.moveTo(-18, -28);
+  G.ctx.quadraticCurveTo(0, -37, 18, -28);
+  G.ctx.lineTo(14, -25);
+  G.ctx.lineTo(-14, -25);
+  G.ctx.closePath();
+  G.ctx.fill(); G.ctx.stroke();
+
+  G.ctx.fillStyle = isRed ? COLORS.crimsonBright : COLORS.goldBright;
+  G.ctx.fillRect(e.facing > 0 ? 2 : -8, -25, 6, 2.5);
+  G.ctx.restore();
+
+  const drawKatana = (ox, oy, ang, len, col) => {
     G.ctx.save();
     G.ctx.translate(ox, oy);
     G.ctx.rotate(ang);
-    G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : (e.comboIdx === 2 && e.state === 'windup' ? COLORS.goldBright : '#e2dccb');
-    G.ctx.lineWidth = 2.6;
-    G.ctx.beginPath(); G.ctx.moveTo(0, 0); G.ctx.quadraticCurveTo(22, -4, 42, 0); G.ctx.stroke();
+    G.ctx.strokeStyle = col;
+    G.ctx.lineWidth = len > 30 ? 2.8 : 2.3;
+    G.ctx.beginPath(); G.ctx.moveTo(-4, 0); G.ctx.quadraticCurveTo(len * 0.5, -4, len, 0); G.ctx.stroke();
     G.ctx.restore();
   };
-  let a1 = e.facing > 0 ? -0.45 : Math.PI + 0.45;
-  let a2 = e.facing > 0 ? 0.55 : Math.PI - 0.55;
+  let backKatanaAng = e.facing > 0 ? 2.75 : Math.PI - 2.75;
+  let frontTantoAng = e.facing > 0 ? -0.22 : Math.PI + 0.22;
   if (e.state === 'windup') {
-    a1 = e.facing > 0 ? -2.2 : Math.PI + 2.2;
-    a2 = e.facing > 0 ? 2.1 : Math.PI - 2.1;
+    backKatanaAng = isCounter ? (e.facing > 0 ? 2.95 : Math.PI - 2.95) : (e.facing > 0 ? -2.05 : Math.PI + 2.05);
+    frontTantoAng = e.facing > 0 ? -0.95 : Math.PI + 0.95;
   } else if (e.state === 'attack') {
-    a1 = e.facing > 0 ? 0.25 : Math.PI - 0.25;
-    a2 = e.facing > 0 ? -0.35 : Math.PI + 0.35;
+    backKatanaAng = e.facing > 0 ? 0.14 : Math.PI - 0.14;
+    frontTantoAng = e.facing > 0 ? 0.65 : Math.PI - 0.65;
   }
-  drawDuelBlade(-e.facing * 6, -32, a2);
-  drawDuelBlade(e.facing * 8, -32, a1);
+  const bCol = isRed ? COLORS.crimsonBright : (isCounter || (e.comboIdx === 2 && e.state === 'windup') ? COLORS.goldBright : '#e2dccb');
+  drawKatana(-e.facing * 8, -26, backKatanaAng, 44, bCol);
+  drawKatana(e.facing * 12, -28, frontTantoAng, 22, isRed ? COLORS.crimsonBright : '#f87171');
 
   if (e.state === 'windup') {
     if (isRed) {
-      drawGlowSprite('crimson', 0, -76, 20, 0.78);
-      drawCachedText(G.ctx, t('ren.dangerGlyph'), 0, -70, { size: isEn() ? 14 : 22, bold: true, color: COLORS.crimsonBright });
+      drawGlowSprite('crimson', 0, -64, 20, 0.78);
+      drawCachedText(G.ctx, t('ren.dangerGlyph'), 0, -58, { size: isEn() ? 14 : 22, bold: true, color: COLORS.crimsonBright });
     } else if (e.stateTimer < 0.23) {
-      drawParryStarGlint(e.facing * 18, -34, e.comboIdx === 2 ? 22 : 16, COLORS.goldBright);
+      drawParryStarGlint(e.facing * 18, -30, (isCounter || e.comboIdx === 2) ? 23 : 16, COLORS.goldBright);
     }
   }
   G.ctx.restore();
@@ -564,6 +592,12 @@ function drawWraith(e) {
   G.ctx.strokeStyle = COLORS.gold;
   G.ctx.lineWidth = 1.4;
   G.ctx.beginPath(); G.ctx.arc(lx, ly, e.state === 'windup' ? 7 : 5, 0, Math.PI * 2); G.ctx.fill(); G.ctx.stroke();
+  if (e.state === 'windup' && e.attackKind === 'twinArc') {
+    const lx2 = cx - e.facing * 17;
+    const ly2 = e.y + 18 - Math.sin(G.globalTime * 6 + e.bobPhase) * 3;
+    drawGlowSprite('gold', lx2, ly2, 14, 0.72);
+    G.ctx.beginPath(); G.ctx.arc(lx2, ly2, 6.5, 0, Math.PI * 2); G.ctx.fill(); G.ctx.stroke();
+  }
 
   if (e.state === 'windup' && e.stateTimer < 0.25) drawParryStarGlint(lx, ly, 18, COLORS.goldBright);
   drawEnemyOverheadBars(e);
@@ -589,7 +623,7 @@ function drawSentinel(e) {
   const sMoving = Math.abs(e.vx) > 15;
   [-1, 1].forEach(side => {
     const ph = sWalk + (side > 0 ? 0 : Math.PI);
-    const fx = isStagger ? side * 10 : (sMoving ? Math.sin(ph) * 11 : side * 6);
+    const fx = isStagger ? side * 10 : (sMoving ? Math.sin(ph) * 11 * e.facing : side * 6);
     const fyL = isStagger ? 0 : (sMoving ? -Math.max(0, Math.cos(ph)) * 6 : 0);
     const ik = solve2BoneIK(side * 3.5, -18, fx, fyL, 10.5, 10.5, e.facing);
     G.ctx.strokeStyle = side < 0 ? 'rgba(148, 140, 122, 0.8)' : 'rgba(216, 207, 184, 0.9)';
@@ -630,22 +664,25 @@ function drawSentinel(e) {
   G.ctx.fillStyle = isRed ? COLORS.crimsonBright : COLORS.goldBright;
   G.ctx.fillRect(e.facing > 0 ? 1 : -7, -51, 6, 2.5);
 
-  // Long Spear with Swaying Pennon
+  // Long Spear (braces diagonally across front during spearGuard!)
+  const isGuard = e.state === 'spearGuard';
   const spearPull = e.state === 'windup' ? -18 : e.state === 'attack' ? 36 : 0;
-  const sx = e.facing * (-28 + spearPull);
-  const ex = e.facing * (54 + spearPull);
-  G.ctx.strokeStyle = COLORS.parchment;
-  G.ctx.lineWidth = 2.6;
-  G.ctx.beginPath(); G.ctx.moveTo(sx, -28); G.ctx.lineTo(ex, -28); G.ctx.stroke();
-
-  // Spearhead
-  G.ctx.fillStyle = isRed ? COLORS.crimsonBright : '#e2dccb';
+  const sx = isGuard ? e.facing * 10 : e.facing * (-28 + spearPull);
+  const sy = isGuard ? -4 : -28;
+  const ex = isGuard ? e.facing * 26 : e.facing * (54 + spearPull);
+  const ey = isGuard ? -56 : -28;
+  G.ctx.strokeStyle = isGuard ? COLORS.goldBright : COLORS.parchment;
+  G.ctx.lineWidth = isGuard ? 3.2 : 2.6;
+  G.ctx.beginPath(); G.ctx.moveTo(sx, sy); G.ctx.lineTo(ex, ey); G.ctx.stroke();
+  if (isGuard) drawGlowSprite('gold', e.facing * 18, -32, 22, 0.55);
+  G.ctx.fillStyle = isRed ? COLORS.crimsonBright : (isGuard ? COLORS.goldBright : '#e2dccb');
   G.ctx.beginPath();
-  G.ctx.moveTo(ex, -33);
-  G.ctx.lineTo(ex + e.facing * 18, -28);
-  G.ctx.lineTo(ex, -23);
-  G.ctx.closePath();
-  G.ctx.fill();
+  if (isGuard) {
+    G.ctx.moveTo(ex - 4, ey + 2); G.ctx.lineTo(ex + e.facing * 6, ey - 16); G.ctx.lineTo(ex + 5, ey + 4);
+  } else {
+    G.ctx.moveTo(ex, -33); G.ctx.lineTo(ex + e.facing * 18, -28); G.ctx.lineTo(ex, -23);
+  }
+  G.ctx.closePath(); G.ctx.fill();
 
   // Telegraph Signal
   if (e.state === 'windup') {
@@ -740,9 +777,10 @@ function drawFungus(e) {
   const cx = e.x + e.w * 0.5;
   const fy = e.y + e.h;
   const isStagger = e.state === 'stagger';
-  const isSpore = e.attackKind === 'sporeBurst' && (e.state === 'windup' || e.state === 'attack');
+  const isInhale = !!(e.inhalingSpore && e.state === 'windup');
+  const isSpore = (e.attackKind === 'sporeBurst' || e.attackKind === 'sporeInhale') && (e.state === 'windup' || e.state === 'attack');
   const bob = Math.sin((e.walkCycle || 0) * 2) * 2.5;
-  const pulse = 1 + Math.sin(G.globalTime * 5 + e.x * 0.03) * 0.06;
+  const pulse = isInhale ? (1.28 + Math.sin(G.globalTime * 26) * 0.12) : (1 + Math.sin(G.globalTime * 5 + e.x * 0.03) * 0.06);
 
   G.ctx.save();
   G.ctx.translate(cx + (e.hurtFlash > 0 ? (Math.random() - 0.5) * 6 : 0), fy);
@@ -804,6 +842,12 @@ function drawFungus(e) {
   G.ctx.beginPath(); G.ctx.moveTo(0, 0); G.ctx.quadraticCurveTo(15, -5, 28, 2); G.ctx.stroke();
   G.ctx.restore();
 
+  if (isInhale) {
+    G.ctx.strokeStyle = 'rgba(110, 231, 183, 0.88)';
+    G.ctx.lineWidth = 2.0;
+    boilCircle(G.ctx, 0, -48 + bob, 28 + Math.sin(G.globalTime * 18) * 3, 7850, 1.5, 14);
+    G.ctx.stroke();
+  }
   if (e.state === 'windup' && e.attackKind === 'slam' && e.stateTimer < 0.25) {
     drawParryStarGlint(e.facing * 18, -32, 18, COLORS.goldBright);
   }
@@ -814,64 +858,90 @@ function drawFungus(e) {
 }
 
 function drawFrostguard(e) {
+  // v45.1 Complete Silhouette Overhaul: Hunched Heavy Iron Kettle-Helm Infantry + Hexagonal Ice Buckler (NO crown!)
   const cx = e.x + e.w * 0.5;
   const fy = e.y + e.h;
   const isStagger = e.state === 'stagger';
   const isRed = e.attackKind === 'frostLunge' && (e.state === 'windup' || e.state === 'attack');
+  const isWave = e.attackKind === 'frostWave' && (e.state === 'windup' || e.state === 'attack');
 
   G.ctx.save();
   if (e.cloak) drawCloakMesh(e.cloak, '#14273e', 'rgba(125, 211, 252, 0.55)', 13, 810);
   G.ctx.translate(cx + (e.hurtFlash > 0 ? (Math.random() - 0.5) * 6 : 0), fy);
   if (isStagger) G.ctx.translate(0, 10);
 
-  // 2-Bone IK Armored Legs
   const fWalk = e.walkCycle || 0;
   const fMoving = Math.abs(e.vx) > 12;
   [-1, 1].forEach(side => {
     const ph = fWalk + (side > 0 ? 0 : Math.PI);
-    const fx = isStagger ? side * 12 : (fMoving ? Math.sin(ph) * 12 : side * 7);
-    const fyL = isStagger ? 0 : (fMoving ? -Math.max(0, Math.cos(ph)) * 6 : 0);
-    const ik = solve2BoneIK(side * 4, -22, fx, fyL, 12, 12, e.facing);
+    const fx = isStagger ? side * 12 : (fMoving ? Math.sin(ph) * 11 * e.facing : side * 8);
+    const fyL = isStagger ? 0 : (fMoving ? -Math.max(0, Math.cos(ph)) * 5 : 0);
+    const ik = solve2BoneIK(side * 5, -21, fx, fyL, 12, 12, e.facing);
     G.ctx.strokeStyle = side < 0 ? '#64748b' : '#cbd5e1';
-    G.ctx.lineWidth = 3.6;
+    G.ctx.lineWidth = 4.2;
     G.ctx.lineCap = 'round';
-    G.ctx.beginPath(); G.ctx.moveTo(side * 4, -22); G.ctx.lineTo(ik.kx, ik.ky); G.ctx.lineTo(ik.ex, ik.ey); G.ctx.stroke();
+    G.ctx.beginPath(); G.ctx.moveTo(side * 5, -21); G.ctx.lineTo(ik.kx, ik.ky); G.ctx.lineTo(ik.ex, ik.ey); G.ctx.stroke();
   });
 
-  // Frost-Encrusted Plate Torso
   G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#131d2c';
   G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : '#7dd3fc';
-  G.ctx.lineWidth = 2.0;
+  G.ctx.lineWidth = 2.1;
   G.ctx.beginPath();
-  G.ctx.moveTo(-13, -18); G.ctx.lineTo(-15, -48); G.ctx.lineTo(0, -53); G.ctx.lineTo(15, -48); G.ctx.lineTo(13, -18);
+  G.ctx.moveTo(-15, -17);
+  G.ctx.lineTo(-19, -43);
+  G.ctx.quadraticCurveTo(0, -56, 19, -43);
+  G.ctx.lineTo(15, -17);
+  G.ctx.closePath();
+  G.ctx.fill(); G.ctx.stroke();
+
+  // Jagged Snow-Fur Shoulder Collar
+  G.ctx.fillStyle = '#243449';
+  G.ctx.beginPath();
+  G.ctx.moveTo(-21, -40); G.ctx.lineTo(-14, -50); G.ctx.lineTo(-5, -45); G.ctx.lineTo(0, -52);
+  G.ctx.lineTo(6, -45); G.ctx.lineTo(15, -50); G.ctx.lineTo(21, -40); G.ctx.lineTo(14, -36); G.ctx.lineTo(-14, -36);
   G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
 
-  // Horned Frost Visor Helm
+  // Domed Cracked Iron Kettle-Helm with Wide Brim
   G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#1e2c40';
+  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : '#bae6fd';
+  G.ctx.lineWidth = 1.9;
   G.ctx.beginPath();
-  G.ctx.moveTo(-10, -49); G.ctx.lineTo(-14, -67); G.ctx.lineTo(-4, -59); G.ctx.lineTo(0, -69);
-  G.ctx.lineTo(4, -59); G.ctx.lineTo(14, -67); G.ctx.lineTo(10, -49);
-  G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
+  G.ctx.moveTo(-16, -50);
+  G.ctx.quadraticCurveTo(-15, -67, 0, -68);
+  G.ctx.quadraticCurveTo(15, -67, 16, -50);
+  G.ctx.lineTo(19, -47);
+  G.ctx.lineTo(-19, -47);
+  G.ctx.closePath();
+  G.ctx.fill(); G.ctx.stroke();
 
-  // Glacial Eye Glow
   G.ctx.fillStyle = isRed ? COLORS.crimsonBright : '#bae6fd';
-  G.ctx.fillRect(e.facing > 0 ? 1 : -8, -55, 7, 2.8);
+  G.ctx.fillRect(e.facing > 0 ? 1 : -8, -54, 7, 2.8);
 
-  // Crystalline Ice Halberd
-  let hAng = e.facing > 0 ? -0.35 : Math.PI + 0.35;
-  if (e.state === 'windup') hAng = e.facing > 0 ? -1.85 : Math.PI + 1.85;
-  else if (e.state === 'attack') hAng = e.facing > 0 ? 0.12 : Math.PI - 0.12;
+  let hAng = e.facing > 0 ? -0.42 : Math.PI + 0.42;
+  if (e.state === 'windup') hAng = isWave ? (e.facing > 0 ? -2.35 : Math.PI + 2.35) : (e.facing > 0 ? -1.85 : Math.PI + 1.85);
+  else if (e.state === 'attack') hAng = e.facing > 0 ? 0.14 : Math.PI - 0.14;
   G.ctx.save();
-  G.ctx.translate(e.facing * 8, -36);
+  G.ctx.translate(e.facing * 6, -37);
   G.ctx.rotate(hAng);
   G.ctx.strokeStyle = '#94a3b8';
-  G.ctx.lineWidth = 3.0;
-  G.ctx.beginPath(); G.ctx.moveTo(-20, 0); G.ctx.lineTo(54, 0); G.ctx.stroke();
-  G.ctx.fillStyle = isRed ? COLORS.crimsonBright : '#bae6fd';
+  G.ctx.lineWidth = 3.2;
+  G.ctx.beginPath(); G.ctx.moveTo(-22, 0); G.ctx.lineTo(54, 0); G.ctx.stroke();
+  G.ctx.fillStyle = isRed ? COLORS.crimsonBright : (isWave ? '#38bdf8' : '#bae6fd');
   G.ctx.strokeStyle = '#e0f2fe';
   G.ctx.lineWidth = 1.6;
   G.ctx.beginPath();
-  G.ctx.moveTo(40, -2); G.ctx.lineTo(66, 0); G.ctx.lineTo(44, 5); G.ctx.lineTo(36, 15); G.ctx.lineTo(31, 4);
+  G.ctx.moveTo(38, -3); G.ctx.lineTo(66, 0); G.ctx.lineTo(44, 6); G.ctx.lineTo(35, 17); G.ctx.lineTo(29, 5);
+  G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
+  G.ctx.restore();
+
+  // Strapped Crystalline Hexagonal Ice-Slab Buckler
+  G.ctx.save();
+  G.ctx.translate(e.facing * 17, -33);
+  G.ctx.fillStyle = isWave ? 'rgba(56, 189, 248, 0.42)' : 'rgba(186, 230, 253, 0.28)';
+  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : '#e0f2fe';
+  G.ctx.lineWidth = 2.0;
+  G.ctx.beginPath();
+  G.ctx.moveTo(-5, -16); G.ctx.lineTo(6, -13); G.ctx.lineTo(10, 0); G.ctx.lineTo(5, 16); G.ctx.lineTo(-6, 12); G.ctx.lineTo(-9, -2);
   G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
   G.ctx.restore();
 
@@ -880,363 +950,161 @@ function drawFrostguard(e) {
       drawGlowSprite('crimson', 0, -82, 20, 0.78);
       drawCachedText(G.ctx, t('ren.dangerGlyph'), 0, -76, { size: isEn() ? 14 : 22, bold: true, color: COLORS.crimsonBright });
     } else if (e.stateTimer < 0.25) {
-      drawParryStarGlint(e.facing * 20, -38, 19, COLORS.goldBright);
+      drawParryStarGlint(e.facing * 20, -38, isWave ? 22 : 19, isWave ? '#7dd3fc' : COLORS.goldBright);
     }
   }
   G.ctx.restore();
-
   drawEnemyOverheadBars(e);
   if (isStagger) drawExecutionSigil(cx, e.y + 30);
 }
 
-function drawWardenWind(e) {
-  const cx = e.x + e.w * 0.5;
-  const fy = e.y + e.h;
-  const isStagger = e.state === 'stagger';
-  const isRed = e.moveKind === 'windDashCut' && (e.state === 'windup' || e.state === 'strike');
-
-  G.ctx.save();
-  if (e.cloak) drawCloakMesh(e.cloak, e.phase === 2 ? '#123a52' : '#10293d', 'rgba(125, 211, 252, 0.65)', 16, 840);
-  G.ctx.translate(cx + (e.hurtFlash > 0 ? (Math.random() - 0.5) * 6 : 0), fy);
-  if (isStagger) G.ctx.translate(0, 11);
-
-  if (e.phase === 2) {
-    G.ctx.strokeStyle = 'rgba(56, 189, 248, 0.42)';
-    G.ctx.lineWidth = 2.0;
-    G.ctx.beginPath();
-    G.ctx.ellipse(0, -36, 30 + Math.sin(G.globalTime * 9) * 4, 10, -0.18, 0, Math.PI * 2);
-    G.ctx.stroke();
-  }
-
-  // Agile Tall Legs
-  const wlk = e.walkCycle || 0;
-  const mov = Math.abs(e.vx) > 15;
-  [-1, 1].forEach(side => {
-    const ph = wlk + (side > 0 ? 0 : Math.PI);
-    const fx = isStagger ? side * 13 : (mov ? Math.sin(ph) * 14 : side * 8);
-    const fyL = isStagger ? 0 : (mov ? -Math.max(0, Math.cos(ph)) * 8 : 0);
-    const ik = solve2BoneIK(side * 4, -24, fx, fyL, 13, 13, e.facing);
-    G.ctx.strokeStyle = side < 0 ? '#7dd3fc' : COLORS.parchment;
-    G.ctx.lineWidth = 3.4;
-    G.ctx.lineCap = 'round';
-    G.ctx.beginPath(); G.ctx.moveTo(side * 4, -24); G.ctx.lineTo(ik.kx, ik.ky); G.ctx.lineTo(ik.ex, ik.ey); G.ctx.stroke();
-  });
-
-  // Tall Wind-Sentinel Coat & Bronze Shoulder Pauldrons
-  G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#0f1c2b';
-  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : '#7dd3fc';
-  G.ctx.lineWidth = 2.1;
-  G.ctx.beginPath();
-  G.ctx.moveTo(-14, -20); G.ctx.lineTo(-16, -54); G.ctx.lineTo(0, -59); G.ctx.lineTo(16, -54); G.ctx.lineTo(14, -20);
-  G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
-
-  // Wide Winged Bamboo-Iron Conical Hat + Wind Scarf Crest
-  G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#17293c';
-  G.ctx.beginPath();
-  G.ctx.moveTo(-27, -57); G.ctx.lineTo(0, -76); G.ctx.lineTo(27, -57); G.ctx.closePath();
-  G.ctx.fill(); G.ctx.stroke();
-  G.ctx.fillStyle = isRed ? COLORS.crimsonBright : '#38bdf8';
-  G.ctx.fillRect(e.facing > 0 ? 1 : -9, -56, 8, 2.8);
-
-  // Twin Gale Curved Sabers
-  const drawSaber = (ox, oy, ang) => {
-    G.ctx.save();
-    G.ctx.translate(ox, oy);
-    G.ctx.rotate(ang);
-    G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : '#e0f2fe';
-    G.ctx.lineWidth = 3.0;
-    G.ctx.beginPath(); G.ctx.moveTo(0, 0); G.ctx.quadraticCurveTo(26, -7, 50, -1); G.ctx.stroke();
-    G.ctx.restore();
-  };
-  let a1 = e.facing > 0 ? -0.45 : Math.PI + 0.45;
-  let a2 = e.facing > 0 ? 0.55 : Math.PI - 0.55;
-  if (e.state === 'windup') {
-    a1 = e.facing > 0 ? -2.25 : Math.PI + 2.25;
-    a2 = e.facing > 0 ? 2.15 : Math.PI - 2.15;
-  } else if (e.state === 'strike') {
-    a1 = e.facing > 0 ? 0.18 : Math.PI - 0.18;
-    a2 = e.facing > 0 ? -0.32 : Math.PI + 0.32;
-  }
-  drawSaber(-e.facing * 8, -38, a2);
-  drawSaber(e.facing * 10, -38, a1);
-
-  if (e.state === 'windup') {
-    if (isRed) {
-      drawGlowSprite('crimson', 0, -88, 22, 0.82);
-      drawCachedText(G.ctx, t('ren.dangerGlyph'), 0, -82, { size: isEn() ? 14 : 22, bold: true, color: COLORS.crimsonBright });
-    } else if (e.stateTimer < 0.24) {
-      drawParryStarGlint(e.facing * 20, -40, 22, COLORS.goldBright);
-    }
-  }
-  G.ctx.restore();
-
-  drawEnemyOverheadBars(e);
-  if (isStagger) drawExecutionSigil(cx, e.y + 34);
-}
-
-function drawWardenForest(e) {
-  const cx = e.x + e.w * 0.5;
-  const fy = e.y + e.h;
-  const isStagger = e.state === 'stagger';
-  const isRed = (e.moveKind === 'vineWave' || e.moveKind === 'canopyThorns' || e.moveKind === 'rootEruption') && (e.state === 'windup' || e.state === 'strike');
-  const armored = e.barkArmor && (e.shieldBrokenTimer || 0) <= 0 && !isStagger;
-  const pulse = Math.sin(e.pulsePhase || 0) * 3;
-
-  G.ctx.save();
-  G.ctx.translate(cx + (e.hurtFlash > 0 ? (Math.random() - 0.5) * 7 : 0), fy);
-  if (isStagger) G.ctx.translate(0, 12);
-
-  // Towering Gnarled Root-Treant Trunk
-  G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#131d17';
-  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : (armored ? '#6ee7b7' : '#a7f3d0');
-  G.ctx.lineWidth = 2.6;
-  G.ctx.beginPath();
-  G.ctx.moveTo(-30, 0);
-  G.ctx.quadraticCurveTo(-24, -26, -26, -64);
-  G.ctx.quadraticCurveTo(-18, -94, 0, -98 + pulse * 0.5);
-  G.ctx.quadraticCurveTo(20, -92, 26, -62);
-  G.ctx.quadraticCurveTo(24, -26, 30, 0);
-  G.ctx.closePath();
-  G.ctx.fill(); G.ctx.stroke();
-
-  if (e.canopyThornTimer > 0) {
-    drawGlowSprite('cyan', 0, -102, 46, 0.55);
-    G.ctx.fillStyle = '#15803d';
-    G.ctx.strokeStyle = '#86efac';
-    G.ctx.lineWidth = 1.8;
-    for (let ti = -3; ti <= 3; ti++) {
-      const tx = ti * 13;
-      const th = 22 - Math.abs(ti) * 3;
-      G.ctx.beginPath();
-      G.ctx.moveTo(tx - 5, -88);
-      G.ctx.lineTo(tx + ti * 2, -88 - th);
-      G.ctx.lineTo(tx + 5, -88);
-      G.ctx.closePath();
-      G.ctx.fill();
-      G.ctx.stroke();
-    }
-  }
-
-  // Antler-like Blighted Canopy Branches
-  G.ctx.strokeStyle = '#365341';
-  G.ctx.lineWidth = 4.2;
-  G.ctx.beginPath();
-  G.ctx.moveTo(-14, -84); G.ctx.lineTo(-34, -108); G.ctx.moveTo(-24, -96); G.ctx.lineTo(-18, -112);
-  G.ctx.moveTo(14, -84); G.ctx.lineTo(36, -106); G.ctx.moveTo(24, -95); G.ctx.lineTo(18, -114);
-  G.ctx.stroke();
-
-  // Cracked Ancient Bronze Bell Embedded in Chest
-  drawGlowSprite(e.phase === 2 ? 'gold' : 'cyan', 0, -54, 34, 0.55);
-  G.ctx.fillStyle = '#5c4620';
-  G.ctx.strokeStyle = COLORS.goldBright;
-  G.ctx.lineWidth = 2.0;
-  G.ctx.beginPath();
-  G.ctx.moveTo(-14, -68); G.ctx.lineTo(14, -68); G.ctx.lineTo(19, -40); G.ctx.lineTo(-19, -40);
-  G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
-
-  // Bark Armor Carapace Shield Overlay when unbroken
-  if (armored) {
-    G.ctx.strokeStyle = 'rgba(110, 231, 183, 0.72)';
-    G.ctx.lineWidth = 3.0;
-    boilCircle(G.ctx, 0, -52, 38, 7200, 2.0, 14);
-    G.ctx.stroke();
-  }
-
-  // Glowing Emerald Eyes
-  G.ctx.fillStyle = isRed ? COLORS.crimsonBright : '#4ade80';
-  G.ctx.beginPath();
-  G.ctx.arc(-8, -79, 3.2, 0, Math.PI * 2);
-  G.ctx.arc(8, -79, 3.2, 0, Math.PI * 2);
-  G.ctx.fill();
-
-  // Massive Root-Mace Arm
-  const armAng = e.state === 'windup' ? (e.facing > 0 ? -1.8 : Math.PI + 1.8)
-    : e.state === 'strike' ? (e.facing > 0 ? 0.3 : Math.PI - 0.3)
-    : (e.facing > 0 ? 0.85 : Math.PI - 0.85);
-  G.ctx.save();
-  G.ctx.translate(e.facing * 20, -58);
-  G.ctx.rotate(armAng);
-  G.ctx.strokeStyle = '#6ee7b7';
-  G.ctx.lineWidth = 7.5;
-  G.ctx.lineCap = 'round';
-  G.ctx.beginPath(); G.ctx.moveTo(0, 0); G.ctx.lineTo(44, 0); G.ctx.stroke();
-  G.ctx.restore();
-
-  if (e.state === 'windup') {
-    if (isRed) {
-      drawGlowSprite('crimson', 0, -118, 22, 0.82);
-      drawCachedText(G.ctx, t('ren.dangerGlyph'), 0, -112, { size: isEn() ? 14 : 22, bold: true, color: COLORS.crimsonBright });
-    } else if (e.moveKind === 'rootSlam' && e.stateTimer < 0.26) {
-      drawParryStarGlint(e.facing * 26, -54, 22, COLORS.goldBright);
-    }
-  }
-  G.ctx.restore();
-
-  drawEnemyOverheadBars(e);
-  if (isStagger) drawExecutionSigil(cx, e.y + 44);
-}
-
-function drawWardenMountain(e) {
-  const cx = e.x + e.w * 0.5;
-  const fy = e.y + e.h;
-  const isStagger = e.state === 'stagger';
-  const isRed = e.moveKind === 'glacialThrust' && (e.state === 'windup' || e.state === 'strike');
-
-  G.ctx.save();
-  if (e.cloak) drawCloakMesh(e.cloak, e.phase === 2 ? '#1a3656' : '#13243b', 'rgba(186, 230, 253, 0.68)', 16, 870);
-  G.ctx.translate(cx + (e.hurtFlash > 0 ? (Math.random() - 0.5) * 6 : 0), fy);
-  if (isStagger) G.ctx.translate(0, 11);
-
-  if (e.phase === 2) {
-    drawGlowSprite('cyan', 0, -40, 44, 0.45);
-  }
-
-  // Tall Noble Frost Marquis Legs
-  const wlk = e.walkCycle || 0;
-  const mov = Math.abs(e.vx) > 15;
-  [-1, 1].forEach(side => {
-    const ph = wlk + (side > 0 ? 0 : Math.PI);
-    const fx = isStagger ? side * 12 : (mov ? Math.sin(ph) * 13 : side * 8);
-    const fyL = isStagger ? 0 : (mov ? -Math.max(0, Math.cos(ph)) * 7 : 0);
-    const ik = solve2BoneIK(side * 4, -24, fx, fyL, 13, 13, e.facing);
-    G.ctx.strokeStyle = side < 0 ? '#94a3b8' : '#e2e8f0';
-    G.ctx.lineWidth = 3.5;
-    G.ctx.lineCap = 'round';
-    G.ctx.beginPath(); G.ctx.moveTo(side * 4, -24); G.ctx.lineTo(ik.kx, ik.ky); G.ctx.lineTo(ik.ex, ik.ey); G.ctx.stroke();
-  });
-
-  // Frost Marquis Haori & Glacial Pauldrons
-  G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#111b2c';
-  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : '#bae6fd';
-  G.ctx.lineWidth = 2.2;
-  G.ctx.beginPath();
-  G.ctx.moveTo(-14, -20); G.ctx.lineTo(-17, -56); G.ctx.lineTo(0, -61); G.ctx.lineTo(17, -56); G.ctx.lineTo(14, -20);
-  G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
-
-  // Jagged Ice Crown Helm
-  G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#1e3048';
-  G.ctx.beginPath();
-  G.ctx.moveTo(-11, -56); G.ctx.lineTo(-15, -75); G.ctx.lineTo(-5, -66); G.ctx.lineTo(0, -80);
-  G.ctx.lineTo(5, -66); G.ctx.lineTo(15, -75); G.ctx.lineTo(11, -56);
-  G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
-
-  // Piercing Frost Eyes
-  G.ctx.fillStyle = isRed ? COLORS.crimsonBright : '#e0f2fe';
-  G.ctx.fillRect(e.facing > 0 ? 2 : -9, -62, 7, 2.8);
-
-  // Broken-Tipped Glacial Greatsword
-  let sAng = e.facing > 0 ? -0.32 : Math.PI + 0.32;
-  if (e.state === 'windup') {
-    sAng = e.moveKind === 'frostIai'
-      ? (e.facing > 0 ? 2.65 : Math.PI - 2.65)
-      : (e.facing > 0 ? -2.05 : Math.PI + 2.05);
-  } else if (e.state === 'strike') {
-    sAng = e.facing > 0 ? 0.14 : Math.PI - 0.14;
-  }
-  G.ctx.save();
-  G.ctx.translate(e.facing * 8, -40);
-  G.ctx.rotate(sAng);
-  G.ctx.fillStyle = isRed ? COLORS.crimsonBright : '#bae6fd';
-  G.ctx.strokeStyle = '#ffffff';
-  G.ctx.lineWidth = 1.8;
-  G.ctx.beginPath();
-  G.ctx.moveTo(0, -3.5); G.ctx.lineTo(56, -4.5); G.ctx.lineTo(64, -1); G.ctx.lineTo(52, 4.5); G.ctx.lineTo(0, 3.5);
-  G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
-  G.ctx.restore();
-
-  if (e.state === 'windup') {
-    if (isRed) {
-      drawGlowSprite('crimson', 0, -94, 22, 0.82);
-      drawCachedText(G.ctx, t('ren.dangerGlyph'), 0, -88, { size: isEn() ? 14 : 22, bold: true, color: COLORS.crimsonBright });
-    } else if (e.stateTimer < 0.25) {
-      drawParryStarGlint(e.facing * 20, -42, e.moveKind === 'frostIai' ? 26 : 20, COLORS.goldBright);
-    }
-  }
-  G.ctx.restore();
-
-  drawEnemyOverheadBars(e);
-  if (isStagger) drawExecutionSigil(cx, e.y + 36);
-}
-
-
 function drawDrowned(e) {
+  // v45.1 Complete Silhouette Overhaul: Hunched Sunken Water-Wraith with Tilted Cracked Bell-Shackle, Dripping Kelp & Dragging Gaff-Hook
   const cx = e.x + e.w * 0.5, fy = e.y + e.h, isStagger = e.state === 'stagger';
   const isRed = e.attackKind === 'redHookLunge' && (e.state === 'windup' || e.state === 'attack');
   const alpha = e.submergeAlpha !== undefined ? e.submergeAlpha : 1;
+  const now = G.globalTime || 0;
+
   G.ctx.save(); G.ctx.globalAlpha = alpha;
-  if (e.cloak && alpha > 0.35) drawCloakMesh(e.cloak, '#0b1e2d', 'rgba(56, 189, 248, 0.45)', 14, 710);
+  if (e.cloak && alpha > 0.35) drawCloakMesh(e.cloak, '#091a26', 'rgba(56, 189, 248, 0.48)', 11, 710);
   G.ctx.translate(cx + (e.hurtFlash > 0 ? (Math.random() - 0.5) * 6 : 0), fy);
   if (isStagger) G.ctx.translate(0, 9);
-  G.ctx.strokeStyle = 'rgba(56, 189, 248, 0.42)'; G.ctx.lineWidth = 1.3;
-  G.ctx.beginPath(); G.ctx.ellipse(0, -1, 18 + Math.sin(G.globalTime * 5 + cx) * 3, 4, 0, 0, Math.PI * 2); G.ctx.stroke();
+
+  G.ctx.strokeStyle = 'rgba(56, 189, 248, 0.48)'; G.ctx.lineWidth = 1.4;
+  G.ctx.beginPath(); G.ctx.ellipse(0, -1, 22 + Math.sin(now * 5 + cx) * 3.5, 4.5, 0, 0, Math.PI * 2); G.ctx.stroke();
+
   const dWalk = e.walkCycle || 0, dMoving = Math.abs(e.vx) > 14;
   [-1, 1].forEach(side => {
     const ph = dWalk + (side > 0 ? 0 : Math.PI);
-    const fx = isStagger ? side * 10 : (dMoving ? Math.sin(ph) * 11 : side * 6);
+    const fx = isStagger ? side * 11 : (dMoving ? Math.sin(ph) * 12 * e.facing : side * 7);
     const fyL = isStagger ? 0 : (dMoving ? -Math.max(0, Math.cos(ph)) * 6 : 0);
-    const ik = solve2BoneIK(side * 4, -18, fx, fyL, 10, 10, e.facing);
-    G.ctx.strokeStyle = '#0e2436'; G.ctx.lineWidth = 4.6; G.ctx.lineCap = 'round';
-    G.ctx.beginPath(); G.ctx.moveTo(side * 4, -18); G.ctx.lineTo(ik.kx, ik.ky); G.ctx.lineTo(ik.ex, ik.ey); G.ctx.stroke();
+    const ik = solve2BoneIK(side * 3.5, -19, fx, fyL, 11, 11, e.facing);
+    G.ctx.strokeStyle = '#0e283b'; G.ctx.lineWidth = 3.6; G.ctx.lineCap = 'round';
+    G.ctx.beginPath(); G.ctx.moveTo(side * 3.5, -19); G.ctx.lineTo(ik.kx, ik.ky); G.ctx.lineTo(ik.ex, ik.ey); G.ctx.stroke();
   });
-  G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#0f2030';
-  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : '#38bdf8'; G.ctx.lineWidth = 1.6;
-  G.ctx.beginPath(); G.ctx.moveTo(-13, -12); G.ctx.lineTo(-9, -40); G.ctx.lineTo(10, -40); G.ctx.lineTo(14, -12); G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
-  G.ctx.fillStyle = '#251d14'; G.ctx.strokeStyle = COLORS.gold; G.ctx.lineWidth = 1.7;
-  G.ctx.beginPath(); G.ctx.moveTo(-11, -39); G.ctx.quadraticCurveTo(-12, -57, 0, -59); G.ctx.quadraticCurveTo(12, -57, 11, -39); G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
-  drawGlowSprite(isRed ? 'crimson' : 'cyan', e.facing * 5, -48, 16, 0.72);
+
+  G.ctx.save();
+  G.ctx.translate(e.facing * 4, -18);
+  G.ctx.rotate(e.facing * 0.38);
+  G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#0d1f2e';
+  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : '#38bdf8'; G.ctx.lineWidth = 1.7;
+  G.ctx.beginPath();
+  G.ctx.moveTo(-10, 2);
+  G.ctx.quadraticCurveTo(-15, -14, -8, -28);
+  G.ctx.lineTo(9, -26);
+  G.ctx.quadraticCurveTo(12, -10, 8, 2);
+  G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
+
+  G.ctx.strokeStyle = 'rgba(56, 189, 248, 0.65)'; G.ctx.lineWidth = 1.5;
+  for (let ki = -2; ki <= 1; ki++) {
+    const kx = ki * 5 - e.facing * 4;
+    const kSway = Math.sin(now * 6 + ki * 1.4) * 3;
+    G.ctx.beginPath(); G.ctx.moveTo(kx, -22); G.ctx.quadraticCurveTo(kx + kSway, -8, kx - kSway * 0.6, 5); G.ctx.stroke();
+  }
+
+  G.ctx.save();
+  G.ctx.translate(e.facing * 3, -32);
+  G.ctx.rotate(-e.facing * 0.36);
+  G.ctx.fillStyle = '#251d14'; G.ctx.strokeStyle = COLORS.gold; G.ctx.lineWidth = 1.8;
+  G.ctx.beginPath();
+  G.ctx.moveTo(-13, 4); G.ctx.lineTo(-9, -15); G.ctx.quadraticCurveTo(0, -19, 9, -15); G.ctx.lineTo(13, 4);
+  G.ctx.lineTo(4, 1); G.ctx.lineTo(0, 6); G.ctx.lineTo(-5, 2);
+  G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
+  drawGlowSprite(isRed ? 'crimson' : 'cyan', e.facing * 4, -4, 15, 0.78);
   G.ctx.fillStyle = isRed ? COLORS.crimsonBright : '#7dd3fc';
-  G.ctx.fillRect(e.facing > 0 ? 1 : -8, -50, 7, 4);
-  const hookOff = e.state === 'windup' ? -12 : e.state === 'attack' ? 26 : 6;
-  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : '#bae6fd'; G.ctx.lineWidth = 2.4;
-  G.ctx.beginPath(); G.ctx.moveTo(e.facing * 6, -30); G.ctx.lineTo(e.facing * (24 + hookOff), -30);
-  G.ctx.quadraticCurveTo(e.facing * (34 + hookOff), -24, e.facing * (24 + hookOff), -18); G.ctx.stroke();
+  G.ctx.beginPath(); G.ctx.arc(e.facing * 4, -4, 2.8, 0, Math.PI * 2); G.ctx.fill();
+  G.ctx.restore();
+  G.ctx.restore();
+
+  const isPull = e.attackKind === 'hookPull' && e.state === 'attack';
+  const hookExt = e.state === 'windup' ? -10 : (e.state === 'attack' ? (isPull ? 30 : 24) : 4);
+  const hookY = e.state === 'attack' ? -26 : -14;
+  G.ctx.strokeStyle = '#64748b'; G.ctx.lineWidth = 2.6;
+  G.ctx.beginPath(); G.ctx.moveTo(e.facing * 8, -32); G.ctx.lineTo(e.facing * (24 + hookExt), hookY); G.ctx.stroke();
+  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : '#bae6fd'; G.ctx.lineWidth = 2.8;
+  G.ctx.beginPath();
+  G.ctx.arc(e.facing * (28 + hookExt), hookY + 6, 9, e.facing > 0 ? -1.4 : Math.PI - 1.7, e.facing > 0 ? 1.7 : Math.PI + 1.4);
+  G.ctx.stroke();
+
   if (e.state === 'windup') {
-    if (isRed) { drawGlowSprite('crimson', 0, -76, 20, 0.8); drawCachedText(G.ctx, t('ren.dangerGlyph'), 0, -70, { size: isEn() ? 13 : 20, bold: true, color: COLORS.crimsonBright }); }
-    else if (e.stateTimer < 0.25) drawParryStarGlint(e.facing * 18, -32, 18, COLORS.goldBright);
+    if (isRed) { drawGlowSprite('crimson', 0, -68, 20, 0.8); drawCachedText(G.ctx, t('ren.dangerGlyph'), 0, -62, { size: isEn() ? 13 : 20, bold: true, color: COLORS.crimsonBright }); }
+    else if (e.stateTimer < 0.25) drawParryStarGlint(e.facing * 20, -28, 19, COLORS.goldBright);
   }
   G.ctx.restore(); drawEnemyOverheadBars(e);
   if (isStagger) drawExecutionSigil(cx, e.y + 30);
 }
 
 function drawAnchorite(e) {
+  // v45.1 Complete Silhouette Overhaul: Colossal Hunchbacked Diving-Bell Juggernaut + Giant Chained Ship-Anchor!
   const cx = e.x + e.w * 0.5, fy = e.y + e.h, isStagger = e.state === 'stagger';
   const isRed = e.attackKind === 'redAnchorSlam' && (e.state === 'windup' || e.state === 'attack');
+  const isBack = e.attackKind === 'anchorBackswing' && (e.state === 'windup' || e.state === 'attack');
+
   G.ctx.save();
-  if (e.cloak) drawCloakMesh(e.cloak, '#141923', 'rgba(148, 163, 184, 0.42)', 18, 760);
+  if (e.cloak) drawCloakMesh(e.cloak, '#121822', 'rgba(148, 163, 184, 0.42)', 16, 760);
   G.ctx.translate(cx + (e.hurtFlash > 0 ? (Math.random() - 0.5) * 7 : 0), fy);
   if (isStagger) G.ctx.translate(0, 12);
+
   const aWalk = e.walkCycle || 0, aMoving = Math.abs(e.vx) > 10;
   [-1, 1].forEach(side => {
     const ph = aWalk + (side > 0 ? 0 : Math.PI);
-    const fx = isStagger ? side * 14 : (aMoving ? Math.sin(ph) * 13 : side * 9);
+    const fx = isStagger ? side * 15 : (aMoving ? Math.sin(ph) * 13 * e.facing : side * 10);
     const fyL = isStagger ? 0 : (aMoving ? -Math.max(0, Math.cos(ph)) * 5 : 0);
-    const ik = solve2BoneIK(side * 7, -24, fx, fyL, 14, 14, e.facing);
-    G.ctx.strokeStyle = '#1b2230'; G.ctx.lineWidth = 7.5; G.ctx.lineCap = 'round';
-    G.ctx.beginPath(); G.ctx.moveTo(side * 7, -24); G.ctx.lineTo(ik.kx, ik.ky); G.ctx.lineTo(ik.ex, ik.ey); G.ctx.stroke();
+    const ik = solve2BoneIK(side * 8, -24, fx, fyL, 14, 14, e.facing);
+    G.ctx.strokeStyle = '#1b2230'; G.ctx.lineWidth = 8.2; G.ctx.lineCap = 'round';
+    G.ctx.beginPath(); G.ctx.moveTo(side * 8, -24); G.ctx.lineTo(ik.kx, ik.ky); G.ctx.lineTo(ik.ex, ik.ey); G.ctx.stroke();
   });
-  G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#18212e';
-  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : '#94a3b8'; G.ctx.lineWidth = 2.0;
-  G.ctx.beginPath(); G.ctx.moveTo(-20, -18); G.ctx.lineTo(-22, -56); G.ctx.lineTo(22, -56); G.ctx.lineTo(20, -18); G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
-  G.ctx.strokeStyle = COLORS.gold; G.ctx.lineWidth = 2.4;
-  G.ctx.beginPath(); G.ctx.moveTo(-18, -52); G.ctx.quadraticCurveTo(0, -42, 18, -52); G.ctx.stroke();
-  G.ctx.fillStyle = '#241c16'; G.ctx.strokeStyle = COLORS.gold; G.ctx.lineWidth = 1.8;
-  G.ctx.fillRect(-13, -74, 26, 20); G.ctx.strokeRect(-13, -74, 26, 20);
-  drawGlowSprite(isRed ? 'crimson' : 'cyan', e.facing * 6, -64, 15, 0.72);
+
+  G.ctx.fillStyle = e.hurtFlash > 0 ? '#ffffff' : '#161f2c';
+  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : '#94a3b8'; G.ctx.lineWidth = 2.2;
+  G.ctx.beginPath();
+  G.ctx.moveTo(-21, -18);
+  G.ctx.quadraticCurveTo(-28, -42, -20, -64);
+  G.ctx.quadraticCurveTo(0, -72, 22, -56);
+  G.ctx.lineTo(20, -18);
+  G.ctx.closePath(); G.ctx.fill(); G.ctx.stroke();
+
+  G.ctx.strokeStyle = COLORS.gold; G.ctx.lineWidth = 2.6;
+  G.ctx.beginPath(); G.ctx.moveTo(-20, -56); G.ctx.quadraticCurveTo(0, -40, 20, -50); G.ctx.stroke();
+
+  G.ctx.fillStyle = '#2b2016'; G.ctx.strokeStyle = COLORS.goldBright; G.ctx.lineWidth = 2.0;
+  G.ctx.beginPath(); G.ctx.arc(e.facing * 5, -62, 14, 0, Math.PI * 2); G.ctx.fill(); G.ctx.stroke();
+  G.ctx.strokeStyle = '#cbd5e1'; G.ctx.lineWidth = 2.4;
+  G.ctx.beginPath(); G.ctx.arc(e.facing * 5, -80, 5.5, 0, Math.PI * 2); G.ctx.stroke();
+  drawGlowSprite(isRed ? 'crimson' : 'cyan', e.facing * 10, -62, 16, 0.78);
   G.ctx.fillStyle = isRed ? COLORS.crimsonBright : '#38bdf8';
-  G.ctx.fillRect(e.facing > 0 ? 2 : -10, -66, 8, 3.5);
-  let ancAng = e.facing > 0 ? 2.55 : 0.59;
-  if (e.state === 'windup') ancAng = isRed ? -Math.PI * 0.5 : (e.facing > 0 ? 2.85 : 0.29);
-  else if (e.state === 'attack') ancAng = e.facing > 0 ? 0.12 : Math.PI - 0.12;
-  G.ctx.save(); G.ctx.translate(e.facing * 12, -44); G.ctx.rotate(ancAng);
-  G.ctx.strokeStyle = '#94a3b8'; G.ctx.lineWidth = 4.2; G.ctx.beginPath(); G.ctx.moveTo(0, 0); G.ctx.lineTo(54, 0); G.ctx.stroke();
-  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : COLORS.goldBright; G.ctx.lineWidth = 3.2;
-  G.ctx.beginPath(); G.ctx.arc(44, 0, 16, -1.25, 1.25); G.ctx.stroke();
-  G.ctx.fillStyle = '#332212'; G.ctx.strokeStyle = COLORS.gold; G.ctx.lineWidth = 1.6;
-  G.ctx.fillRect(36, -9, 14, 18); G.ctx.strokeRect(36, -9, 14, 18);
-  G.ctx.restore();
+  G.ctx.beginPath(); G.ctx.arc(e.facing * 10, -62, 5.2, 0, Math.PI * 2); G.ctx.fill();
+  G.ctx.strokeStyle = '#181410'; G.ctx.lineWidth = 1.4;
+  G.ctx.beginPath();
+  G.ctx.moveTo(e.facing * 10 - 5, -62); G.ctx.lineTo(e.facing * 10 + 5, -62);
+  G.ctx.moveTo(e.facing * 10, -67); G.ctx.lineTo(e.facing * 10, -57);
+  G.ctx.stroke();
+
+  let ancAng = e.facing > 0 ? 2.42 : 0.72;
   if (e.state === 'windup') {
-    if (isRed) { drawGlowSprite('crimson', 0, -96, 22, 0.85); drawCachedText(G.ctx, t('ren.dangerGlyph'), 0, -90, { size: isEn() ? 14 : 22, bold: true, color: COLORS.crimsonBright }); }
-    else if (e.stateTimer < 0.28) drawParryStarGlint(e.facing * 20, -48, 22, COLORS.goldBright);
+    ancAng = isRed ? -Math.PI * 0.5 : (isBack ? (e.facing > 0 ? 0.35 : Math.PI - 0.35) : (e.facing > 0 ? 2.85 : 0.29));
+  } else if (e.state === 'attack') {
+    ancAng = isBack ? (e.facing > 0 ? Math.PI - 0.15 : 0.15) : (e.facing > 0 ? 0.12 : Math.PI - 0.12);
+  }
+  G.ctx.save(); G.ctx.translate(e.facing * 10, -40); G.ctx.rotate(ancAng);
+  G.ctx.strokeStyle = '#94a3b8'; G.ctx.lineWidth = 4.6;
+  G.ctx.beginPath(); G.ctx.moveTo(-6, 0); G.ctx.lineTo(58, 0); G.ctx.stroke();
+  G.ctx.strokeStyle = COLORS.gold; G.ctx.lineWidth = 3.4;
+  G.ctx.beginPath(); G.ctx.moveTo(14, -13); G.ctx.lineTo(14, 13); G.ctx.stroke();
+  G.ctx.strokeStyle = isRed ? COLORS.crimsonBright : (isBack ? '#7dd3fc' : COLORS.goldBright);
+  G.ctx.lineWidth = 4.0;
+  G.ctx.beginPath(); G.ctx.arc(44, 0, 20, -1.32, 1.32); G.ctx.stroke();
+  G.ctx.fillStyle = isRed ? COLORS.crimsonBright : COLORS.goldBright;
+  [-1, 1].forEach(s => {
+    G.ctx.beginPath();
+    G.ctx.moveTo(49, s * 19); G.ctx.lineTo(39, s * 25); G.ctx.lineTo(44, s * 13);
+    G.ctx.closePath(); G.ctx.fill();
+  });
+  G.ctx.restore();
+
+  if (e.state === 'windup') {
+    if (isRed) { drawGlowSprite('crimson', 0, -98, 22, 0.85); drawCachedText(G.ctx, t('ren.dangerGlyph'), 0, -92, { size: isEn() ? 14 : 22, bold: true, color: COLORS.crimsonBright }); }
+    else if (e.stateTimer < 0.28) drawParryStarGlint(e.facing * 20, -48, isBack ? 24 : 22, COLORS.goldBright);
   }
   G.ctx.restore(); drawEnemyOverheadBars(e);
   if (isStagger) drawExecutionSigil(cx, e.y + 38);

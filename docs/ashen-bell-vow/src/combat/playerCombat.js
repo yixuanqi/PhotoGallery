@@ -287,6 +287,19 @@ export function evaluatePlayerActiveAttack() {
   const px = G.player.x + G.player.w / 2;
   const box = getPlayerAttackBox(atk.type, atk.weaponId);
 
+  // v45.2 Allow slicing incoming sticky webOrb projectiles cleanly out of the air!
+  if (G.projectiles && G.projectiles.length > 0) {
+    for (let pi = G.projectiles.length - 1; pi >= 0; pi--) {
+      const pr = G.projectiles[pi];
+      if (pr.kind === 'webOrb' && pr.owner === 'enemy' && aabbOverlap(box, { x: pr.x - pr.r, y: pr.y - pr.r, w: pr.r * 2, h: pr.r * 2 })) {
+        pr.life = 0;
+        audio.playSlash(1.35, false);
+        spawnParticles(pr.x, pr.y, 10, { color: '#6ee7b7', speed: 160, spark: true, life: 0.28 });
+        spawnFloatText(pr.x, pr.y - 16, t('combat.webCut'), '#6ee7b7', 14, 0.65);
+      }
+    }
+  }
+
   // Hit Enemies & Bosses (multi-frame sweep, deduplicated per swing via hitIds)
   const targets = getLivingFoes();
   let hitAny = false;
@@ -350,6 +363,94 @@ export function evaluatePlayerActiveAttack() {
       if (foe.kind === 'leech' && (atk.type === 'up' || foe.state === 'cling' || foe.state === 'telegraph' || foe.state === 'drop')) {
         finalDmg = Math.round(finalDmg * 1.45);
         spawnFloatText(foe.x + foe.w / 2, foe.y - 30, t('combat.ambushCut'), COLORS.cyanBright, 16, 0.75);
+      }
+
+      // v45.1 Sentinel Braced Spear-Guard Counterplay (light frontal hit clangs -> counterThrust; heavy/back/pogo shatters guard!)
+      if (foe.kind === 'sentinel' && foe.state === 'spearGuard') {
+        if (!hitFromFront || canBreakShield || atk.type === 'pogo') {
+          foe.state = 'recover';
+          foe.stateTimer = 0.85;
+          audio.playShieldBreak();
+          triggerHaptic('shieldBreak');
+          addShake(8);
+          spawnImpactBurst(foe.x + foe.w * 0.5 + foe.facing * 16, foe.y + 30, 'parry', 0.92);
+          spawnFloatText(foe.x + foe.w * 0.5, foe.y - 26, t('combat.spearGuardBreak'), COLORS.goldBright, 18, 0.95);
+          damageEnemyHP(foe, finalDmg, true);
+          addPostureToEnemy(foe, atk.posture + 26 + bonusPosture);
+          continue;
+        } else {
+          audio.playParry(false);
+          triggerHaptic('block');
+          spawnImpactBurst(foe.x + foe.w * 0.5 + foe.facing * 18, foe.y + 30, 'block', 0.90);
+          spawnFloatText(foe.x + foe.w * 0.5, foe.y - 26, t('combat.spearGuard'), COLORS.goldBright, 16, 0.85);
+          G.player.vx = -G.player.facing * 170;
+          foe.state = 'windup';
+          foe.attackKind = 'counterThrust';
+          foe.stateTimer = 0.36;
+          foe.didHit = false;
+          audio.playGlintCue(false);
+          continue;
+        }
+      }
+
+      // v45.1 Duelist 2-Hit Frontal Light-Spam Deflect -> Instant Parryable Counter-Iai!
+      if (foe.kind === 'duelist' && hitFromFront && !atk.heavy && atk.type !== 'counter' && atk.type !== 'iai' &&
+          foe.state !== 'stagger' && foe.state !== 'attack' && (foe.deflectCd || 0) <= 0) {
+        foe.lightHitsTaken = (foe.lightHitsTaken || 0) + 1;
+        foe.lightHitDecay = 1.5;
+        if (foe.lightHitsTaken >= 2) {
+          foe.lightHitsTaken = 0;
+          foe.deflectCd = 3.6;
+          foe.state = 'windup';
+          foe.attackKind = 'counterIai';
+          foe.stateTimer = 0.34;
+          foe.didHit = false;
+          foe.vx = -foe.facing * 95;
+          audio.playParry(true, 1);
+          audio.playGlintCue(false);
+          triggerHaptic('parry', 0.85);
+          spawnImpactBurst(foe.x + foe.w * 0.5 + foe.facing * 16, foe.y + 28, 'parry', 0.95);
+          spawnFloatText(foe.x + foe.w * 0.5, foe.y - 30, t('combat.duelistDeflect'), COLORS.goldBright, 17, 0.90);
+          G.player.vx = -G.player.facing * 165;
+          addPostureToEnemy(foe, 10);
+          continue;
+        }
+      }
+
+      // v45.1 Fungus Spore-Inhale Interrupt (Heavy / Iai / Bell attacks purify & burst for +35% dmg & +42 posture!)
+      if (foe.kind === 'fungus' && foe.inhalingSpore && foe.state === 'windup' && (atk.heavy || atk.type === 'iai' || atk.type === 'counter' || atk.weaponId === 'bell')) {
+        foe.inhalingSpore = false;
+        foe.sporeCd = 5.5;
+        foe.state = 'recover';
+        foe.stateTimer = 0.95;
+        audio.playSporePurify();
+        triggerHaptic('shieldBreak', 0.95);
+        addShake(9);
+        spawnShockwave(foe.x + foe.w * 0.5, foe.y + 24, 112, '#6ee7b7', 4.0, 0.32);
+        spawnParticles(foe.x + foe.w * 0.5, foe.y + 24, 22, { color: '#6ee7b7', speed: 240, spark: true, life: 0.42 });
+        spawnFloatText(foe.x + foe.w * 0.5, foe.y - 34, t('combat.sporeInterrupt'), '#6ee7b7', 19, 1.0);
+        damageEnemyHP(foe, Math.round(finalDmg * 1.35), true);
+        addPostureToEnemy(foe, atk.posture + 42 + bonusPosture);
+        continue;
+      }
+
+      // v45.2 Cantor 2-Hit Quick Melee -> Sanctum Halo Repel Pushback + Brief Opening!
+      if (foe.kind === 'cantor' && foe.state !== 'stagger' && (foe.repelCd || 0) <= 0) {
+        foe.quickHits = (foe.quickHits || 0) + 1;
+        foe.quickHitDecay = 1.6;
+        if (foe.quickHits >= 2) {
+          foe.quickHits = 0;
+          foe.repelCd = 4.2;
+          foe.state = 'recover';
+          foe.stateTimer = 0.62;
+          const pushDir = (G.player.x + G.player.w * 0.5) >= (foe.x + foe.w * 0.5) ? 1 : -1;
+          G.player.vx = pushDir * 270;
+          G.player.vy = Math.min(G.player.vy, -120);
+          audio.playPogoLantern();
+          addShake(6);
+          spawnShockwave(foe.x + foe.w * 0.5, foe.y + foe.h * 0.45, 118, COLORS.goldBright, 3.8, 0.28);
+          spawnFloatText(foe.x + foe.w * 0.5, foe.y - 30, t('combat.cantorRepel'), COLORS.goldBright, 17, 0.90);
+        }
       }
 
       if (isGolemShieldUp && !bypassShield) {
@@ -512,6 +613,7 @@ export function evaluatePlayerActiveAttack() {
           G.player.vy = -510;
           G.player.dashCd = 0;
           G.player.airJumpsLeft = 1;
+          G.player.airHoverStalls = 0;
         } else {
           G.player.vy = chain === 3 ? -355 : -260;
           spawnFloatText(G.player.x + G.player.w * 0.5, G.player.y - 24, t('combat.pogoFatigue'), '#cbd5e1', 15, 0.7);
@@ -820,7 +922,7 @@ function spawnWeaponMoveProjectiles(weapon, move, px, py, moveType = '') {
   } else if (p.kind === 'bellWave') {
     const hasEchoRing = weapon.id === 'bell' && hasActiveWeaponTrait('echo_ring');
     const spd = Math.round(p.speed * (hasEchoRing ? 1.20 : 1.0));
-    const canSplit = hasEchoRing && (moveType === 'slash2' || moveType === 'slash3' || moveType === 'switch');
+    const canSplit = hasEchoRing && (moveType === 'slash2' || moveType === 'slash3' || moveType === 'switch' || moveType === 'dashAttack');
     for (let i = 0; i < count; i++) {
       const offY = count > 1 ? (i === 0 ? -(p.spreadY || 14) : (p.spreadY || 14)) : 0;
       const offX = count > 1 ? (i * 14) : 0;
@@ -864,8 +966,9 @@ export function triggerPlayerAttack(type) {
   if (move.iframe) G.player.iframeTimer = Math.max(G.player.iframeTimer, move.iframe);
   if (move.guardArmor) {
     const bulwark = weaponId === 'hammer' && hasActiveWeaponTrait('iron_bulwark');
-    G.player.shieldArmorTimer = Math.max(G.player.shieldArmorTimer || 0, move.guardArmor + (bulwark ? 0.16 : 0));
-    G.player.shieldArmorMult = (move.armorMult || 0.5) * (bulwark ? 0.65 : 1.0);
+    G.player.shieldArmorTimer = Math.max(G.player.shieldArmorTimer || 0, move.guardArmor + (bulwark ? 0.08 : 0));
+    // Floor at 0.45 (max 55% DR) so Hammer + Iron Bulwark rewards reading a single strike rather than facetanking full combos
+    G.player.shieldArmorMult = Math.max(0.45, (move.armorMult || 0.5) * (bulwark ? 0.78 : 1.0));
   }
   if (move.lungeTimer) {
     G.player.iaiLungeTimer = move.lungeTimer;
@@ -1032,6 +1135,64 @@ export function triggerPlayerAttack(type) {
     else audio.playSlash(1.18, false);
     G.player.squashX = 0.88;
     G.player.squashY = 1.16;
+  } else if (type === 'dashAttack') {
+    if (weaponId === 'hammer') {
+      audio.playShieldBash(true);
+      addShake(9.5);
+      kickCamera(G.player.facing * 7, 2);
+      punchZoom(1.032);
+      spawnShockwave(px + G.player.facing * 36, py + 8, move.shockwaveR || 104, COLORS.goldBright, 4.0, 0.26);
+    } else if (weaponId === 'bell') {
+      audio.playBellChimeCast(2);
+      addShake(4.5);
+    } else {
+      audio.playIaiSlash();
+      addShake(6.0);
+      kickCamera(G.player.facing * 6, 0);
+      punchZoom(1.024);
+      spawnParticles(px, py, 10, { color: COLORS.cyanBright, speed: 220, spark: true, angle: G.player.facing > 0 ? Math.PI : 0, spread: 0.45, life: 0.26 });
+    }
+    G.player.squashX = 1.28;
+    G.player.squashY = 0.78;
+    triggerHaptic(weaponId === 'hammer' ? 'heavyHit' : 'lightHit', 0.9);
+    if (move.floatKey) spawnFloatText(px, G.player.y - 26, t(move.floatKey), weaponId === 'blade' ? COLORS.cyanBright : weapon.color, 17, 0.65);
+  } else if (type === 'air1' || type === 'air2') {
+    const isSpin = type === 'air2';
+    if (weaponId === 'bell') {
+      if (isSpin) audio.playBellQuake();
+      else audio.playBellChimeCast(2);
+    } else if (weaponId === 'hammer') {
+      audio.playSlash(isSpin ? 0.68 : 0.78, true);
+      if (isSpin) {
+        addShake(8.0);
+        spawnShockwave(px, py, 108, COLORS.goldBright, 3.8, 0.26);
+      }
+    } else {
+      audio.playSlash(isSpin ? 0.92 : 1.16, isSpin);
+      if (isSpin) {
+        addShake(5.5);
+        punchZoom(1.022);
+      }
+    }
+    if (isSpin && move.disperseOrbs) {
+      const r = (move.box && move.box.radial) || 108;
+      for (const pr of G.projectiles) {
+        if (pr.owner === 'enemy' && pr.life > 0 && Math.hypot(pr.x - px, pr.y - py) <= r + pr.r) {
+          pr.life = 0;
+          spawnParticles(pr.x, pr.y, 10, { color: COLORS.cyanBright, speed: 180, spark: true });
+        }
+      }
+    }
+    if (isSpin && move.bonusSoul) {
+      G.player.soul = Math.min(G.player.maxSoul, G.player.soul + Math.round(move.bonusSoul * getRelicStats().soulGainMult));
+    }
+    if (!G.player.grounded && (G.player.airHoverStalls || 0) < 2) {
+      G.player.airHoverStalls = (G.player.airHoverStalls || 0) + 1;
+      G.player.vy = Math.min(G.player.vy, isSpin ? -165 : -135);
+    }
+    G.player.squashX = isSpin ? 1.18 : 1.08;
+    G.player.squashY = isSpin ? 0.86 : 0.94;
+    if (isSpin && move.floatKey) spawnFloatText(px, G.player.y - 28, t(move.floatKey), weaponId === 'bell' ? COLORS.cyanBright : COLORS.goldBright, 17, 0.68);
   } else if (type === 'slash3') {
     if (weaponId === 'bell') {
       audio.playBellChimeCast(3);

@@ -5,7 +5,7 @@ import { G } from '../state.js';
 import { updateCloak } from '../vfx.js';
 import {
   makeSentinel, makeWraith, makeGolem, makePriest, makeDuelist, makeLeech, makeDummy,
-  makeFalcon, makeFungus, makeFrostguard, makeDrowned, makeAnchorite, makeWardenWind, makeWardenForest, makeWardenMountain,
+  makeFalcon, makeFungus, makeFrostguard, makeDrowned, makeAnchorite, makeWeaver, makeCrawler, makeCantor, makeWardenWind, makeWardenForest, makeWardenMountain,
   createBoss, createBoss2, createBoss3, createBoss4
 } from '../entities.js';
 import { drawEnemy } from '../render/enemyRenderer.js';
@@ -125,17 +125,20 @@ const PORTRAIT_THEMES = {
   wraith:          { bg0: '#102c3d', bg1: '#070c14', accent: '#38bdf8', scale: 1.85, offY: -6, flying: true },
   golem:           { bg0: '#2d2214', bg1: '#0b0c12', accent: '#f59e0b', scale: 1.55, offY: 6 },
   priest:          { bg0: '#231936', bg1: '#090a14', accent: '#c084fc', scale: 1.75, offY: 6 },
-  duelist:         { bg0: '#2f1420', bg1: '#0a0b12', accent: '#f87171', scale: 1.72, offY: 6 },
+  duelist:         { bg0: '#2f1420', bg1: '#0a0b12', accent: '#f87171', scale: 1.72, offY: 8 },
   leech:           { bg0: '#221433', bg1: '#080912', accent: '#a855f7', scale: 1.95, offY: -10, flying: true },
-  dummy:           { bg0: '#2e2212', bg1: '#0a0c12', accent: '#fde047', scale: 1.65, offY: 8 },
+  dummy:           { bg0: '#2e2212', bg1: '#0a0c12', accent: '#fde047', scale: 1.68, offY: 8 },
   falcon:          { bg0: '#122c3f', bg1: '#070c15', accent: '#7dd3fc', scale: 1.85, offY: -8, flying: true },
   fungus:          { bg0: '#0f2f2b', bg1: '#060e10', accent: '#6ee7b7', scale: 1.68, offY: 6 },
-  frostguard:      { bg0: '#162844', bg1: '#080d18', accent: '#bae6fd', scale: 1.60, offY: 6 },
-  drowned:         { bg0: '#0b2d42', bg1: '#060c14', accent: '#38bdf8', scale: 1.72, offY: 6 },
-  anchorite:       { bg0: '#1b2638', bg1: '#070b12', accent: '#94a3b8', scale: 1.48, offY: 8 },
-  warden_wind:     { bg0: '#133147', bg1: '#070e18', accent: '#7dd3fc', scale: 1.38, offY: 6 },
+  frostguard:      { bg0: '#162844', bg1: '#080d18', accent: '#bae6fd', scale: 1.56, offY: 8 },
+  drowned:         { bg0: '#0b2d42', bg1: '#060c14', accent: '#38bdf8', scale: 1.68, offY: 8 },
+  anchorite:       { bg0: '#1b2638', bg1: '#070b12', accent: '#94a3b8', scale: 1.36, offY: 8 },
+  weaver:          { bg0: '#0d2b22', bg1: '#060c0e', accent: '#6ee7b7', scale: 1.90, offY: 4 },
+  crawler:         { bg0: '#33190c', bg1: '#0b0807', accent: '#fb923c', scale: 1.82, offY: 6 },
+  cantor:          { bg0: '#2b2418', bg1: '#09090f', accent: '#fde047', scale: 1.48, offY: 2, flying: true },
+  warden_wind:     { bg0: '#133147', bg1: '#070e18', accent: '#7dd3fc', scale: 1.32, offY: 10 },
   warden_forest:   { bg0: '#10322c', bg1: '#060f11', accent: '#6ee7b7', scale: 1.24, offY: 8 },
-  warden_mountain: { bg0: '#192a48', bg1: '#080c17', accent: '#bae6fd', scale: 1.34, offY: 6 },
+  warden_mountain: { bg0: '#192a48', bg1: '#080c17', accent: '#bae6fd', scale: 1.24, offY: 10 },
   boss:            { bg0: '#3a1420', bg1: '#0b0810', accent: '#f87171', scale: 1.18, offY: 8 },
   boss2:           { bg0: '#45200e', bg1: '#0c080a', accent: '#f59e0b', scale: 1.16, offY: -2 },
   boss3:           { bg0: '#3e1828', bg1: '#0a0710', accent: '#fde047', scale: 1.08, offY: 8 },
@@ -156,6 +159,9 @@ function buildPortraitEntity(kind) {
   else if (kind === 'frostguard') ent = makeFrostguard('p_fr', 0, 0, -40, 40);
   else if (kind === 'drowned') ent = makeDrowned('p_dr', 0, 0, -40, 40);
   else if (kind === 'anchorite') ent = makeAnchorite('p_an', 0, 0, -40, 40);
+  else if (kind === 'weaver') ent = makeWeaver('p_wv', 0, 0, -40, 40);
+  else if (kind === 'crawler') ent = makeCrawler('p_cr', 0, 0, -40, 40);
+  else if (kind === 'cantor') ent = makeCantor('p_ct', 0, 0);
   else if (kind === 'warden_wind') ent = makeWardenWind('p_ww', 0, 0);
   else if (kind === 'warden_forest') ent = makeWardenForest('p_wf', 0, 0);
   else if (kind === 'warden_mountain') ent = makeWardenMountain('p_wm', 0, 0);
@@ -165,6 +171,7 @@ function buildPortraitEntity(kind) {
   else if (kind === 'boss4') { ent = createBoss4(false); ent.stance = 'blade'; }
   if (!ent) return null;
 
+  ent._isPortrait = true;
   ent.alive = true;
   ent.awake = false;
   ent.facing = 1;

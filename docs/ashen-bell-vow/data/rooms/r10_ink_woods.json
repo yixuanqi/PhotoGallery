@@ -312,10 +312,12 @@
   ],
   "enemies": [
     {
-      "id": "leech_forest_1",
-      "kind": "leech",
-      "x": 1520,
-      "y": 8
+      "id": "weaver_forest_2",
+      "kind": "weaver",
+      "x": 1430,
+      "y": 439,
+      "minX": 1360,
+      "maxX": 1500
     },
     {
       "id": "leech_forest_2",
@@ -332,10 +334,12 @@
       "maxX": 1930
     },
     {
-      "id": "priest_forest_1",
-      "kind": "priest",
-      "x": 1695,
-      "y": 294
+      "id": "weaver_forest_1",
+      "kind": "weaver",
+      "x": 1680,
+      "y": 324,
+      "minX": 1590,
+      "maxX": 1760
     },
     {
       "id": "fungus_forest_2",

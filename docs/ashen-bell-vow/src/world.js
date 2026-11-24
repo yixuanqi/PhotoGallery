@@ -234,6 +234,7 @@ export function updateWorldEffects(dt) {
         }
       }
     }
+    if (pr.grav) pr.vy += pr.grav * dt;
     pr.x += pr.vx * dt;
     pr.y += pr.vy * dt;
 
@@ -390,9 +391,21 @@ export function updateWorldEffects(dt) {
             triggerHaptic('shieldBreak');
             spawnFloatText(foe.x + foe.w / 2, foe.y - 26, isCrimson ? t('combat.crimsonBreak') : t('combat.bladeBreak'), pCol, 19, 0.95);
           }
-          const hitDmg = (shielded && !canWaveBreak) ? Math.max(3, Math.round(pr.dmg * 0.35)) : pr.dmg;
+          let hitDmg = (shielded && !canWaveBreak) ? Math.max(3, Math.round(pr.dmg * 0.35)) : pr.dmg;
+          let hitPos = (shielded && !canWaveBreak) ? 4 : pr.posture;
+          if (foe.kind === 'fungus' && foe.inhalingSpore && foe.state === 'windup') {
+            foe.inhalingSpore = false;
+            foe.sporeCd = 5.5;
+            foe.state = 'recover';
+            foe.stateTimer = 0.95;
+            hitDmg = Math.round(hitDmg * 1.35);
+            hitPos += 42;
+            audio.playSporePurify();
+            spawnShockwave(foe.x + foe.w * 0.5, foe.y + 24, 108, '#6ee7b7', 3.8, 0.30);
+            spawnFloatText(foe.x + foe.w * 0.5, foe.y - 34, t('combat.sporeInterrupt'), '#6ee7b7', 19, 1.0);
+          }
           damageEnemyHP(foe, hitDmg, true);
-          addPostureToEnemy(foe, (shielded && !canWaveBreak) ? 4 : pr.posture);
+          addPostureToEnemy(foe, hitPos);
           if (pr.soulOnHit && G.player) {
             G.player.soul = Math.min(G.player.maxSoul, G.player.soul + Math.round(pr.soulOnHit * getRelicStats().soulGainMult));
             G.player.switchStrikeWindow = 0.44;
@@ -551,10 +564,16 @@ export function updateWorldEffects(dt) {
           }
         }
       }
-    } else if (pr.kind === 'wraithOrb' || pr.kind === 'windBlade' || pr.kind === 'frostShard' || pr.kind === 'boss4EchoOrb' || pr.kind === 'yuanResonanceWave') {
+    } else if (pr.kind === 'wraithOrb' || pr.kind === 'windBlade' || pr.kind === 'frostShard' || pr.kind === 'webOrb' || pr.kind === 'emberGlob' || pr.kind === 'boss4EchoOrb' || pr.kind === 'yuanResonanceWave') {
       if (Math.random() < 28 * dt) {
-        const trailCol = (pr.reflected || pr.kind === 'yuanResonanceWave') ? COLORS.goldBright : (pr.kind === 'boss4EchoOrb' ? (pr.stance === 'bell' ? COLORS.cyanBright : COLORS.goldBright) : pr.kind === 'windBlade' ? '#7dd3fc' : pr.kind === 'frostShard' ? '#bae6fd' : COLORS.crimson);
+        const trailCol = (pr.reflected || pr.kind === 'yuanResonanceWave') ? COLORS.goldBright : (pr.kind === 'boss4EchoOrb' ? (pr.stance === 'bell' ? COLORS.cyanBright : COLORS.goldBright) : pr.kind === 'windBlade' ? '#7dd3fc' : pr.kind === 'frostShard' ? '#bae6fd' : pr.kind === 'webOrb' ? '#6ee7b7' : pr.kind === 'emberGlob' ? '#fb923c' : COLORS.crimson);
         spawnParticles(pr.x, pr.y, 1, { color: trailCol, speed: 45, grav: 0, life: 0.22 });
+      }
+      if (pr.kind === 'emberGlob' && pr.vy > 0 && pr.y >= getGroundSurfaceY(pr.x, pr.y) - 6) {
+        spawnParticles(pr.x, pr.y, 10, { color: '#fb923c', speed: 170, spark: true, grav: 320, life: 0.34 });
+        spawnShockwave(pr.x, pr.y, 38, '#f59e0b', 2.4, 0.20);
+        pr.life = 0;
+        continue;
       }
       const oBox = { x: pr.x - pr.r, y: pr.y - pr.r, w: pr.r * 2, h: pr.r * 2 };
       if (!pr.reflected) {
@@ -607,6 +626,10 @@ export function updateWorldEffects(dt) {
               ? { x: pr.x, w: 0, isBoss: false, inflictsFrost: pr.inflictsFrost }
               : (pr.source || { x: pr.x, w: 0, isBoss: false });
             applyIncomingAttackToPlayer(hitSrc, pr.dmg, false, 180);
+            if (pr.kind === 'webOrb' && G.player && G.player.hp > 0) {
+              G.player.webSlowTimer = Math.max(G.player.webSlowTimer || 0, 2.4);
+              spawnFloatText(G.player.x + G.player.w * 0.5, G.player.y - 30, t('combat.webbed'), '#6ee7b7', 16, 0.9);
+            }
             pr.life = 0;
           }
         }
@@ -804,6 +827,24 @@ export function updateWorldEffects(dt) {
       const ds = G.delayedStrikes[i];
       ds.timer -= dt;
       if (ds.timer <= 0) {
+        if (ds.kind === 'cinderBlast') {
+          const rad = ds.radius || 112;
+          audio.playDetonate();
+          addShake(11);
+          spawnShockwave(ds.x, ds.y, rad, '#fb923c', 4.6, 0.36);
+          spawnParticles(ds.x, ds.y, 28, { color: COLORS.goldBright, speed: 300, spark: true, bounce: true, grav: 520, life: 0.48 });
+          if (G.player && G.player.hp > 0 && Math.hypot((G.player.x + G.player.w * 0.5) - ds.x, (G.player.y + G.player.h * 0.5) - ds.y) <= rad) {
+            applyIncomingAttackToPlayer({ x: ds.x, w: 0, isBoss: false }, ds.playerDmg || 24, true, 260);
+          }
+          for (const foe of getLivingFoes()) {
+            if (Math.hypot((foe.x + foe.w * 0.5) - ds.x, (foe.y + foe.h * 0.5) - ds.y) <= rad + 18) {
+              damageEnemyHP(foe, ds.dmg || 38, true);
+              addPostureToEnemy(foe, ds.posture || 32);
+            }
+          }
+          G.delayedStrikes.splice(i, 1);
+          continue;
+        }
         audio.playIaiSlash();
         addShake(6);
         G.slashes.push({

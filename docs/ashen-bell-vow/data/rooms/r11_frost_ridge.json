@@ -197,13 +197,13 @@
     {
       "id": "pickup_frost_vault_core",
       "kind": "statCore",
-      "bonusHp": 15,
+      "bonusHp": 10,
       "bonusSoul": 15,
       "echoAmount": 80,
       "x": 1030,
       "y": 660,
       "name": "冰窟秘藏 · 凝霜魂核",
-      "desc": "以「镇岳下砸」震碎脆冰发现的冰窟魂核（生命 +15 · 魂火 +15 · +80 残响）"
+      "desc": "以「镇岳下砸」震碎脆冰发现的冰窟魂核（生命 +10 · 魂火 +15 · +80 残响）"
     }
   ],
   "resonancePuzzles": [],
