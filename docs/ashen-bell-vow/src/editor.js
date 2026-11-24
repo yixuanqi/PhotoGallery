@@ -2186,7 +2186,7 @@ function runWorldAudit() {
     });
   }
 
-  // 7. v45.3 Real-Time 5-Tier Directed Topology, Anti-Softlock, Boss-Bypass & Shaft Clearance Audit
+  // 7. v45.4 Real-Time 5-Tier Directed Topology, Anti-Softlock, Boss-Bypass & Shaft Clearance Audit
   const topo = runTopologyAndShaftAudit(state.bundle);
   state.lastAuditTopo = topo;
   for (const tiss of topo.issues) {
@@ -2955,7 +2955,7 @@ async function bootEditor() {
     renderAllUI();
     refreshLiveAudit(false);
     fitView();
-    showToast(`v45.3 已载入 ${state.bundle.rooms.length} 个全境房间 JSON · 实时拓扑体检就绪`);
+    showToast(`v45.4 已载入 ${state.bundle.rooms.length} 个全境房间 JSON · 实时拓扑体检就绪`);
   } catch (err) {
     showToast(`加载失败: ${err.message}（请通过 serve_local.py 启动）`);
   }

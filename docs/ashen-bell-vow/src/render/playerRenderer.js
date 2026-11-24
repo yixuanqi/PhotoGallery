@@ -1,32 +1,49 @@
-// Protagonist (暗黑提灯剑客) Full-Body IK, Crescent Bone-Mask, Split Hunter Coat & Three-Weapon Renderer (v45.3)
+// Protagonist (暗黑提灯剑客) Full-Body IK, 3-Beat Martial Rhythm, Zanshin Chiburi & Three-Weapon Renderer (v45.4)
 import { COLORS } from '../config.js';
 import { G, getRelicStats, hasKeeperBlessing, getActiveWeaponId } from '../state.js';
 import { drawGlowSprite, boilCircle, drawCloakMesh, solve2BoneIK } from '../vfx.js';
 import { getGroundSurfaceY } from '../physics.js';
 import { drawParryStarGlint } from './renderShared.js';
 
+function martialBeat(p, antEnd = 0.20, snapEnd = 0.44) {
+  // 3-Beat Martial Arts Easing:
+  // 0..antEnd  : Anticipation reverse-coil (0 -> -0.18)
+  // antEnd..snapEnd : Explosive whip snap (-0.18 -> 1.06)
+  // snapEnd..1 : Zanshin settled endpoint hold (1.06 -> 1.00)
+  const t = Math.max(0, Math.min(1, p));
+  if (t < antEnd) {
+    const u = t / antEnd;
+    return -0.18 * Math.sin(u * Math.PI * 0.5);
+  }
+  if (t < snapEnd) {
+    const u = (t - antEnd) / (snapEnd - antEnd);
+    const e = 1 - Math.pow(1 - u, 3);
+    return -0.18 + e * 1.24;
+  }
+  const u = (t - snapEnd) / (1 - snapEnd);
+  return 1.06 - 0.06 * u;
+}
+
 function getAttackPose(weaponId, attackType, p, facing) {
   const dir = facing;
   const flipAng = a => (dir > 0 ? a : (Math.PI - a));
-  const easeOut = t => 1 - Math.pow(1 - Math.max(0, Math.min(1, t)), 2.2);
+  const beat = martialBeat(p, 0.19, 0.43);
 
   if (attackType === 'pogo') {
     const sw = Math.sin(p * Math.PI);
     return { handX: dir * (4 + sw * 4), handY: -18 + sw * 8, ang: Math.PI * 0.5 + dir * (0.25 - p * 0.5), offHand: weaponId === 'hammer', lungeSpread: 0 };
   }
   if (attackType === 'up') {
-    const sw = easeOut(p);
-    return { handX: dir * (6 - sw * 2), handY: -36 - Math.sin(p * Math.PI) * 14, ang: flipAng(-0.6 - sw * 1.4), offHand: weaponId === 'hammer', lungeSpread: 4 };
+    return { handX: dir * (6 - beat * 2), handY: -36 - Math.sin(p * Math.PI) * 14, ang: flipAng(-0.55 - beat * 1.45), offHand: weaponId === 'hammer', lungeSpread: 4 };
   }
   if (attackType === 'dashAttack') {
-    const sw = easeOut(p);
     if (weaponId === 'hammer') {
-      return { handX: dir * (10 + sw * 12), handY: -26, ang: flipAng(-0.25 + sw * 0.42), offHand: true, lungeSpread: 16 };
+      return { handX: dir * (8 + beat * 14), handY: -26, ang: flipAng(-0.28 + beat * 0.45), offHand: true, lungeSpread: 17 };
     }
     if (weaponId === 'bell') {
-      return { handX: dir * (12 + sw * 10), handY: -31, ang: flipAng(-0.55 + sw * 0.75), offHand: false, lungeSpread: 14 };
+      return { handX: dir * (10 + beat * 12), handY: -31, ang: flipAng(-0.62 + beat * 0.85), offHand: false, lungeSpread: 14 };
     }
-    return { handX: dir * (6 + sw * 18), handY: -28, ang: flipAng(0.02), offHand: false, lungeSpread: 17 };
+    return { handX: dir * (2 + beat * 21), handY: -28, ang: flipAng(0.02), offHand: false, lungeSpread: 18 };
   }
   if (attackType === 'air2') {
     const spin = p * Math.PI * 2;
@@ -34,48 +51,86 @@ function getAttackPose(weaponId, attackType, p, facing) {
     return { handX: dir * Math.cos(spin) * rad, handY: -28 + Math.sin(spin) * 11, ang: flipAng(spin - 0.35), offHand: weaponId === 'hammer', lungeSpread: 0 };
   }
   if (attackType === 'iai' || attackType === 'switch' || attackType === 'grappleStrike') {
-    const sw = easeOut(p);
     if (weaponId === 'hammer') {
-      const slamP = Math.min(1, p * 1.9);
-      return { handX: dir * (4 + slamP * 14), handY: -44 + slamP * 24, ang: flipAng(-2.55 + slamP * 3.0), offHand: true, lungeSpread: 16 };
+      const b = martialBeat(p, 0.22, 0.48);
+      return { handX: dir * (2 + b * 16), handY: -45 + b * 25, ang: flipAng(-2.60 + b * 3.05), offHand: true, lungeSpread: 17 };
     }
     if (weaponId === 'bell') {
-      return { handX: dir * (14 - sw * 6), handY: -34 - Math.sin(p * Math.PI) * 6, ang: flipAng(-0.85 + sw * 1.15), offHand: false, lungeSpread: 10 };
+      return { handX: dir * (14 - beat * 6), handY: -34 - Math.sin(p * Math.PI) * 6, ang: flipAng(-0.85 + beat * 1.15), offHand: false, lungeSpread: 10 };
     }
-    return { handX: dir * (-10 + sw * 28), handY: -29, ang: flipAng(-0.18 + sw * 0.28), offHand: false, lungeSpread: 18 };
+    return { handX: dir * (-10 + beat * 28), handY: -29, ang: flipAng(-0.18 + beat * 0.28), offHand: false, lungeSpread: 18 };
   }
   if (attackType === 'counter') {
-    const sw = easeOut(p);
     if (weaponId === 'hammer') {
-      return { handX: dir * (6 + sw * 14), handY: -42 + sw * 22, ang: flipAng(-2.3 + sw * 2.85), offHand: true, lungeSpread: 16 };
+      return { handX: dir * (4 + beat * 15), handY: -42 + beat * 22, ang: flipAng(-2.35 + beat * 2.90), offHand: true, lungeSpread: 16 };
     }
-    return { handX: dir * (14 - sw * 20), handY: -36 + sw * 14, ang: flipAng(-1.45 + sw * 2.65), offHand: false, lungeSpread: 15 };
+    return { handX: dir * (14 - beat * 20), handY: -36 + beat * 14, ang: flipAng(-1.45 + beat * 2.65), offHand: false, lungeSpread: 15 };
   }
 
+  // ===== HAMMER (2 Light + 1 Heavy + 2 Branch) =====
   if (weaponId === 'hammer') {
     if (attackType === 'slash1' || attackType === 'air1') {
-      const sw = easeOut(p);
-      return { handX: dir * (-6 + sw * 22), handY: -24 - Math.sin(p * Math.PI) * 10, ang: flipAng(1.35 - sw * 2.65), offHand: true, lungeSpread: 12 };
+      return { handX: dir * (-6 + beat * 22), handY: -22 - Math.sin(p * Math.PI) * 11, ang: flipAng(1.38 - beat * 2.68), offHand: true, lungeSpread: 12 };
     }
-    const slamP = Math.min(1, p * 1.85);
-    return { handX: dir * (2 + slamP * 16), handY: -46 + slamP * 26, ang: flipAng(-2.5 + slamP * 2.95), offHand: true, lungeSpread: 16 };
-  }
-  if (weaponId === 'bell') {
-    const sw = Math.sin(p * Math.PI);
-    const rev = attackType === 'slash2' ? -1 : 1;
-    return { handX: dir * (10 + sw * 8), handY: -32 - sw * 6 * rev, ang: flipAng(-0.95 + sw * 1.25 * rev), offHand: false, lungeSpread: 8 };
+    if (attackType === 'slash2') {
+      // 270° Back-Spin Waist Swing!
+      const sp = martialBeat(p, 0.22, 0.56);
+      const a = -2.45 + sp * 4.25;
+      return { handX: dir * Math.cos(a) * 15, handY: -28 + Math.sin(a) * 6, ang: flipAng(a), offHand: true, lungeSpread: 15 };
+    }
+    if (attackType === 'branch1') {
+      return { handX: dir * (8 + beat * 15), handY: -27, ang: flipAng(-0.12 + beat * 0.20), offHand: true, lungeSpread: 18 };
+    }
+    // slash3 & branch2: Towering Leaping Overhead Seismic Crush!
+    const b = martialBeat(p, 0.24, 0.50);
+    return { handX: dir * (1 + b * 17), handY: -47 + b * 27, ang: flipAng(-2.62 + b * 3.08), offHand: true, lungeSpread: 17 };
   }
 
+  // ===== BELL STAFF (3 Light + 1 Heavy Phantom Drop + 3 Branch) =====
+  if (weaponId === 'bell') {
+    if (attackType === 'slash3') {
+      const spin = p * Math.PI * 2;
+      return { handX: dir * (6 + Math.cos(spin) * 10), handY: -30 + Math.sin(spin) * 8, ang: flipAng(spin - 0.4), offHand: false, lungeSpread: 8 };
+    }
+    if (attackType === 'slash4' || attackType === 'branch2' || attackType === 'branch3') {
+      // Vertical Staff Hoist & Sacred Ground Slam!
+      const b = martialBeat(p, 0.24, 0.48);
+      return { handX: dir * (12 + b * 4), handY: -46 + b * 24, ang: flipAng(-1.55 + b * 0.22), offHand: true, lungeSpread: 14 };
+    }
+    if (attackType === 'branch1') {
+      return { handX: dir * (14 - beat * 6), handY: -34, ang: flipAng(-0.85 + beat * 1.1), offHand: false, lungeSpread: 10 };
+    }
+    const rev = attackType === 'slash2' ? -1 : 1;
+    return { handX: dir * (9 + beat * 8), handY: -32 - beat * 6 * rev, ang: flipAng(-0.95 + beat * 1.3 * rev), offHand: false, lungeSpread: 8 };
+  }
+
+  // ===== BLADE (3 Light + 1 Heavy + 3 Branch Martial Arts Forms!) =====
   if (attackType === 'slash1' || attackType === 'air1') {
-    const sw = easeOut(p);
-    return { handX: dir * (6 + Math.sin(p * Math.PI) * 10), handY: -20 - sw * 18, ang: flipAng(1.15 - sw * 2.45), offHand: false, lungeSpread: 11 };
+    // L1: Low stance rising diagonal upward cut
+    return { handX: dir * (4 + Math.sin(p * Math.PI) * 11), handY: -19 - beat * 18, ang: flipAng(1.22 - beat * 2.52), offHand: false, lungeSpread: 12 };
   }
   if (attackType === 'slash2') {
-    const sw = easeOut(p);
-    return { handX: dir * (-6 + sw * 24), handY: -30 + Math.sin(p * Math.PI) * 3, ang: flipAng(-0.52 + sw * 0.92), offHand: false, lungeSpread: 15 };
+    // L2: Stepping backhand horizontal cut
+    return { handX: dir * (-7 + beat * 25), handY: -30 + Math.sin(p * Math.PI) * 3, ang: flipAng(-0.48 + beat * 0.88), offHand: false, lungeSpread: 15 };
   }
-  const cleaveP = Math.min(1, p * 1.65);
-  return { handX: dir * (4 + cleaveP * 14), handY: -44 + cleaveP * 24, ang: flipAng(-2.35 + cleaveP * 3.15), offHand: true, lungeSpread: 17 };
+  if (attackType === 'slash3') {
+    // L3: Rapid Twisting Dual-Thrust (2 sharp forward jabs in one move!)
+    const subP = p < 0.48 ? (p / 0.48) : ((p - 0.48) / 0.52);
+    const thrust = Math.sin(Math.min(1, subP) * Math.PI);
+    const yOff = p < 0.48 ? -26 : -32;
+    return { handX: dir * (2 + thrust * 22), handY: yOff, ang: flipAng(p < 0.48 ? 0.06 : -0.08), offHand: false, lungeSpread: 16 };
+  }
+  if (attackType === 'branch1') {
+    // 1L + H: Rising Dragon Launcher Uppercut!
+    return { handX: dir * (5 + beat * 8), handY: -16 - beat * 30, ang: flipAng(1.35 - beat * 2.95), offHand: false, lungeSpread: 13 };
+  }
+  if (attackType === 'branch2') {
+    // 2L + H: Evading Backstep Fan-Sweep!
+    return { handX: dir * (16 - beat * 10), handY: -31, ang: flipAng(-1.35 + beat * 2.55), offHand: false, lungeSpread: 15 };
+  }
+  // slash4 & branch3: Leaping Two-Handed Overhead Sky-Cleave!
+  const b4 = martialBeat(p, 0.24, 0.48);
+  return { handX: dir * (2 + b4 * 16), handY: -46 + b4 * 26, ang: flipAng(-2.55 + b4 * 3.30), offHand: true, lungeSpread: 18 };
 }
 
 /* ---------- UPGRADED PROTAGONIST: 暗黑提灯剑客 (v45.3) ---------- */
@@ -426,6 +481,16 @@ export function drawPuppet(x, y, facing, isGhost = false, ghostColor = null) {
     handY = atkPose.handY;
     bladeAng = atkPose.ang;
     useTwoHands = atkPose.offHand;
+  } else if (G.player.zanshinTimer > 0 && !isRunning) {
+    // 3rd Beat Zanshin Follow-Through & Crisp Chiburi Blade-Flick Flourish!
+    const zP = Math.max(0, Math.min(1, 1 - G.player.zanshinTimer / 0.36));
+    const flick = zP > 0.48 ? Math.sin(((zP - 0.48) / 0.52) * Math.PI) * 0.38 : 0;
+    handX = facing * (weaponId === 'hammer' ? 12 : 14 - zP * 3);
+    handY = weaponId === 'hammer' ? -24 : (-24 - flick * 8);
+    bladeAng = weaponId === 'hammer'
+      ? (facing > 0 ? (0.45 - zP * 0.6) : (Math.PI - 0.45 + zP * 0.6))
+      : (facing > 0 ? (0.62 - flick * 1.4) : (Math.PI - 0.62 + flick * 1.4));
+    useTwoHands = weaponId === 'hammer';
   } else if (isRunning) {
     const armSw = Math.sin(G.player.runCycle) * 3.2;
     handX = facing * (weaponId === 'hammer' ? 5 : 8) - armSw * facing;
@@ -572,9 +637,12 @@ export function drawPuppet(x, y, facing, isGhost = false, ghostColor = null) {
     G.ctx.restore();
   }
 
-  if (G.player.isCharging && G.player.chargeTime > 0.15) {
+  if (G.player.isCharging && G.player.chargeTime > 0.12) {
     const pct = Math.min(1, G.player.chargeTime / rsDraw.iaiChargeTime);
-    drawParryStarGlint(-facing * 10, -24, 8 + pct * 14, pct >= 1 ? COLORS.goldBright : COLORS.cyanBright);
+    const isBranchGlow = G.player.branchReadyPlayed && !G.player.chargeReadyPlayed;
+    drawParryStarGlint(isBranchGlow ? facing * 14 : -facing * 10, -24, isBranchGlow ? 16 : (8 + pct * 14), pct >= 1 ? COLORS.goldBright : COLORS.cyanBright);
+  } else if (G.player.zanshinTimer > 0.08 && G.player.zanshinTimer < 0.22 && !isAttacking && !isRunning) {
+    drawParryStarGlint(handX + Math.cos(bladeAng) * 28, handY + Math.sin(bladeAng) * 28, 10, COLORS.goldBright);
   }
 
   G.ctx.restore();

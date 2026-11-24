@@ -268,7 +268,7 @@ export function getPlayerAttackBox(type, weaponId = getActiveWeaponId()) {
   if (b.up) {
     return { x: px - b.w * 0.5 + G.player.facing * 16, y: G.player.y - (b.h - 22), w: b.w, h: b.h };
   }
-  const reachMult = (weaponId === 'blade' && type === 'slash3' && hasActiveWeaponTrait('shadow_twin')) ? 1.16 : 1.0;
+  const reachMult = (weaponId === 'blade' && (type === 'slash4' || type === 'branch3') && hasActiveWeaponTrait('shadow_twin')) ? 1.16 : 1.0;
   const fwd = Math.round(b.fwd * reachMult);
   const w = fwd + b.back;
   return {
@@ -282,6 +282,13 @@ export function getPlayerAttackBox(type, weaponId = getActiveWeaponId()) {
 export function evaluatePlayerActiveAttack() {
   const atk = G.player.activeAttack;
   if (!atk) return;
+  if (atk.multiHit && !atk.hit2Done && atk.elapsed >= atk.hit2Time) {
+    atk.hit2Done = true;
+    atk.hitIds.clear();
+    G.player.vx = G.player.facing * 195;
+    audio.playSlash(1.30, false);
+    spawnParticles(G.player.x + G.player.w * 0.5 + G.player.facing * 26, G.player.y + 24, 8, { color: COLORS.parchment, speed: 240, spark: true, angle: G.player.facing > 0 ? 0 : Math.PI, spread: 0.3, life: 0.22 });
+  }
   if (atk.elapsed < atk.activeStart || atk.elapsed > atk.activeEnd) return;
 
   const px = G.player.x + G.player.w / 2;
@@ -308,7 +315,7 @@ export function evaluatePlayerActiveAttack() {
     if (aabbOverlap(box, foe)) {
       atk.hitIds.add(foe.id);
       hitAny = true;
-      const stepIdx = atk.type === 'slash3' ? 3 : atk.type === 'slash2' ? 2 : 1;
+      const stepIdx = (atk.type === 'slash4' || atk.type === 'branch3' || atk.type === 'branch2') ? 4 : atk.type === 'slash3' ? 3 : atk.type === 'slash2' ? 2 : 1;
       audio.playHit(atk.heavy, stepIdx);
       G.player.switchStrikeWindow = getSwitchStrikeWindowSec();
       triggerHaptic(atk.type === 'iai' || atk.type === 'counter' ? 'iai' : atk.heavy ? 'heavyHit' : 'lightHit');
@@ -486,7 +493,7 @@ export function evaluatePlayerActiveAttack() {
         continue;
       } else {
         const isBossPogoDecay = atk.type === 'pogo' && (foe.isBoss || foe.isMiniBoss) && (G.player.pogoChain || 0) >= 2;
-        const quakePosMult = (atk.weaponId === 'hammer' && hasActiveWeaponTrait('quake_echo') && (atk.type === 'slash2' || atk.type === 'iai' || atk.type === 'switch')) ? 1.22 : 1.0;
+        const quakePosMult = (atk.weaponId === 'hammer' && hasActiveWeaponTrait('quake_echo') && (atk.type === 'slash3' || atk.type === 'branch2' || atk.type === 'iai' || atk.type === 'switch')) ? 1.22 : 1.0;
         const postureHit = (atk.posture + bonusPosture) * (atk.type === 'counter' && rs.synCoreCounter ? 1.5 : 1) * quakePosMult * (isBossPogoDecay ? 0.45 : 1.0);
         damageEnemyHP(foe, isBossPogoDecay ? Math.max(4, Math.round(finalDmg * 0.72)) : finalDmg, true);
         addPostureToEnemy(foe, postureHit);
@@ -976,6 +983,16 @@ export function triggerPlayerAttack(type) {
   if (move.lungeVx) {
     G.player.vx = G.player.facing * move.lungeVx;
   }
+  if (move.hopVy) {
+    G.player.vy = move.hopVy;
+    G.player.grounded = false;
+  }
+  if (move.zanshin) {
+    G.player.zanshinTimer = move.dur + 0.36;
+    G.player.zanshinType = type;
+  } else {
+    G.player.zanshinTimer = 0;
+  }
 
   // Tactile Audio, Squash, Camera & Special Effects per Archetype Move
   if (type === 'grappleStrike') {
@@ -1193,32 +1210,103 @@ export function triggerPlayerAttack(type) {
     G.player.squashX = isSpin ? 1.18 : 1.08;
     G.player.squashY = isSpin ? 0.86 : 0.94;
     if (isSpin && move.floatKey) spawnFloatText(px, G.player.y - 28, t(move.floatKey), weaponId === 'bell' ? COLORS.cyanBright : COLORS.goldBright, 17, 0.68);
+  } else if (type === 'slash4' || type === 'branch1' || type === 'branch2' || type === 'branch3') {
+    const isPhantomBell = move.slashType === 'bellPhantomDrop';
+    if (isPhantomBell) {
+      audio.playBellToll();
+      audio.playBellQuake();
+      addShake(type === 'slash4' ? 8.5 : 10.5);
+      punchZoom(1.032);
+      const dropX = px + G.player.facing * 92;
+      spawnShockwave(dropX, G.player.y + G.player.h - 4, 125, COLORS.goldBright, 4.4, 0.34);
+      spawnParticles(dropX, G.player.y + G.player.h - 10, 20, { color: COLORS.cyanBright, speed: 240, spark: true, grav: 300, life: 0.42 });
+    } else if (weaponId === 'hammer') {
+      audio.playShieldBash(true);
+      if (type === 'branch2') audio.playBellQuake();
+      addShake(type === 'branch2' ? 12.5 : 9.5);
+      kickCamera(G.player.facing * 7, 3);
+      punchZoom(1.036);
+      spawnShockwave(px + G.player.facing * 42, G.player.y + G.player.h - 4, move.shockwaveR || 116, COLORS.goldBright, 4.6, 0.32);
+      spawnParticles(px + G.player.facing * 44, G.player.y + G.player.h - 2, 22, { color: COLORS.goldBright, speed: 260, grav: 380, spark: true, life: 0.44 });
+    } else if (weaponId === 'bell') {
+      audio.playBellChimeCast(3);
+      addShake(5.5);
+    } else {
+      if (type === 'branch2') audio.playSlash(1.18, true);
+      else if (type === 'branch1') audio.playSlash(1.24, true);
+      else audio.playIaiSlash();
+      addShake(type === 'branch3' ? 10.5 : 8.0);
+      kickCamera(G.player.facing * (type === 'branch2' ? -5 : 7), type === 'branch1' ? -5 : 3);
+      punchZoom(type === 'branch3' ? 1.040 : 1.028);
+      if (move.shockwaveR) {
+        spawnShockwave(px + G.player.facing * 42, G.player.y + G.player.h - 4, move.shockwaveR, COLORS.goldBright, 4.2, 0.28);
+      }
+      spawnParticles(px + G.player.facing * 36, py, 16, { color: type === 'branch1' ? COLORS.cyanBright : COLORS.goldBright, speed: 230, spark: true, grav: 280, life: 0.36 });
+    }
+    if (move.bonusSoul) {
+      G.player.soul = Math.min(G.player.maxSoul, G.player.soul + Math.round(move.bonusSoul * getRelicStats().soulGainMult));
+    }
+    if (move.disperseOrbs) {
+      const dropX = px + G.player.facing * 88;
+      for (const pr of G.projectiles) {
+        if (pr.owner === 'enemy' && pr.life > 0 && Math.hypot(pr.x - dropX, pr.y - py) <= 135 + pr.r) {
+          pr.life = 0;
+          spawnParticles(pr.x, pr.y, 10, { color: COLORS.cyanBright, speed: 180, spark: true });
+        }
+      }
+    }
+    if (move.ringProps) {
+      const dropX = px + G.player.facing * 88;
+      for (const l of G.lanterns) {
+        const lx = l.x + Math.sin(l.angle) * l.len;
+        const ly = l.anchorY + Math.cos(l.angle) * l.len;
+        if (Math.hypot(lx - dropX, ly - py) <= 145) {
+          l.angVel += (lx >= dropX ? 1 : -1) * 6.5;
+          l.ringFlash = 0.45;
+          tryQuellChapelTideByLantern(l, lx, ly);
+        }
+      }
+      if (G.resonancePuzzles) {
+        for (const pz of G.resonancePuzzles) {
+          for (const b of pz.bells) {
+            if (Math.hypot(b.x - dropX, b.y - py) <= 145) ringResonanceBell(pz, b, b.x >= dropX ? 1 : -1);
+          }
+        }
+      }
+    }
+    G.player.squashX = type === 'branch1' ? 0.84 : 1.24;
+    G.player.squashY = type === 'branch1' ? 1.24 : 0.80;
+    triggerHaptic('heavyHit', type === 'branch3' || type === 'branch2' ? 1.05 : 0.9);
+    if (move.floatKey) spawnFloatText(px, G.player.y - 30, t(move.floatKey), weaponId === 'bell' ? COLORS.cyanBright : COLORS.goldBright, 19, 0.78);
   } else if (type === 'slash3') {
     if (weaponId === 'bell') {
       audio.playBellChimeCast(3);
+      addShake(4.5);
+    } else if (weaponId === 'hammer') {
+      audio.playShieldBash(true);
+      addShake(10.5);
+      kickCamera(G.player.facing * 6, 4);
+      punchZoom(1.032);
+      spawnShockwave(px + G.player.facing * 44, G.player.y + G.player.h - 4, move.shockwaveR || 118, COLORS.goldBright, 4.4, 0.30);
+      spawnParticles(px + G.player.facing * 48, G.player.y + G.player.h - 2, 20, { color: COLORS.goldBright, speed: 240, grav: 380, spark: true, life: 0.40 });
+      if (move.floatKey) spawnFloatText(px, G.player.y - 26, t(move.floatKey), COLORS.goldBright, 19, 0.72);
     } else {
-      audio.playSlash(0.84, true);
+      audio.playSlash(1.14, false);
+      addShake(4.2);
     }
-    G.player.squashX = weaponId === 'bell' ? 0.90 : 1.20;
-    G.player.squashY = weaponId === 'bell' ? 1.14 : 0.86;
-    if (G.player.grounded) {
-      spawnParticles(px + G.player.facing * 42, G.player.y + G.player.h - 2, 10, { color: weapon.color, speed: 150, grav: 320, angle: -Math.PI * 0.5, spread: 1.2, life: 0.32 });
-    }
+    G.player.squashX = weaponId === 'hammer' ? 1.28 : 1.16;
+    G.player.squashY = weaponId === 'hammer' ? 0.76 : 0.88;
   } else if (type === 'slash2') {
     if (weaponId === 'bell') {
       audio.playBellChimeCast(2);
     } else if (weaponId === 'hammer') {
-      audio.playShieldBash(true);
-      addShake(9.5);
-      kickCamera(G.player.facing * 5, 4);
-      spawnShockwave(px + G.player.facing * 44, G.player.y + G.player.h - 4, move.shockwaveR || 110, COLORS.goldBright, 4.2, 0.28);
-      spawnParticles(px + G.player.facing * 48, G.player.y + G.player.h - 2, 18, { color: COLORS.goldBright, speed: 220, grav: 360, spark: true, life: 0.38 });
-      if (move.floatKey) spawnFloatText(px, G.player.y - 24, t(move.floatKey), COLORS.goldBright, 18, 0.65);
+      audio.playSlash(0.76, true);
+      addShake(6.5);
     } else {
       audio.playSlash(1.08, false);
     }
-    G.player.squashX = weaponId === 'hammer' ? 1.26 : 1.10;
-    G.player.squashY = weaponId === 'hammer' ? 0.78 : 0.92;
+    G.player.squashX = weaponId === 'hammer' ? 1.20 : 1.12;
+    G.player.squashY = weaponId === 'hammer' ? 0.84 : 0.90;
   } else {
     if (weaponId === 'bell') audio.playBellChimeCast(1);
     else if (weaponId === 'hammer') {
@@ -1243,7 +1331,7 @@ export function triggerPlayerAttack(type) {
   spawnWeaponMoveProjectiles(weapon, move, px, py, type);
 
   // Hammer trait `quake_echo`: slash2 & switch also unleash bidirectional seismic waves!
-  if (weaponId === 'hammer' && hasActiveWeaponTrait('quake_echo') && (type === 'slash2' || type === 'switch')) {
+  if (weaponId === 'hammer' && hasActiveWeaponTrait('quake_echo') && (type === 'slash3' || type === 'branch2' || type === 'switch')) {
     const qDmg = Math.round(24 * getBladeDamageMult());
     const qPos = 28;
     spawnHammerWaveDir(px, G.player.facing, qDmg, qPos, 490, 0.50);
@@ -1251,7 +1339,7 @@ export function triggerPlayerAttack(type) {
   }
 
   // Blade trait `shadow_twin`: Iai Flash & Switch Strike leave an ink-shadow blade that cuts again 0.24s later!
-  if (weaponId === 'blade' && hasActiveWeaponTrait('shadow_twin') && (type === 'iai' || type === 'switch')) {
+  if (weaponId === 'blade' && hasActiveWeaponTrait('shadow_twin') && (type === 'iai' || type === 'switch' || type === 'branch3')) {
     if (!Array.isArray(G.delayedStrikes)) G.delayedStrikes = [];
     G.delayedStrikes.push({
       x: px + G.player.facing * 72,
@@ -1264,7 +1352,7 @@ export function triggerPlayerAttack(type) {
     });
   }
 
-  const slashOffX = type === 'pogo' ? 0 : (type === 'iai' && weaponId === 'blade') ? 0 : (move.box && move.box.radial) ? 0 : G.player.facing * 26;
+  const slashOffX = move.slashType === 'bellPhantomDrop' ? G.player.facing * 92 : (type === 'pogo' ? 0 : (type === 'iai' && weaponId === 'blade') ? 0 : (move.box && move.box.radial) ? 0 : G.player.facing * 26);
   const slashOffY = type === 'pogo' ? 40 : type === 'up' ? -34 : 0;
   const slashLife = move.slashLife || 0.20;
   G.slashes.push({
@@ -1274,7 +1362,7 @@ export function triggerPlayerAttack(type) {
     x1: px + G.player.facing * 135,
     offX: slashOffX,
     offY: slashOffY,
-    followPlayer: type !== 'iai' && type !== 'counter' && type !== 'switch' && type !== 'grappleStrike',
+    followPlayer: type !== 'iai' && type !== 'counter' && type !== 'switch' && type !== 'grappleStrike' && move.slashType !== 'bellPhantomDrop',
     isIaiTrack: (type === 'iai' || type === 'switch' || type === 'grappleStrike') && weaponId === 'blade',
     facing: G.player.facing,
     type: move.slashType || type,
@@ -1296,8 +1384,11 @@ export function triggerPlayerAttack(type) {
     knockupVy: move.knockupVy || 0,
     wallDmg: move.wallDmg || 0,
     elapsed: 0,
-    activeStart: 0,
+    activeStart: move.activeStart || 0,
     activeEnd: move.activeEnd,
+    multiHit: !!move.multiHit,
+    hit2Time: move.hit2Time || 0,
+    hit2Done: false,
     hitIds: new Set(),
     pogoBounced: false,
     recoiled: false

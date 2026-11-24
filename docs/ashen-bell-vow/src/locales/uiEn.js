@@ -1,7 +1,7 @@
-// English (en-US) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v45.3)
+// English (en-US) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v45.4)
 export const UI_EN = {
     // Document & Title
-    'doc.title': 'Ashen Bell Vow v45.3 (1.0 RC) — Dark Hand-Drawn Soulslike Metroidvania · 25 Interconnected Rooms',
+    'doc.title': 'Ashen Bell Vow v45.4 (1.0 RC) — Dark Hand-Drawn Soulslike Metroidvania · 25 Interconnected Rooms',
     'game.title': 'ASHEN BELL VOW',
     'game.subtitle': 'Dark Hand-Drawn Soulslike Metroidvania',
     'title.loading': 'Loading...',
@@ -639,6 +639,15 @@ export const UI_EN = {
     'combat.hammerAirSpin': 'CYCLONE MAUL!',
     'combat.bellDash': 'GLIDE CHIME!',
     'combat.bellAirSpin': 'REQUIEM SPIN!',
+    'combat.bladeH4': 'SKY CLEAVE!',
+    'combat.bladeLaunch': 'RISING DRAGON!',
+    'combat.bladeRetreat': 'RETREAT CUT!',
+    'combat.bladeZanshinFin': 'ZANSHIN CLEAVE!',
+    'combat.hammerBranchFin': 'ZANSHIN SUNDER!',
+    'combat.bellH4': 'PHANTOM BELL!',
+    'combat.bellBackHop': 'LEAPING CHIME!',
+    'combat.bellBranchFin': 'ZANSHIN TOLL!',
+    'combat.zanshinCancel': 'ZANSHIN +{0} SOUL',
     'gp.healKey': 'D-Up',
     'prof.drawerTitle': 'Live Module Profiler [F8]',
     'prof.benchBtn': '▶ 10s A/B Benchmark [F9]',

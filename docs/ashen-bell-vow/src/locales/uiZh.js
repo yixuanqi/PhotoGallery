@@ -1,7 +1,7 @@
-// Simplified Chinese (zh-CN) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v45.3)
+// Simplified Chinese (zh-CN) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v45.4)
 export const UI_ZH = {
     // Document & Title
-    'doc.title': '灰钟残誓 v45.3 (1.0 RC) — 暗黑手绘魂系类银河恶魔城 · 25房立体箱庭与三系兵刃',
+    'doc.title': '灰钟残誓 v45.4 (1.0 RC) — 暗黑手绘魂系类银河恶魔城 · 25房立体箱庭与三系兵刃',
     'game.title': '灰钟残誓',
     'game.subtitle': 'ASHEN BELL VOW · 暗黑手绘魂系类银河恶魔城',
     'title.loading': '载入中...',
@@ -639,6 +639,15 @@ export const UI_ZH = {
     'combat.hammerAirSpin': '旋钟轰轮！',
     'combat.bellDash': '滑步双振！',
     'combat.bellAirSpin': '镇魂旋铃！',
+    'combat.bladeH4': '断空重劈！',
+    'combat.bladeLaunch': '撩云升龙！',
+    'combat.bladeRetreat': '回马抽刀！',
+    'combat.bladeZanshinFin': '残心绝空！',
+    'combat.hammerBranchFin': '残心碎岳！',
+    'combat.bellH4': '顿杖鸣钟！',
+    'combat.bellBackHop': '跃步双振！',
+    'combat.bellBranchFin': '残心镇魂钟！',
+    'combat.zanshinCancel': '残心 +{0} 魂',
     'gp.healKey': '↑键',
     'prof.drawerTitle': '分模块实时剖析 [F8]',
     'prof.benchBtn': '▶ 10秒 A/B 压测 [F9]',

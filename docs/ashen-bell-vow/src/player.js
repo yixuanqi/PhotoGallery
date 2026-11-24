@@ -77,8 +77,13 @@ export function updatePlayer(dt) {
     G.player.lastGrappleIgnoreTimer = Math.max(0, G.player.lastGrappleIgnoreTimer - dt);
     if (G.player.grounded) G.player.lastGrappleIgnoreTimer = 0;
   }
-  if (G.player.comboResetTimer > 0) G.player.comboResetTimer -= dt;
-  else G.player.comboStep = 0;
+  if (G.player.comboResetTimer > 0) {
+    if (!G.player.isCharging) G.player.comboResetTimer -= dt;
+  } else {
+    G.player.comboStep = 0;
+  }
+  if (G.player.zanshinTimer > 0) G.player.zanshinTimer = Math.max(0, G.player.zanshinTimer - dt);
+  if (G.player.zanshinCancelCd > 0) G.player.zanshinCancelCd = Math.max(0, G.player.zanshinCancelCd - dt);
   if (G.player.airComboResetTimer > 0) G.player.airComboResetTimer -= dt;
   else G.player.airComboStep = 0;
   if (G.player.dashAttackWindow > 0) G.player.dashAttackWindow = Math.max(0, G.player.dashAttackWindow - dt);
@@ -343,9 +348,25 @@ export function updatePlayer(dt) {
     spawnParticles(sx, sy, 16, { color: COLORS.cyanBright, speed: 240, spark: true, life: 0.32, grav: 40 });
   }
 
+  const tryTriggerZanshinCancel = () => {
+    if (G.player.zanshinTimer > 0 && G.player.attackTimer <= 0.14 && (G.player.zanshinCancelCd || 0) <= 0) {
+      G.player.zanshinTimer = 0;
+      G.player.zanshinCancelCd = 1.2;
+      G.player.attackTimer = 0;
+      G.player.attackCd = 0;
+      const gain = Math.round(14 * getRelicStats().soulGainMult);
+      G.player.soul = Math.min(G.player.maxSoul, G.player.soul + gain);
+      audio.playResonanceBell(659.25, false);
+      spawnShockwave(G.player.x + G.player.w * 0.5, G.player.y + 26, 62, COLORS.cyanBright, 2.8, 0.22);
+      spawnParticles(G.player.x + G.player.w * 0.5, G.player.y + 26, 10, { color: COLORS.goldBright, speed: 170, spark: true, life: 0.28 });
+      spawnFloatText(G.player.x + G.player.w * 0.5, G.player.y - 34, t('combat.zanshinCancel', gain), COLORS.cyanBright, 16, 0.78);
+    }
+  };
+
   // Ink Dash / Evolved Shade Cloak Dash [Shift] (buffered)
   if (G.player.dashBufTimer > 0 && G.player.dashCd <= 0 && G.player.detonateLungeTimer <= 0 && G.player.iaiLungeTimer <= 0 && G.player.grappleState === 'none' && G.player.healTimer <= 0) {
     G.player.dashBufTimer = 0;
+    tryTriggerZanshinCancel();
     G.player.dashDir = moveDir !== 0 ? moveDir : G.player.facing;
     G.player.facing = G.player.dashDir;
     const hasShade = !!(G.worldState && G.worldState.abilities.shadeDash);
@@ -380,6 +401,7 @@ export function updatePlayer(dt) {
   // Parry [K] (buffered)
   if (G.player.parryBufTimer > 0 && !G.player.parryActive && G.player.parryCooldown <= 0 && G.player.dashTimer <= 0 && G.player.detonateLungeTimer <= 0 && G.player.iaiLungeTimer <= 0 && G.player.grappleState === 'none' && G.player.healTimer <= 0) {
     G.player.parryBufTimer = 0;
+    tryTriggerZanshinCancel();
     if (moveDir !== 0) G.player.facing = moveDir;
     G.player.parryActive = true;
     G.player.parryElapsedMs = 0;
@@ -518,31 +540,43 @@ export function updatePlayer(dt) {
         G.player.airComboResetTimer = 0.56;
         triggerPlayerAttack('air' + G.player.airComboStep);
       } else {
-        const maxCombo = (getActiveWeapon().comboCount) || 3;
+        const maxCombo = (getActiveWeapon().comboCount) || 4;
         G.player.comboStep = (G.player.comboStep % maxCombo) + 1;
-        G.player.comboResetTimer = maxCombo === 2 ? 0.72 : 0.56;
+        G.player.comboResetTimer = maxCombo <= 3 ? 0.72 : 0.62;
+        G.player.comboBranchStep = G.player.comboStep < maxCombo ? G.player.comboStep : 0;
         triggerPlayerAttack('slash' + G.player.comboStep);
       }
-      // Begin watching hold for Iai charge
+      // Begin watching hold for Mid-Combo Heavy Branch (0.16s) or Full Iai Charge
       G.player.isCharging = true;
       G.player.chargeTime = 0;
       G.player.chargeReadyPlayed = false;
+      G.player.branchReadyPlayed = false;
     }
   }
 
-  // Seamless Iai Charge: holding Attack out of dash/grapple/parry/attack recovery enters sheathed stance directly
+  // Seamless Hold Watch: holding Attack enters Branch/Iai stance directly
   if (!G.player.isCharging && isActionHeld('attack') && canAttack && G.player.attackTimer <= 0 && !G.player.parryActive) {
+    const maxCombo = (getActiveWeapon().comboCount) || 4;
     G.player.isCharging = true;
     G.player.chargeTime = 0.08;
     G.player.chargeReadyPlayed = false;
+    G.player.branchReadyPlayed = false;
+    G.player.comboBranchStep = (G.player.comboStep > 0 && G.player.comboStep < maxCombo && G.player.comboResetTimer > 0) ? G.player.comboStep : 0;
   }
 
   const rsIaiCharge = getRelicStats();
   const iaiNeed = (rsIaiCharge.synBloodIai && G.player.grayHp >= 1)
-    ? Math.max(0.20, rsIaiCharge.iaiChargeTime * 0.72)
+    ? Math.max(0.24, rsIaiCharge.iaiChargeTime * 0.72)
     : rsIaiCharge.iaiChargeTime;
+  const branchNeed = 0.16;
+  const canBranchHold = G.player.grounded && G.player.comboBranchStep > 0 && G.player.attackTimer <= 0.04;
   if (G.player.isCharging && isActionHeld('attack') && canAttack) {
     G.player.chargeTime += dt;
+    if (canBranchHold && G.player.chargeTime >= branchNeed && !G.player.branchReadyPlayed) {
+      G.player.branchReadyPlayed = true;
+      audio.playGlintCue(false);
+      spawnParticles(G.player.x + G.player.w / 2 + G.player.facing * 12, G.player.y + 24, 7, { color: COLORS.cyanBright, speed: 120, spark: true, life: 0.22 });
+    }
     if (G.player.chargeTime >= iaiNeed && !G.player.chargeReadyPlayed) {
       G.player.chargeReadyPlayed = true;
       audio.playIaiReady();
@@ -550,17 +584,30 @@ export function updatePlayer(dt) {
       spawnParticles(G.player.x + G.player.w / 2, G.player.y + 26, 12, { color: COLORS.goldBright, speed: 150, spark: true });
     }
   } else if (G.player.isCharging) {
-    const ready = G.player.chargeTime >= iaiNeed;
+    const readyIai = G.player.chargeTime >= iaiNeed;
+    const bStep = G.player.comboBranchStep;
+    const readyBranch = !readyIai && bStep > 0 && G.player.branchReadyPlayed && G.player.grounded;
     G.player.isCharging = false;
     G.player.chargeTime = 0;
     G.player.chargeReadyPlayed = false;
-    if (ready && canAttack) {
+    G.player.branchReadyPlayed = false;
+    G.player.comboBranchStep = 0;
+    if (readyIai && canAttack) {
       if (moveDir !== 0) G.player.facing = moveDir;
+      G.player.comboStep = 0;
+      G.player.comboResetTimer = 0;
       if (!G.player.grounded && getActiveWeaponId() === 'hammer') {
         startHammerAirSlam(true);
       } else {
         triggerPlayerAttack('iai');
       }
+    } else if (readyBranch && canAttack) {
+      if (moveDir !== 0) G.player.facing = moveDir;
+      const maxBranch = Math.max(1, ((getActiveWeapon().comboCount) || 4) - 1);
+      const bKey = 'branch' + Math.min(bStep, maxBranch);
+      G.player.comboStep = 0;
+      G.player.comboResetTimer = 0;
+      triggerPlayerAttack(bKey);
     }
   }
 
@@ -1093,10 +1140,11 @@ export function updatePlayer(dt) {
     const atkP = 1 - G.player.attackTimer / Math.max(0.01, G.player.attackDuration || 0.2);
     const aType = G.player.attackType;
     if (aType === 'dashAttack') targetLean = G.player.facing * 0.42;
-    else if (aType === 'slash1' || aType === 'air1') targetLean = G.player.facing * (0.24 - atkP * 0.36);
-    else if (aType === 'slash2') targetLean = G.player.facing * 0.34;
-    else if (aType === 'slash3') targetLean = G.player.facing * (atkP < 0.30 ? -0.22 : 0.38);
-    else if (aType === 'up') targetLean = -G.player.facing * 0.18;
+    else if (aType === 'slash1' || aType === 'air1') targetLean = G.player.facing * (atkP < 0.22 ? 0.26 : -0.14);
+    else if (aType === 'slash2') targetLean = G.player.facing * (atkP < 0.20 ? -0.14 : 0.34);
+    else if (aType === 'slash3') targetLean = G.player.facing * (atkP < 0.22 ? -0.16 : 0.38);
+    else if (aType === 'slash4' || aType === 'branch3' || aType === 'branch2') targetLean = G.player.facing * (atkP < 0.26 ? -0.26 : 0.40);
+    else if (aType === 'branch1' || aType === 'up') targetLean = -G.player.facing * (atkP < 0.20 ? -0.18 : 0.22);
     else if (aType === 'counter' || aType === 'iai') targetLean = G.player.facing * 0.36;
     else targetLean = G.player.facing * 0.18;
   } else if (G.player.isCharging && G.player.chargeTime > 0.14) {

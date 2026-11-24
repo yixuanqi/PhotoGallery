@@ -583,7 +583,101 @@ export function drawSlashes() {
     G.ctx.save();
     G.ctx.globalAlpha = Math.min(1, a * 1.35);
 
-    if (s.type === 'dashThrust' || s.type === 'hammerRam') {
+    if (s.type === 'bladeMultiThrust') {
+      // L3: Dual Staggered Piercing Needle Thrusts (distinct straight-line geometry!)
+      G.ctx.translate(s.x, s.y);
+      G.ctx.scale(s.facing, 1);
+      const t1 = Math.min(1, p * 2.2);
+      const t2 = Math.max(0, Math.min(1, (p - 0.34) * 2.4));
+      const drawNeedle = (prog, oy, col) => {
+        if (prog <= 0.02) return;
+        const na = Math.sin(prog * Math.PI);
+        const len = 104 * (0.45 + prog * 0.65);
+        drawGlowSprite('cyan', len * 0.45, oy, 34, 0.55 * na);
+        G.ctx.fillStyle = col;
+        G.ctx.beginPath();
+        G.ctx.moveTo(-14, oy);
+        G.ctx.quadraticCurveTo(len * 0.45, oy - 7.5 * na, len, oy);
+        G.ctx.quadraticCurveTo(len * 0.45, oy + 7.5 * na, -14, oy);
+        G.ctx.closePath(); G.ctx.fill();
+        G.ctx.strokeStyle = '#ffffff'; G.ctx.lineWidth = 2.0 * na;
+        G.ctx.beginPath(); G.ctx.moveTo(-8, oy); G.ctx.lineTo(len * 0.94, oy); G.ctx.stroke();
+      };
+      drawNeedle(t1, 5, 'rgba(226, 220, 202, 0.90)');
+      drawNeedle(t2, -7, 'rgba(186, 230, 253, 0.94)');
+    } else if (s.type === 'slash4') {
+      // H4: Colossal Overhead Leaping Sky-Cleave + Golden Ground Flare!
+      G.ctx.translate(s.x, s.y);
+      G.ctx.scale(s.facing, 1);
+      const r = 82;
+      const ang0 = -2.15 + tailEase * 1.4;
+      const ang1 = -2.15 + headEase * 3.15;
+      if (ang1 > ang0 + 0.08) {
+        drawGlowSprite('gold', 42, -6, 86, 0.88 * a);
+        drawTaperedCrescent(r + 6, 38 * a, ang0, ang1, 'rgba(8, 11, 18, 0.88)', null);
+        drawTaperedCrescent(r, 28 * a, ang0, ang1, 'rgba(245, 158, 11, 0.95)', '#fef9c3');
+        drawTaperedCrescent(r - 12, 12 * a, ang0 + 0.12, ang1 - 0.06, 'rgba(248, 113, 113, 0.82)', null);
+      }
+      if (p > 0.22 && a > 0.25) {
+        drawParryStarGlint(48, 18, 22 * a, COLORS.goldBright);
+      }
+    } else if (s.type === 'bladeUpperLaunch') {
+      // 1L+H: Rising Dragon Uppercut Arc (launches foes airborne!)
+      G.ctx.translate(s.x, s.y);
+      G.ctx.scale(s.facing, 1);
+      const ang0 = 1.15 - headEase * 2.95;
+      const ang1 = 1.15 - tailEase * 1.65;
+      if (ang1 > ang0 + 0.08) {
+        drawGlowSprite('cyan', 26, -24, 72, 0.82 * a);
+        drawTaperedCrescent(68, 30 * a, ang0, ang1, 'rgba(8, 12, 20, 0.84)', null);
+        drawTaperedCrescent(64, 21 * a, ang0, ang1, 'rgba(125, 211, 252, 0.92)', '#ffffff');
+      }
+    } else if (s.type === 'bladeRetreatCut') {
+      // 2L+H: Backstep Wide Silver-Crimson Fan Cut!
+      G.ctx.translate(s.x, s.y);
+      G.ctx.scale(s.facing, 0.58);
+      const ang0 = -1.55 + tailEase * 1.65;
+      const ang1 = -1.55 + headEase * 3.15;
+      if (ang1 > ang0 + 0.08) {
+        drawGlowSprite('crimson', 34, 0, 70, 0.72 * a);
+        drawTaperedCrescent(84, 34 * a, ang0, ang1, 'rgba(10, 12, 18, 0.84)', null);
+        drawTaperedCrescent(78, 22 * a, ang0, ang1, 'rgba(248, 113, 113, 0.90)', '#ffffff');
+      }
+    } else if (s.type === 'hammerSpinSweep') {
+      // Hammer L2: 270° Orbiting Waist-Spin Golden Maul Arc!
+      G.ctx.translate(s.x, s.y);
+      G.ctx.scale(s.facing, 0.62);
+      const ang0 = -2.4 + tailEase * 2.1;
+      const ang1 = -2.4 + headEase * 4.55;
+      if (ang1 > ang0 + 0.1) {
+        drawGlowSprite('gold', 24, 0, 82, 0.78 * a);
+        drawTaperedCrescent(84, 36 * a, ang0, ang1, 'rgba(14, 10, 6, 0.86)', null);
+        drawTaperedCrescent(78, 25 * a, ang0, ang1, 'rgba(245, 158, 11, 0.92)', '#fef9c3');
+      }
+    } else if (s.type === 'bellPhantomDrop') {
+      // Bell H4 / Branch: Translucent Giant Bronze Spirit Bell Materializing & Slamming Down!
+      const dropEase = Math.min(1, p * 2.6);
+      const dropY = -68 * (1 - dropEase * dropEase);
+      G.ctx.translate(s.x, s.y + 18 + dropY);
+      drawGlowSprite('gold', 0, -26, 92, 0.82 * a);
+      drawGlowSprite('cyan', 0, -26, 62, 0.58 * a);
+      G.ctx.fillStyle = `rgba(245, 158, 11, ${(0.22 * a).toFixed(3)})`;
+      G.ctx.strokeStyle = COLORS.goldBright;
+      G.ctx.lineWidth = 2.6 * a;
+      G.ctx.beginPath();
+      G.ctx.moveTo(-24, -66); G.ctx.lineTo(24, -66);
+      G.ctx.quadraticCurveTo(38, -28, 44, 6);
+      G.ctx.lineTo(-44, 6);
+      G.ctx.quadraticCurveTo(-38, -28, -24, -66);
+      G.ctx.closePath();
+      G.ctx.fill(); G.ctx.stroke();
+      G.ctx.strokeStyle = COLORS.cyanBright; G.ctx.lineWidth = 1.8 * a;
+      G.ctx.beginPath(); G.ctx.moveTo(-36, -6); G.ctx.lineTo(36, -6); G.ctx.stroke();
+      if (dropEase >= 0.9) {
+        G.ctx.strokeStyle = COLORS.goldBright; G.ctx.lineWidth = 3.2 * a;
+        G.ctx.beginPath(); G.ctx.ellipse(0, 8, 52 + p * 42, 11, 0, 0, Math.PI * 2); G.ctx.stroke();
+      }
+    } else if (s.type === 'dashThrust' || s.type === 'hammerRam') {
       const isHammer = s.type === 'hammerRam';
       G.ctx.translate(s.x, s.y);
       G.ctx.scale(s.facing, 1);
