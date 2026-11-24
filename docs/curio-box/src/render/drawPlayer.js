@@ -1,0 +1,708 @@
+(() => {
+  const CB = window.CB;
+  const { drawSoftShadow } = CB.brush;
+  const INK = '#3b2b23';
+
+  function drawMochiPlayer(ctx, p, time, variant = 'explorer', offsetX = 0, offsetY = 0) {
+    const px = p.x + offsetX;
+    const py = p.y + offsetY;
+    const breathe = Math.sin(time * 3.8) * 0.032;
+    const stretchY = 1 + p.squash + breathe;
+    const stretchX = 1 - p.squash * 0.72 - breathe * 0.7;
+    const liftY = p.hopHeight;
+
+    const shadowScale = 1 - liftY * 0.022;
+    drawSoftShadow(ctx, px, py + 4, 22 * shadowScale, 9.5 * shadowScale, 0.22);
+
+    drawTailAccessory(ctx, p, offsetX, offsetY, variant, time);
+    drawVariantBag(ctx, p, px, py, liftY, variant, time);
+    drawLittleFeet(ctx, p, px, py, liftY, variant);
+
+    ctx.save();
+    ctx.translate(px, py + 2 - liftY);
+    ctx.rotate(p.tilt + (p.dashTimer > 0 ? p.facing * 0.12 : 0));
+    ctx.scale(stretchX, stretchY);
+
+    if (variant === 'explorer') {
+      drawExplorerBody(ctx, p);
+    } else if (variant === 'porcelain') {
+      drawPorcelainBody(ctx, p, time);
+    } else {
+      drawSproutBody(ctx, p, time);
+    }
+
+    ctx.restore();
+
+    drawMiniBlaster(ctx, p, px, py, liftY, variant);
+  }
+
+  // 主角方案 A：护目镜冒险团
+  function drawExplorerBody(ctx, p) {
+    ctx.save();
+    ctx.translate(-p.facing * 14, -29);
+    ctx.rotate(-p.facing * 0.48);
+    drawWindupKey(ctx, p.keyAngle, 0.9);
+    ctx.restore();
+
+    ctx.beginPath();
+    ctx.moveTo(0, -35);
+    ctx.bezierCurveTo(22, -35, 25, -13, 23, -2);
+    ctx.bezierCurveTo(20, 4.5, -20, 4.5, -23, -2);
+    ctx.bezierCurveTo(-25, -13, -22, -35, 0, -35);
+    ctx.closePath();
+
+    const grad = ctx.createRadialGradient(-7, -25, 3, 0, -14, 30);
+    grad.addColorStop(0, '#fffefb');
+    grad.addColorStop(0.68, '#fff2db');
+    grad.addColorStop(1, '#ecc8a3');
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.beginPath();
+    ctx.ellipse(-9, -24, 5, 2.7, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    drawFace(ctx, p, 'explorer');
+    drawExplorerCollar(ctx, p.facing);
+
+    // 焦糖贝雷帽 + 黄铜护目镜
+    ctx.save();
+    ctx.translate(p.lagX * 0.25, -31 + p.lagY * 0.2);
+    ctx.rotate(p.facing * 0.12 + p.lagX * 0.015);
+
+    ctx.fillStyle = 'rgba(115, 76, 52, 0.18)';
+    ctx.beginPath();
+    ctx.ellipse(0, 3, 19, 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#8b573c';
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(-18, 1);
+    ctx.bezierCurveTo(-22, -10, -6, -15, 6, -14);
+    ctx.bezierCurveTo(20, -13, 22, -4, 17, 2);
+    ctx.quadraticCurveTo(0, 5, -18, 1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#6c402a';
+    ctx.beginPath();
+    ctx.arc(p.facing * 2, -14.5, 2.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.strokeStyle = '#5c3824';
+    ctx.lineWidth = 3.2;
+    ctx.beginPath();
+    ctx.moveTo(-17, -2);
+    ctx.quadraticCurveTo(0, 1.5, 17, -2);
+    ctx.stroke();
+
+    const gx = p.facing * 3;
+    for (const dx of [-6.5, 6.5]) {
+      ctx.fillStyle = '#e7b54f';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 1.9;
+      ctx.beginPath();
+      ctx.arc(gx + dx, -3.5, 5.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#bfe7ee';
+      ctx.beginPath();
+      ctx.arc(gx + dx, -3.5, 3.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(gx + dx - 1.2, -4.8, 1.1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // 预留可解锁皮肤 B：青花釉面精灵
+  function drawPorcelainBody(ctx, p, time) {
+    const haloFloat = Math.sin(time * 4.5) * 2.2;
+    ctx.save();
+    ctx.translate(p.lagX * 0.35, -39 + haloFloat + p.lagY * 0.25);
+
+    ctx.strokeStyle = '#d9a441';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.ellipse(0, -1, 14, 4.2, p.lagX * 0.02, 0, Math.PI * 2);
+    ctx.stroke();
+
+    const orbX = Math.cos(time * 3.2) * 14;
+    const orbY = -1 + Math.sin(time * 3.2) * 4.2;
+    ctx.fillStyle = '#ffdf78';
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(orbX, orbY, 2.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    drawWindupKey(ctx, p.keyAngle, 0.85);
+    ctx.restore();
+
+    ctx.beginPath();
+    ctx.moveTo(0, -37);
+    ctx.bezierCurveTo(20, -37, 23, -15, 20.5, -2);
+    ctx.bezierCurveTo(18, 4.5, -18, 4.5, -20.5, -2);
+    ctx.bezierCurveTo(-23, -15, -20, -37, 0, -37);
+    ctx.closePath();
+
+    const grad = ctx.createRadialGradient(-7, -27, 2, 2, -14, 30);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.55, '#f7fafc');
+    grad.addColorStop(0.86, '#dde9f0');
+    grad.addColorStop(1, '#c3d6e2');
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+    ctx.beginPath();
+    ctx.ellipse(-9.5, -25, 4.2, 8.2, -0.32, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#3c6896';
+    ctx.beginPath();
+    ctx.moveTo(0, -32.5);
+    ctx.lineTo(2.4, -29.5);
+    ctx.lineTo(0, -26.8);
+    ctx.lineTo(-2.4, -29.5);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = '#2d3446';
+    ctx.lineWidth = 2.4;
+    ctx.stroke();
+
+    drawFace(ctx, p, 'porcelain');
+    drawPorcelainCapelet(ctx, p.facing);
+  }
+
+  // 预留可解锁皮肤 C：嫩芽软绒团子
+  function drawSproutBody(ctx, p, time) {
+    ctx.beginPath();
+    ctx.moveTo(0, -33);
+    ctx.bezierCurveTo(23, -33, 27.5, -13, 25, -1.5);
+    ctx.bezierCurveTo(22.5, 5, -22.5, 5, -25, -1.5);
+    ctx.bezierCurveTo(-27.5, -13, -23, -33, 0, -33);
+    ctx.closePath();
+
+    const grad = ctx.createRadialGradient(-6, -24, 3, 0, -14, 30);
+    grad.addColorStop(0, '#fffefd');
+    grad.addColorStop(0.65, '#fff4e6');
+    grad.addColorStop(1, '#f7d6c7');
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.beginPath();
+    ctx.ellipse(-10, -23, 5.5, 3.2, -0.45, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#4a352c';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    ctx.save();
+    ctx.translate(0, -32.5);
+    const sway = p.lagX * 0.045 + Math.sin(time * 4.2) * 0.07;
+
+    ctx.strokeStyle = '#3f6e3a';
+    ctx.lineWidth = 2.6;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(0, 1);
+    ctx.quadraticCurveTo(p.lagX * 0.4, -7, p.lagX * 0.85, -13);
+    ctx.stroke();
+
+    ctx.translate(p.lagX * 0.85, -13);
+    ctx.rotate(sway);
+
+    ctx.fillStyle = '#7ac15a';
+    ctx.strokeStyle = '#324d2c';
+    ctx.lineWidth = 1.9;
+    ctx.beginPath();
+    ctx.ellipse(-7, -2, 7.5, 4.3, -0.45, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#96d46d';
+    ctx.beginPath();
+    ctx.ellipse(6.5, -3.5, 6.2, 3.6, 0.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    const dewGlow = 0.8 + 0.2 * Math.sin(time * 7);
+    ctx.fillStyle = `rgba(255, 224, 102, ${dewGlow})`;
+    ctx.strokeStyle = '#6b4d18';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(-11, -5.5, 2.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    drawFace(ctx, p, 'sprout');
+    drawSproutPoncho(ctx, p, time);
+  }
+
+  function drawExplorerCollar(ctx, facing) {
+    ctx.save();
+    ctx.fillStyle = '#d94d3f';
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(-19, -5.5);
+    ctx.quadraticCurveTo(0, 2, 19, -5.5);
+    ctx.quadraticCurveTo(20, 1, 16, 3.2);
+    ctx.quadraticCurveTo(0, 8.8, -16, 3.2);
+    ctx.quadraticCurveTo(-20, 1, -19, -5.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.strokeStyle = '#fff3dc';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(-8, -1.2); ctx.lineTo(-9.5, 4.2);
+    ctx.moveTo(8, -1.2);  ctx.lineTo(9.5, 4.2);
+    ctx.stroke();
+
+    ctx.fillStyle = '#f5ca64';
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.arc(facing * 3, 2.4, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawPorcelainCapelet(ctx, facing) {
+    ctx.save();
+    ctx.fillStyle = '#3e6c9c';
+    ctx.strokeStyle = '#26344a';
+    ctx.lineWidth = 2.1;
+    ctx.beginPath();
+    ctx.moveTo(-18.5, -5.5);
+    ctx.quadraticCurveTo(0, -1, 18.5, -5.5);
+    ctx.lineTo(20, 2);
+    ctx.quadraticCurveTo(13, 8, 6.5, 3.8);
+    ctx.quadraticCurveTo(0, 9.5, -6.5, 3.8);
+    ctx.quadraticCurveTo(-13, 8, -20, 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.strokeStyle = '#f0ca6a';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-16, -2);
+    ctx.quadraticCurveTo(0, 2.2, 16, -2);
+    ctx.stroke();
+
+    ctx.fillStyle = '#7ad6f0';
+    ctx.strokeStyle = '#f0ca6a';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(facing * 2, 1.8, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawSproutPoncho(ctx, p, time) {
+    ctx.save();
+    ctx.fillStyle = '#e06358';
+    ctx.strokeStyle = '#4a352c';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(-21, -5.5);
+    ctx.quadraticCurveTo(0, 1.5, 21, -5.5);
+    ctx.quadraticCurveTo(22.5, 2.5, 16, 4.8);
+    ctx.quadraticCurveTo(0, 9.5, -16, 4.8);
+    ctx.quadraticCurveTo(-22.5, 2.5, -21, -5.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    const bellSwing = Math.sin(p.walkPhase * 1.3 + time * 2) * 1.4;
+    ctx.translate(p.facing * 2 + bellSwing, 4.5);
+    ctx.fillStyle = '#ffd55a';
+    ctx.strokeStyle = '#4a352c';
+    ctx.lineWidth = 1.7;
+    ctx.beginPath();
+    ctx.arc(0, 0, 4.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.strokeStyle = '#7a4d19';
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(-2.5, 1.2);
+    ctx.lineTo(2.5, 1.2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawTailAccessory(ctx, p, offsetX, offsetY, variant, time) {
+    const nodes = p.scarfNodes;
+    if (!nodes || nodes.length < 2) return;
+
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    if (variant === 'explorer') {
+      ctx.strokeStyle = '#6e211a';
+      ctx.lineWidth = 11.5;
+      traceNodes(ctx, nodes, offsetX, offsetY, 0, 0);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#d94d3f';
+      ctx.lineWidth = 7;
+      ctx.stroke();
+
+      ctx.strokeStyle = '#fff1d6';
+      ctx.lineWidth = 6.5;
+      ctx.setLineDash([3, 9]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const tail = nodes[nodes.length - 1];
+      ctx.fillStyle = '#f5cc6c';
+      ctx.beginPath();
+      ctx.arc(tail.x + offsetX, tail.y + offsetY, 3, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (variant === 'porcelain') {
+      for (const dy of [-3, 3.5]) {
+        ctx.strokeStyle = '#253752';
+        ctx.lineWidth = 6.2;
+        traceNodes(ctx, nodes, offsetX, offsetY, 0, dy + Math.sin(time * 8 + dy) * 1.5);
+        ctx.stroke();
+
+        ctx.strokeStyle = dy < 0 ? '#5084b8' : '#7aa9d6';
+        ctx.lineWidth = 3.4;
+        ctx.stroke();
+      }
+    } else {
+      const anchor = nodes[2] || nodes[0];
+      ctx.fillStyle = '#fff8ee';
+      ctx.strokeStyle = '#4a352c';
+      ctx.lineWidth = 2.1;
+      ctx.beginPath();
+      ctx.arc(anchor.x + offsetX, anchor.y + offsetY + 4, 5.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function traceNodes(ctx, nodes, ox, oy, dx, dy) {
+    ctx.beginPath();
+    ctx.moveTo(nodes[0].x + ox, nodes[0].y + oy);
+    for (let i = 1; i < nodes.length; i++) {
+      const ratio = i / (nodes.length - 1);
+      ctx.lineTo(nodes[i].x + ox + dx * ratio, nodes[i].y + oy + dy * ratio);
+    }
+  }
+
+  function drawVariantBag(ctx, p, px, py, liftY, variant, time) {
+    const fullness = p.lootCount / 10;
+    const r = 9.5 + fullness * 9;
+    const wobble = Math.sin(p.walkPhase * 1.1) * (1.2 + fullness * 1.8);
+    const bx = px - p.facing * (16 + fullness * 3.8);
+    const by = py - 11 - liftY + wobble * 0.5;
+
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.rotate(-p.facing * (0.2 + fullness * 0.14));
+
+    if (variant === 'porcelain') {
+      ctx.fillStyle = '#d7b377';
+      ctx.strokeStyle = '#2d3446';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.roundRect(-r * 0.85, -r * 0.85, r * 1.7, r * 1.7, 5);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#4575a8';
+      ctx.fillRect(-r * 0.88, -r * 0.88, r * 1.76, 4.5);
+    } else {
+      ctx.fillStyle = variant === 'sprout' ? '#d8b282' : '#c69563';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.3;
+      ctx.beginPath();
+      ctx.ellipse(0, 2, r * 0.92, r, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = variant === 'sprout' ? '#e7c69b' : '#d8ad7c';
+      ctx.beginPath();
+      ctx.moveTo(-4, -r + 2);
+      ctx.lineTo(-7, -r - 5);
+      ctx.lineTo(6, -r - 5);
+      ctx.lineTo(4, -r + 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.strokeStyle = '#75472b';
+      ctx.lineWidth = 2.1;
+      ctx.beginPath();
+      ctx.moveTo(-5, -r + 2);
+      ctx.lineTo(5, -r + 2);
+      ctx.stroke();
+    }
+
+    if (p.lootCount >= 4) {
+      const sparkle = 0.65 + 0.35 * Math.sin(time * 8);
+      ctx.fillStyle = `rgba(255, 220, 96, ${sparkle})`;
+      ctx.beginPath();
+      ctx.arc(0, -r - 3, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawWindupKey(ctx, angle, scale = 1) {
+    const spinW = Math.max(2.2, Math.abs(Math.cos(angle)) * 7.2);
+    ctx.save();
+    ctx.scale(scale, scale);
+
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 4.4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(0, 2);
+    ctx.lineTo(0, -6.5);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#ebb950';
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+
+    ctx.fillStyle = '#f6cc68';
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.ellipse(-spinW, -9.5, spinW, 4.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.ellipse(spinW, -9.5, spinW, 4.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawLittleFeet(ctx, p, px, py, liftY, variant) {
+    const speed = Math.hypot(p.vx, p.vy);
+    const swing = speed > 20 ? Math.sin(p.walkPhase) * 5.8 : 0;
+
+    ctx.save();
+    ctx.fillStyle = variant === 'porcelain' ? '#587fa6' : variant === 'sprout' ? '#f2c7ae' : '#8a593d';
+    ctx.strokeStyle = variant === 'porcelain' ? '#26344a' : INK;
+    ctx.lineWidth = 2.1;
+
+    ctx.beginPath();
+    ctx.ellipse(px - 8 + swing, py + 1.5 - liftY * 0.3, 5.2, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.ellipse(px + 8 - swing, py + 1.5 - liftY * 0.3, 5.2, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawFace(ctx, p, variant) {
+    const lookX = Math.cos(p.aimAngle) * 4.2;
+    const lookY = Math.sin(p.aimAngle) * 2.1;
+    const baseY = variant === 'sprout' ? -14.5 : -15.5;
+    const eyeColor = variant === 'porcelain' ? '#253554' : INK;
+
+    ctx.save();
+    ctx.translate(lookX, baseY + lookY);
+
+    ctx.fillStyle = p.expr === 'happy' ? 'rgba(255, 118, 112, 0.78)' : 'rgba(255, 150, 138, 0.52)';
+    ctx.beginPath();
+    ctx.ellipse(-11, 3.4, 4.2, 2.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(11, 3.4, 4.2, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = eyeColor;
+    ctx.fillStyle = eyeColor;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    if (p.expr === 'dash') {
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(-9.5, -3); ctx.lineTo(-5.2, -0.5); ctx.lineTo(-9.5, 2);
+      ctx.moveTo(9.5, -3);  ctx.lineTo(5.2, -0.5);  ctx.lineTo(9.5, 2);
+      ctx.stroke();
+
+      ctx.fillStyle = '#e56f68';
+      ctx.beginPath();
+      ctx.moveTo(-3.2, 2.2);
+      ctx.lineTo(3.2, 2.2);
+      ctx.quadraticCurveTo(0, 7.2, -3.2, 2.2);
+      ctx.fill();
+      ctx.stroke();
+    } else if (p.expr === 'happy') {
+      drawMiniStar(ctx, -6.8, -1, 4.7, '#f5b228');
+      drawMiniStar(ctx, 6.8, -1, 4.7, '#f5b228');
+      ctx.lineWidth = 2;
+      ctx.fillStyle = '#e86f68';
+      ctx.beginPath();
+      ctx.arc(0, 3.2, 3.5, 0, Math.PI);
+      ctx.fill();
+      ctx.stroke();
+    } else if (p.expr === 'shock') {
+      ctx.fillStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(-6.8, -1, 4.3, 0, Math.PI * 2);
+      ctx.arc(6.8, -1, 4.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = eyeColor;
+      ctx.beginPath();
+      ctx.arc(-6.8, -1, 1.5, 0, Math.PI * 2);
+      ctx.arc(6.8, -1, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(-4, 5);
+      ctx.quadraticCurveTo(-2, 3, 0, 5);
+      ctx.quadraticCurveTo(2, 7, 4, 5);
+      ctx.stroke();
+    } else {
+      if (p.isBlinking) {
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(-10, -0.5); ctx.lineTo(-4.2, -0.5);
+        ctx.moveTo(4.2, -0.5); ctx.lineTo(10, -0.5);
+        ctx.stroke();
+      } else {
+        const erx = variant === 'sprout' ? 3.8 : 3.2;
+        const ery = variant === 'sprout' ? 4.4 : 3.8;
+        const ex = variant === 'sprout' ? 7.2 : 6.6;
+
+        ctx.beginPath();
+        ctx.ellipse(-ex, -1, erx, ery, 0, 0, Math.PI * 2);
+        ctx.ellipse(ex, -1, erx, ery, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (variant === 'sprout') {
+          ctx.fillStyle = '#c97e42';
+          ctx.beginPath();
+          ctx.arc(-ex, 1.2, 2.0, 0.1 * Math.PI, 0.9 * Math.PI);
+          ctx.arc(ex, 1.2, 2.0, 0.1 * Math.PI, 0.9 * Math.PI);
+          ctx.fill();
+        }
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(-ex - 1.0, -2.5, 1.35, 0, Math.PI * 2);
+        ctx.arc(ex - 1.0, -2.5, 1.35, 0, Math.PI * 2);
+        ctx.arc(-ex + 1.0, 0.5, 0.65, 0, Math.PI * 2);
+        ctx.arc(ex + 1.0, 0.5, 0.65, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.lineWidth = 1.9;
+      if (variant === 'sprout') {
+        ctx.beginPath();
+        ctx.moveTo(-3.6, 2.6);
+        ctx.quadraticCurveTo(-1.8, 5.2, 0, 3.0);
+        ctx.quadraticCurveTo(1.8, 5.2, 3.6, 2.6);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.arc(0, 2.4, 2.7, 0.15 * Math.PI, 0.85 * Math.PI);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawMiniStar(ctx, cx, cy, r, color) {
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const rad = i % 2 === 0 ? r : r * 0.42;
+      const a = (i * Math.PI) / 4 - Math.PI / 2;
+      const x = cx + Math.cos(a) * rad;
+      const y = cy + Math.sin(a) * rad;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawMiniBlaster(ctx, p, px, py, liftY, variant) {
+    const recoilOffset = p.recoil * 5.5;
+    const handDist = 23 - recoilOffset;
+    const hx = px + Math.cos(p.aimAngle) * handDist;
+    const hy = py - 12 - liftY + Math.sin(p.aimAngle) * (handDist * 0.72);
+
+    ctx.save();
+    ctx.translate(hx, hy);
+    ctx.rotate(p.aimAngle);
+    if (Math.cos(p.aimAngle) < 0) ctx.scale(1, -1);
+
+    ctx.fillStyle = variant === 'porcelain' ? '#f5f9fc' : '#fff5e2';
+    ctx.strokeStyle = variant === 'porcelain' ? '#26344a' : INK;
+    ctx.lineWidth = 2.1;
+    ctx.beginPath();
+    ctx.arc(-4.5, 2, 4.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = variant === 'porcelain' ? '#4d7fb3' : '#dca952';
+    ctx.beginPath();
+    ctx.roundRect(-2, -4.5, 15, 8, 3);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#f5ce74';
+    ctx.beginPath();
+    ctx.roundRect(11, -6, 4.6, 11, 2);
+    ctx.fill();
+    ctx.stroke();
+
+    if (p.recoil > 0.55) {
+      ctx.fillStyle = '#ffe585';
+      ctx.beginPath();
+      ctx.arc(19, -0.5, 4.5 * p.recoil, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  CB.drawPlayer = { drawMochiPlayer };
+})();

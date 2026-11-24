@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>微缩博物箱 - Step 2 随机拓扑地图引擎</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- 顶部标题与当前地图拓扑指标 -->
+  <div class="hud-top">
+    <div class="pill title-pill">Step 2 · 随机拓扑地图引擎</div>
+    <div class="pill stats-pill" id="mapStats">生成中...</div>
+  </div>
+
+  <!-- 右上角不规则拓扑小地图 -->
+  <div class="minimap-wrap">
+    <canvas id="minimapCanvas" width="210" height="210"></canvas>
+    <div class="minimap-legend">
+      <span><i class="dot dot-spawn"></i>出生</span>
+      <span><i class="dot dot-vault"></i>金库</span>
+      <span><i class="dot dot-extract"></i>撤离</span>
+      <span><i class="dot dot-atrium"></i>中庭</span>
+    </div>
+  </div>
+
+  <!-- 底部操作与地图验证栏 -->
+  <div class="hud-bottom">
+    <div class="pill test-group">
+      <button id="btnRegen" class="primary-btn">R 重随地图</button>
+      <button id="btnOverview">M 全图总览</button>
+      <button id="btnFog" class="active">F 羊皮纸迷雾: 开</button>
+    </div>
+
+    <div class="pill test-group">
+      <span class="label">角色皮肤</span>
+      <button data-variant="explorer" class="active">A 主角</button>
+      <button data-variant="porcelain">B 预留</button>
+      <button data-variant="sprout">C 预留</button>
+    </div>
+
+    <div class="pill hint-pill">WASD 跑图 · 空格/右键 冲刺 · M 缩放到俯瞰全图 · R 连续验证约束</div>
+  </div>
+
+  <!-- 免本地服务器，双击 index.html 直接运行 -->
+  <script src="./src/core/state.js"></script>
+  <script src="./src/core/input.js"></script>
+  <script src="./src/world/roomTemplates.js"></script>
+  <script src="./src/world/mapGen.js"></script>
+  <script src="./src/entities/player.js"></script>
+  <script src="./src/render/brush.js"></script>
+  <script src="./src/render/drawPlayer.js"></script>
+  <script src="./src/render/renderer.js"></script>
+  <script src="./src/render/ui.js"></script>
+  <script src="./src/main.js"></script>
+</body>
+</html>
