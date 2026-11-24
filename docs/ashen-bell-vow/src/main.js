@@ -8,7 +8,7 @@ import { buildParchmentPattern, buildGlowSprites, initAmbientMotes } from './vfx
 import { startTitleIntro, skipTitleIntro, isTitleIntroActive, isTitleIntroPlaying, updateTitleIntro, beginSceneFade } from './render/titleIntro.js';
 import {
   clearFrameInputs, syncControlModeUI, pollGamepad, initInputListeners,
-  updateMobileOrientationLayout, requestMobileLandscapeFullscreen, setForceLandscapeFallback, isViewportLandscape, applyMobileTouchPrefs,
+  isEmbeddedH5Container, updateMobileOrientationLayout, requestMobileLandscapeFullscreen, setForceLandscapeFallback, isViewportLandscape, applyMobileTouchPrefs,
   getActionKeyCode, isCapturingKey, resetDefaultKeybinds, triggerHaptic
 } from './input.js';
 import { capturePlayerInputBuffers, updatePlayer } from './player.js';
@@ -17,7 +17,7 @@ import { updateEnemy, updateEnemyHitFeel, updateBoss, updateBoss2, updateBoss3, 
 import { updateWorldEffects, updateCamera, updateAmbientOnly, snapCameraToPlayer } from './world.js';
 import { render } from './renderer.js';
 import { prewarmStampsForList } from './stampAtlas.js';
-import { prewarmTerrainChunks } from './renderTerrain.js';
+import { prewarmTerrainChunks, invalidateTerrainCache } from './renderTerrain.js';
 import { prewarmGlyphAtlas, clearGlyphAtlas, getGlyphAtlasStats } from './render/glyphAtlas.js';
 import { getBackdropCacheStats } from './render/backdropCache.js';
 import { prof } from './profiler.js';
@@ -93,13 +93,19 @@ function resizeCanvas() {
   document.body.classList.toggle('is-fullscreen', isFs);
   document.body.classList.toggle('is-short-viewport', mobile && cssH < 305);
 
-  // v44.3 Mobile Retina Sharpness: unlock up to 2.4x native DPR (capped at 2048px GPU width) so G.renderScale ~1.8-2.1 matches PC!
-  const ecoOn = !!(mobile && G.settings && G.settings.mobileEcoMode);
+  // v44.7 Mobile Retina Clarity (Matches PC Sharpness across BOTH Standalone Browser & TapTap H5!):
+  // 'high' (default): 2.4x DPR (max 2400px) | 'retina': 3.0x native DPR (max 2880px) | 'eco': 1.5x DPR (max 1440px)
+  const mobQual = (G.settings && ['high', 'retina', 'eco'].includes(G.settings.mobileQuality))
+    ? G.settings.mobileQuality
+    : ((G.settings && G.settings.mobileEcoMode) ? 'eco' : 'high');
   const lightMode = !!(G.settings && G.settings.dynamicLighting === false);
   const rawMaxDpr = mobile
-    ? (ecoOn ? 1.35 : (lightMode ? 1.75 : 2.4))
+    ? (mobQual === 'retina' ? 3.0 : (mobQual === 'eco' ? 1.5 : 2.4))
     : (lightMode ? 1.0 : (window.innerWidth >= 1440 ? 1.5 : 1.75));
-  const gpuCapDpr = mobile ? Math.max(1.25, 2048 / Math.max(640, cssW)) : rawMaxDpr;
+  const maxGpuW = mobile
+    ? (mobQual === 'retina' ? 2880 : (mobQual === 'eco' ? 1440 : 2400))
+    : 4096;
+  const gpuCapDpr = mobile ? Math.max(1.4, maxGpuW / Math.max(640, cssW)) : rawMaxDpr;
   const dpr = Math.min(rawMaxDpr, gpuCapDpr, Math.max(1, window.devicePixelRatio || 1));
 
   // Tighter mobile targetH (480) keeps sprites & in-game text crisp and large on handheld screens
@@ -122,6 +128,7 @@ function resizeCanvas() {
   }
   G.paperPattern = null;
   buildParchmentPattern();
+  if (G.levelBundle) invalidateTerrainCache();
 }
 
 let resizeTimer = null;
@@ -265,13 +272,27 @@ function renderLiveProfilerUI(stats, divisor) {
   }
 }
 
+let _frameErrCount = 0;
+function reportVisibleRuntimeError(tag, err) {
+  console.error(`[AshenBellVow] ${tag}:`, err);
+  if (typeof window !== 'undefined' && typeof window.__ABV_SHOW_FATAL__ === 'function') {
+    const msg = (err && err.stack) ? String(err.stack).split('\n').slice(0, 3).join(' | ') : (err && err.message ? err.message : String(err));
+    window.__ABV_SHOW_FATAL__(tag + ': ' + msg);
+  }
+}
+
 function gameLoop(timestamp) {
   // Schedule next frame up front so a single unexpected exception can never permanently deadlock rAF
   requestAnimationFrame(gameLoop);
   try {
     runGameFrame(timestamp);
+    _frameErrCount = 0;
   } catch (err) {
+    _frameErrCount++;
     console.error('[AshenBellVow] Frame error recovered:', err);
+    if (_frameErrCount === 1 || _frameErrCount === 5) {
+      reportVisibleRuntimeError('FrameError', err);
+    }
   }
 }
 
@@ -449,22 +470,49 @@ function runGameFrame(timestamp) {
 
 // Wire DOM UI actions
 initInputListeners();
+let _startOverwriteArmTimer = null;
+let _startOverwriteArmed = false;
+function disarmStartOverwrite() {
+  _startOverwriteArmed = false;
+  if (_startOverwriteArmTimer !== null) {
+    clearTimeout(_startOverwriteArmTimer);
+    _startOverwriteArmTimer = null;
+  }
+}
+
 document.getElementById('btn-continue').addEventListener('click', () => {
   if (isTitleIntroActive()) { skipTitleIntro(); return; }
-  requestMobileLandscapeFullscreen();
-  audio.init();
-  audio.playBellToll();
-  beginSceneFade(() => continueSavedGame(), 0.44);
+  disarmStartOverwrite();
+  try { audio.init(); audio.playBellToll(); } catch {}
+  beginSceneFade(() => continueSavedGame(), isEmbeddedH5Container() ? 0.18 : 0.36);
 });
 document.getElementById('btn-start').addEventListener('click', () => {
   if (isTitleIntroActive()) { skipTitleIntro(); return; }
-  requestMobileLandscapeFullscreen();
   if (readSaveData()) {
-    if (!window.confirm(t('confirm.overwriteSlot', G.activeSaveSlot + 1))) return;
+    // v44.5 Mobile/WebView-safe inline 2-tap overwrite confirmation (avoids frozen window.confirm in TapTap WebView!)
+    if (G.isMobile) {
+      const sb = document.getElementById('btn-start');
+      if (!_startOverwriteArmed) {
+        _startOverwriteArmed = true;
+        if (sb) {
+          sb.textContent = t('title.confirmOverwriteMob', G.activeSaveSlot + 1);
+          sb.classList.add('armed-danger');
+        }
+        _startOverwriteArmTimer = setTimeout(() => {
+          disarmStartOverwrite();
+          if (sb) sb.classList.remove('armed-danger');
+          refreshTitleSaveUI();
+        }, 4200);
+        return;
+      }
+      disarmStartOverwrite();
+      if (sb) sb.classList.remove('armed-danger');
+    } else if (!window.confirm(t('confirm.overwriteSlot', G.activeSaveSlot + 1))) {
+      return;
+    }
   }
-  audio.init();
-  audio.playBellToll();
-  beginSceneFade(() => startGame(), 0.44);
+  try { audio.init(); audio.playBellToll(); } catch {}
+  beginSceneFade(() => startGame(), isEmbeddedH5Container() ? 0.18 : 0.36);
 });
 const btnTitleSlots = document.getElementById('btn-title-slots');
 const slotsDrawer = document.getElementById('title-slots-drawer');
@@ -490,8 +538,8 @@ const btnTitleFs = document.getElementById('btn-title-fullscreen');
 if (btnTitleFs) {
   btnTitleFs.addEventListener('click', e => {
     e.stopPropagation();
-    audio.init();
-    requestMobileLandscapeFullscreen();
+    try { audio.init(); } catch {}
+    requestMobileLandscapeFullscreen(true);
     scheduleOrientationRecheck();
   });
 }
@@ -508,10 +556,7 @@ if (titleScreenEl) {
     if (isTitleIntroActive()) skipTitleIntro();
   });
   titleScreenEl.addEventListener('touchstart', () => {
-    if (isTitleIntroActive()) {
-      requestMobileLandscapeFullscreen();
-      skipTitleIntro();
-    }
+    if (isTitleIntroActive()) skipTitleIntro();
   }, { passive: true });
 }
 document.getElementById('btn-ctrl').addEventListener('click', () => {
@@ -522,8 +567,8 @@ document.getElementById('btn-ctrl').addEventListener('click', () => {
 const rotFsBtn = document.getElementById('btn-rotate-fullscreen');
 if (rotFsBtn) {
   rotFsBtn.addEventListener('click', () => {
-    audio.init();
-    requestMobileLandscapeFullscreen();
+    try { audio.init(); } catch {}
+    requestMobileLandscapeFullscreen(true);
     scheduleOrientationRecheck();
     // If browser (WeChat / iOS Safari / OS rotation lock) refuses native landscape after 320ms, seamlessly enter CSS fallback landscape!
     setTimeout(() => {
@@ -537,8 +582,7 @@ if (rotFsBtn) {
 const rotForceBtn = document.getElementById('btn-rotate-force');
 if (rotForceBtn) {
   rotForceBtn.addEventListener('click', () => {
-    audio.init();
-    requestMobileLandscapeFullscreen();
+    try { audio.init(); } catch {}
     setForceLandscapeFallback(true);
     resizeCanvas();
   });
@@ -550,7 +594,7 @@ if (fsBtn) {
       const exitFs = document.exitFullscreen || document.webkitExitFullscreen;
       if (exitFs) { try { const p = exitFs.call(document); if (p && typeof p.catch === 'function') p.catch(() => {}); } catch {} }
     } else {
-      requestMobileLandscapeFullscreen();
+      requestMobileLandscapeFullscreen(true);
     }
     scheduleResize();
   });
@@ -612,9 +656,6 @@ function refreshAllDynamicLocaleUI() {
   syncControlModeUI();
   const muteEl = document.getElementById('btn-mute');
   if (muteEl) muteEl.textContent = audio.muted ? t('hud.muteOff') : t('hud.muteOn');
-  if (auxBtn && auxWrap) {
-    auxBtn.textContent = auxWrap.classList.contains('hidden') ? t('hud.auxOff') : t('hud.auxOn');
-  }
   refreshTitleSaveUI();
   refreshActiveModalI18n();
   if (G.player) syncHUD(true);
@@ -716,17 +757,7 @@ if (mobOpInp) {
   });
   mobOpInp.addEventListener('change', () => saveUserSettings());
 }
-const mobEcoBtn = document.getElementById('btn-mob-eco-mode');
-if (mobEcoBtn) {
-  mobEcoBtn.addEventListener('click', () => {
-    G.settings.mobileEcoMode = !G.settings.mobileEcoMode;
-    applyMobileTouchPrefs();
-    prof.resetRolling();
-    saveUserSettings();
-    resizeCanvas();
-    renderSettingsModal();
-  });
-}
+// Mobile 3-tier quality segmented control is wired inside renderSettingsModal()
 document.getElementById('btn-test-haptic').addEventListener('click', () => {
   const ok = triggerHaptic('test', 1.0);
   const b = document.getElementById('btn-test-haptic');
@@ -932,7 +963,6 @@ async function bootstrapGame() {
   loadSavedLocale();
   buildGlowSprites();
   await loadWorldData();
-  prewarmStampsForList(STAMPS);
   const bootSave = readSaveData();
   if (bootSave && (bootSave.controlMode === 'kbmouse' || bootSave.controlMode === 'keyboard')) {
     G.controlMode = bootSave.controlMode;
@@ -950,13 +980,10 @@ async function bootstrapGame() {
   refreshTitleSaveUI();
   resizeCanvas();
   snapCameraToPlayer(0);
-  prewarmTerrainChunks(G.cam.x, G.cam.y, G.canvasW, G.canvasH);
-  prewarmGlyphAtlas();
   G.lanterns = createLanterns();
   G.resonancePuzzles = createResonancePuzzles();
   G.crumblePlatforms = createCrumblePlatforms();
   initAmbientMotes();
-  renderParchmentMap(HUD_DOM.minimapCanvas, false);
   G.player = null;
   if (ALTARS[0]) {
     G.cam.x = Math.max(0, ALTARS[0].x - G.canvasW * 0.64);
@@ -971,9 +998,18 @@ async function bootstrapGame() {
     startTitleIntro(false);
   }
   requestAnimationFrame(gameLoop);
+
+  // v44.6 Non-blocking staggered prewarm AFTER frame 1 paints so TapTap/Android WebView never stalls on black screen!
+  setTimeout(() => {
+    try { prewarmStampsForList(STAMPS); } catch {}
+    try { renderParchmentMap(HUD_DOM.minimapCanvas, false); } catch {}
+  }, 60);
+  setTimeout(() => {
+    try { prewarmTerrainChunks(G.cam.x, G.cam.y, G.canvasW, G.canvasH); } catch {}
+    try { prewarmGlyphAtlas(); } catch {}
+  }, 220);
 }
 
 bootstrapGame().catch(err => {
-  console.error('Failed to load room JSON data:', err);
-  window.dispatchEvent(new ErrorEvent('error', { message: err && err.message ? err.message : String(err) }));
+  reportVisibleRuntimeError('BootstrapError', err);
 });

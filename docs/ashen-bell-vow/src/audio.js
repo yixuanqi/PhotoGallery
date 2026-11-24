@@ -99,9 +99,19 @@ export class SoundEngine {
     }
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
-    this.ctx = new AC();
+    try {
+      // Request lowest-latency AAudio / OpenSL interactive audio path on Android WebView & iOS!
+      this.ctx = new AC({ latencyHint: 'interactive' });
+    } catch {
+      try {
+        this.ctx = new AC();
+      } catch {
+        this.ctx = null;
+        return;
+      }
+    }
     this._bindStateRecovery();
-    const len = Math.floor(this.ctx.sampleRate * 0.55);
+    const len = Math.floor((this.ctx.sampleRate || 44100) * 0.55);
     this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
     const data = this.noiseBuf.getChannelData(0);
     // Deterministic seeded white noise for crisp reproducible offline baking
@@ -111,8 +121,11 @@ export class SoundEngine {
       data[i] = ((seed >>> 8) / 8388608) - 1;
     }
     this._noiseSamples = data;
-    this.startAmbience();
-    this._bakeAllBuffers();
+    try { this.startAmbience(); } catch {}
+    // Start baking urgent combat SFX quickly (45ms) so first slash/parry/anvil sounds immediately!
+    if (!this._bakeStarted) {
+      setTimeout(() => { this._bakeAllBuffers().catch(() => {}); }, 45);
+    }
   }
 
   startAmbience() {
@@ -485,16 +498,27 @@ export class SoundEngine {
     }
   }
 
+  getOutputLatencySec() {
+    if (!this.ctx) return 0;
+    const base = Number(this.ctx.baseLatency) || 0;
+    const out = Number(this.ctx.outputLatency) || 0;
+    return Math.max(0, Math.min(0.18, base + out));
+  }
+
   async _bakeAllBuffers() {
     if (this._bakeStarted || !this.ctx) return;
     this._bakeStarted = true;
-    const tasks = buildSfxBakeTasks(c => this._makeOfflineNoise(c));
+    const rawTasks = buildSfxBakeTasks(c => this._makeOfflineNoise(c));
+    // Prioritize core combat & anvil SFX first so early actions have zero missing sounds
+    const urgent = new Set(['slash_light', 'slash_heavy', 'hit_light', 'hit_heavy', 'parry_perfect', 'parry_block', 'jump', 'dash', 'bell_toll', 'anvil_tap', 'step']);
+    const tasks = rawTasks.filter(t => urgent.has(t[0])).concat(rawTasks.filter(t => !urgent.has(t[0])));
 
-    // Bake in small async batches so main thread stays silky during startup
-    const BATCH = 6;
+    const isMob = typeof document !== 'undefined' && document.body && document.body.classList.contains('is-mobile');
+    const BATCH = isMob ? 3 : 5;
     for (let i = 0; i < tasks.length; i += BATCH) {
       const slice = tasks.slice(i, i + BATCH);
       await Promise.all(slice.map(t => this._bakeOne(t[0], t[1], t[2])));
+      await new Promise(r => setTimeout(r, isMob ? 10 : 4));
     }
     this._bakeReady = true;
   }

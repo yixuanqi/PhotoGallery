@@ -5,7 +5,7 @@ import { t, isEn, getLocale, getCanvasFont } from '../i18n.js';
 
 const MAX_GLYPH_ENTRIES = 280;
 const MAX_BADGE_ENTRIES = 64;
-const SUPERSAMPLE = (typeof window !== 'undefined' && (window.devicePixelRatio || 1) >= 2) ? 3 : 2;
+const SUPERSAMPLE = (typeof window !== 'undefined' && (window.devicePixelRatio || 1) >= 1.5) ? 3 : 2;
 
 const _glyphCache = new Map();
 const _badgeCache = new Map();

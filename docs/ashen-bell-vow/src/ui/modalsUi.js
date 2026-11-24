@@ -1,9 +1,9 @@
 // Codex, NPCs (Mochen / Xi / Bell-Smith Li), Training Console, Lore, Pause, Settings & Altar Modals (v32.0)
 import { getNpcPortraitSvg } from '../npcPortraits.js';
 import { COLORS, RELICS, RELIC_SYNERGIES, DUMMY_MODES, ACTION_META, ROOMS, LORE_TABLETS } from '../config.js';
-import { G, getActiveWeaponId, isWeaponUnlocked, isWeaponTraitUnlocked, getActiveWeaponTraitId, setActiveWeaponTrait, ensureNpcQuests, getPlayerMaxHp, getPlayerMaxSoul, getExplorationPercent } from '../state.js';
+import { G, hooks, getActiveWeaponId, isWeaponUnlocked, isWeaponTraitUnlocked, getActiveWeaponTraitId, setActiveWeaponTrait, ensureNpcQuests, getPlayerMaxHp, getPlayerMaxSoul, getExplorationPercent } from '../state.js';
 import { audio } from '../audio.js';
-import { getActionKeyLabel, startKeyCapture, triggerHaptic } from '../input.js';
+import { getActionKeyLabel, startKeyCapture, triggerHaptic, applyMobileTouchPrefs } from '../input.js';
 import { equipWeapon } from '../combat.js';
 import { spawnShockwave, spawnFloatText } from '../vfx.js';
 import { saveProgress, saveUserSettings } from '../save.js';
@@ -1101,11 +1101,32 @@ export function renderSettingsModal() {
   if (opInp) opInp.value = String(curOpPct);
   if (opVal) opVal.textContent = `${curOpPct}%`;
 
-  const ecoBtn = document.getElementById('btn-mob-eco-mode');
-  if (ecoBtn) {
-    const ecoOn = !!G.settings.mobileEcoMode;
-    ecoBtn.textContent = ecoOn ? t('settings.mobEcoOn') : t('settings.mobEcoOff');
-    ecoBtn.classList.toggle('active', ecoOn);
+  const qualGroup = document.getElementById('mob-quality-group');
+  if (qualGroup) {
+    qualGroup.innerHTML = '';
+    const curQ = ['high', 'retina', 'eco'].includes(G.settings.mobileQuality)
+      ? G.settings.mobileQuality
+      : (G.settings.mobileEcoMode ? 'eco' : 'high');
+    [
+      { val: 'high',   label: t('settings.mobQualHigh') },
+      { val: 'retina', label: t('settings.mobQualRetina') },
+      { val: 'eco',    label: t('settings.mobQualEco') }
+    ].forEach(opt => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `seg-btn${curQ === opt.val ? ' active' : ''}`;
+      btn.textContent = opt.label;
+      btn.addEventListener('click', () => {
+        G.settings.mobileQuality = opt.val;
+        G.settings.mobileEcoMode = opt.val === 'eco';
+        applyMobileTouchPrefs();
+        prof.resetRolling();
+        saveUserSettings();
+        if (hooks.resizeCanvas) hooks.resizeCanvas();
+        renderSettingsModal();
+      });
+      qualGroup.appendChild(btn);
+    });
   }
 
   const kbGrid = document.getElementById('keybind-grid');

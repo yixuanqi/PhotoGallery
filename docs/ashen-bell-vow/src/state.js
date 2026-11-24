@@ -59,6 +59,7 @@ export const G = {
     mobileCombatAssist: true,
     mobileBtnScale: 1.0,
     mobileBtnOpacity: 0.90,
+    mobileQuality: 'high', // 'high' (2.4x HD) | 'retina' (3.0x Native) | 'eco' (1.5x Battery)
     mobileEcoMode: false,
     keybinds: { ...DEFAULT_KEYBINDS }
   },
@@ -105,7 +106,7 @@ export const G = {
   screenFlash: { alpha: 0, color: '#fff' },
   cam: { x: 0, y: 0, shake: 0, kickX: 0, kickY: 0, zoom: 1, vLookY: 0, roomTransTimer: 0 },
   wardenArenaFx: { windDir: 0, windTimer: 0, blizzardAlpha: 0, bellPulseTimer: 0 },
-  smithForge: { cycleIdx: -1, flash: 0 },
+  smithForge: { cycleIdx: -1, sfxCycleIdx: -1, flash: 0 },
   causalityNotified: { foundryCooled: false },
   stats: { parries: 0, executions: 0, damageTaken: 0, startTime: 0 },
 

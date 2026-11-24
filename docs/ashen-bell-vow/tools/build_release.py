@@ -675,36 +675,68 @@ def build_offline_index_html():
     if inline_script_start < 0 or module_script_end <= inline_script_start:
         raise RuntimeError("Could not locate boot script block in index.html")
 
-    offline_boot_block = """<script>
+    offline_boot_block = r"""<script>
 (function () {
-  var box = document.getElementById('file-protocol-warning');
   var isEnBoot = false;
   try { isEnBoot = window.localStorage.getItem('ashen_bell_vow_locale_v15') === 'en-US'; } catch (e) {}
-  function showBootErr(msg) {
-    if (!box) return;
-    box.innerHTML =
-      '<div class="fpw-title">' + (isEnBoot ? '⚠ Runtime Startup Error' : '⚠ 游戏启动异常') + '</div>' +
-      '<div class="fpw-body"><code>' + String(msg || 'Unknown error').replace(/</g, '&lt;') + '</code></div>';
-    box.style.display = 'block';
+  function showFatal(msg) {
+    var el = document.getElementById('abv-fatal-banner');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'abv-fatal-banner';
+      el.className = 'abv-fatal-banner';
+      document.body.appendChild(el);
+    }
+    el.classList.remove('hidden');
+    el.textContent = '';
+    var head = document.createElement('div');
+    head.className = 'abv-fatal-head';
+    var title = document.createElement('span');
+    title.textContent = isEnBoot ? '⚠ Runtime Error (v44.8)' : '⚠ 运行异常诊断 (v44.8)';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'abv-fatal-dismiss';
+    btn.textContent = '✕';
+    btn.addEventListener('click', function () { el.classList.add('hidden'); });
+    head.appendChild(title);
+    head.appendChild(btn);
+    var body = document.createElement('div');
+    body.textContent = String(msg || 'Unknown error');
+    el.appendChild(head);
+    el.appendChild(body);
   }
+  window.__ABV_SHOW_FATAL__ = showFatal;
   window.addEventListener('error', function (e) {
-    if (window.__ABV_BOOTED__) return;
-    showBootErr((e && e.message) ? e.message : 'Unknown script error');
+    var detail = (e && e.message) ? e.message : 'Unknown script error';
+    if (e && e.lineno) detail += ' (L' + e.lineno + ':' + (e.colno || 0) + ')';
+    showFatal(detail);
   });
   window.addEventListener('unhandledrejection', function (e) {
-    if (window.__ABV_BOOTED__) return;
     var r = e && e.reason;
-    showBootErr((r && r.message) ? r.message : String(r || 'Promise rejection'));
+    showFatal('Promise: ' + ((r && r.message) ? r.message : String(r || 'Rejection')));
   });
 })();
 </script>
-<script src="./game.bundle.js"></script>"""
+<script src="./game.bundle.js" charset="utf-8"></script>"""
 
     out_html = html[:inline_script_start] + offline_boot_block + html[module_script_end:]
     if 'type="module"' in out_html:
         raise RuntimeError("Offline index.html still contains type='module'!")
     if "protocol === 'file:'" in out_html:
         raise RuntimeError("Offline index.html still contains file:// blocker!")
+    # Audit every inline <script> block in offline index.html for balanced quotes & brackets!
+    for m in re.finditer(r"<script(?:\s[^>]*)?>([\s\S]*?)</script>", out_html):
+        inline_js = m.group(1).strip()
+        if inline_js:
+            audit_bundle_syntax(inline_js)
+            toks = tokenize_js(inline_js)
+            for idx_t, (tk, txt, pos, _e) in enumerate(toks):
+                if tk == "ident" and idx_t > 0:
+                    # Catch adjacent string + ident (`'foo'hidden'`) from broken quote escaping!
+                    prev_k = toks[idx_t - 1][0]
+                    if prev_k == "str":
+                        ln = out_html.count("\n", 0, m.start() + pos) + 1
+                        raise RuntimeError(f"Offline index.html inline JS syntax error near L{ln}: unexpected identifier '{txt}' after string literal")
     return out_html
 
 

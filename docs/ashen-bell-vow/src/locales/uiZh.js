@@ -1,7 +1,7 @@
-// Simplified Chinese (zh-CN) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v44.4)
+// Simplified Chinese (zh-CN) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v44.8)
 export const UI_ZH = {
     // Document & Title
-    'doc.title': '灰钟残誓 v44.4 — 移动端原生手感升级（浮动摇杆·震动·大地图双指缩放·软索敌）· 暗黑手绘魂系类银河恶魔城',
+    'doc.title': '灰钟残誓 v44.8 — 移动端原生手感升级（浮动摇杆·震动·大地图双指缩放·软索敌）· 暗黑手绘魂系类银河恶魔城',
     'game.title': '灰钟残誓',
     'game.subtitle': 'ASHEN BELL VOW · 暗黑手绘魂系类银河恶魔城',
     'title.loading': '载入中...',
@@ -187,6 +187,10 @@ export const UI_ZH = {
     'settings.mobAssistOff': '硬核: 关',
     'settings.mobBtnScale': '触控按键尺寸',
     'settings.mobBtnOpacity': '触控按键透明度',
+    'settings.mobQuality': '移动端画质清晰度（对齐 PC / 省电）',
+    'settings.mobQualHigh': '高清 2.4×',
+    'settings.mobQualRetina': '视网膜 3×',
+    'settings.mobQualEco': '省电 1.5×',
     'settings.mobEcoMode': '手机稳帧省电模式（降 DPR/粒子防发热）',
     'settings.mobEcoOn': '省电: 开',
     'settings.mobEcoOff': '省电: 关',
@@ -928,6 +932,7 @@ export const UI_ZH = {
     'intro.act2Line': '「破刃斩旧誓 · 断钟叩黎明」',
     'intro.line2': '— 唯提灯残影，叩响终末余音 —',
     'title.fullscreen': '⛶ 全屏',
+    'title.confirmOverwriteMob': '⚠ 再次点击确认覆盖档案 {0}',
     'title.installPwa': '⬇ 安装到桌面',
     'title.replayIntro': '↺ 重播开场',
     'intro.skipHint': '按任意键或点击跳过',

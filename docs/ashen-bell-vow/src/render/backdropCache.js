@@ -20,6 +20,8 @@ export function getBackdropCacheStats() {
   };
 }
 
+const _PANEL_BAKE_SCALE = (typeof window !== 'undefined' && (window.devicePixelRatio || 1) >= 1.5) ? 2 : 1;
+
 function getOrBakePanel(key, w, h, paintFn) {
   let canvas = _panels.get(key);
   if (canvas) {
@@ -27,11 +29,17 @@ function getOrBakePanel(key, w, h, paintFn) {
     return canvas;
   }
   _stats.misses++;
+  const logW = Math.ceil(w);
+  const logH = Math.ceil(h);
+  const sc = (logW * logH > 720000) ? Math.min(1.5, _PANEL_BAKE_SCALE) : _PANEL_BAKE_SCALE;
   canvas = document.createElement('canvas');
-  canvas.width = Math.ceil(w);
-  canvas.height = Math.ceil(h);
+  canvas.width = Math.ceil(logW * sc);
+  canvas.height = Math.ceil(logH * sc);
+  canvas._logW = logW;
+  canvas._logH = logH;
   const c = canvas.getContext('2d');
-  paintFn(c, canvas.width, canvas.height);
+  if (sc !== 1) c.scale(sc, sc);
+  paintFn(c, logW, logH);
   _panels.set(key, canvas);
   return canvas;
 }

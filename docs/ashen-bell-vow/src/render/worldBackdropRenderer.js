@@ -11,6 +11,11 @@ import {
   getGraveSprite, getBoneCairnSprite
 } from './backdropCache.js';
 
+function blitBackdropPanel(img, x, y) {
+  if (!img) return;
+  G.ctx.drawImage(img, x, y, img._logW || img.width, img._logH || img.height);
+}
+
 export function drawWorldBackdrop() {
   G.ctx.save();
 
@@ -18,7 +23,7 @@ export function drawWorldBackdrop() {
   if (G.cam.x < 760) {
     const ax = ALTAR_POS.x;
     const archImg = getSanctuaryArchSprite();
-    G.ctx.drawImage(archImg, ax - 110, FLOOR_Y - (archImg.height - 8));
+    blitBackdropPanel(archImg, ax - 110, FLOOR_Y - ((archImg._logH || archImg.height) - 8));
 
     G.ctx.strokeStyle = 'rgba(56, 189, 248, 0.26)';
     G.ctx.lineWidth = 1.4;
@@ -31,7 +36,7 @@ export function drawWorldBackdrop() {
   for (let li = 0; li < BACKDROP_LANCETS.length; li++) {
     const wx = BACKDROP_LANCETS[li];
     if (wx < G.cam.x - 160 || wx > G.cam.x + G.canvasW + 160) continue;
-    G.ctx.drawImage(lancetImg, wx - 130, 130);
+    blitBackdropPanel(lancetImg, wx - 130, 130);
   }
 
   // ========== ARENA 1 (r03_chapel): 雨夜坍塌礼拜堂 (Static Nave Cached + Live Lightning & Rain) ==========
@@ -47,7 +52,7 @@ export function drawWorldBackdrop() {
 
     // Soft bell glow behind cached half-buried bell
     drawGlowSprite(isP2 ? 'crimson' : 'gold', 3188, FLOOR_Y - 40, 128, isP2 ? 0.30 : 0.15);
-    G.ctx.drawImage(getChapelStaticBackdrop(isP2), 2640, 0);
+    blitBackdropPanel(getChapelStaticBackdrop(isP2), 2640, 0);
 
     // Live Slanted Rain Streaks
     G.ctx.strokeStyle = isP2 ? 'rgba(248, 113, 113, 0.19)' : 'rgba(186, 230, 253, 0.18)';
@@ -103,7 +108,7 @@ export function drawWorldBackdrop() {
     drawFoundryGear(fx + 148, 1170, 96, 14, -now * gearSpd * 1.15);
 
     // Pre-baked Blast-Furnace Chimneys, Crucible Cauldron & Slag Trough
-    G.ctx.drawImage(getFoundryStaticBackdrop(isJiP2), fx - 275, 815);
+    blitBackdropPanel(getFoundryStaticBackdrop(isJiP2), fx - 275, 815);
 
     // Live Pulsing Molten Bronze Waterfall & Rising Ember Streaks
     const streamW = isJiP2 ? 22 : 14;
@@ -261,7 +266,7 @@ export function drawWorldBackdrop() {
       const vt = vents[vi];
       drawGlowSprite(foundryCooled ? 'cyan' : 'gold', vt.x + vt.w * 0.5, 730, foundryCooled ? 92 : 120, (foundryCooled ? 0.16 : 0.28) + Math.sin(now * 4 + vi) * 0.05);
     }
-    G.ctx.drawImage(getWindVentGratesSprite(foundryCooled), 5825, 720);
+    blitBackdropPanel(getWindVentGratesSprite(foundryCooled), 5825, 720);
     G.ctx.fillStyle = foundryCooled ? 'rgba(186, 230, 253, 0.42)' : 'rgba(251, 146, 60, 0.55)';
     const sparkCnt = foundryCooled ? 5 : 8;
     for (let vi = 0; vi < vents.length; vi++) {
@@ -324,7 +329,7 @@ export function drawWorldBackdrop() {
       const ty = 2120;
       drawGlowSprite('cyan', tx, ty - 175, 220, 0.20 + Math.sin(now * 2.2) * 0.05);
       const treeImg = getWoodsTreeHollowSprite();
-      G.ctx.drawImage(treeImg, tx - 270, ty - (treeImg.height - 10));
+      blitBackdropPanel(treeImg, tx - 270, ty - ((treeImg._logH || treeImg.height) - 10));
     }
   }
 
@@ -357,7 +362,7 @@ export function drawWorldBackdrop() {
   for (let idx = 0; idx < BACKDROP_GRAVES.length; idx++) {
     const gx = BACKDROP_GRAVES[idx];
     if (gx < G.cam.x - 60 || gx > G.cam.x + G.canvasW + 60) continue;
-    G.ctx.drawImage(getGraveSprite(idx), gx - 17, FLOOR_Y - 86);
+    blitBackdropPanel(getGraveSprite(idx), gx - 17, FLOOR_Y - 86);
   }
 
   // E. Bone Cairns (1 shared pre-baked sprite)
@@ -365,7 +370,7 @@ export function drawWorldBackdrop() {
   for (let idx = 0; idx < BONE_CAIRNS.length; idx++) {
     const bx = BONE_CAIRNS[idx];
     if (bx < G.cam.x - 60 || bx > G.cam.x + G.canvasW + 60) continue;
-    G.ctx.drawImage(cairnImg, bx - 17, FLOOR_Y - 22);
+    blitBackdropPanel(cairnImg, bx - 17, FLOOR_Y - 22);
   }
 
   // F. Flickering Wax Candle Clusters

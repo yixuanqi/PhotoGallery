@@ -1,3 +1,46 @@
+## v44.8 修复离线包内联脚本引号语法错误（`index.html:694`）
+- **彻底修复 `Uncaught SyntaxError: Unexpected identifier 'hidden'`（`tools/build_release.py`）**：将离线 `index.html` 的异常诊断浮层关闭按钮改为纯 DOM `createElement + addEventListener`，彻底消除嵌套引号转义错误；同时在构建脚本新增内联 `<script>` 词法与引号相邻校验，确保离线包 PC 与移动端控制台均为 0 报错。
+
+---
+
+## v44.7 移动端高清视网膜渲染、低延迟音画同步与 TapTap 胶囊避让根治
+- **移动端画质全面追平 PC 清晰度（`src/main.js` / `src/renderTerrain.js` / `src/stampAtlas.js` / `src/render/backdropCache.js` / `src/render/glyphAtlas.js`）**：
+  * **3 档移动端画质切换（默认「高清 2.4×」/「视网膜 3×」/「省电 1.5×」）**：解除 TapTap 嵌入式容器 `1.65×` 过低 DPR 限制，默认开放至 **`2.4×`（最高 2400px 宽，实机 `renderScale ≈ 2.0×` 对齐 PC）**，旗舰手机可切「视网膜 3×」实现 1:1 物理像素零拉伸；
+  * **全链路 2× 高清离屏烘焙**：地形缓存块（`renderTerrain.js`）、世界装饰印章（`stampAtlas.js`）与静态哥特建筑背景（`backdropCache.js`）全面升级为按高分屏 `1.5× / 2×` 离屏烘焙并按逻辑尺寸贴图，彻底消除“1× 离屏图二次放大”导致的地面石纹与背景发虚；
+  * **全端统一 3× 超采样字形图集（`glyphAtlas.js`）**：移除嵌入式容器降级逻辑，场景墙面铭文与交互提示与外层 DOM 血条同样锐利。
+- **低延迟音频与音画时钟同步（`src/audio.js` / `src/input.js` / `src/render/titleIntro.js` / `src/world.js`）**：
+  * `new AudioContext({ latencyHint: 'interactive' })` 强制申请 Android AAudio / 低延迟交互声道，并优先预烘焙挥刀、受击、打铁弹反、跳跃与铁砧核心音效（延迟由 160ms 缩至 45ms）；
+  * 触屏「普攻 / 法术 / 跳跃」轻滑判定等待由 `48ms` 压缩至 **`18ms`**，大幅收紧出招与音效反馈同步感；
+  * 7.8 秒开场动画改用 `performance.now()` 真实单调时钟推进防掉帧音画漂移；铁匠打铁声按 `audio.getOutputLatencySec()` 自动提前补偿（最多 `60ms`），落锤撞击与金属清响毫秒级咬合。
+- **TapTap 右上角悬浮胶囊防遮挡双保险（`src/input.js` / `styles.css`）**：
+  * 扩展 `isEmbeddedH5Container()` 识别（兼容离线包、UA、域名/Referrer、原生桥与独立全屏态），并同时通过 CSS 与 JS 内联样式隐藏冗余「全屏」按钮、将 `#hud .hud-right` 左移 `114px`、标题顶栏右留 `122px`，彻底避让 TapTap 悬浮 `••• | ◉` 胶囊。
+
+---
+
+## v44.6 修复 `auxBtn` 未定义报错 + TapTap WebView 启动降载与顶层异常诊断
+- **修复 PC 与移动端启动控制台 `ReferenceError: auxBtn is not defined`（`src/main.js` / `styles.css` / `verify_project.py`）**：
+  * 彻底清理 `refreshAllDynamicLocaleUI()` 中残留的已废弃 `auxBtn / auxWrap` 引用（该异常此前导致切换语言时跳过后续 `refreshTitleSaveUI()` 与 `syncHUD()` 刷新），并在 `verify_project.py` 中加入永久回归防线。
+- **TapTap 嵌入式 WebView 防黑屏降载与非阻塞首帧启动（`src/main.js` / `src/render/glyphAtlas.js`）**：
+  * 嵌入式 H5 容器（TapTap / Android WebView）画布 DPR 安全封顶为 `1.65×`（最大 GPU 宽 `1600px`）且字形超采样保持 `2×`，在维持远超 v44.0 的清晰度的同时把显存峰值降低 45%，规避 Android WebView 2D Canvas 丢上下文黑屏；
+  * 将 `prewarmStampsForList`、`prewarmTerrainChunks`、`prewarmGlyphAtlas` 移出同步启动链改为首帧渲染后 `60ms / 220ms` 错峰预热，确保 TapTap 容器秒出首帧。
+- **新增顶层可见异常诊断浮层（`#abv-fatal-banner`，`z-index: 99999`）**：
+  * 正常游玩全程隐藏零干扰；一旦在 TapTap 真机出现任何未捕获异常、Promise 拒绝、首帧或切场错误，直接在屏幕最顶层打印精准错误行号与堆栈，彻底告别无声黑屏盲猜。
+
+---
+
+## v44.5 根治 TapTap H5 容器「点击进入后卡死/黑屏」与悬浮胶囊防遮挡
+- **彻底禁用嵌入式 WebView 内的自动 `requestFullscreen()`（`src/input.js` / `src/main.js`）**：
+  * 定位 TapTap H5 审核真机（一加 Ace 5 至尊版 / 荣耀 400 Pro）点击主菜单进入后黑屏卡死的元凶：TapTap H5 容器本身已是原生横屏全屏 WebView，旧版点击「继续残誓 / 踏入晦渊」时强制调用 `document.documentElement.requestFullscreen()` 会触发 Android `WebChromeClient.onShowCustomView` 导致 WebView 渲染面黑屏锁死；
+  * 新增 `isEmbeddedH5Container()` 检测，在 TapTap H5 / 离线包 / 微信等嵌入式 WebView 中**永久禁止调用 `requestFullscreen()`**，点击开始/继续按钮不再触发任何全屏切换，仅保留普通手机浏览器下的手动「⛶ 全屏」按钮。
+- **消除 TapTap WebView 三重次生阻塞点（`src/main.js` / `src/audio.js` / `src/render/titleIntro.js`）**：
+  * 移动端「踏入晦渊」覆盖存档改用**按钮内联二次确认**（`⚠ 再次点击确认覆盖档案 N`），彻底移除在 Android WebView 里极易被拦截或卡线程的 `window.confirm()`；
+  * `audio.init()` 全链路加异常保护，并将 `OfflineAudioContext` 音效预烘焙延迟 `160ms` 且在手机端限流为每批 2 个 + `18ms` 帧让出，避免进游戏瞬间堵死 Android WebView 音频线程；
+  * `beginSceneFade()` 新增超时看门狗与回调异常保护，彻底杜绝黑幕过渡卡死在纯黑画面。
+- **TapTap 右上角悬浮胶囊安全避让（`styles.css`）**：
+  * 嵌入式 H5 容器模式下自动为标题顶栏与 HUD 右上角预留 `98–112px` 右边距并隐藏冗余「全屏」按钮，彻底避免 TapTap 悬浮 `••• / ◉` 胶囊压住「Lang: 中文 / EN」和顶部按钮。
+
+---
+
 ## v44.4 开场动画「破刃断钟」专属电影级斩击音效重构
 - **彻底剥离游戏内战斗音效，独立设计 4 幕电影级过场声场（`src/audioSfxBank.js` / `src/audio.js` / `src/render/titleIntro.js`）**：
   * **Act I · 晦渊悬钟低鸣（`playIntroOmen`，0.32s）**：深沉青铜殿堂低频共鸣 + 冷风幽息，替代原远钟音效；

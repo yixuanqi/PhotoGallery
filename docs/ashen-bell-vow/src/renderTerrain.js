@@ -666,6 +666,16 @@ function paintPlatformSolid(c, s, st) {
 const _chunkCache = new Map();
 let _cachedThemeMap = null;
 let _cachedModMap = null;
+let _cachedBakeScale = 1;
+
+function getDesiredTerrainScale() {
+  const eco = !!(G.isMobile && G.settings && (G.settings.mobileQuality === 'eco' || G.settings.mobileEcoMode));
+  if (eco) return 1.25;
+  const rs = Number(G.renderScale) || 1;
+  if (rs >= 1.75) return 2;
+  if (rs >= 1.25) return 1.5;
+  return 1;
+}
 
 export function invalidateTerrainCache() {
   _chunkCache.clear();
@@ -674,6 +684,11 @@ export function invalidateTerrainCache() {
 }
 
 function getOrBakeChunk(cx, cy) {
+  const wantScale = getDesiredTerrainScale();
+  if (wantScale !== _cachedBakeScale) {
+    _chunkCache.clear();
+    _cachedBakeScale = wantScale;
+  }
   const key = `${cx},${cy}`;
   let entry = _chunkCache.get(key);
   if (entry !== undefined) return entry;
@@ -701,11 +716,12 @@ function getOrBakeChunk(cx, cy) {
   if (!_cachedModMap) _cachedModMap = getRoomModMap();
 
   const canvas = document.createElement('canvas');
-  canvas.width = CHUNK_W;
-  canvas.height = CHUNK_H;
+  canvas.width = Math.round(CHUNK_W * wantScale);
+  canvas.height = Math.round(CHUNK_H * wantScale);
   const c = canvas.getContext('2d');
 
   c.save();
+  if (wantScale !== 1) c.scale(wantScale, wantScale);
   c.translate(-wx0, -wy0);
 
   // Layer order: grounds first, then pillars, then floating platforms cleanly on top
@@ -757,7 +773,7 @@ export function drawWorldArchitecture() {
   for (let cy = cMinY; cy <= cMaxY; cy++) {
     for (let cx = cMinX; cx <= cMaxX; cx++) {
       const chunk = getOrBakeChunk(cx, cy);
-      if (chunk) ctx.drawImage(chunk.canvas, chunk.wx, chunk.wy);
+      if (chunk) ctx.drawImage(chunk.canvas, chunk.wx, chunk.wy, CHUNK_W, CHUNK_H);
     }
   }
 

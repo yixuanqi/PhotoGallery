@@ -6,7 +6,7 @@ set PYTHONIOENCODING=utf-8
 cd /d "%~dp0"
 
 echo ========================================================
-echo   Ashen Bell Vow v44.4 - Level Editor Launcher
+echo   Ashen Bell Vow v44.8 - Level Editor Launcher
 echo ========================================================
 echo.
 

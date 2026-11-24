@@ -17,6 +17,7 @@ const CUT_ANGLE = -0.46;     // Diagonal slash angle (lower-left -> upper-right)
 const _intro = {
   active: false,
   t: 0,
+  lastWallMs: 0,
   bellSfxDone: false,
   chargeSfxDone: false,
   slashed: false,
@@ -33,8 +34,27 @@ const _fade = {
   t: 0,
   dur: 0.46,
   midFired: false,
-  onMid: null
+  onMid: null,
+  watchdogId: null
 };
+
+function fireFadeMidSafe() {
+  if (_fade.midFired) return;
+  _fade.midFired = true;
+  const cb = _fade.onMid;
+  _fade.onMid = null;
+  if (typeof cb === 'function') {
+    try {
+      cb();
+    } catch (err) {
+      _fade.active = false;
+      console.error('[AshenBellVow] Scene transition callback failed:', err);
+      if (typeof window !== 'undefined' && typeof window.__ABV_SHOW_FATAL__ === 'function') {
+        window.__ABV_SHOW_FATAL__('TransitionError: ' + (err && err.message ? err.message : String(err)));
+      }
+    }
+  }
+}
 
 function canPlayAudioNow() {
   return !!(audio && audio.ctx && audio.ctx.state === 'running' && !audio.muted);
@@ -136,6 +156,7 @@ export function startTitleIntro(skipImmediate = false) {
   if (audio && typeof audio.stopIntroCinematic === 'function') audio.stopIntroCinematic();
   _intro.active = true;
   _intro.t = 0;
+  _intro.lastWallMs = performance.now();
   _intro.bellSfxDone = false;
   _intro.chargeSfxDone = false;
   _intro.slashed = false;
@@ -177,24 +198,40 @@ export function beginSceneFade(onMidCallback, dur = 0.46) {
   _fade.dur = dur;
   _fade.midFired = false;
   _fade.onMid = onMidCallback || null;
+  if (_fade.watchdogId !== null) clearTimeout(_fade.watchdogId);
+  // Watchdog guarantees transition executes & black curtain clears even if a WebView briefly stalls rAF!
+  _fade.watchdogId = setTimeout(() => {
+    _fade.watchdogId = null;
+    if (_fade.active) {
+      fireFadeMidSafe();
+      _fade.active = false;
+    }
+  }, Math.max(450, Math.round(dur * 1000) + 180));
 }
 
 export function updateTitleIntro(dt) {
   if (_fade.active) {
-    _fade.t += dt;
+    _fade.t += Math.max(0.008, dt);
     const half = _fade.dur * 0.45;
     if (!_fade.midFired && _fade.t >= half) {
-      _fade.midFired = true;
-      if (typeof _fade.onMid === 'function') _fade.onMid();
+      fireFadeMidSafe();
     }
     if (_fade.t >= _fade.dur) {
       _fade.active = false;
       _fade.onMid = null;
+      if (_fade.watchdogId !== null) {
+        clearTimeout(_fade.watchdogId);
+        _fade.watchdogId = null;
+      }
     }
   }
 
   if (!_intro.active) return;
-  _intro.t += dt;
+  // Advance intro by real monotonic wall-clock delta (capped at 120ms for background resume) so audio & visuals stay locked even on frame dips!
+  const nowWall = performance.now();
+  const wallDt = _intro.lastWallMs > 0 ? Math.min(0.12, Math.max(0, (nowWall - _intro.lastWallMs) * 0.001)) : dt;
+  _intro.lastWallMs = nowWall;
+  _intro.t += wallDt;
 
   // Dedicated v44.4 theatrical intro audio suite (0 shared in-game combat SFX; instant live synthesis!)
   if (!_intro.bellSfxDone && _intro.t >= 0.32) {

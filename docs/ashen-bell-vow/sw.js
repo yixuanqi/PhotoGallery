@@ -1,5 +1,5 @@
-// Ashen Bell Vow v44.4 — Zero-Dependency Offline-First PWA Service Worker
-const CACHE_NAME = 'ashen-bell-vow-v44.4';
+// Ashen Bell Vow v44.8 — Zero-Dependency Offline-First PWA Service Worker
+const CACHE_NAME = 'ashen-bell-vow-v44.8';
 const CORE_PRECACHE = [
   './',
   './index.html',

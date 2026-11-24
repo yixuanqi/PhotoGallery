@@ -801,8 +801,9 @@ const STAMP_PAINTERS = {
   }
 };
 
-// Lazy offscreen cache: max 3 deterministic variants per stamp type
+// Lazy offscreen cache: max 3 deterministic variants per stamp type (v44.7 2x Retina Offscreen Baking)
 const _stampCache = new Map();
+const _STAMP_BAKE_SCALE = (typeof window !== 'undefined' && (window.devicePixelRatio || 1) >= 1.5) ? 2 : 1;
 
 export function getStampCanvas(type, seed = 0) {
   const def = STAMP_DEF_MAP[type];
@@ -813,9 +814,10 @@ export function getStampCanvas(type, seed = 0) {
   if (cached) return cached;
 
   const canvas = document.createElement('canvas');
-  canvas.width = def.w;
-  canvas.height = def.h;
+  canvas.width = Math.ceil(def.w * _STAMP_BAKE_SCALE);
+  canvas.height = Math.ceil(def.h * _STAMP_BAKE_SCALE);
   const c = canvas.getContext('2d');
+  if (_STAMP_BAKE_SCALE !== 1) c.scale(_STAMP_BAKE_SCALE, _STAMP_BAKE_SCALE);
   const rng = makeRng((variant + 1) * 7919 + type.length * 131);
   const painter = STAMP_PAINTERS[type];
   if (painter) painter(c, def.w, def.h, rng);
@@ -852,7 +854,7 @@ function drawStampInstance(ctx, st, wx, wy, liveTime = 0) {
     ctx.rotate(st.rotate);
   }
   ctx.scale(scale * flip, scale);
-  ctx.drawImage(spr, -def.w * def.ax, -def.h * def.ay);
+  ctx.drawImage(spr, -def.w * def.ax, -def.h * def.ay, def.w, def.h);
 
   // Lightweight animated overlays for dynamic procedural stamps (zero allocations)
   if (def.animated === 'pennant') {

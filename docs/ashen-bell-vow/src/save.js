@@ -50,7 +50,8 @@ export function saveUserSettings() {
     mobileCombatAssist: G.settings.mobileCombatAssist !== false,
     mobileBtnScale: Number(G.settings.mobileBtnScale) || 1.0,
     mobileBtnOpacity: Number(G.settings.mobileBtnOpacity) || 0.90,
-    mobileEcoMode: !!G.settings.mobileEcoMode,
+    mobileQuality: ['high', 'retina', 'eco'].includes(G.settings.mobileQuality) ? G.settings.mobileQuality : 'high',
+    mobileEcoMode: G.settings.mobileQuality === 'eco' || !!G.settings.mobileEcoMode,
     keybinds: { ...G.settings.keybinds }
   });
 }
@@ -84,7 +85,13 @@ export function loadUserSettings() {
   if (typeof s.mobileBtnOpacity === 'number' && !Number.isNaN(s.mobileBtnOpacity)) {
     G.settings.mobileBtnOpacity = Math.max(0.45, Math.min(1.0, s.mobileBtnOpacity));
   }
-  if (typeof s.mobileEcoMode === 'boolean') G.settings.mobileEcoMode = s.mobileEcoMode;
+  if (['high', 'retina', 'eco'].includes(s.mobileQuality)) {
+    G.settings.mobileQuality = s.mobileQuality;
+    G.settings.mobileEcoMode = s.mobileQuality === 'eco';
+  } else if (typeof s.mobileEcoMode === 'boolean') {
+    G.settings.mobileEcoMode = s.mobileEcoMode;
+    G.settings.mobileQuality = s.mobileEcoMode ? 'eco' : 'high';
+  }
   audio.setVolumes(G.settings.masterVol, G.settings.musicVol, G.settings.sfxVol);
 
   if (s.keybinds && typeof s.keybinds === 'object') {

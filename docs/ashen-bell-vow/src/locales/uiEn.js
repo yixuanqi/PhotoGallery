@@ -1,7 +1,7 @@
-// English (en-US) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v44.4)
+// English (en-US) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v44.8)
 export const UI_EN = {
     // Document & Title
-    'doc.title': 'Ashen Bell Vow v44.4 — Native Mobile Feel (Floating Stick, Haptics, Pinch Map & Soft Auto-Face) · Dark Hand-Drawn Soulslike Metroidvania',
+    'doc.title': 'Ashen Bell Vow v44.8 — Native Mobile Feel (Floating Stick, Haptics, Pinch Map & Soft Auto-Face) · Dark Hand-Drawn Soulslike Metroidvania',
     'game.title': 'ASHEN BELL VOW',
     'game.subtitle': 'Dark Hand-Drawn Soulslike Metroidvania',
     'title.loading': 'Loading...',
@@ -187,6 +187,10 @@ export const UI_EN = {
     'settings.mobAssistOff': 'Hardcore: Off',
     'settings.mobBtnScale': 'Touch Button Scale',
     'settings.mobBtnOpacity': 'Touch Button Opacity',
+    'settings.mobQuality': 'Mobile Visual Clarity (HD / Retina / Eco)',
+    'settings.mobQualHigh': 'HD 2.4×',
+    'settings.mobQualRetina': 'Retina 3×',
+    'settings.mobQualEco': 'Eco 1.5×',
     'settings.mobEcoMode': 'Mobile Battery & Steady-FPS Mode (1x DPR / Light VFX)',
     'settings.mobEcoOn': 'Eco: On',
     'settings.mobEcoOff': 'Eco: Off',
@@ -928,6 +932,7 @@ export const UI_EN = {
     'intro.act2Line': '“A BROKEN BLADE SEVERS THE OLD VOW”',
     'intro.line2': '— A lantern-bearing shadow tolls the final dawn —',
     'title.fullscreen': '⛶ Fullscreen',
+    'title.confirmOverwriteMob': '⚠ Tap Again to Overwrite Slot {0}',
     'title.installPwa': '⬇ Install App',
     'title.replayIntro': '↺ Replay Intro',
     'intro.skipHint': 'Press any key or click to skip',

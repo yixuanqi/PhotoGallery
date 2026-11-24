@@ -304,7 +304,8 @@ export function applyMobileTouchPrefs() {
   const scale = Math.max(0.80, Math.min(1.20, Number(G.settings && G.settings.mobileBtnScale) || 1.0));
   const alpha = Math.max(0.45, Math.min(1.00, Number(G.settings && G.settings.mobileBtnOpacity) || 0.90));
   document.body.classList.toggle('mob-floating-joy', floatOn);
-  document.body.classList.toggle('mob-eco-mode', !!(G.settings && G.settings.mobileEcoMode));
+  const isEco = !!(G.settings && (G.settings.mobileQuality === 'eco' || G.settings.mobileEcoMode));
+  document.body.classList.toggle('mob-eco-mode', isEco);
   const tc = document.getElementById('touch-controls');
   if (tc) {
     tc.style.setProperty('--mob-btn-scale', scale.toFixed(2));
@@ -401,26 +402,69 @@ export function setForceLandscapeFallback(enabled) {
   return updateMobileOrientationLayout();
 }
 
+export function isEmbeddedH5Container() {
+  if (typeof window === 'undefined') return false;
+  if (window.__ABV_OFFLINE_WORLD__) return true;
+  const ua = (navigator && navigator.userAgent) || '';
+  const host = (window.location && window.location.hostname) || '';
+  const ref = (typeof document !== 'undefined' && document.referrer) || '';
+  const hasNativeBridge = !!(window.TapTap || window.TapSDK || window.Android || (window.webkit && window.webkit.messageHandlers));
+  const isStandalone = !!(
+    (window.matchMedia && (window.matchMedia('(display-mode: fullscreen)').matches || window.matchMedia('(display-mode: standalone)').matches)) ||
+    window.navigator.standalone === true
+  );
+  return (
+    hasNativeBridge ||
+    isStandalone ||
+    /TapTap|TapPlay|MiniGame|MicroMessenger|; wv\)|WebView|Html5Plus|TBS\//i.test(ua) ||
+    /taptap|tapimg|xd\.com|4399/i.test(host + ' ' + ref) ||
+    window.location.protocol === 'file:'
+  );
+}
+
 export function updateMobileOrientationLayout() {
   const mobile = isMobileDevice();
+  const embedded = isEmbeddedH5Container();
   const nativeLandscape = isViewportLandscape();
   // Automatically release CSS fallback once OS/browser enters real native landscape
   if (nativeLandscape && _manualForceLandscape) _manualForceLandscape = false;
   const forceLandscape = mobile && !nativeLandscape && _manualForceLandscape;
   const showPortraitGuard = mobile && !nativeLandscape && !forceLandscape;
   document.body.classList.toggle('is-mobile', mobile);
+  document.body.classList.toggle('is-embedded-h5', mobile && embedded);
   document.body.classList.toggle('is-portrait', showPortraitGuard);
   document.body.classList.toggle('force-landscape', forceLandscape);
-  return { mobile, portrait: showPortraitGuard, forceLandscape, nativeLandscape };
+
+  // Direct JS belt-and-suspenders TapTap capsule clearance & fullscreen button hide (immune to stale CSS cache!)
+  const hideFs = mobile && embedded;
+  const fsHud = document.getElementById('btn-fullscreen');
+  const fsTitle = document.getElementById('btn-title-fullscreen');
+  if (fsHud) fsHud.style.display = hideFs ? 'none' : '';
+  if (fsTitle) fsTitle.style.display = hideFs ? 'none' : '';
+  const hudRight = document.querySelector('#hud .hud-right');
+  if (hudRight) hudRight.style.marginRight = hideFs ? '114px' : '';
+  const topbar = document.querySelector('#title-screen .title-topbar');
+  if (topbar) topbar.style.paddingRight = hideFs ? '122px' : '';
+
+  return { mobile, embedded, portrait: showPortraitGuard, forceLandscape, nativeLandscape };
 }
 
-export function requestMobileLandscapeFullscreen() {
+export function requestMobileLandscapeFullscreen(userExplicit = false) {
   if (!isMobileDevice()) return;
+  // v44.5 CRITICAL: Never invoke requestFullscreen() inside Android TapTap/mini-game WebViews!
+  // Embedded WebViews are already fullscreen landscape; calling requestFullscreen() triggers
+  // Android WebChromeClient.onShowCustomView which freezes/blacks out OnePlus & Honor devices!
+  if (isEmbeddedH5Container() || !userExplicit) return;
   const el = document.documentElement;
   const reqFs = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
   const tryLock = () => {
-    if (screen.orientation && screen.orientation.lock) {
-      screen.orientation.lock('landscape').catch(() => {});
+    try {
+      if (screen.orientation && typeof screen.orientation.lock === 'function') {
+        const lp = screen.orientation.lock('landscape');
+        if (lp && typeof lp.catch === 'function') lp.catch(() => {});
+      }
+    } catch {
+      // Ignore unsupported orientation lock in WebView
     }
   };
   if (reqFs && !document.fullscreenElement && !document.webkitFullscreenElement) {
@@ -968,7 +1012,7 @@ export function initInputListeners() {
         startY = tch.clientY;
         flickTriggered = false;
         pressStarted = false;
-        // Air jump fires with 0ms delay (drop-through only applies on ground); Attack/Spell wait 48ms for flick intent
+        // v44.7 Snappy 18ms flick-intent window (down from 48ms!) — tight hand-eye-ear response on touch!
         const zeroDelay = (act === 'jump' && G.player && !G.player.grounded);
         if (zeroDelay) {
           commitNormalPress();
@@ -976,7 +1020,7 @@ export function initInputListeners() {
           deferTimer = setTimeout(() => {
             deferTimer = null;
             if (activeIds.size > 0 && !flickTriggered) commitNormalPress();
-          }, 48);
+          }, 18);
         }
       }
     }, { passive: false });
