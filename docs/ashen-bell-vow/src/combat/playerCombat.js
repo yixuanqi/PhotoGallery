@@ -294,11 +294,52 @@ export function evaluatePlayerActiveAttack() {
   const px = G.player.x + G.player.w / 2;
   const box = getPlayerAttackBox(atk.type, atk.weaponId);
 
-  // v45.2 Allow slicing incoming sticky webOrb projectiles cleanly out of the air!
+  // v45.5 Mobile Merged Attack+Parry: Slashing ANY enemy projectile triggers full Perfect Parry Reflection!
+  // On PC / Separate-Parry mode, sticky webOrb can still be sliced cleanly out of the air.
   if (G.projectiles && G.projectiles.length > 0) {
+    const mergedParryOn = !!(G.isMobile && (!G.settings || G.settings.mobileMergedParry !== false));
     for (let pi = G.projectiles.length - 1; pi >= 0; pi--) {
       const pr = G.projectiles[pi];
-      if (pr.kind === 'webOrb' && pr.owner === 'enemy' && aabbOverlap(box, { x: pr.x - pr.r, y: pr.y - pr.r, w: pr.r * 2, h: pr.r * 2 })) {
+      if (!pr || pr.owner !== 'enemy' || pr.reflected || pr.life <= 0) continue;
+      const pBox = { x: pr.x - pr.r - 6, y: pr.y - pr.r - 6, w: (pr.r + 6) * 2, h: (pr.r + 6) * 2 };
+      if (!aabbOverlap(box, pBox)) continue;
+      if (mergedParryOn) {
+        const rsOrb = getRelicStats();
+        G.stats.parries++;
+        if (G.echoSession) G.echoSession.parries++;
+        G.player.parryStreak = G.player.parryStreakTimer > 0 ? Math.min(9, G.player.parryStreak + 1) : 1;
+        G.player.parryStreakTimer = 2.6;
+        if (pr.source && pr.source.kind) recordBestiaryEvent(pr.source.kind, 'parry');
+        checkAchievements({ parryStreak: G.player.parryStreak });
+        audio.playParry(true, G.player.parryStreak);
+        triggerHaptic('parry', 0.95 + Math.min(0.4, (G.player.parryStreak - 1) * 0.12));
+        triggerHitstop(0.052);
+        addShake(8.5);
+        punchZoom(1.036);
+        G.screenFlash = { alpha: 0.18, color: COLORS.goldBright };
+        G.player.riposteWindow = 0.52;
+        if (G.player.seals < G.player.maxSeals) G.player.seals++;
+        G.player.soul = Math.min(G.player.maxSoul, G.player.soul + Math.round(26 * rsOrb.soulGainMult));
+        pr.reflected = true;
+        pr.owner = 'player';
+        pr.life = 1.6;
+        if (pr.source && pr.source.alive) {
+          const rdx = (pr.source.x + pr.source.w * 0.5) - pr.x;
+          const rdy = (pr.source.y + pr.source.h * 0.5) - pr.y;
+          const rlen = Math.max(1, Math.hypot(rdx, rdy));
+          const refSpd = pr.kind === 'yuanResonanceWave' ? 760 : 620;
+          pr.vx = (rdx / rlen) * refSpd;
+          pr.vy = (rdy / rlen) * refSpd;
+        } else {
+          pr.vx = -pr.vx * 1.8;
+          pr.vy = -pr.vy * 1.8;
+        }
+        pr.grav = 0;
+        spawnImpactBurst(pr.x, pr.y, 'parry', 1.02);
+        spawnShockwave(pr.x, pr.y, 74, COLORS.goldBright, 4.0, 0.26);
+        spawnParticles(pr.x, pr.y, 20, { color: COLORS.goldBright, speed: 300, spark: true, bounce: true, grav: 540 });
+        spawnFloatText(pr.x, pr.y - 22, t('combat.orbReflect'), COLORS.goldBright, 20, 0.85);
+      } else if (pr.kind === 'webOrb') {
         pr.life = 0;
         audio.playSlash(1.35, false);
         spawnParticles(pr.x, pr.y, 10, { color: '#6ee7b7', speed: 160, spark: true, life: 0.28 });
@@ -966,6 +1007,10 @@ export function triggerPlayerAttack(type) {
   G.player.attackTimer = move.dur;
   G.player.attackCd = move.cd;
   G.player.parryActive = false;
+  if (G.isMobile && (!G.settings || G.settings.mobileMergedParry !== false)) {
+    const clashSec = Math.max(0.14, Math.min(0.24, (getRelicStats().parryWindowMs || 140) / 1000));
+    G.player.clashParryTimer = clashSec;
+  }
 
   const px = G.player.x + G.player.w / 2;
   const py = G.player.y + 26;

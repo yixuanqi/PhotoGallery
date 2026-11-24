@@ -1083,6 +1083,12 @@ export function renderSettingsModal() {
     floatBtn.textContent = on ? t('settings.mobFloatOn') : t('settings.mobFloatOff');
     floatBtn.classList.toggle('active', on);
   }
+  const mergedBtn = document.getElementById('btn-mob-merged-parry');
+  if (mergedBtn) {
+    const on = G.settings.mobileMergedParry !== false;
+    mergedBtn.textContent = on ? t('settings.mobMergedOn') : t('settings.mobMergedOff');
+    mergedBtn.classList.toggle('active', on);
+  }
   const assistBtn = document.getElementById('btn-mob-combat-assist');
   if (assistBtn) {
     const on = G.settings.mobileCombatAssist !== false;

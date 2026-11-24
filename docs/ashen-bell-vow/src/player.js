@@ -95,6 +95,7 @@ export function updatePlayer(dt) {
   if (G.player.weaponSwapCd > 0) G.player.weaponSwapCd = Math.max(0, G.player.weaponSwapCd - dt);
   if (G.player.bellSealCd > 0) G.player.bellSealCd = Math.max(0, G.player.bellSealCd - dt);
   if (G.player.parryCooldown > 0) G.player.parryCooldown -= dt;
+  if (G.player.clashParryTimer > 0) G.player.clashParryTimer = Math.max(0, G.player.clashParryTimer - dt);
   if (G.player.parryStreakTimer > 0) {
     G.player.parryStreakTimer -= dt;
     if (G.player.parryStreakTimer <= 0) G.player.parryStreak = 0;

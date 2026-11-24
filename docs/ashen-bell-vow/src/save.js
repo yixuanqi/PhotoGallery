@@ -48,6 +48,7 @@ export function saveUserSettings() {
     sfxVol: G.settings.sfxVol,
     mobileFloatingJoy: G.settings.mobileFloatingJoy !== false,
     mobileCombatAssist: G.settings.mobileCombatAssist !== false,
+    mobileMergedParry: G.settings.mobileMergedParry !== false,
     mobileBtnScale: Number(G.settings.mobileBtnScale) || 1.0,
     mobileBtnOpacity: Number(G.settings.mobileBtnOpacity) || 0.90,
     mobileQuality: ['high', 'retina', 'eco'].includes(G.settings.mobileQuality) ? G.settings.mobileQuality : 'high',
@@ -79,6 +80,7 @@ export function loadUserSettings() {
   if (typeof s.sfxVol === 'number' && !Number.isNaN(s.sfxVol)) G.settings.sfxVol = Math.max(0, Math.min(1, s.sfxVol));
   if (typeof s.mobileFloatingJoy === 'boolean') G.settings.mobileFloatingJoy = s.mobileFloatingJoy;
   if (typeof s.mobileCombatAssist === 'boolean') G.settings.mobileCombatAssist = s.mobileCombatAssist;
+  if (typeof s.mobileMergedParry === 'boolean') G.settings.mobileMergedParry = s.mobileMergedParry;
   if (typeof s.mobileBtnScale === 'number' && !Number.isNaN(s.mobileBtnScale)) {
     G.settings.mobileBtnScale = Math.max(0.80, Math.min(1.20, s.mobileBtnScale));
   }

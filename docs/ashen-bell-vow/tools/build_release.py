@@ -692,7 +692,7 @@ def build_offline_index_html():
     var head = document.createElement('div');
     head.className = 'abv-fatal-head';
     var title = document.createElement('span');
-    title.textContent = isEnBoot ? '⚠ Runtime Error (v45.4)' : '⚠ 运行异常诊断 (v45.4)';
+    title.textContent = isEnBoot ? '⚠ Runtime Error (v45.5)' : '⚠ 运行异常诊断 (v45.5)';
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'abv-fatal-dismiss';

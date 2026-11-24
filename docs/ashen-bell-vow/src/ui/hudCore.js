@@ -486,16 +486,24 @@ export function syncHUD(force = false) {
       }
     }
 
-    // Permanent Heal Flask button with live count & low-HP pulse
-    if (HUD_DOM.fanHeal) {
-      const flk = G.player.flasks || 0;
-      const lowHp = flk > 0 && G.player.hp <= G.player.maxHp * 0.45;
-      if (force || hudCache.mobFlk !== flk || hudCache.mobLowHp !== lowHp) {
-        hudCache.mobFlk = flk;
-        hudCache.mobLowHp = lowHp;
-        HUD_DOM.fanHeal.classList.toggle('empty', flk <= 0);
-        HUD_DOM.fanHeal.classList.toggle('low-hp-pulse', lowHp);
-        if (HUD_DOM.fanHealCnt) setTextFast(HUD_DOM.fanHealCnt, `×${flk}`);
+    // Top-Left HUD Flask Pill Pulse (v45.5: Heal moved to top-left HUD tap; right-hand #fan-heal hidden!)
+    const flkNow = G.player.flasks || 0;
+    const lowHpNow = flkNow > 0 && G.player.hp <= G.player.maxHp * 0.60;
+    if (force || hudCache.mobFlk !== flkNow || hudCache.mobLowHp !== lowHpNow) {
+      hudCache.mobFlk = flkNow;
+      hudCache.mobLowHp = lowHpNow;
+      if (HUD_DOM.flasksBtn) {
+        HUD_DOM.flasksBtn.classList.toggle('flask-empty', flkNow <= 0);
+        HUD_DOM.flasksBtn.classList.toggle('flask-low-hint', lowHpNow);
+      }
+    }
+    // Sync #fan-attack label to reflect Merged Attack+Clash Parry mode
+    if (HUD_DOM.fanAttackLabel) {
+      const mergedOn = !G.settings || G.settings.mobileMergedParry !== false;
+      const atkLbl = mergedOn ? t('mob.attackClash') : t('mob.attack');
+      if (force || hudCache.mobAtkLbl !== atkLbl) {
+        hudCache.mobAtkLbl = atkLbl;
+        setTextFast(HUD_DOM.fanAttackLabel, atkLbl);
       }
     }
 

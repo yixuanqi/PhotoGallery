@@ -510,10 +510,11 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
   const combatDmgMult = isDummyHit ? 1.0 : getCombatScaling().dmgMult;
   const scaledDamage = Math.max(1, Math.round(damage * assistMult * combatDmgMult));
 
-  // 2. Three-Tier Parry Check (only if attack is parryable)
+  // 2. Three-Tier Parry Check + v45.5 Mobile Merged Attack-Clash Parry (front-loaded 140ms startup window!)
   const rs = getRelicStats();
-  if (G.player.parryActive && !isUnparryable) {
-    if (G.player.parryElapsedMs <= rs.parryWindowMs) {
+  const isMergedClash = !!(G.player.clashParryTimer > 0 && !isUnparryable);
+  if ((G.player.parryActive || isMergedClash) && !isUnparryable) {
+    if (isMergedClash || G.player.parryElapsedMs <= rs.parryWindowMs) {
       // TIER 1: PERFECT PARRY (0 - 140ms * assist) — Sekiro / Nine Sols Clash Juice!
       G.stats.parries++;
       if (G.echoSession) G.echoSession.parries++;
@@ -540,6 +541,12 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
       punchZoom(isComboFinisher ? 1.056 : (1.040 + Math.min(0.016, (G.player.parryStreak - 1) * 0.004)));
       G.screenFlash = { alpha: isComboFinisher ? 0.30 : 0.22, color: COLORS.goldBright };
       G.player.parryActive = false;
+      G.player.clashParryTimer = 0;
+      if (isMergedClash) {
+        G.player.activeAttack = null;
+        G.player.attackTimer = 0;
+        G.player.attackCd = 0;
+      }
       G.player.parryCooldown = isRapidMidHit ? 0.02 : 0.03;
       G.player.riposteWindow = isComboFinisher ? 0.68 : 0.56; // Opens K -> J Cross Counter Slash!
       G.player.switchStrikeWindow = 0.56; // Also opens K -> 1/2/3/X Switch Strike!

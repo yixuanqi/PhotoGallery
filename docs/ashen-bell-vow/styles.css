@@ -5601,3 +5601,253 @@
     font-size: 11px;
     cursor: pointer;
   }
+
+  /* ==================== v45.5 MOBILE ALTAR 4-TAB REDESIGN & RIGHT-HAND ANTI-MISTOUCH FAN ==================== */
+  /* Desktop: hide mobile altar tabs cleanly (zero desktop regression!) */
+  .altar-tabs {
+    display: none;
+  }
+
+  /* TapTap / Embedded H5: prevent floating capsule (••• | ◉) from covering modal close buttons */
+  body.is-embedded-h5 .modal-top-bar {
+    padding-right: 112px;
+  }
+
+  /* Mobile Altar 4-Tab Single-Focus Layout (eliminates vertical text crush & truncation!) */
+  body.is-mobile .altar-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin: 2px 0 8px;
+    flex-wrap: nowrap;
+  }
+  body.is-mobile #altar-modal .altar-tabs .codex-tab-btn {
+    flex: 1 1 0;
+    min-height: 33px;
+    padding: 4px 8px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  body.is-mobile #altar-modal .modal-sub {
+    display: none;
+  }
+  body.is-mobile #altar-modal .altar-mobile-layout {
+    display: block !important;
+    max-height: calc(var(--stage-h, 390px) * 0.94 - 118px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-right: 2px;
+  }
+  body.is-mobile #altar-modal .altar-col-main,
+  body.is-mobile #altar-modal .altar-col-side {
+    display: contents !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding-right: 0 !important;
+  }
+  /* Hide all altar sections by default on mobile, then reveal only the active tab at FULL width! */
+  body.is-mobile #altar-modal #altar-armory-section,
+  body.is-mobile #altar-modal #realm-seals-strip,
+  body.is-mobile #altar-modal #relic-slots-bar,
+  body.is-mobile #altar-modal #relic-synergy-box,
+  body.is-mobile #altar-modal #relic-list,
+  body.is-mobile #altar-modal #altar-warp-row,
+  body.is-mobile #altar-modal #altar-vow-section,
+  body.is-mobile #altar-modal #altar-echo-section {
+    display: none !important;
+  }
+  body.is-mobile #altar-modal .altar-mobile-layout[data-altar-tab="armory"] #altar-armory-section {
+    display: block !important;
+  }
+  body.is-mobile #altar-modal .altar-mobile-layout[data-altar-tab="relics"] #realm-seals-strip,
+  body.is-mobile #altar-modal .altar-mobile-layout[data-altar-tab="relics"] #relic-slots-bar,
+  body.is-mobile #altar-modal .altar-mobile-layout[data-altar-tab="relics"] #relic-synergy-box {
+    display: flex !important;
+  }
+  body.is-mobile #altar-modal .altar-mobile-layout[data-altar-tab="relics"] #relic-list {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 7px;
+    margin-top: 6px;
+  }
+  body.is-mobile #altar-modal .altar-mobile-layout[data-altar-tab="vows"] #altar-warp-row {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-bottom: 8px;
+  }
+  body.is-mobile #altar-modal .altar-mobile-layout[data-altar-tab="vows"] #altar-vow-section {
+    display: block !important;
+  }
+  body.is-mobile #altar-modal .altar-mobile-layout[data-altar-tab="echoes"] #altar-echo-section {
+    display: block !important;
+  }
+  body.is-mobile #altar-modal .armory-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px;
+  }
+  body.is-mobile #altar-modal .weapon-card {
+    padding: 9px 10px;
+    min-width: 0;
+  }
+  body.is-mobile #altar-modal .weapon-card-name {
+    white-space: nowrap;
+    font-size: 12.5px;
+    gap: 4px;
+  }
+  body.is-mobile #altar-modal .vow-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px;
+  }
+  body.is-mobile #altar-modal .echo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px;
+  }
+  body.is-mobile #altar-modal #btn-close-altar {
+    display: none;
+  }
+
+  /* Mobile Smith Skill Tree polish: extra breathing room & clean single-line header */
+  body.is-mobile #smith-modal .modal-sub {
+    display: none;
+  }
+  body.is-mobile #smith-modal .skill-tree-stage {
+    height: min(244px, calc(var(--stage-h, 390px) * 0.94 - 126px));
+  }
+  body.is-mobile #smith-modal .skill-inspector {
+    max-height: min(244px, calc(var(--stage-h, 390px) * 0.94 - 126px));
+  }
+
+  /* Mobile Top-Left Tappable Flask Pill (replaces right-hand #fan-heal!) */
+  body.is-mobile #flasks-btn {
+    pointer-events: auto !important;
+    cursor: pointer;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid rgba(56, 189, 248, 0.52);
+    background: rgba(12, 34, 48, 0.78);
+    transition: transform 0.1s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  body.is-mobile #flasks-btn:active {
+    transform: scale(0.93);
+  }
+  body.is-mobile #flasks-btn.flask-low-hint {
+    border-color: #fde047;
+    background: rgba(14, 54, 74, 0.92);
+    box-shadow: 0 0 14px rgba(56, 189, 248, 0.72), inset 0 0 6px rgba(253, 224, 71, 0.35);
+    animation: flaskPulseMob 1.4s ease-in-out infinite;
+  }
+  body.is-mobile #flasks-btn.flask-empty {
+    opacity: 0.45;
+    border-color: rgba(148, 163, 184, 0.32);
+  }
+  @keyframes flaskPulseMob {
+    0%, 100% { box-shadow: 0 0 10px rgba(56, 189, 248, 0.55); }
+    50% { box-shadow: 0 0 20px rgba(253, 224, 71, 0.78); }
+  }
+
+  /* ==================== v45.5 RIGHT-HAND ERGONOMIC ANTI-MISTOUCH FAN ==================== */
+  /* Remove Heal from right-hand cluster; hide Parry when Merged Attack+Clash Parry is active! */
+  body.is-mobile .fan-heal {
+    display: none !important;
+  }
+  body.is-mobile.mob-merged-parry .fan-parry {
+    display: none !important;
+  }
+  body.is-mobile .action-fan {
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    width: 292px;
+    height: 256px;
+  }
+  @media (max-height: 390px) {
+    body.is-mobile .action-fan {
+      transform: scale(0.88);
+      transform-origin: right bottom;
+    }
+  }
+  /* 1. Core Anchor: Giant 88px Attack / Clash-Parry Button */
+  body.is-mobile .fan-attack {
+    right: 10px;
+    bottom: 8px;
+    width: 88px;
+    height: 88px;
+  }
+  body.is-mobile .fan-attack .fan-label {
+    font-size: 16px;
+    letter-spacing: 1px;
+  }
+  body.is-mobile.mob-merged-parry .fan-attack {
+    border-color: rgba(253, 224, 71, 0.85);
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.68), 0 0 16px rgba(245, 158, 11, 0.28);
+  }
+  body.is-mobile.mob-merged-parry .fan-attack .fan-label {
+    font-size: 14px;
+  }
+  /* 2. Inner Arc 3 Wings (64px each, >=24px physical isolation from Attack!) */
+  body.is-mobile .fan-jump {
+    right: 122px;
+    bottom: 12px;
+    width: 64px;
+    height: 64px;
+  }
+  body.is-mobile .fan-dash {
+    right: 106px;
+    bottom: 98px;
+    width: 64px;
+    height: 64px;
+  }
+  body.is-mobile .fan-grapple {
+    right: 18px;
+    bottom: 120px;
+    width: 64px;
+    height: 64px;
+    border-color: rgba(125, 211, 252, 0.86);
+  }
+  body.is-mobile .fan-grapple .fan-label {
+    font-size: 14px;
+  }
+  /* 3. Outer Auxiliary Ring (Spell, Swap, Seal — clean spacing, zero overlap!) */
+  body.is-mobile .fan-spell {
+    right: 196px;
+    bottom: 66px;
+    width: 54px;
+    height: 54px;
+  }
+  body.is-mobile .fan-swap {
+    right: 108px;
+    bottom: 180px;
+    width: 48px;
+    height: 48px;
+  }
+  body.is-mobile .fan-seal {
+    right: 184px;
+    bottom: 148px;
+    width: 52px;
+    height: 52px;
+  }
+  /* Alternate clean slot layout when player disables Merged Parry (Separate Parry Mode) */
+  body.is-mobile:not(.mob-merged-parry) .fan-parry {
+    right: 106px;
+    bottom: 98px;
+    width: 62px;
+    height: 62px;
+  }
+  body.is-mobile:not(.mob-merged-parry) .fan-dash {
+    right: 204px;
+    bottom: 14px;
+    width: 56px;
+    height: 56px;
+  }
+  body.is-mobile:not(.mob-merged-parry) .fan-spell {
+    right: 192px;
+    bottom: 92px;
+    width: 54px;
+    height: 54px;
+  }
+  body.is-mobile:not(.mob-merged-parry) .fan-seal {
+    right: 184px;
+    bottom: 164px;
+    width: 50px;
+    height: 50px;
+  }

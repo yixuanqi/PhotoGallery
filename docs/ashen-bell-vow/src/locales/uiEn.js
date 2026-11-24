@@ -1,7 +1,7 @@
-// English (en-US) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v45.4)
+// English (en-US) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v45.5)
 export const UI_EN = {
     // Document & Title
-    'doc.title': 'Ashen Bell Vow v45.4 (1.0 RC) — Dark Hand-Drawn Soulslike Metroidvania · 25 Interconnected Rooms',
+    'doc.title': 'Ashen Bell Vow v45.5 (1.0 RC) — Dark Hand-Drawn Soulslike Metroidvania · 25 Interconnected Rooms',
     'game.title': 'ASHEN BELL VOW',
     'game.subtitle': 'Dark Hand-Drawn Soulslike Metroidvania',
     'title.loading': 'Loading...',
@@ -115,6 +115,7 @@ export const UI_EN = {
     'mob.rotateForceBtn': 'Orientation Locked? Force Landscape',
     'mob.grapple': 'Hook',
     'mob.attack': 'Slash',
+    'mob.attackClash': 'Slash·Clash',
     'mob.attackHold': 'Hold Iai',
     'mob.attackHoldHammer': 'Hold Sunder',
     'mob.attackHoldBell': 'Hold Volley',
@@ -179,6 +180,9 @@ export const UI_EN = {
     'settings.mobFloatJoy': 'Floating Left-Screen Joystick',
     'settings.mobFloatOn': 'Floating: On',
     'settings.mobFloatOff': 'Fixed Base',
+    'settings.mobMergedParry': 'Merged Attack + Clash Parry (Startup Clash & Deflect Orbs)',
+    'settings.mobMergedOn': 'Merged: ON',
+    'settings.mobMergedOff': 'Split Parry',
     'settings.mobCombatAssist': 'Touch Combat Assist (Soft-Face +25ms Parry)',
     'settings.mobAssistOn': 'Assist: On',
     'settings.mobAssistOff': 'Hardcore: Off',
@@ -240,6 +244,11 @@ export const UI_EN = {
 
     // Altar Modal
     'altar.sub': 'Lantern Oil & Soulfire replenished · Swap 3 Weapons & Attune Twin Relics',
+    'altar.tabArmory': '⚔ Arms ({0}/{1})',
+    'altar.tabRelics': '✦ Relics',
+    'altar.tabVows': '⚑ Warp & Vows',
+    'altar.tabVowsActive': '⚑ Warp · {0}V',
+    'altar.tabEchoes': '🔔 Echoes',
     'altar.armoryHeading': 'Armory · Unlocked ({0}/{1})',
     'altar.armorySubSwitch': 'Swap within 0.44s of a hit/parry for a Switch Strike!',
     'altar.armorySubLocked': 'Fell Hui or explore the Crypt of Shards to unlock more weapons',

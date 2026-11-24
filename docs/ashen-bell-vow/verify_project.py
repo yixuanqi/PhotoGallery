@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Zero-dependency static verifier for Ashen Bell Vow v45.4
+"""Zero-dependency static verifier for Ashen Bell Vow v45.5
 Checks:
 1. JS lexical & bracket syntax across all src/**/*.js
 2. ES Module import/export path existence, explicit .js suffix, exact case sensitivity & symbol verification
@@ -646,25 +646,27 @@ def check_v34_economy_relics_i18n(file_texts):
     if 'cycleOverlayTab' not in file_texts.get('src/uiNav.js', '') or 'scrollOverlay' not in file_texts.get('src/uiNav.js', ''):
         errors.append("v43.0: Missing full gamepad tab-cycling / scrolling in src/uiNav.js")
     if '__ABV_OFFLINE_WORLD__' not in file_texts.get('src/levelLoader.js', ''):
-        errors.append("v45.4: Missing offline pre-bundled world fast-path in src/levelLoader.js")
+        errors.append("v45.5: Missing offline pre-bundled world fast-path in src/levelLoader.js")
     if not os.path.isfile(os.path.join(BASE_DIR, 'tools', 'build_release.py')):
-        errors.append("v45.4: Missing tools/build_release.py offline release builder")
+        errors.append("v45.5: Missing tools/build_release.py offline release builder")
     for pwa_f in ('manifest.webmanifest', 'sw.js', 'icon.svg', 'icon-192.png', 'icon-512.png'):
         if not os.path.isfile(os.path.join(BASE_DIR, pwa_f)):
-            errors.append(f"v45.4: Missing PWA asset '{pwa_f}'")
+            errors.append(f"v45.5: Missing PWA asset '{pwa_f}'")
     if 'keepAliveResume' not in file_texts.get('src/audio.js', '') or 'mobileEcoMode' not in file_texts.get('src/state.js', ''):
-        errors.append("v45.4: Missing audio keepAliveResume or mobileEcoMode implementation")
+        errors.append("v45.5: Missing audio keepAliveResume or mobileEcoMode implementation")
     if 'auxBtn' in file_texts.get('src/main.js', '') or 'auxWrap' in file_texts.get('src/main.js', ''):
-        errors.append("v45.4: Stale undeclared reference to removed auxBtn/auxWrap in src/main.js")
+        errors.append("v45.5: Stale undeclared reference to removed auxBtn/auxWrap in src/main.js")
     if 'tickBossGreedPressure' not in file_texts.get('src/ai/bossesAi.js', '') or 'tickWardenGreedPressure' not in file_texts.get('src/ai/wardensAi.js', ''):
-        errors.append("v45.4: Missing anti-facetank greed punish in bossesAi.js / wardensAi.js")
+        errors.append("v45.5: Missing anti-facetank greed punish in bossesAi.js / wardensAi.js")
     if 'bulwarkCd' not in file_texts.get('src/combat/damageCombat.js', '') or 'cistern:' not in file_texts.get('src/locales/world.js', ''):
-        errors.append("v45.4: Missing iron_bulwark cooldown or cistern English biome ambience")
+        errors.append("v45.5: Missing iron_bulwark cooldown or cistern English biome ambience")
+    if 'clashParryTimer' not in file_texts.get('src/combat/damageCombat.js', '') or 'renderAltarTabs' not in file_texts.get('src/ui/relicBoardUi.js', ''):
+        errors.append("v45.5: Missing mobile merged clash-parry or 4-tab altar UI")
     if 'branch1' not in file_texts.get('src/weapons.js', '') or 'martialBeat' not in file_texts.get('src/render/playerRenderer.js', ''):
-        errors.append("v45.4: Missing dashAttack moveset or articulated playerRenderer attack poses")
+        errors.append("v45.5: Missing dashAttack moveset or articulated playerRenderer attack poses")
     for v451_mod in ('src/render/wardenRenderer.js', 'src/ai/biomeEnemiesAi.js', 'src/render/exoticEnemyRenderer.js', 'src/ai/exoticEnemiesAi.js'):
         if v451_mod not in file_texts:
-            errors.append(f"v45.4: Missing modular split file '{v451_mod}'")
+            errors.append(f"v45.5: Missing modular split file '{v451_mod}'")
 
     en_refined_count = len(re.findall(r"^\s+refinedEffect:\s*'", ent_loc, re.M))
     if en_refined_count != len(relic_ids):
@@ -1083,7 +1085,7 @@ def check_undefined_js_calls(file_texts):
                 seen_err.add(fn)
                 errors.append(f"{rel}: Undefined function call '{fn}()'")
 
-        # v45.4 Guard: verify every config.js exported constant referenced in a module is explicitly imported/declared
+        # v45.5 Guard: verify every config.js exported constant referenced in a module is explicitly imported/declared
         clean_no_reexp = re.sub(r'export\s*\{[^}]*\}\s*from\s*[^;\n]+', '', clean)
         for sym in sorted(cfg_consts):
             if sym in declared:
@@ -1103,7 +1105,7 @@ def main():
     all_errs = js_errs + rm_errs + lnch_errs + v34_errs + topo_errs + undef_errs
     all_warns = js_warns + rm_warns + v34_warns
 
-    print(f"[Ashen Bell Vow v45.4 Verifier] JS modules: {js_cnt} | Cycles: {cyc_cnt} | Rooms: {rm_cnt} | Stamps: {st_cnt}")
+    print(f"[Ashen Bell Vow v45.5 Verifier] JS modules: {js_cnt} | Cycles: {cyc_cnt} | Rooms: {rm_cnt} | Stamps: {st_cnt}")
     print(
         f"Economy (1x): {eco['total_1x']} echoes "
         f"[Foes({eco['reg_cnt']}): {eco['reg_echo']} | Wardens: {eco['warden_echo']} | Bosses: {eco['boss_echo']} | "

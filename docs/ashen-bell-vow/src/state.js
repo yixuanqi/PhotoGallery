@@ -57,6 +57,7 @@ export const G = {
     sfxVol: 0.90,
     mobileFloatingJoy: true,
     mobileCombatAssist: true,
+    mobileMergedParry: true,
     mobileBtnScale: 1.0,
     mobileBtnOpacity: 0.90,
     mobileQuality: 'high', // 'high' (2.4x HD) | 'retina' (3.0x Native) | 'eco' (1.5x Battery)

@@ -1,7 +1,7 @@
-// Simplified Chinese (zh-CN) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v45.4)
+// Simplified Chinese (zh-CN) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v45.5)
 export const UI_ZH = {
     // Document & Title
-    'doc.title': '灰钟残誓 v45.4 (1.0 RC) — 暗黑手绘魂系类银河恶魔城 · 25房立体箱庭与三系兵刃',
+    'doc.title': '灰钟残誓 v45.5 (1.0 RC) — 暗黑手绘魂系类银河恶魔城 · 25房立体箱庭与三系兵刃',
     'game.title': '灰钟残誓',
     'game.subtitle': 'ASHEN BELL VOW · 暗黑手绘魂系类银河恶魔城',
     'title.loading': '载入中...',
@@ -115,6 +115,7 @@ export const UI_ZH = {
     'mob.rotateForceBtn': '已横屏仍未切换 / 微信内？点击强制横屏进入',
     'mob.grapple': '钩锁',
     'mob.attack': '普攻',
+    'mob.attackClash': '普攻·拼刀',
     'mob.attackHold': '长按居合',
     'mob.attackHoldHammer': '长按碎岳',
     'mob.attackHoldBell': '长按三鸣',
@@ -179,6 +180,9 @@ export const UI_ZH = {
     'settings.mobFloatJoy': '左半屏动态浮动摇杆',
     'settings.mobFloatOn': '浮动: 开',
     'settings.mobFloatOff': '固定底座',
+    'settings.mobMergedParry': '攻弹合一拼刀（普攻起手拼刀 + 挥斩弹反弹幕）',
+    'settings.mobMergedOn': '合一: 开',
+    'settings.mobMergedOff': '独立弹反',
     'settings.mobCombatAssist': '触屏战斗微辅（软索敌 +25ms 弹反）',
     'settings.mobAssistOn': '微辅: 开',
     'settings.mobAssistOff': '硬核: 关',
@@ -240,6 +244,11 @@ export const UI_ZH = {
 
     // Altar Modal (Relics, Synergies, Warp, Vows, Echoes, NG+)
     'altar.sub': '灯油与魂火已回满 · 提灯可切换三系兵刃并铭刻「主印 + 副印」',
+    'altar.tabArmory': '⚔ 兵刃 ({0}/{1})',
+    'altar.tabRelics': '✦ 圣物',
+    'altar.tabVows': '⚑ 跃迁与钟誓',
+    'altar.tabVowsActive': '⚑ 跃迁 · {0}誓',
+    'altar.tabEchoes': '🔔 残誓回响',
     'altar.armoryHeading': '兵刃库 · 已寻得 ({0}/{1})',
     'altar.armorySubSwitch': '命中或弹反后按 [1/2/3/X] 可触发「切刃派生技」',
     'altar.armorySubLocked': '斩落首领晦或探索残钟地窖解锁新兵刃',

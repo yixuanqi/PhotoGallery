@@ -20,6 +20,39 @@ import { uiHooks } from './uiShared.js';
 
 let hoveredRelicId = null;
 let _synergyResizeBound = false;
+let altarActiveTab = 'armory'; // 'armory' | 'relics' | 'vows' | 'echoes'
+
+function renderAltarTabs() {
+  const tabBar = document.getElementById('altar-tabs');
+  const layout = document.getElementById('altar-mobile-layout');
+  if (!tabBar || !layout) return;
+  layout.dataset.altarTab = altarActiveTab;
+  const unlWeap = getUnlockedWeaponIds().length;
+  const vs = getActiveVowStats();
+  const tabs = [
+    { id: 'armory', label: t('altar.tabArmory', unlWeap, WEAPON_ORDER.length) },
+    { id: 'relics', label: t('altar.tabRelics') },
+    { id: 'vows',   label: vs.count > 0 ? t('altar.tabVowsActive', vs.count) : t('altar.tabVows') },
+    { id: 'echoes', label: t('altar.tabEchoes') }
+  ];
+  tabBar.innerHTML = '';
+  for (const tb of tabs) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `codex-tab-btn${altarActiveTab === tb.id ? ' active' : ''}`;
+    btn.textContent = tb.label;
+    btn.addEventListener('click', () => {
+      if (altarActiveTab === tb.id) return;
+      altarActiveTab = tb.id;
+      layout.dataset.altarTab = altarActiveTab;
+      renderAltarTabs();
+      if (altarActiveTab === 'relics') {
+        window.requestAnimationFrame(() => updateSynergyOverlay());
+      }
+    });
+    tabBar.appendChild(btn);
+  }
+}
 
 function findSynergiesForRelic(relicId) {
   if (!relicId) return [];
@@ -289,6 +322,7 @@ export function renderAltarArmory() {
 }
 
 export function renderRelicChoices() {
+  renderAltarTabs();
   renderAltarArmory();
   if (!Array.isArray(G.equippedRelics) || G.equippedRelics.length < 3) {
     G.equippedRelics = [

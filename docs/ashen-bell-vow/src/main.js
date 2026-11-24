@@ -734,6 +734,16 @@ if (mobFloatBtn) {
     renderSettingsModal();
   });
 }
+const mobMergedBtn = document.getElementById('btn-mob-merged-parry');
+if (mobMergedBtn) {
+  mobMergedBtn.addEventListener('click', () => {
+    G.settings.mobileMergedParry = G.settings.mobileMergedParry === false;
+    applyMobileTouchPrefs();
+    saveUserSettings();
+    renderSettingsModal();
+    syncHUD(true);
+  });
+}
 const mobAssistBtn = document.getElementById('btn-mob-combat-assist');
 if (mobAssistBtn) {
   mobAssistBtn.addEventListener('click', () => {

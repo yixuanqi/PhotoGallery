@@ -303,7 +303,9 @@ export function applyMobileTouchPrefs() {
   const floatOn = !G.settings || G.settings.mobileFloatingJoy !== false;
   const scale = Math.max(0.80, Math.min(1.20, Number(G.settings && G.settings.mobileBtnScale) || 1.0));
   const alpha = Math.max(0.45, Math.min(1.00, Number(G.settings && G.settings.mobileBtnOpacity) || 0.90));
+  const mergedOn = !G.settings || G.settings.mobileMergedParry !== false;
   document.body.classList.toggle('mob-floating-joy', floatOn);
+  document.body.classList.toggle('mob-merged-parry', mergedOn);
   const isEco = !!(G.settings && (G.settings.mobileQuality === 'eco' || G.settings.mobileEcoMode));
   document.body.classList.toggle('mob-eco-mode', isEco);
   const tc = document.getElementById('touch-controls');
@@ -445,6 +447,7 @@ export function updateMobileOrientationLayout() {
   if (hudRight) hudRight.style.marginRight = hideFs ? '114px' : '';
   const topbar = document.querySelector('#title-screen .title-topbar');
   if (topbar) topbar.style.paddingRight = hideFs ? '122px' : '';
+  document.querySelectorAll('.modal-top-bar').forEach(el => { el.style.paddingRight = hideFs ? '112px' : ''; });
 
   return { mobile, embedded, portrait: showPortraitGuard, forceLandscape, nativeLandscape };
 }
@@ -998,6 +1001,23 @@ export function initInputListeners() {
 
     btn.addEventListener('touchstart', e => {
       e.preventDefault();
+      // v45.5 Circular Anti-Mistouch Guard: reject stray square-corner touches if another visible fan button center is strictly closer!
+      if (btn.classList.contains('fan-btn') && e.changedTouches.length > 0) {
+        const t0 = e.changedTouches[0];
+        const rSelf = btn.getBoundingClientRect();
+        const selfD = Math.hypot(t0.clientX - (rSelf.left + rSelf.width * 0.5), t0.clientY - (rSelf.top + rSelf.height * 0.5));
+        if (selfD > rSelf.width * 0.54) {
+          const peers = document.querySelectorAll('#action-fan .fan-btn:not(.hidden)');
+          for (let pi = 0; pi < peers.length; pi++) {
+            const pEl = peers[pi];
+            if (pEl === btn) continue;
+            const rp = pEl.getBoundingClientRect();
+            if (rp.width < 10) continue;
+            const dPeer = Math.hypot(t0.clientX - (rp.left + rp.width * 0.5), t0.clientY - (rp.top + rp.height * 0.5));
+            if (dPeer + 3 < selfD) return;
+          }
+        }
+      }
       audio.init();
       btn.classList.add('pressed');
       for (let i = 0; i < e.changedTouches.length; i++) activeIds.add(e.changedTouches[i].identifier);
@@ -1033,12 +1053,13 @@ export function initInputListeners() {
           const tch = e.changedTouches[i];
           if (tch.identifier !== trackId) continue;
           const dy = isForceLandscape() ? -(tch.clientX - startX) : (tch.clientY - startY);
-          if (allowUp && dy <= -20) {
+          const flickThresh = act === 'attack' ? 28 : 25;
+          if (allowUp && dy <= -flickThresh) {
             flickTriggered = true;
             if (deferTimer) { clearTimeout(deferTimer); deferTimer = null; }
             if (pressStarted) { setVirtualAction(act, false); pressStarted = false; }
             triggerDirectionalFlick(act, 'up', btn);
-          } else if (allowDown && dy >= 20) {
+          } else if (allowDown && dy >= flickThresh) {
             flickTriggered = true;
             if (deferTimer) { clearTimeout(deferTimer); deferTimer = null; }
             if (pressStarted) { setVirtualAction(act, false); pressStarted = false; }
