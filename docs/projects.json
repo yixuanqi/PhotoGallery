@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": 6,
+  "catalogVersion": 7,
   "repository": "yixuanqi/PhotoGallery",
   "baseUrl": "https://yixuanqi.github.io/PhotoGallery/",
-  "updatedAt": "2026-11-24",
+  "updatedAt": "2026-11-25",
   "projects": [
     {
       "id": "galaxy",
@@ -791,34 +791,35 @@
     },
     {
       "id": "curio-box",
-      "name": "微缩博物箱",
-      "nameEn": "Curio Box · Tiny Topology Adventure",
+      "name": "云海空中花房",
+      "nameEn": "Curio Box · Sky Stages",
       "kind": "interactive-web",
       "category": "game",
       "status": "development",
-      "summary": "手绘微缩世界风格的浏览器游戏雏形，当前重点验证随机拓扑地图：生成不规则房间、书脊弹射长廊与环路捷径，并规划金库和撤离点的战略分支。",
+      "summary": "手绘云海浮岛物理弹射冒险。探索四个主题关卡，利用场景机关与物理战斗挑战守卫，积累奇物与母港强化。支持 PC 和移动端。",
       "tags": [
         "Canvas 2D",
-        "随机拓扑",
-        "手绘风格",
-        "游戏原型"
+        "四关主题",
+        "物理弹射",
+        "手绘冒险"
       ],
       "techStack": [
         "HTML5 Canvas",
-        "JavaScript"
+        "JavaScript",
+        "Web Audio"
       ],
       "primaryUrl": "https://yixuanqi.github.io/PhotoGallery/curio-box/",
-      "primaryAction": "进入游戏原型",
+      "primaryAction": "进入游戏",
       "repositoryUrl": "https://github.com/yixuanqi/PhotoGallery",
       "sourcePath": "docs/curio-box/index.html",
       "sortOrder": 15,
       "galaxy": {
         "icon": "🧭",
         "category": "online",
-        "description": "手绘微缩博物箱风格的浏览器游戏雏形。以随机拓扑地图为核心，探索不规则房间、弹射长廊、金库与撤离路线。",
-        "note": "当前处于早期原型阶段，已完成随机地图拓扑引擎与基础角色探索；真实弹射子弹和更多玩法仍在后续开发。",
-        "linkText": "↗ 进入游戏原型",
-        "sourceUrl": "https://github.com/yixuanqi/PhotoGallery/blob/main/docs/curio-box/index.html",
+        "description": "手绘云海浮岛物理弹射冒险。探索四个主题关卡，利用场景机关与物理战斗挑战守卫，积累奇物与母港强化。支持 PC 和移动端。",
+        "note": "V8.2：重绘十秒手绘水彩开场动画，新增局内暂停菜单，支持键鼠和移动触控。",
+        "linkText": "↗ 进入游戏",
+        "sourceUrl": null,
         "palette": [
           "#8b613d",
           "#d6ad70",

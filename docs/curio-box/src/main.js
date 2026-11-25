@@ -1,72 +1,1075 @@
 (() => {
   const CB = window.CB;
   const game = CB.game;
-  const { initInput, syncMouseWorld } = CB.input;
+  const { detectMobileDevice, clearAllHeldInputs, initInput, initTouchControls, syncMouseWorld } = CB.input;
+  const { getStage, getNextStage } = CB.stages;
   const { generateMap } = CB.mapGen;
   const { placePlayerAtSpawn, updatePlayer, setVariant, spawnPopup } = CB.player;
-  const { initRenderer, renderWorld } = CB.renderer;
-  const { renderMinimap, updateStatsBanner } = CB.ui;
+  const { updateCombat } = CB.combat;
+  const { populateGuardsForMap, updateGuards } = CB.guards;
+  const { resetRunState, updateExtractionLoop } = CB.extraction;
+  const { initRenderer, refreshStageTheme, renderWorld } = CB.renderer;
+  const { startIntro, skipIntro, isIntroActive, getProgress: getIntroProgress, updateIntro, renderIntro } = CB.intro;
+  const {
+    renderMinimap,
+    updateStatsBanner,
+    updateCombatHud,
+    setHubCallbacks,
+    openHub,
+    closeHub,
+    switchHubTab,
+    updateTitleCard,
+    updateTouchHud,
+  } = CB.ui;
 
   const canvas = document.getElementById('gameCanvas');
   const ctx = canvas.getContext('2d');
   const miniCanvas = document.getElementById('minimapCanvas');
   const mctx = miniCanvas.getContext('2d');
   const statsEl = document.getElementById('mapStats');
+  const hudTopEl = document.getElementById('hudTop');
+  const minimapWrapEl = document.getElementById('minimapWrap');
+  const pcHintBarEl = document.getElementById('pcHintBar');
+  const titleOverlayEl = document.getElementById('titleOverlay');
+  const touchControlsEl = document.getElementById('touchControls');
+  const quickDrawerEl = document.getElementById('quickDrawer');
+  const portraitOverlayEl = document.getElementById('portraitOverlay');
+  const introOverlayEl = document.getElementById('introOverlay');
+  const introProgressFillEl = document.getElementById('introProgressFill');
+  const settingsModalEl = document.getElementById('settingsModal');
+  const pauseModalEl = document.getElementById('pauseModal');
+
+  const hudEls = {
+    hpFill: document.getElementById('hpFill'),
+    hpText: document.getElementById('hpText'),
+    coinEl: document.getElementById('coinCount'),
+    stuntEl: document.getElementById('stuntValue'),
+    haulEl: document.getElementById('haulValue'),
+    bankEl: document.getElementById('bankValue'),
+    hubBadge: document.getElementById('hubBadge'),
+    guardEl: document.getElementById('guardCount'),
+    objEl: document.getElementById('objectiveBanner'),
+    curioTray: document.getElementById('curioTray'),
+  };
+
+  const touchEls = {
+    movePad: document.getElementById('touchMovePad'),
+    moveZone: document.getElementById('touchMoveZone'),
+    moveKnob: document.getElementById('touchMoveKnob'),
+    aimZone: document.getElementById('touchAimZone'),
+    aimRing: document.getElementById('touchAimRing'),
+    aimKnob: document.getElementById('touchAimKnob'),
+    aimLabel: document.getElementById('touchAimLabel'),
+    cancelZone: document.getElementById('touchCancelZone'),
+    dashBtn: document.getElementById('touchDashBtn'),
+    interactBtn: document.getElementById('touchInteractBtn'),
+    interactIcon: document.getElementById('touchInteractIcon'),
+    interactLabel: document.getElementById('touchInteractLabel'),
+  };
+
+  let stageButtons = [];
+  let variantButtons = [];
+  let btnMenuToggleRef = null;
+  let btnAudioRef = null;
+  let btnOverviewRef = null;
+  let btnTouchModeRef = null;
+  let btnFullscreenRef = null;
+  let btnTitleFullscreenRef = null;
+  let btnPauseFullscreenRef = null;
+  let reopenPauseAfterHub = false;
+  let lastTime = performance.now();
+
+  function getViewportSize() {
+    const vv = window.visualViewport;
+    if (vv && vv.width > 0 && vv.height > 0) {
+      return { w: Math.round(vv.width), h: Math.round(vv.height) };
+    }
+    return { w: window.innerWidth, h: window.innerHeight };
+  }
 
   function resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    game.viewW = window.innerWidth;
-    game.viewH = window.innerHeight;
+    const vp = getViewportSize();
+    game.viewW = vp.w;
+    game.viewH = vp.h;
     canvas.width = Math.floor(game.viewW * dpr);
     canvas.height = Math.floor(game.viewH * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    syncOrientationGuide();
+    syncTouchControlsUI();
   }
 
-  function buildNewMap() {
-    game.map = generateMap();
-    placePlayerAtSpawn();
+  function resolvePlatform() {
+    if (game.touchMode === 'on') return 'mobile';
+    if (game.touchMode === 'off') return 'pc';
+    // 自动模式：根据真实输入源与设备特征分离 PC / 移动端
+    if (game.lastInputKind === 'touch') return 'mobile';
+    if (game.lastInputKind === 'mouse') return 'pc';
+    return detectMobileDevice() ? 'mobile' : 'pc';
+  }
+
+  function syncOrientationGuide() {
+    const plat = resolvePlatform();
+    const isPortrait = window.innerHeight > window.innerWidth * 1.06;
+    if (!isPortrait) {
+      game.portraitDismissed = false;
+    }
+    const shouldPrompt = isPortrait && plat === 'mobile' && !game.portraitDismissed;
+    game.portraitBlocked = shouldPrompt;
+    if (shouldPrompt) clearAllHeldInputs();
+    if (portraitOverlayEl) {
+      portraitOverlayEl.classList.toggle('hidden', !shouldPrompt);
+    }
+  }
+
+  function isEmbeddedH5Container() {
+    const ua = navigator.userAgent || '';
+    const inIframe = (() => {
+      try { return window.self !== window.top; } catch (_) { return true; }
+    })();
+    const isWebViewUA = /TapTap|TapPlay|InstantGame|wv\)|WebView|MicroMessenger|QQ\//i.test(ua);
+    const hasTapBridge = !!(window.TapTap || window.tap || window.jsBridge || window.webkit?.messageHandlers);
+    return inIframe || isWebViewUA || hasTapBridge;
+  }
+
+  function canUseFullscreen() {
+    if (isEmbeddedH5Container()) return false;
+    const docEl = document.documentElement;
+    const hasApi = !!(docEl && (docEl.requestFullscreen || docEl.webkitRequestFullscreen));
+    const enabled = document.fullscreenEnabled !== false && document.webkitFullscreenEnabled !== false;
+    const isStandalone = !!(window.navigator && window.navigator.standalone);
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+    return hasApi && enabled && !isStandalone && !isIOS;
+  }
+
+  function isFullscreenActive() {
+    return !!(document.fullscreenElement || document.webkitFullscreenElement);
+  }
+
+  function syncFullscreenUI() {
+    const supported = canUseFullscreen();
+    const active = isFullscreenActive();
+    if (btnFullscreenRef) {
+      btnFullscreenRef.classList.toggle('hidden', !supported);
+      btnFullscreenRef.textContent = active ? '⛶ 退出全屏' : '⛶ 全屏显示';
+      btnFullscreenRef.classList.toggle('active', active);
+    }
+    if (btnTitleFullscreenRef) {
+      btnTitleFullscreenRef.classList.toggle('hidden', !supported);
+      btnTitleFullscreenRef.textContent = active ? '🗗' : '⛶';
+      btnTitleFullscreenRef.title = active ? '退出全屏' : '全屏显示';
+    }
+    if (btnPauseFullscreenRef) {
+      btnPauseFullscreenRef.classList.toggle('hidden', !supported);
+      btnPauseFullscreenRef.textContent = active ? '⛶ 退出全屏' : '⛶ 全屏';
+      btnPauseFullscreenRef.classList.toggle('active', active);
+    }
+  }
+
+  function toggleFullscreen() {
+    if (!canUseFullscreen()) return;
+    if (CB.audio) {
+      CB.audio.unlock();
+      if (CB.audio.playUiClick) CB.audio.playUiClick();
+    }
+    const docEl = document.documentElement;
+    const active = isFullscreenActive();
+    if (active) {
+      const exitFn = document.exitFullscreen || document.webkitExitFullscreen;
+      if (exitFn) {
+        Promise.resolve(exitFn.call(document)).catch(() => {});
+      }
+      return;
+    }
+    const reqFn = docEl.requestFullscreen || docEl.webkitRequestFullscreen;
+    if (!reqFn) return;
+    Promise.resolve(reqFn.call(docEl))
+      .then(() => {
+        if (window.screen && window.screen.orientation && window.screen.orientation.lock) {
+          window.screen.orientation.lock('landscape').catch(() => {});
+        }
+        syncFullscreenUI();
+      })
+      .catch(() => {});
+  }
+
+  function syncStageUI() {
+    const cleared = game.meta.clearedStages || [];
+    stageButtons.forEach((btn) => {
+      const sid = Number(btn.dataset.stage);
+      const st = getStage(sid);
+      const isActive = sid === game.currentStageId;
+      const isCleared = cleared.includes(sid);
+      btn.classList.toggle('active', isActive);
+      btn.classList.toggle('cleared', isCleared);
+      btn.textContent = isCleared ? `✓ ${st.shortName}` : st.shortName;
+    });
+  }
+
+  function syncSkinUI() {
+    const isUnlocked = (id) => (CB.extraction && CB.extraction.isSkinUnlocked ? CB.extraction.isSkinUnlocked(id) : true);
+    const codeMap = { explorer: 'A', porcelain: 'B', sprout: 'C' };
+    variantButtons.forEach((btn) => {
+      const id = btn.dataset.variant;
+      const unlocked = isUnlocked(id);
+      btn.classList.toggle('active', game.variant === id);
+      btn.classList.toggle('skin-locked', !unlocked);
+      btn.textContent = unlocked ? codeMap[id] : `${codeMap[id]} 🔒`;
+      btn.title = unlocked ? '点击切换探险家外观' : '未解锁外观 · 点击打开飞艇母港解锁';
+    });
+  }
+
+  function syncTouchControlsUI() {
+    const plat = resolvePlatform();
+    const isMobile = plat === 'mobile';
+    game.platform = plat;
+    game.touchActive = isMobile;
+
+    document.body.classList.toggle('platform-pc', !isMobile);
+    document.body.classList.toggle('platform-mobile', isMobile);
+
+    const showTouch = isMobile && !game.introActive && !game.titleOpen && !game.hubOpen && !game.paused && !game.portraitBlocked && game.run.phase === 'playing';
+    if (touchControlsEl) {
+      touchControlsEl.classList.toggle('hidden', !showTouch);
+    }
+    if (pcHintBarEl) {
+      const showPcHint = !isMobile && !game.introActive && !game.titleOpen && !game.hubOpen && !game.paused && game.run.phase === 'playing';
+      pcHintBarEl.classList.toggle('hud-hidden', !showPcHint);
+    }
+    if (btnTouchModeRef) {
+      const labelMap = {
+        auto: isMobile ? '📱 布局: 自动(移动)' : '💻 布局: 自动(PC)',
+        on: '📱 布局: 移动端',
+        off: '💻 布局: PC端',
+      };
+      btnTouchModeRef.textContent = labelMap[game.touchMode] || '💻 布局: 自动(PC)';
+      btnTouchModeRef.classList.toggle('active', game.touchMode !== 'auto');
+    }
+    if (game.titleOpen) updateTitleCard();
+  }
+
+  function setDrawerOpen(open) {
+    game.menuOpen = !!open;
+    if (quickDrawerEl) quickDrawerEl.classList.toggle('hidden', !game.menuOpen);
+    if (btnMenuToggleRef) btnMenuToggleRef.classList.toggle('active', game.menuOpen);
+  }
+
+  function syncChromeVisibility() {
+    const inIntro = !!game.introActive;
+    const onTitle = !!game.titleOpen && !inIntro;
+    const hidePlayHud = inIntro || onTitle;
+    if (introOverlayEl) introOverlayEl.classList.toggle('hidden', !inIntro);
+    if (titleOverlayEl) titleOverlayEl.classList.toggle('hidden', !onTitle);
+    if (hudTopEl) hudTopEl.classList.toggle('hud-hidden', hidePlayHud);
+    if (minimapWrapEl) minimapWrapEl.classList.toggle('hud-hidden', hidePlayHud);
+    if (hidePlayHud) {
+      setDrawerOpen(false);
+    }
+    if (onTitle) {
+      updateTitleCard();
+    }
+    syncTouchControlsUI();
+  }
+
+  function syncSettingsUI() {
+    const btnSetAudio = document.getElementById('btnSetAudio');
+    const btnSetLayout = document.getElementById('btnSetLayout');
+    const btnSetAutoIntro = document.getElementById('btnSetAutoIntro');
+    if (btnSetAudio) {
+      btnSetAudio.textContent = game.audioMuted ? '静音' : '开启';
+      btnSetAudio.classList.toggle('active', !game.audioMuted);
+    }
+    if (btnSetLayout) {
+      const lbl = {
+        auto: game.platform === 'mobile' ? '自动(移动)' : '自动(PC)',
+        on: '强制移动',
+        off: '强制PC',
+      }[game.touchMode] || '自动';
+      btnSetLayout.textContent = lbl;
+      btnSetLayout.classList.toggle('active', game.touchMode !== 'auto');
+    }
+    if (btnSetAutoIntro) {
+      const autoOn = game.meta.autoPlayIntro !== false;
+      btnSetAutoIntro.textContent = autoOn ? '开启' : '跳过';
+      btnSetAutoIntro.classList.toggle('active', autoOn);
+    }
+  }
+
+  function setSettingsOpen(open) {
+    game.settingsOpen = !!open;
+    if (settingsModalEl) settingsModalEl.classList.toggle('hidden', !game.settingsOpen);
+    if (game.settingsOpen) syncSettingsUI();
+  }
+
+  function syncPauseUI() {
+    const st = getStage(game.currentStageId);
+    const stageEl = document.getElementById('pauseStageBadge');
+    const hpEl = document.getElementById('pauseHp');
+    const haulEl = document.getElementById('pauseHaul');
+    const guardsEl = document.getElementById('pauseGuards');
+    const timeEl = document.getElementById('pauseTime');
+    const btnPAudio = document.getElementById('btnPauseAudio');
+    const btnPLayout = document.getElementById('btnPauseLayout');
+
+    if (stageEl && st) stageEl.textContent = `第 ${st.id} 关 · ${st.name}`;
+    if (hpEl) hpEl.textContent = `${Math.ceil(game.player.hp)}/${game.player.maxHp}`;
+    if (haulEl && CB.extraction) haulEl.textContent = `${CB.extraction.getTotalHaulValue()}`;
+    if (guardsEl) guardsEl.textContent = `${game.guards.length}`;
+    if (timeEl) {
+      const mm = Math.floor(game.run.elapsed / 60);
+      const ss = String(Math.floor(game.run.elapsed % 60)).padStart(2, '0');
+      timeEl.textContent = `${mm}:${ss}`;
+    }
+    if (btnPAudio) {
+      btnPAudio.textContent = game.audioMuted ? '🔇 音效: 关' : '🔊 音效: 开';
+      btnPAudio.classList.toggle('active', !game.audioMuted);
+    }
+    if (btnPLayout) {
+      const lbl = {
+        auto: game.platform === 'mobile' ? '📱 布局: 自动(移动)' : '💻 布局: 自动(PC)',
+        on: '📱 布局: 移动端',
+        off: '💻 布局: PC端',
+      }[game.touchMode] || '💻 布局: 自动';
+      btnPLayout.textContent = lbl;
+      btnPLayout.classList.toggle('active', game.touchMode !== 'auto');
+    }
+    syncFullscreenUI();
+  }
+
+  function setGamePaused(paused, silent = false) {
+    const want = !!paused;
+    if (want && (game.run.phase !== 'playing' || game.titleOpen || game.introActive)) return;
+    game.paused = want;
+    if (want) {
+      clearAllHeldInputs();
+      setDrawerOpen(false);
+      syncPauseUI();
+    } else {
+      lastTime = performance.now();
+    }
+    if (pauseModalEl) pauseModalEl.classList.toggle('hidden', !game.paused);
+    if (!silent && CB.audio && CB.audio.playUiClick) CB.audio.playUiClick();
+    syncTouchControlsUI();
+  }
+
+  function playOpeningCutscene() {
+    clearAllHeldInputs();
+    reopenPauseAfterHub = false;
+    setGamePaused(false, true);
+    if (game.hubOpen) closeHub();
+    reopenPauseAfterHub = false;
+    setGamePaused(false, true);
+    setDrawerOpen(false);
+    setSettingsOpen(false);
+    game.titleOpen = false;
+    game.introActive = true;
+    if (titleOverlayEl) titleOverlayEl.classList.remove('title-reveal');
+    if (introProgressFillEl) introProgressFillEl.style.width = '0%';
+    startIntro(() => {
+      game.introActive = false;
+      game.titleOpen = true;
+      if (titleOverlayEl) {
+        titleOverlayEl.classList.remove('title-reveal');
+        void titleOverlayEl.offsetWidth;
+        titleOverlayEl.classList.add('title-reveal');
+      }
+      syncFullscreenUI();
+      syncOrientationGuide();
+      syncChromeVisibility();
+    });
+    syncChromeVisibility();
+  }
+
+  function enterGameFromTitle(relaunch = false) {
+    if (CB.audio) {
+      CB.audio.unlock();
+      if (CB.audio.setAmbienceStage) CB.audio.setAmbienceStage(game.currentStageId);
+      if (CB.audio.playUiClick) CB.audio.playUiClick();
+    }
+    game.titleOpen = false;
+    game.mapOverview = false;
+    if (btnOverviewRef) {
+      btnOverviewRef.classList.remove('active');
+      btnOverviewRef.textContent = '🗺 全图';
+    }
+    if (relaunch || game.meta.loadoutCurioId) {
+      startStage(game.currentStageId, { keepCurios: false, stayOnTitle: false });
+    } else {
+      game.stageBannerTimer = 3.2;
+      syncChromeVisibility();
+      const st = getStage(game.currentStageId);
+      spawnPopup(game.player.x, game.player.y - 46, `第 ${st.id} 关 · ${st.name}`, '#24808f');
+    }
+  }
+
+  function openTitleScreen() {
+    clearAllHeldInputs();
+    reopenPauseAfterHub = false;
+    setGamePaused(false, true);
+    if (game.hubOpen) closeHub();
+    setDrawerOpen(false);
+    game.titleOpen = true;
+    game.mapOverview = false;
+    if (btnOverviewRef) {
+      btnOverviewRef.classList.remove('active');
+      btnOverviewRef.textContent = '🗺 全图';
+    }
+    syncFullscreenUI();
+    syncOrientationGuide();
+    syncChromeVisibility();
+  }
+
+  function startStage(stageId = game.currentStageId, opts = {}) {
+    const keepCurios = !!opts.keepCurios;
+    const customSeed = opts.customSeed ?? null;
+    const stayOnTitle = !!opts.stayOnTitle;
+
+    game.currentStageId = stageId;
+    game.map = generateMap(stageId, customSeed ?? undefined);
+    refreshStageTheme(ctx, game.map.stage);
+    if (CB.audio && CB.audio.setAmbienceStage) CB.audio.setAmbienceStage(stageId);
+    game.bullets = [];
+    game.enemyBullets = [];
+    game.ripples = [];
+    game.inkPuddles = [];
+    game.pollenClouds = [];
+    game.vortices = [];
+    game.coinsList = [];
+    game.fallingGuards = [];
+    game.fallingCrates = [];
+    game.hitStop = 0;
+    game.stageBannerTimer = stayOnTitle ? 0 : 3.4;
+
+    if (!stayOnTitle) {
+      game.titleOpen = false;
+    }
+
+    // 标题页预览切换关卡时不消耗补给舱奇物，真正启航时再部署！
+    const savedLoadout = stayOnTitle ? game.meta.loadoutCurioId : null;
+    if (stayOnTitle) game.meta.loadoutCurioId = null;
+    resetRunState(keepCurios);
+    if (stayOnTitle && savedLoadout) {
+      game.meta.loadoutCurioId = savedLoadout;
+    }
+
+    placePlayerAtSpawn(true);
+    populateGuardsForMap(game.map);
+    spawnButterflies(game.map);
+    if (game.hubOpen) closeHub();
+    setDrawerOpen(false);
     updateStatsBanner(statsEl);
-    spawnPopup(game.player.x, game.player.y - 44, `新地图 #${game.map.seed}`, '#3d7a64');
+    updateCombatHud(hudEls);
+    syncStageUI();
+    syncSkinUI();
+    syncChromeVisibility();
+
+    if (!stayOnTitle) {
+      if (game.run.deployedLoadoutCurio) {
+        const dc = game.run.deployedLoadoutCurio;
+        spawnPopup(game.player.x, game.player.y - 72, `📦 补给舱装填 · ${dc.icon} ${dc.name}`, '#1f8a70');
+      }
+
+      const st = getStage(stageId);
+      spawnPopup(
+        game.player.x,
+        game.player.y - 46,
+        customSeed
+          ? `重返第 ${st.id} 关 · ${st.name}`
+          : keepCurios
+          ? `飞抵第 ${st.id} 关 · ${st.name}（保留奇物）`
+          : `第 ${st.id} 关 · ${st.name}`,
+        '#24808f'
+      );
+    }
+  }
+
+  function advanceAfterSummary() {
+    if (game.run.phase === 'extracted') {
+      const next = getNextStage(game.currentStageId);
+      if (next) {
+        startStage(next.id, { keepCurios: true });
+      } else {
+        startStage(1, { keepCurios: false });
+      }
+    } else {
+      startStage(game.currentStageId, { keepCurios: false });
+    }
   }
 
   function setupUI() {
     const btnRegen = document.getElementById('btnRegen');
     const btnOverview = document.getElementById('btnOverview');
-    const btnFog = document.getElementById('btnFog');
-    const variantButtons = document.querySelectorAll('[data-variant]');
+    const btnAudio = document.getElementById('btnAudio');
+    const btnResetSave = document.getElementById('btnResetSave');
+    const btnAgeBadge = document.getElementById('btnAgeBadge');
+    const ageModal = document.getElementById('ageModal');
+    const btnCloseAge = document.getElementById('btnCloseAge');
+    const btnConfirmAge = document.getElementById('btnConfirmAge');
+    const btnMenuToggle = document.getElementById('btnMenuToggle');
+    const btnCloseDrawer = document.getElementById('btnCloseDrawer');
+    const btnTouchMode = document.getElementById('btnTouchMode');
+    const btnFullscreen = document.getElementById('btnFullscreen');
+    const btnBackTitle = document.getElementById('btnBackTitle');
+    const btnDismissPortrait = document.getElementById('btnDismissPortrait');
+    const btnNextRun = document.getElementById('btnNextRun');
+    const btnRetrySeed = document.getElementById('btnRetrySeed');
+    const btnOpenHub = document.getElementById('btnOpenHub');
+    const btnOpenCodex = document.getElementById('btnOpenCodex');
+    const btnPauseGame = document.getElementById('btnPauseGame');
+    const btnPauseResume = document.getElementById('btnPauseResume');
+    const btnPauseHub = document.getElementById('btnPauseHub');
+    const btnPauseCodex = document.getElementById('btnPauseCodex');
+    const btnPauseRestart = document.getElementById('btnPauseRestart');
+    const btnPauseTitle = document.getElementById('btnPauseTitle');
+    const btnPauseAudio = document.getElementById('btnPauseAudio');
+    const btnPauseLayout = document.getElementById('btnPauseLayout');
+    const btnPauseFullscreen = document.getElementById('btnPauseFullscreen');
+    const btnSummaryHub = document.getElementById('btnSummaryHub');
+    const btnCloseHub = document.getElementById('btnCloseHub');
+    const btnHubResume = document.getElementById('btnHubResume');
+    const btnHubLaunch = document.getElementById('btnHubLaunch');
+    const btnSkipIntro = document.getElementById('btnSkipIntro');
+    const btnReplayIntro = document.getElementById('btnReplayIntro');
+    const btnTitleStart = document.getElementById('btnTitleStart');
+    const btnTitleHub = document.getElementById('btnTitleHub');
+    const btnTitleCodex = document.getElementById('btnTitleCodex');
+    const btnTitleSettings = document.getElementById('btnTitleSettings');
+    const btnTitleAudio = document.getElementById('btnTitleAudio');
+    const btnTitleFullscreen = document.getElementById('btnTitleFullscreen');
+    const btnCloseSettings = document.getElementById('btnCloseSettings');
+    const btnSetAudio = document.getElementById('btnSetAudio');
+    const btnSetLayout = document.getElementById('btnSetLayout');
+    const btnSetAutoIntro = document.getElementById('btnSetAutoIntro');
+    const btnSetReplayIntro = document.getElementById('btnSetReplayIntro');
+    const btnSetResetSave = document.getElementById('btnSetResetSave');
+    const titleStageBtns = document.querySelectorAll('[data-title-stage]');
+    const hubModal = document.getElementById('hubModal');
+    const hubTabs = document.querySelectorAll('[data-hub-tab]');
+
+    btnMenuToggleRef = btnMenuToggle;
+    btnAudioRef = btnAudio;
+    btnOverviewRef = btnOverview;
+    btnTouchModeRef = btnTouchMode;
+    btnFullscreenRef = btnFullscreen;
+    btnTitleFullscreenRef = btnTitleFullscreen;
+    btnPauseFullscreenRef = btnPauseFullscreen;
+    variantButtons = Array.from(document.querySelectorAll('[data-variant]'));
+    stageButtons = Array.from(document.querySelectorAll('[data-stage]'));
 
     const toggleOverview = () => {
+      if (game.run.phase !== 'playing' || game.titleOpen) return;
       game.mapOverview = !game.mapOverview;
-      btnOverview.classList.toggle('active', game.mapOverview);
-      btnOverview.textContent = game.mapOverview ? 'M 返回近景' : 'M 全图总览';
+      if (btnOverview) {
+        btnOverview.classList.toggle('active', game.mapOverview);
+        btnOverview.textContent = game.mapOverview ? '🗺 近景' : '🗺 全图';
+      }
     };
 
-    const toggleFog = () => {
-      game.showFog = !game.showFog;
-      btnFog.classList.toggle('active', game.showFog);
-      btnFog.textContent = game.showFog ? 'F 羊皮纸迷雾: 开' : 'F 羊皮纸迷雾: 关';
+
+
+    const toggleAudio = () => {
+      const nextMuted = !game.audioMuted;
+      if (CB.audio) {
+        CB.audio.unlock();
+        CB.audio.setMuted(nextMuted);
+      }
+      if (btnAudio) {
+        btnAudio.classList.toggle('active', !nextMuted);
+        btnAudio.textContent = nextMuted ? '🔇 静音' : '🔊 音效';
+      }
+      updateTitleCard();
+      syncSettingsUI();
+      if (game.paused) syncPauseUI();
+    };
+
+    const cycleTouchMode = () => {
+      const order = ['auto', 'on', 'off'];
+      const nextIdx = (order.indexOf(game.touchMode) + 1) % order.length;
+      game.touchMode = order[nextIdx];
+      if (CB.audio && CB.audio.playUiClick) CB.audio.playUiClick();
+      syncOrientationGuide();
+      syncTouchControlsUI();
+      syncSettingsUI();
+      if (game.paused) syncPauseUI();
     };
 
     const selectVariant = (v) => {
-      setVariant(v);
-      variantButtons.forEach((b) => b.classList.toggle('active', b.dataset.variant === v));
+      if (CB.extraction && CB.extraction.isSkinUnlocked && !CB.extraction.isSkinUnlocked(v)) {
+        if (CB.audio && CB.audio.playUiLocked) CB.audio.playUiLocked();
+        setDrawerOpen(false);
+        openHub('workshop');
+        return;
+      }
+      if (CB.extraction && CB.extraction.unlockOrSelectSkin) {
+        CB.extraction.unlockOrSelectSkin(v);
+      } else {
+        setVariant(v);
+      }
+      syncSkinUI();
     };
 
-    btnRegen.addEventListener('click', buildNewMap);
-    btnOverview.addEventListener('click', toggleOverview);
-    btnFog.addEventListener('click', toggleFog);
+    if (btnRegen) btnRegen.addEventListener('click', () => startStage(game.currentStageId, { keepCurios: false }));
+    if (btnOverview) btnOverview.addEventListener('click', toggleOverview);
+    let resetConfirmTimer = null;
+    let resetArmed = false;
+    const clearResetConfirm = () => {
+      resetArmed = false;
+      if (resetConfirmTimer) {
+        clearTimeout(resetConfirmTimer);
+        resetConfirmTimer = null;
+      }
+      if (btnResetSave) {
+        btnResetSave.classList.remove('confirming');
+        btnResetSave.textContent = '🗑 重置本地存档';
+      }
+    };
+    if (btnResetSave) {
+      btnResetSave.addEventListener('click', () => {
+        if (!resetArmed) {
+          resetArmed = true;
+          btnResetSave.classList.add('confirming');
+          btnResetSave.textContent = '⚠ 再次点击确认清空';
+          if (CB.audio && CB.audio.playUiLocked) CB.audio.playUiLocked();
+          resetConfirmTimer = setTimeout(clearResetConfirm, 3200);
+          return;
+        }
+        clearResetConfirm();
+        if (CB.extraction && CB.extraction.resetMeta) CB.extraction.resetMeta();
+        if (CB.audio && CB.audio.playUiClick) CB.audio.playUiClick();
+        setDrawerOpen(false);
+        startStage(1, { keepCurios: false, stayOnTitle: false });
+        spawnPopup(game.player.x, game.player.y - 46, '已重置本地存档', '#c95c1e');
+      });
+    }
+
+    const setAgeModalOpen = (open) => {
+      if (!ageModal) return;
+      ageModal.classList.toggle('hidden', !open);
+      if (CB.audio && CB.audio.playUiClick) CB.audio.playUiClick();
+    };
+    if (btnAgeBadge) btnAgeBadge.addEventListener('click', () => setAgeModalOpen(true));
+    if (btnCloseAge) btnCloseAge.addEventListener('click', () => setAgeModalOpen(false));
+    if (btnConfirmAge) btnConfirmAge.addEventListener('click', () => setAgeModalOpen(false));
+    if (ageModal) {
+      ageModal.addEventListener('click', (e) => {
+        if (e.target === ageModal) setAgeModalOpen(false);
+      });
+    }
+    if (btnAudio) btnAudio.addEventListener('click', toggleAudio);
+    if (btnTouchMode) btnTouchMode.addEventListener('click', cycleTouchMode);
+    if (btnFullscreen) btnFullscreen.addEventListener('click', toggleFullscreen);
+    if (btnBackTitle) btnBackTitle.addEventListener('click', openTitleScreen);
+    if (btnDismissPortrait) {
+      btnDismissPortrait.addEventListener('click', () => {
+        if (CB.audio) {
+          CB.audio.unlock();
+          if (CB.audio.playUiClick) CB.audio.playUiClick();
+        }
+        game.portraitDismissed = true;
+        syncOrientationGuide();
+        syncTouchControlsUI();
+      });
+    }
+
+    // 触控快捷手势：直接点击右上角小地图即可一键切换全图俯瞰（且不穿透误射）
+    if (minimapWrapEl) {
+      minimapWrapEl.addEventListener('mousedown', (e) => e.stopPropagation());
+      minimapWrapEl.addEventListener('pointerdown', (e) => e.stopPropagation());
+    }
+    if (miniCanvas) {
+      miniCanvas.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (game.run.phase !== 'playing' || game.titleOpen || game.hubOpen) return;
+        if (CB.audio && CB.audio.playUiClick) CB.audio.playUiClick();
+        toggleOverview();
+      });
+    }
+
+    document.addEventListener('fullscreenchange', syncFullscreenUI);
+    document.addEventListener('webkitfullscreenchange', syncFullscreenUI);
+
+    if (btnMenuToggle) {
+      btnMenuToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (CB.audio && CB.audio.playUiClick) CB.audio.playUiClick();
+        setDrawerOpen(!game.menuOpen);
+      });
+    }
+    if (btnCloseDrawer) {
+      btnCloseDrawer.addEventListener('click', () => setDrawerOpen(false));
+    }
+    window.addEventListener('mousedown', (e) => {
+      if (!game.menuOpen) return;
+      if (quickDrawerEl && !quickDrawerEl.contains(e.target) && e.target !== btnMenuToggle) {
+        setDrawerOpen(false);
+      }
+    });
+
+    // 10 秒开场动画交互（点跳过立刻进主菜单；轻触画面解锁音频）
+    if (btnSkipIntro) {
+      btnSkipIntro.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (CB.audio) {
+          CB.audio.unlock();
+          if (CB.audio.playUiClick) CB.audio.playUiClick();
+        }
+        skipIntro();
+      });
+    }
+    if (introOverlayEl) {
+      introOverlayEl.addEventListener('pointerdown', () => {
+        if (CB.audio) CB.audio.unlock();
+      });
+    }
+
+    // 动态开场初始化主菜单交互
+    if (btnReplayIntro) {
+      btnReplayIntro.addEventListener('click', () => {
+        if (CB.audio) {
+          CB.audio.unlock();
+          if (CB.audio.playUiClick) CB.audio.playUiClick();
+        }
+        playOpeningCutscene();
+      });
+    }
+    if (btnTitleStart) btnTitleStart.addEventListener('click', () => enterGameFromTitle(false));
+    if (btnTitleHub) btnTitleHub.addEventListener('click', () => {
+      if (CB.audio) CB.audio.unlock();
+      openHub('workshop');
+    });
+    if (btnTitleCodex) btnTitleCodex.addEventListener('click', () => {
+      if (CB.audio) CB.audio.unlock();
+      openHub('curios');
+    });
+    if (btnTitleSettings) {
+      btnTitleSettings.addEventListener('click', () => {
+        if (CB.audio) {
+          CB.audio.unlock();
+          if (CB.audio.playUiClick) CB.audio.playUiClick();
+        }
+        setSettingsOpen(true);
+      });
+    }
+    if (btnTitleAudio) btnTitleAudio.addEventListener('click', toggleAudio);
+    if (btnTitleFullscreen) btnTitleFullscreen.addEventListener('click', toggleFullscreen);
+
+    // 初始化设置弹窗交互
+    if (btnCloseSettings) {
+      btnCloseSettings.addEventListener('click', () => {
+        if (CB.audio && CB.audio.playUiClick) CB.audio.playUiClick();
+        setSettingsOpen(false);
+      });
+    }
+    if (settingsModalEl) {
+      settingsModalEl.addEventListener('click', (e) => {
+        if (e.target === settingsModalEl) setSettingsOpen(false);
+      });
+    }
+    if (btnSetAudio) btnSetAudio.addEventListener('click', toggleAudio);
+    if (btnSetLayout) btnSetLayout.addEventListener('click', cycleTouchMode);
+    if (btnSetAutoIntro) {
+      btnSetAutoIntro.addEventListener('click', () => {
+        game.meta.autoPlayIntro = !(game.meta.autoPlayIntro !== false);
+        if (CB.extraction && CB.extraction.saveMeta) CB.extraction.saveMeta();
+        if (CB.audio && CB.audio.playUiClick) CB.audio.playUiClick();
+        syncSettingsUI();
+      });
+    }
+    if (btnSetReplayIntro) {
+      btnSetReplayIntro.addEventListener('click', () => {
+        if (CB.audio) {
+          CB.audio.unlock();
+          if (CB.audio.playUiClick) CB.audio.playUiClick();
+        }
+        playOpeningCutscene();
+      });
+    }
+
+    let setResetTimer = null;
+    let setResetArmed = false;
+    const clearSetReset = () => {
+      setResetArmed = false;
+      if (setResetTimer) { clearTimeout(setResetTimer); setResetTimer = null; }
+      if (btnSetResetSave) {
+        btnSetResetSave.classList.remove('confirming');
+        btnSetResetSave.textContent = '🗑 重置本地存档';
+      }
+    };
+    if (btnSetResetSave) {
+      btnSetResetSave.addEventListener('click', () => {
+        if (!setResetArmed) {
+          setResetArmed = true;
+          btnSetResetSave.classList.add('confirming');
+          btnSetResetSave.textContent = '⚠ 再次点击确认清空';
+          if (CB.audio && CB.audio.playUiLocked) CB.audio.playUiLocked();
+          setResetTimer = setTimeout(clearSetReset, 3200);
+          return;
+        }
+        clearSetReset();
+        if (CB.extraction && CB.extraction.resetMeta) CB.extraction.resetMeta();
+        if (CB.audio && CB.audio.playUiClick) CB.audio.playUiClick();
+        setSettingsOpen(false);
+        startStage(1, { keepCurios: false, stayOnTitle: true });
+        updateTitleCard();
+        syncSettingsUI();
+      });
+    }
+    titleStageBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (CB.audio) {
+          CB.audio.unlock();
+          if (CB.audio.playUiClick) CB.audio.playUiClick();
+        }
+        startStage(Number(btn.dataset.titleStage), { keepCurios: false, stayOnTitle: true });
+      });
+    });
+
+    if (btnNextRun) btnNextRun.addEventListener('click', advanceAfterSummary);
+    if (btnRetrySeed) {
+      btnRetrySeed.addEventListener('click', () => {
+        if (game.run.phase === 'extracted') {
+          startStage(game.currentStageId, { keepCurios: false });
+        } else {
+          startStage(game.currentStageId, { customSeed: game.map ? game.map.seed : null, keepCurios: false });
+        }
+      });
+    }
+
     variantButtons.forEach((btn) => {
       btn.addEventListener('click', () => selectVariant(btn.dataset.variant));
     });
+    stageButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (CB.audio) CB.audio.unlock();
+        startStage(Number(btn.dataset.stage), { keepCurios: false });
+      });
+    });
+
+    if (btnOpenHub) btnOpenHub.addEventListener('click', () => { setDrawerOpen(false); openHub('workshop'); syncTouchControlsUI(); });
+    if (btnOpenCodex) btnOpenCodex.addEventListener('click', () => { setDrawerOpen(false); openHub('curios'); syncTouchControlsUI(); });
+    if (btnPauseGame) {
+      btnPauseGame.addEventListener('click', () => {
+        if (game.paused) setGamePaused(false);
+        else setGamePaused(true);
+      });
+    }
+    if (btnPauseResume) btnPauseResume.addEventListener('click', () => setGamePaused(false));
+    if (pauseModalEl) {
+      pauseModalEl.addEventListener('click', (e) => {
+        if (e.target === pauseModalEl) setGamePaused(false);
+      });
+    }
+    if (btnPauseAudio) btnPauseAudio.addEventListener('click', toggleAudio);
+    if (btnPauseLayout) btnPauseLayout.addEventListener('click', cycleTouchMode);
+    if (btnPauseFullscreen) btnPauseFullscreen.addEventListener('click', toggleFullscreen);
+    if (btnPauseHub) {
+      btnPauseHub.addEventListener('click', () => {
+        reopenPauseAfterHub = true;
+        setGamePaused(false, true);
+        openHub('workshop');
+        syncTouchControlsUI();
+      });
+    }
+    if (btnPauseCodex) {
+      btnPauseCodex.addEventListener('click', () => {
+        reopenPauseAfterHub = true;
+        setGamePaused(false, true);
+        openHub('curios');
+        syncTouchControlsUI();
+      });
+    }
+    if (btnPauseRestart) {
+      btnPauseRestart.addEventListener('click', () => {
+        setGamePaused(false, true);
+        startStage(game.currentStageId, { keepCurios: false });
+      });
+    }
+    if (btnPauseTitle) {
+      btnPauseTitle.addEventListener('click', () => {
+        openTitleScreen();
+      });
+    }
+    if (btnSummaryHub) btnSummaryHub.addEventListener('click', () => openHub('workshop'));
+    if (btnCloseHub) btnCloseHub.addEventListener('click', closeHub);
+    if (btnHubResume) btnHubResume.addEventListener('click', closeHub);
+    if (btnHubLaunch) {
+      btnHubLaunch.addEventListener('click', () => {
+        closeHub();
+        startStage(game.currentStageId, { keepCurios: false, stayOnTitle: false });
+      });
+    }
+    if (hubModal) {
+      hubModal.addEventListener('click', (e) => {
+        if (e.target === hubModal) closeHub();
+      });
+    }
+    hubTabs.forEach((btn) => {
+      btn.addEventListener('click', () => switchHubTab(btn.dataset.hubTab));
+    });
+    setHubCallbacks({
+      onChanged: () => {
+        updateCombatHud(hudEls);
+        syncSkinUI();
+        if (game.titleOpen) updateTitleCard();
+        if (!game.hubOpen && reopenPauseAfterHub && !game.titleOpen && game.run.phase === 'playing') {
+          reopenPauseAfterHub = false;
+          setGamePaused(true, true);
+        } else {
+          syncTouchControlsUI();
+        }
+      },
+    });
+
+    initTouchControls(touchEls);
 
     initInput(canvas, (code) => {
-      if (code === 'KeyR') buildNewMap();
+      if (game.introActive) {
+        if (code === 'Escape' || code === 'Space' || code === 'Enter') {
+          skipIntro();
+        }
+        return;
+      }
+      if (code === 'Escape') {
+        if (ageModal && !ageModal.classList.contains('hidden')) { setAgeModalOpen(false); return; }
+        if (game.settingsOpen) { setSettingsOpen(false); return; }
+        if (game.hubOpen) { closeHub(); return; }
+        if (game.menuOpen) { setDrawerOpen(false); return; }
+        if (!game.titleOpen && game.run.phase === 'playing') {
+          setGamePaused(!game.paused);
+        }
+        return;
+      }
+      if (code === 'KeyP' && !game.titleOpen && !game.hubOpen && !game.settingsOpen && game.run.phase === 'playing') {
+        setGamePaused(!game.paused);
+        return;
+      }
+      if (game.settingsOpen) return;
+      if (code === 'KeyH') {
+        setDrawerOpen(false);
+        if (game.paused) { reopenPauseAfterHub = true; setGamePaused(false, true); }
+        if (game.hubOpen) closeHub();
+        else openHub('workshop');
+        return;
+      }
+      if (code === 'KeyB') {
+        setDrawerOpen(false);
+        if (game.paused) { reopenPauseAfterHub = true; setGamePaused(false, true); }
+        if (game.hubOpen) closeHub();
+        else openHub('curios');
+        return;
+      }
+      if (game.hubOpen) return;
+
+      if (game.titleOpen) {
+        if (code === 'Enter' || code === 'Space') {
+          enterGameFromTitle(false);
+        } else if (code === 'KeyV') {
+          toggleAudio();
+        } else if (code === 'Digit1') startStage(1, { keepCurios: false, stayOnTitle: true });
+        else if (code === 'Digit2') startStage(2, { keepCurios: false, stayOnTitle: true });
+        else if (code === 'Digit3') startStage(3, { keepCurios: false, stayOnTitle: true });
+        else if (code === 'Digit4') startStage(4, { keepCurios: false, stayOnTitle: true });
+        return;
+      }
+
+      if (game.paused) {
+        if (code === 'KeyV') toggleAudio();
+        return;
+      }
+      if (code === 'KeyR') startStage(game.currentStageId, { keepCurios: false });
+      if (code === 'KeyT' && game.run.phase === 'failed') {
+        startStage(game.currentStageId, { customSeed: game.map ? game.map.seed : null, keepCurios: false });
+      }
+      if (code === 'Enter' && game.run.phase !== 'playing') advanceAfterSummary();
       if (code === 'KeyM') toggleOverview();
-      if (code === 'KeyF') toggleFog();
+      if (code === 'KeyV') toggleAudio();
+      if (code === 'Digit1') startStage(1, { keepCurios: false });
+      if (code === 'Digit2') startStage(2, { keepCurios: false });
+      if (code === 'Digit3') startStage(3, { keepCurios: false });
+      if (code === 'Digit4') startStage(4, { keepCurios: false });
+    }, () => {
+      if (game.touchMode === 'auto') {
+        syncOrientationGuide();
+        syncTouchControlsUI();
+      }
     });
+
+    syncStageUI();
+    syncSkinUI();
+    syncChromeVisibility();
+  }
+
+  function spawnButterflies(map) {
+    const list = [];
+    if (!map) {
+      game.butterflies = list;
+      return;
+    }
+    const colors = ['#fffdf2', '#ffe27a', '#9ee6f7', '#ffb5c8'];
+    for (const room of map.rooms) {
+      const c = room.cells[0];
+      const bx = c.gx * map.cellW + 120 + Math.random() * (map.cellW - 240);
+      const by = c.gy * map.cellH + 100 + Math.random() * (map.cellH - 200);
+      list.push({
+        x: bx,
+        y: by,
+        homeX: bx,
+        homeY: by,
+        angle: Math.random() * Math.PI * 2,
+        turnTimer: 0.6 + Math.random() * 1.4,
+        phase: Math.random() * 6.28,
+        color: colors[list.length % colors.length],
+      });
+    }
+    game.butterflies = list;
   }
 
   function updateEffects(dt) {
+    if (game.stageBannerTimer > 0 && !game.titleOpen) {
+      game.stageBannerTimer = Math.max(0, game.stageBannerTimer - dt);
+    }
+
+    for (let i = game.fallingGuards.length - 1; i >= 0; i--) {
+      const fg = game.fallingGuards[i];
+      fg.life -= dt;
+      fg.x += fg.vx * dt;
+      fg.y += (fg.vy + fg.fallVy) * dt;
+      fg.vx *= Math.exp(-1.6 * dt);
+      fg.vy *= Math.exp(-1.4 * dt);
+      fg.fallVy += 270 * dt;
+      fg.angle += fg.spin * dt;
+      const t = Math.max(0, fg.life / fg.maxLife);
+      fg.scale = Math.max(0.08, Math.pow(t, 0.85));
+      fg.trailTimer -= dt;
+      if (fg.trailTimer <= 0 && t > 0.2) {
+        fg.trailTimer = 0.065;
+        game.particles.push({
+          x: fg.x,
+          y: fg.y,
+          vx: (Math.random() - 0.5) * 32,
+          vy: -18 - Math.random() * 24,
+          r: (3.2 + Math.random() * 3.5) * fg.scale,
+          life: 0.28,
+          maxLife: 0.28,
+          color: '#eef9ff',
+        });
+      }
+      if (fg.life <= 0) game.fallingGuards.splice(i, 1);
+    }
+
+    for (let i = game.fallingCrates.length - 1; i >= 0; i--) {
+      const fc = game.fallingCrates[i];
+      fc.life -= dt;
+      fc.x += fc.vx * dt;
+      fc.y += (fc.vy + fc.fallVy) * dt;
+      fc.vx *= Math.exp(-1.5 * dt);
+      fc.vy *= Math.exp(-1.3 * dt);
+      fc.fallVy += 260 * dt;
+      fc.angle += fc.spin * dt;
+      fc.scale = Math.max(0.1, Math.pow(Math.max(0, fc.life / fc.maxLife), 0.85));
+      if (fc.life <= 0) game.fallingCrates.splice(i, 1);
+    }
+
     for (let i = game.particles.length - 1; i >= 0; i--) {
       const pt = game.particles[i];
       pt.x += pt.vx * dt;
@@ -86,6 +1089,18 @@
       game.popups[i].life -= dt;
       if (game.popups[i].life <= 0) game.popups.splice(i, 1);
     }
+
+    for (const bf of game.butterflies) {
+      bf.turnTimer -= dt;
+      if (bf.turnTimer <= 0) {
+        bf.turnTimer = 0.8 + Math.random() * 1.6;
+        const toHome = Math.atan2(bf.homeY - bf.y, bf.homeX - bf.x);
+        const dHome = Math.hypot(bf.homeX - bf.x, bf.homeY - bf.y);
+        bf.angle = dHome > 140 ? toHome + (Math.random() - 0.5) * 0.7 : bf.angle + (Math.random() - 0.5) * 2.1;
+      }
+      bf.x += Math.cos(bf.angle) * 26 * dt;
+      bf.y += Math.sin(bf.angle) * 26 * dt;
+    }
   }
 
   function updateCamera(dt) {
@@ -93,8 +1108,15 @@
     let targetX = player.x;
     let targetY = player.y;
 
-    if (game.mapOverview && map) {
-      // 全图俯瞰模式：自动计算适配整张不规则地图的缩放比与中心
+    if (game.titleOpen && map) {
+      // 动态开场页：镜头柔和巡航整个云海浮岛全貌！
+      const orbitA = game.time * 0.16;
+      const rx = Math.min(260, map.bounds.w * 0.14);
+      const ry = Math.min(180, map.bounds.h * 0.14);
+      targetX = map.bounds.cx + Math.cos(orbitA) * rx;
+      targetY = map.bounds.cy + Math.sin(orbitA) * ry;
+      camera.targetZoom = Math.max(0.55, Math.min(0.82, Math.min(viewW / 1400, viewH / 880) * 0.92));
+    } else if (game.mapOverview && map) {
       const padW = viewW - 260;
       const padH = viewH - 160;
       camera.targetZoom = Math.max(0.22, Math.min(0.68, Math.min(padW / map.bounds.w, padH / map.bounds.h)));
@@ -102,38 +1124,169 @@
       targetY = map.bounds.cy;
     } else {
       camera.targetZoom = 1;
-      const lookAheadX = (input.mouseWorldX - player.x) * 0.08;
-      const lookAheadY = (input.mouseWorldY - player.y) * 0.08;
-      targetX = player.x + Math.max(-72, Math.min(72, lookAheadX));
-      targetY = player.y + Math.max(-52, Math.min(52, lookAheadY));
+      const lookAheadX = (input.mouseWorldX - player.x) * 0.1;
+      const lookAheadY = (input.mouseWorldY - player.y) * 0.1;
+      targetX = player.x + Math.max(-84, Math.min(84, lookAheadX));
+      targetY = player.y + Math.max(-60, Math.min(60, lookAheadY));
     }
 
-    const smooth = 1 - Math.exp(-8.5 * dt);
+    const smooth = 1 - Math.exp(-(game.titleOpen ? 2.4 : 8.5) * dt);
     camera.x += (targetX - camera.x) * smooth;
     camera.y += (targetY - camera.y) * smooth;
-    camera.zoom += (camera.targetZoom - camera.zoom) * (1 - Math.exp(-7 * dt));
+    camera.zoom += (camera.targetZoom - camera.zoom) * (1 - Math.exp(-(game.titleOpen ? 3.5 : 7) * dt));
     camera.shake *= Math.exp(-16 * dt);
   }
 
-  // 启动
+  // 轻量级真机异常诊断浮层（仅在出现未捕获 JS 异常时显现，正常运行时完全零存在感）
+  (function installErrorDiag() {
+    let diagEl = null;
+    const showDiag = (msg) => {
+      try {
+        if (!diagEl) {
+          diagEl = document.createElement('div');
+          diagEl.style.cssText =
+            'position:fixed;left:8px;right:8px;top:8px;z-index:99999;background:rgba(168,36,28,0.94);color:#fff;' +
+            'font:600 11.5px/1.4 monospace;padding:8px 10px;border-radius:10px;border:2px solid #ffd8c2;' +
+            'max-height:38vh;overflow:auto;word-break:break-all;pointer-events:auto;';
+          diagEl.addEventListener('click', () => {
+            if (diagEl && diagEl.parentNode) diagEl.parentNode.removeChild(diagEl);
+            diagEl = null;
+          });
+          document.body.appendChild(diagEl);
+        }
+        const row = document.createElement('div');
+        row.textContent = `[Diag] ${String(msg).slice(0, 260)}`;
+        diagEl.appendChild(row);
+      } catch (_) {}
+    };
+    window.addEventListener('error', (e) => {
+      showDiag(`${e.message || 'Error'} @ ${e.lineno || 0}:${e.colno || 0}`);
+    });
+    window.addEventListener('unhandledrejection', (e) => {
+      const r = e && e.reason;
+      showDiag(`Promise: ${(r && r.message) || r || 'Rejected'}`);
+    });
+  })();
+
+  // 启动：以实时漂浮的第 1 关「晨露荷塘」为背景进入手绘开场标题页
   resize();
   window.addEventListener('resize', resize);
+  window.addEventListener('orientationchange', () => setTimeout(resize, 120));
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', resize);
+  }
+
+  // TapTap / iOS / Android WebView 前后台生命周期管理：切后台自动静音并暂停对局
+  const handleAppHide = () => {
+    game.appPaused = true;
+    clearAllHeldInputs();
+    if (game.run.phase === 'playing' && !game.titleOpen && !game.introActive && !game.hubOpen && !game.paused) {
+      setGamePaused(true, true);
+    }
+    if (CB.audio && CB.audio.suspendAudio) CB.audio.suspendAudio();
+  };
+  const handleAppShow = () => {
+    game.appPaused = false;
+    lastTime = performance.now();
+    if (CB.audio && CB.audio.resumeAudio) CB.audio.resumeAudio();
+    resize();
+  };
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) handleAppHide();
+    else handleAppShow();
+  });
+  window.addEventListener('pagehide', handleAppHide);
+  window.addEventListener('pageshow', handleAppShow);
   initRenderer(ctx);
   setupUI();
-  buildNewMap();
+  startStage(1, { keepCurios: false, stayOnTitle: true });
+  if (game.map) {
+    game.camera.x = game.map.bounds.cx;
+    game.camera.y = game.map.bounds.cy;
+    game.camera.zoom = 0.72;
+  }
+  if (game.meta.autoPlayIntro !== false) {
+    playOpeningCutscene();
+  } else {
+    game.introActive = false;
+    game.titleOpen = true;
+    syncChromeVisibility();
+  }
 
-  let lastTime = performance.now();
+  lastTime = performance.now();
   function loop(now) {
-    const dt = Math.min((now - lastTime) / 1000, 0.05);
-    lastTime = now;
-    game.time += dt;
+    if (game.appPaused || document.hidden) {
+      lastTime = now;
+      requestAnimationFrame(loop);
+      return;
+    }
 
+    const rawDt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+
+    if (game.hitStop > 0) {
+      game.hitStop = Math.max(0, game.hitStop - rawDt);
+      game.camera.shake *= Math.exp(-16 * rawDt);
+      renderWorld(ctx);
+      if (!game.titleOpen) renderMinimap(mctx, miniCanvas);
+      requestAnimationFrame(loop);
+      return;
+    }
+
+    if (game.paused && !game.titleOpen && !game.introActive) {
+      renderWorld(ctx);
+      renderMinimap(mctx, miniCanvas);
+      requestAnimationFrame(loop);
+      return;
+    }
+
+    game.time += rawDt;
     syncMouseWorld();
-    updatePlayer(dt);
-    updateEffects(dt);
-    updateCamera(dt);
+
+    if (game.introActive && isIntroActive()) {
+      if (!game.portraitBlocked) {
+        updateIntro(rawDt);
+      }
+      if (introProgressFillEl) {
+        introProgressFillEl.style.width = `${(getIntroProgress() * 100).toFixed(1)}%`;
+      }
+      updateEffects(rawDt);
+      // 过场动画期间让镜头在背后预热巡航，确保末尾淡出无缝衔接到实时云海浮岛！
+      const prevTitle = game.titleOpen;
+      game.titleOpen = true;
+      updateCamera(rawDt);
+      renderWorld(ctx);
+      game.titleOpen = prevTitle;
+      renderIntro(ctx, game.viewW, game.viewH);
+      requestAnimationFrame(loop);
+      return;
+    }
+
+    if (game.run.phase === 'playing' && !game.hubOpen && !game.titleOpen && !game.portraitBlocked) {
+      updatePlayer(rawDt);
+      updateCombat(rawDt);
+      updateGuards(rawDt);
+      updateExtractionLoop(rawDt);
+    }
+
+    updateEffects(rawDt);
+    updateCamera(rawDt);
+
+    if (!game.titleOpen) {
+      updateCombatHud(hudEls);
+      if (game.touchActive) {
+        const shouldShowTouch = !game.hubOpen && !game.portraitBlocked && game.run.phase === 'playing';
+        if (touchControlsEl) touchControlsEl.classList.toggle('hidden', !shouldShowTouch);
+        if (shouldShowTouch) updateTouchHud(touchEls);
+      } else if (pcHintBarEl) {
+        const shouldShowPc = !game.hubOpen && game.run.phase === 'playing';
+        pcHintBarEl.classList.toggle('hud-hidden', !shouldShowPc);
+      }
+      syncStageUI();
+    }
+
     renderWorld(ctx);
-    renderMinimap(mctx, miniCanvas);
+    if (!game.titleOpen) renderMinimap(mctx, miniCanvas);
 
     requestAnimationFrame(loop);
   }

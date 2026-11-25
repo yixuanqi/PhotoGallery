@@ -4,6 +4,13 @@
   const INK = '#3b2b23';
 
   function drawMochiPlayer(ctx, p, time, variant = 'explorer', offsetX = 0, offsetY = 0) {
+    const blinkHide = p.invulnTimer > 0 && Math.floor(time * 22) % 2 === 0;
+    const stealthFade = !!p.inPollen;
+    const needAlphaWrap = blinkHide || stealthFade;
+    if (needAlphaWrap) {
+      ctx.save();
+      ctx.globalAlpha = blinkHide ? 0.42 : 0.56;
+    }
     const px = p.x + offsetX;
     const py = p.y + offsetY;
     const breathe = Math.sin(time * 3.8) * 0.032;
@@ -13,6 +20,15 @@
 
     const shadowScale = 1 - liftY * 0.022;
     drawSoftShadow(ctx, px, py + 4, 22 * shadowScale, 9.5 * shadowScale, 0.22);
+    if (p.onDewSlide && Math.hypot(p.vx, p.vy) > 65) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(116, 234, 255, 0.85)';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.ellipse(px, py + 4, 24, 10.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     drawTailAccessory(ctx, p, offsetX, offsetY, variant, time);
     drawVariantBag(ctx, p, px, py, liftY, variant, time);
@@ -34,6 +50,25 @@
     ctx.restore();
 
     drawMiniBlaster(ctx, p, px, py, liftY, variant);
+    if (needAlphaWrap) ctx.restore();
+    if (stealthFade) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(245, 198, 42, 0.85)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.ellipse(px, py + 2, 23, 11, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font = '700 11px "PingFang SC", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.strokeStyle = 'rgba(255, 253, 246, 0.92)';
+      ctx.lineWidth = 3;
+      ctx.strokeText('🌼 隐身', px, py - 52 - liftY);
+      ctx.fillStyle = '#c48612';
+      ctx.fillText('🌼 隐身', px, py - 52 - liftY);
+      ctx.restore();
+    }
   }
 
   // 主角方案 A：护目镜冒险团
@@ -468,7 +503,16 @@
       ctx.stroke();
     }
 
-    if (p.lootCount >= 4) {
+    const hasGrand = CB.game && CB.game.run && CB.game.run.hasGrandCurio;
+    if (hasGrand) {
+      const pulse = 0.72 + 0.28 * Math.sin(time * 9);
+      ctx.strokeStyle = `rgba(255, 206, 56, ${pulse})`;
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.arc(0, 1, r + 4, 0, Math.PI * 2);
+      ctx.stroke();
+      drawMiniStar(ctx, 0, -r - 5, 5.2, '#ffd642');
+    } else if (p.lootCount >= 4) {
       const sparkle = 0.65 + 0.35 * Math.sin(time * 8);
       ctx.fillStyle = `rgba(255, 220, 96, ${sparkle})`;
       ctx.beginPath();
@@ -665,7 +709,10 @@
   }
 
   function drawMiniBlaster(ctx, p, px, py, liftY, variant) {
-    const recoilOffset = p.recoil * 5.5;
+    const charging = !!p.charging;
+    const ratio = charging ? (p.chargeRatio || 0) : 0;
+    const isHeavy = charging && p.chargeTime >= (p.effectiveTapThreshold || 0.20);
+    const recoilOffset = p.recoil * 5.8 + (charging ? 1.5 + ratio * 3.5 : 0);
     const handDist = 23 - recoilOffset;
     const hx = px + Math.cos(p.aimAngle) * handDist;
     const hy = py - 12 - liftY + Math.sin(p.aimAngle) * (handDist * 0.72);
@@ -675,6 +722,7 @@
     ctx.rotate(p.aimAngle);
     if (Math.cos(p.aimAngle) < 0) ctx.scale(1, -1);
 
+    // 软萌小手
     ctx.fillStyle = variant === 'porcelain' ? '#f5f9fc' : '#fff5e2';
     ctx.strokeStyle = variant === 'porcelain' ? '#26344a' : INK;
     ctx.lineWidth = 2.1;
@@ -683,25 +731,67 @@
     ctx.fill();
     ctx.stroke();
 
+    // 唯一核心标志性工具：星露弹射器（温润黄铜/青花筒身 + 晶莹星露蓄力核心）
     ctx.fillStyle = variant === 'porcelain' ? '#4d7fb3' : '#dca952';
     ctx.beginPath();
-    ctx.roundRect(-2, -4.5, 15, 8, 3);
+    ctx.roundRect(-2, -4.5, 16, 8.2, 3.2);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = '#f5ce74';
+    // 前端花瓣状星露收束口
+    ctx.fillStyle = isHeavy ? '#ffe270' : '#7ad6eb';
     ctx.beginPath();
-    ctx.roundRect(11, -6, 4.6, 11, 2);
+    ctx.roundRect(12, -5.8, 5.2, 10.8, 2.4);
     ctx.fill();
     ctx.stroke();
 
-    if (p.recoil > 0.55) {
+    // 筒身中央蓄力晶石（随蓄力从清透天蓝渐变为耀眼日光金）
+    ctx.fillStyle = isHeavy ? (ratio >= 0.9 ? '#fff6a6' : '#ffd24d') : '#9cebf7';
+    ctx.beginPath();
+    ctx.arc(5.5, -0.4, 2.6 + ratio * 1.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 蓄力过程枪口聚能星光 + 环形进度弧
+    if (charging && p.chargeTime >= 0.08) {
+      const orbR = 3.2 + ratio * 5.2;
+      const g = ctx.createRadialGradient(21, -0.4, 1, 21, -0.4, orbR * 2.1);
+      g.addColorStop(0, ratio >= 0.9 ? 'rgba(255, 248, 168, 0.95)' : (isHeavy ? 'rgba(255, 218, 92, 0.85)' : 'rgba(116, 232, 248, 0.72)'));
+      g.addColorStop(1, 'rgba(255, 218, 92, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(21, -0.4, orbR * 2.1, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = isHeavy ? '#fff5b8' : '#d6f8ff';
+      ctx.beginPath();
+      ctx.arc(21, -0.4, orbR * 0.65, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (p.recoil > 0.42) {
       ctx.fillStyle = '#ffe585';
       ctx.beginPath();
-      ctx.arc(19, -0.5, 4.5 * p.recoil, 0, Math.PI * 2);
+      ctx.arc(21, -0.4, 4.8 * Math.min(1.2, p.recoil), 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();
+
+    // 角色脚下极轻巧的弧形蓄力进度环（不遮挡画面，余光即可精准把握满蓄力节奏）
+    if (charging && p.chargeTime >= 0.12) {
+      const progress = Math.min(1, p.chargeTime / (p.effectiveMaxCharge || 0.64));
+      ctx.save();
+      ctx.strokeStyle = 'rgba(46, 74, 82, 0.22)';
+      ctx.lineWidth = 3.2;
+      ctx.beginPath();
+      ctx.arc(px, py - 14 - liftY, 27, -Math.PI * 0.85, -Math.PI * 0.15);
+      ctx.stroke();
+
+      ctx.strokeStyle = ratio >= 0.9 ? '#ffcf33' : (isHeavy ? '#f29f24' : '#4ec9de');
+      ctx.lineWidth = 3.4;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(px, py - 14 - liftY, 27, -Math.PI * 0.85, -Math.PI * 0.85 + Math.PI * 0.7 * progress);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   CB.drawPlayer = { drawMochiPlayer };

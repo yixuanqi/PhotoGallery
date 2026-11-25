@@ -2,56 +2,426 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>微缩博物箱 - Step 2 随机拓扑地图引擎</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>云海空中花房 · Curio Box</title>
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
   <canvas id="gameCanvas"></canvas>
 
-  <!-- 顶部标题与当前地图拓扑指标 -->
-  <div class="hud-top">
-    <div class="pill title-pill">Step 2 · 随机拓扑地图引擎</div>
-    <div class="pill stats-pill" id="mapStats">生成中...</div>
+  <!-- 顶部极简水彩 HUD（标题页自动隐藏） -->
+  <div id="hudTop" class="hud-top hud-hidden">
+    <div class="pill objective-pill" id="objectiveBanner">第 1 关 · 晨露荷塘 · 搜寻 ☀ 金库</div>
+    <div class="pill combat-pill">
+      <span class="hp-wrap">
+        <i class="hp-icon">♥</i>
+        <span class="hp-bar"><span id="hpFill" class="hp-fill"></span></span>
+        <strong id="hpText">100</strong>
+      </span>
+      <span class="divider"></span>
+      <span class="metric" title="本关金币">🪙 <strong id="coinCount">10</strong></span>
+      <span class="divider"></span>
+      <span class="metric stunt-metric" title="本关物理特技赏金（崖杀/连撞/台球/星轨，计入撤离估值）">✨ <strong id="stuntValue">0</strong></span>
+      <span class="divider"></span>
+      <span class="metric haul-metric" title="本关战利品总估值（含特技赏金与关卡倍率）">💎 <strong id="haulValue">20</strong></span>
+      <span class="divider"></span>
+      <span class="metric bank-metric" title="飞艇母港累计金库资产">🏛 <strong id="bankValue">0</strong></span>
+      <span class="divider"></span>
+      <span class="metric" title="浮岛剩余守卫">⚙ <strong id="guardCount">0</strong></span>
+    </div>
+    <div class="pill curio-tray" id="curioTray">
+      <span class="curio-empty">构筑栏空 · 启封花匣装填词条</span>
+    </div>
+    <button id="btnOpenHub" class="pill hub-btn" title="打开飞艇母港：消耗金库资产永久升级、装填出发奇物、解锁皮肤 (H)">⚓ 母港<span id="hubBadge" class="hub-badge hidden"></span></button>
+    <button id="btnOpenCodex" class="pill hub-btn codex-btn" title="打开奇物与守卫双图鉴 (B)">📖 图鉴</button>
+    <button id="btnPauseGame" class="pill hub-btn pause-btn" title="暂停游戏 (Esc / P)">⏸ 暂停</button>
   </div>
 
-  <!-- 右上角不规则拓扑小地图 -->
-  <div class="minimap-wrap">
-    <canvas id="minimapCanvas" width="210" height="210"></canvas>
+  <!-- 右上角浮岛拓扑云图 + 极简折叠工具栏 -->
+  <div id="minimapWrap" class="minimap-wrap hud-hidden">
+    <canvas id="minimapCanvas" width="210" height="210" title="点击小地图快速切换全图俯瞰 (M)"></canvas>
     <div class="minimap-legend">
-      <span><i class="dot dot-spawn"></i>出生</span>
-      <span><i class="dot dot-vault"></i>金库</span>
-      <span><i class="dot dot-extract"></i>撤离</span>
-      <span><i class="dot dot-atrium"></i>中庭</span>
+      <span><i class="dot dot-spawn"></i>登船</span>
+      <span><i class="dot dot-vault"></i>花穹</span>
+      <span><i class="dot dot-extract"></i>气球</span>
+      <span><i class="dot dot-guard"></i>守卫</span>
+    </div>
+    <div class="minimap-tools">
+      <button id="btnOverview" class="mini-tool-btn" title="切换全图俯瞰 (M)">🗺 全图</button>
+      <button id="btnAudio" class="mini-tool-btn active" title="静音 / 开启音效与环境音景 (V)">🔊 音效</button>
+      <button id="btnMenuToggle" class="mini-tool-btn menu-gear-btn" title="关卡切换与设置抽屉">⚙ 菜单</button>
+    </div>
+
+    <!-- 折叠设置与关卡抽屉 -->
+    <div id="quickDrawer" class="quick-drawer hidden">
+      <div class="drawer-head">
+        <span id="mapStats" class="drawer-stats">第 1 关 · 晨露荷塘</span>
+        <button id="btnCloseDrawer" class="drawer-close" title="收起">✕</button>
+      </div>
+
+      <div class="drawer-label">自由选关</div>
+      <div class="drawer-grid stage-group">
+        <button data-stage="1" class="active" title="第 1 关：低摩擦露水滑道 + 台球木箱连撞">1 晨露荷塘</button>
+        <button data-stage="2" title="第 2 关：深蓝星夜天文台 · 占星光盾偶需星轨弯道/棱镜破膜">2 星象天文</button>
+        <button data-stage="3" title="第 3 关：暮光翡翠雾林 · 警哨眼缩壳抗直，需花粉隐身/风铃绝杀">3 暮光古藤</button>
+        <button data-stage="4" title="第 4 关：金粉落日花穹 · 融合全三关主题怪与花穹守卫巨像">4 落日花穹</button>
+      </div>
+
+      <div class="drawer-label">探险家外观</div>
+      <div class="drawer-skin-row">
+        <button data-variant="explorer" class="active">A</button>
+        <button data-variant="porcelain">B</button>
+        <button data-variant="sprout">C</button>
+      </div>
+
+      <div class="drawer-label">设置与工具</div>
+      <div class="drawer-actions">
+        <button id="btnRegen" class="primary-btn">🔄 重开本关</button>
+        <button id="btnTouchMode">💻 布局: 自动</button>
+        <button id="btnFullscreen">⛶ 全屏显示</button>
+        <button id="btnBackTitle">🏠 返回标题</button>
+        <button id="btnResetSave" class="drawer-full-row danger-btn">🗑 重置本地存档</button>
+      </div>
+
+      <div class="drawer-hint">轻点静音 · 按住蓄力重弹 · E 交互 · 空格冲刺 · H 母港 · B 图鉴</div>
     </div>
   </div>
 
-  <!-- 底部操作与地图验证栏 -->
-  <div class="hud-bottom">
-    <div class="pill test-group">
-      <button id="btnRegen" class="primary-btn">R 重随地图</button>
-      <button id="btnOverview">M 全图总览</button>
-      <button id="btnFog" class="active">F 羊皮纸迷雾: 开</button>
+  <!-- PC 端专属极简底部键鼠提示条（仅在 PC 布局显示，移动端自动隐藏） -->
+  <div id="pcHintBar" class="pc-hint-bar hud-hidden">
+    <span><kbd>WASD</kbd> 移动</span>
+    <i>·</i>
+    <span><b>左键</b> 轻点静音 / 按住蓄力重弹</span>
+    <i>·</i>
+    <span><kbd>空格</kbd>/<kbd>右键</kbd> 冲刺</span>
+    <i>·</i>
+    <span><kbd>E</kbd> 交互</span>
+    <i>·</i>
+    <span><kbd>H</kbd> 母港</span>
+    <i>·</i>
+    <span><kbd>B</kbd> 图鉴</span>
+    <i>·</i>
+    <span><kbd>M</kbd> 全图</span>
+    <i>·</i>
+    <span><kbd>Esc</kbd> 暂停</span>
+  </div>
+
+  <!-- 移动端横屏双虚拟摇杆与触控浮钮（仅在移动端布局显示，PC 端完全隐藏） -->
+  <div id="touchControls" class="touch-controls hidden">
+    <div id="touchMovePad" class="touch-move-pad" aria-label="左半屏浮空移动区">
+      <div id="touchMoveZone" class="touch-stick touch-move-zone" aria-label="移动摇杆">
+        <div class="touch-stick-ring"></div>
+        <div id="touchMoveKnob" class="touch-stick-knob">✦</div>
+        <span class="touch-stick-label">左半屏移动</span>
+      </div>
     </div>
 
-    <div class="pill test-group">
-      <span class="label">角色皮肤</span>
-      <button data-variant="explorer" class="active">A 主角</button>
-      <button data-variant="porcelain">B 预留</button>
-      <button data-variant="sprout">C 预留</button>
+    <div class="touch-right-cluster">
+      <div id="touchCancelZone" class="touch-cancel-zone" aria-label="滑入取消蓄力">
+        <span class="tc-icon">✕</span>
+        <small>取消</small>
+      </div>
+      <button id="touchInteractBtn" class="touch-action-btn touch-interact-btn" aria-label="交互">
+        <span class="ta-icon" id="touchInteractIcon">E</span>
+        <small id="touchInteractLabel">交互</small>
+      </button>
+      <button id="touchDashBtn" class="touch-action-btn touch-dash-btn" aria-label="冲刺">
+        <span class="ta-icon">💨</span>
+        <small>冲刺</small>
+      </button>
+      <div id="touchAimZone" class="touch-stick touch-aim-zone" aria-label="瞄准与蓄力发射">
+        <div id="touchAimRing" class="touch-stick-ring touch-aim-ring"></div>
+        <div id="touchAimKnob" class="touch-stick-knob touch-aim-knob">🎯</div>
+        <span class="touch-stick-label" id="touchAimLabel">点射 / 拖拽蓄力</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 开场 10 秒手绘水彩过场动画控制层 -->
+  <div id="introOverlay" class="intro-overlay hidden">
+    <div class="intro-top-bar">
+      <span class="intro-tag">☁ CURIO BOX · 开场序幕</span>
+      <button id="btnSkipIntro" class="intro-skip-btn" title="跳过开场动画 (Space / Esc)">跳过 ⏭</button>
+    </div>
+    <div class="intro-progress-track">
+      <div id="introProgressFill" class="intro-progress-fill"></div>
+    </div>
+  </div>
+
+  <!-- 动态浮岛背景 · 手绘水彩初始化主菜单 -->
+  <div id="titleOverlay" class="title-overlay hidden">
+    <!-- 顶部栏：左侧存档概览 + 右侧快捷功能与适龄提示 -->
+    <div class="title-top-bar">
+      <div class="title-profile-pill">
+        <span>🏛 金库 <strong id="titleBankVal">0</strong></span>
+        <i>·</i>
+        <span>✓ <strong id="titleClearVal">0/4</strong></span>
+        <i>·</i>
+        <span>💎 <strong id="titleCurioVal">0/14</strong></span>
+        <i>·</i>
+        <span>⚙ <strong id="titleGuardVal">0/10</strong></span>
+      </div>
+      <div class="title-util-bar">
+        <button id="btnReplayIntro" class="title-util-btn" title="重播 10 秒水彩开场动画">🎬 片头</button>
+        <button id="btnTitleAudio" class="title-util-btn" title="音效开关 (V)">🔊</button>
+        <button id="btnTitleFullscreen" class="title-util-btn" title="全屏显示">⛶</button>
+        <button id="btnAgeBadge" class="age-badge" title="点击查看适龄提示说明" aria-label="适龄提示 8+">
+          <span class="age-num">8+</span>
+          <span class="age-txt">适龄提示</span>
+        </button>
+      </div>
     </div>
 
-    <div class="pill hint-pill">WASD 跑图 · 空格/右键 冲刺 · M 缩放到俯瞰全图 · R 连续验证约束</div>
+    <div class="title-card">
+      <div class="title-crest">☁ CURIO BOX · 水彩物理撤离花房</div>
+      <h1 class="title-main">云海空中花房</h1>
+      <p id="titleTagline" class="title-tagline">第 1 关 · 晨露荷塘 · 高摩擦苔石 vs 冰镜滑道 · 砸盾台球</p>
+
+      <div class="title-stage-pills" id="titleStagePills">
+        <button data-title-stage="1" class="active">1 晨露荷塘</button>
+        <button data-title-stage="2">2 星象天文</button>
+        <button data-title-stage="3">3 暮光古藤</button>
+        <button data-title-stage="4">4 落日花穹</button>
+      </div>
+
+      <div id="titleLoadoutBanner" class="title-loadout-banner hidden"></div>
+
+      <div class="title-actions">
+        <button id="btnTitleStart" class="title-btn-play">🎈 开始冒险 · 第 1 关</button>
+        <div class="title-sub-actions">
+          <button id="btnTitleHub" class="title-btn-sub">⚓ 飞艇母港<span id="titleHubBadge" class="hub-badge hidden"></span></button>
+          <button id="btnTitleCodex" class="title-btn-sub">📖 博物图鉴</button>
+          <button id="btnTitleSettings" class="title-btn-sub">⚙ 游戏设置</button>
+        </div>
+      </div>
+
+      <div id="titleControlsMini" class="title-controls-mini">
+        WASD 移动 · 左键轻点静音 / 按住蓄力重弹 · 空格冲刺 · E 交互与热气球升空
+      </div>
+    </div>
+
+    <div class="health-notice">
+      抵制不良游戏，拒绝盗版游戏。注意自我保护，谨防受骗上当。适度游戏益脑，沉迷游戏伤身。合理安排时间，享受健康生活。
+    </div>
+  </div>
+
+  <!-- 初始化菜单 · 游戏设置弹窗 -->
+  <div id="settingsModal" class="run-modal settings-modal hidden">
+    <div class="settings-card">
+      <div class="settings-head">
+        <h3>⚙ 初始化设置</h3>
+        <button id="btnCloseSettings" class="hub-close-btn" title="关闭 (Esc)">✕</button>
+      </div>
+
+      <div class="settings-list">
+        <div class="settings-row">
+          <div class="settings-info">
+            <strong>🔊 音效与环境音景</strong>
+            <small>合成物理打击音效与四关专属环境微风</small>
+          </div>
+          <button id="btnSetAudio" class="settings-toggle active">开启</button>
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-info">
+            <strong>🎮 操作布局模式</strong>
+            <small>PC 键鼠与移动端双摇杆智能分离</small>
+          </div>
+          <button id="btnSetLayout" class="settings-toggle">自动(PC)</button>
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-info">
+            <strong>🎬 启动自动播放开场动画</strong>
+            <small>每次打开游戏时播放 10 秒水彩序幕</small>
+          </div>
+          <button id="btnSetAutoIntro" class="settings-toggle active">开启</button>
+        </div>
+      </div>
+
+      <div class="settings-actions">
+        <button id="btnSetReplayIntro" class="btn-sub">🎬 立即重播开场动画</button>
+        <button id="btnSetResetSave" class="danger-btn">🗑 重置本地存档</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 适龄提示说明弹窗 -->
+  <div id="ageModal" class="run-modal age-modal hidden">
+    <div class="age-card">
+      <div class="age-card-head">
+        <span class="age-pill">CADPA 8+ 适龄提示</span>
+        <button id="btnCloseAge" class="hub-close-btn" title="关闭">✕</button>
+      </div>
+      <ol class="age-list">
+        <li>本游戏是一款手绘水彩风格的轻量级物理弹射与探索撤离单机游戏，适用于年满 8 周岁及以上的用户，建议未成年人在家长监护下使用游戏产品。</li>
+        <li>本游戏采用明快卡通美术风格，核心玩法为利用摩擦滑道、星轨引力、折射棱镜与台球弹射等物理机制闯关探索，不含血腥、暴力、恐怖及不良诱导内容。</li>
+        <li>本游戏为纯离线单机体验，不设陌生人社交聊天系统，不涉及任何游戏内付费充值或抽奖消费，进度仅保存在本机浏览器本地存储中。</li>
+      </ol>
+      <button id="btnConfirmAge" class="btn-main age-ok-btn">我知道了</button>
+    </div>
+  </div>
+
+
+  <!-- 局内游戏暂停菜单（支持 Esc / P 与触控一键暂停） -->
+  <div id="pauseModal" class="run-modal pause-modal hidden">
+    <div class="pause-card">
+      <div class="pause-header">
+        <div class="pause-title-wrap">
+          <span class="pause-badge">⏸ PAUSED</span>
+          <h2>游戏已暂停</h2>
+        </div>
+        <span id="pauseStageBadge" class="pause-stage-pill">第 1 关 · 晨露荷塘</span>
+      </div>
+
+      <div class="pause-stats">
+        <div><span>♥ 当前生命</span><strong id="pauseHp">100/100</strong></div>
+        <div><span>💎 本关估值</span><strong id="pauseHaul">0</strong></div>
+        <div><span>⚙ 剩余守卫</span><strong id="pauseGuards">0</strong></div>
+        <div><span>⏱ 探索耗时</span><strong id="pauseTime">0:00</strong></div>
+      </div>
+
+      <div class="pause-quick-row">
+        <button id="btnPauseAudio" class="pause-toggle active">🔊 音效: 开</button>
+        <button id="btnPauseLayout" class="pause-toggle">💻 布局: 自动</button>
+        <button id="btnPauseFullscreen" class="pause-toggle">⛶ 全屏</button>
+      </div>
+
+      <div class="pause-actions">
+        <button id="btnPauseResume" class="btn-main pause-primary-btn">▶ 继续游戏 (Esc)</button>
+        <div class="pause-sub-grid">
+          <button id="btnPauseHub" class="btn-hub">⚓ 飞艇母港</button>
+          <button id="btnPauseCodex" class="btn-sub">📖 博物图鉴</button>
+          <button id="btnPauseRestart" class="btn-sub">🔄 重开本关</button>
+          <button id="btnPauseTitle" class="btn-sub">🏠 返回主菜单</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 单关撤离 / 失败水彩航海日志结算卡 -->
+  <div id="runModal" class="run-modal hidden">
+    <div class="summary-card">
+      <div class="summary-header">
+        <div class="summary-stamp" id="summaryStamp">S</div>
+        <div class="summary-titles">
+          <h2 id="summaryTitle">乘热气球安全返航！</h2>
+          <p id="summarySub">战利品已安全运回飞艇母港</p>
+        </div>
+      </div>
+
+      <div class="summary-ledger">
+        <div class="ledger-box">
+          <span>本关战利品估值</span>
+          <strong id="summaryHaul">+0</strong>
+        </div>
+        <div class="ledger-box ledger-bank">
+          <span>飞艇母港金库资产</span>
+          <strong id="summaryBank">0</strong>
+        </div>
+      </div>
+
+      <div class="summary-section-label">当前携带物理构筑奇物</div>
+      <div class="summary-curios" id="summaryCurios"></div>
+
+      <div class="summary-stats" id="summaryStats"></div>
+
+      <div class="summary-actions">
+        <button id="btnNextRun" class="btn-main">前往下一关 (Enter)</button>
+        <button id="btnSummaryHub" class="btn-hub">⚓ 飞艇母港 (H)</button>
+        <button id="btnRetrySeed" class="btn-sub">重玩本关 (R)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 飞艇母港整备 & 图标化双图鉴面板 -->
+  <div id="hubModal" class="run-modal hub-modal hidden">
+    <div class="hub-card">
+      <div class="hub-header">
+        <div class="hub-tabs">
+          <button class="hub-tab active" data-hub-tab="workshop">⚓ 飞艇母港</button>
+          <button class="hub-tab" data-hub-tab="curios">💎 奇物图鉴 <small id="codexCurioCount">0/14</small></button>
+          <button class="hub-tab" data-hub-tab="guards">⚙ 守卫图鉴 <small id="codexGuardCount">0/10</small></button>
+        </div>
+        <div class="hub-header-right">
+          <span class="hub-bank-pill" title="飞艇母港可用金库资产">🏛 <strong id="hubBankVal">0</strong></span>
+          <button id="btnCloseHub" class="hub-close-btn" title="关闭 (Esc)">✕</button>
+        </div>
+      </div>
+
+      <div class="hub-body">
+        <!-- Tab 1: 飞艇母港（工坊强化 + 出发补给舱 + 外观衣橱） -->
+        <div id="hubPaneWorkshop" class="hub-pane">
+          <div class="hub-section-head">
+            <span>⚙ 发条工坊 · 永久强化</span>
+            <small>消耗 🏛 金库资产永久生效</small>
+          </div>
+          <div id="hubUpgradesGrid" class="hub-upgrades-grid"></div>
+
+          <div class="hub-section-head">
+            <span>📦 出发奇物补给舱</span>
+            <small id="hubSupplyHint">装填 1 件已解锁常规奇物 · 45 🏛（点击可退款取消）</small>
+          </div>
+          <div id="hubSupplyGrid" class="hub-supply-grid"></div>
+
+          <div class="hub-section-head">
+            <span>🎀 探险家外观衣橱</span>
+            <small>通关指定关卡自动免费解锁，或用金库提前解锁</small>
+          </div>
+          <div id="hubSkinsGrid" class="hub-skins-grid"></div>
+        </div>
+
+        <!-- Tab 2: 图标化奇物图鉴 -->
+        <div id="hubPaneCurios" class="hub-pane hidden">
+          <div id="codexCurioGrid" class="codex-curio-grid"></div>
+          <div id="codexCurioDetail" class="codex-detail-bar">
+            点击上方已解锁奇物查看完整物理词条与估值
+          </div>
+        </div>
+
+        <!-- Tab 3: 图标化守卫图鉴 -->
+        <div id="hubPaneGuards" class="hub-pane hidden">
+          <div id="codexGuardGrid" class="codex-guard-grid"></div>
+        </div>
+      </div>
+
+      <div class="hub-footer">
+        <span id="hubStatusText" class="hub-status-text">撤离带回的 🏛 资产可在此永久强化或装填出发奇物</span>
+        <div class="hub-footer-actions">
+          <button id="btnHubLaunch" class="btn-main">🎈 携装启航本关</button>
+          <button id="btnHubResume" class="btn-sub">返回浮岛 (Esc)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 移动端竖屏轻量水彩横屏引导遮罩（可一键忽略继续试玩） -->
+  <div id="portraitOverlay" class="portrait-overlay hidden">
+    <div class="portrait-card">
+      <div class="portrait-phone-anim" aria-hidden="true">📱</div>
+      <h3>请横屏探索云海浮岛</h3>
+      <p>横屏可获得完整视野与左右双摇杆最佳手感</p>
+      <button id="btnDismissPortrait" class="portrait-dismiss-btn">暂不横屏，继续试玩</button>
+    </div>
   </div>
 
   <!-- 免本地服务器，双击 index.html 直接运行 -->
   <script src="./src/core/state.js"></script>
+  <script src="./src/world/stages.js"></script>
+  <script src="./src/audio/synth.js"></script>
   <script src="./src/core/input.js"></script>
   <script src="./src/world/roomTemplates.js"></script>
   <script src="./src/world/mapGen.js"></script>
+  <script src="./src/systems/combat.js"></script>
+  <script src="./src/systems/extraction.js"></script>
   <script src="./src/entities/player.js"></script>
+  <script src="./src/entities/guards.js"></script>
   <script src="./src/render/brush.js"></script>
   <script src="./src/render/drawPlayer.js"></script>
+  <script src="./src/render/intro.js"></script>
   <script src="./src/render/renderer.js"></script>
   <script src="./src/render/ui.js"></script>
   <script src="./src/main.js"></script>
