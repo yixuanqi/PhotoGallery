@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": 12,
+  "catalogVersion": 13,
   "repository": "yixuanqi/PhotoGallery",
   "baseUrl": "https://yixuanqi.github.io/PhotoGallery/",
-  "updatedAt": "2026-11-25",
+  "updatedAt": "2026-11-26",
   "projects": [
     {
       "id": "galaxy",
@@ -834,6 +834,53 @@
           30
         ],
         "radius": 1.65
+      }
+    },
+    {
+      "id": "moon-tide-boat",
+      "name": "月潮孤舟",
+      "nameEn": "Moon Tide Skiff",
+      "kind": "interactive-web",
+      "category": "game",
+      "status": "development",
+      "summary": "月亮越来越近，驾驶挂灯小船在月海乘浪，打捞人类推月实验的残骸，组装推进、浮空、共振与灯火挂件，探索潮汐光柱与终章。",
+      "tags": [
+        "Canvas 2D",
+        "海洋探索",
+        "打捞组装",
+        "移动端触控"
+      ],
+      "techStack": [
+        "HTML5 Canvas",
+        "JavaScript",
+        "Web Audio"
+      ],
+      "primaryUrl": "https://yixuanqi.github.io/PhotoGallery/moon-tide-boat/",
+      "primaryAction": "解缆出海",
+      "repositoryUrl": "https://github.com/yixuanqi/PhotoGallery",
+      "sourcePath": "docs/moon-tide-boat/index.html",
+      "sortOrder": 16,
+      "galaxy": {
+        "icon": "🌙",
+        "category": "online",
+        "description": "月亮越来越近，驾驶挂灯小船在月海乘浪，打捞人类推月实验的残骸，组装推进、浮空、共振与灯火挂件，探索潮汐光柱与终章。",
+        "note": "V1 原型，支持键鼠与触屏，建议开启声音。",
+        "linkText": "↗ 解缆出海",
+        "sourceUrl": null,
+        "palette": [
+          "#294B70",
+          "#AACCE5",
+          "#16243F"
+        ],
+        "atmo": "#A4C7F5",
+        "ring": "#E8D7B5",
+        "style": "wave",
+        "position": [
+          24,
+          3,
+          35
+        ],
+        "radius": 2.1
       }
     }
   ]

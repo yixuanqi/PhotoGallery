@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>月潮孤舟 · Moon Tide Skiff</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <canvas id="game-canvas"></canvas>
+
+  <!-- 顶部极简状态：仅保留组装徽标与声音开关 -->
+  <header id="hud-top" class="hud-top hidden">
+    <div id="parts-bar" class="parts-bar" aria-label="船体挂件">
+      <div class="part-pill" data-type="thruster" title="船尾 · 推进系">
+        <span class="dot dot-thruster"></span><span class="p-label">推进</span><span class="p-lv">0</span>
+      </div>
+      <div class="part-pill" data-type="balloon" title="桅杆 · 浮空系">
+        <span class="dot dot-balloon"></span><span class="p-label">浮空</span><span class="p-lv">0</span>
+      </div>
+      <div class="part-pill" data-type="gramophone" title="甲板 · 共振系">
+        <span class="dot dot-gramophone"></span><span class="p-label">共振</span><span class="p-lv">0</span>
+      </div>
+      <div class="part-pill" data-type="lantern" title="船舷 · 烟火系">
+        <span class="dot dot-lantern"></span><span class="p-label">灯火</span><span class="p-lv">0</span>
+      </div>
+    </div>
+
+    <div class="hud-right">
+      <button id="btn-tide-hint" class="hud-btn hidden" type="button">潮汐光柱 →</button>
+      <button id="btn-mute" class="hud-btn" type="button">声景：开</button>
+    </div>
+  </header>
+
+  <!-- 飘过的一句话残骸微故事（不阻挡画面） -->
+  <div id="whisper-banner" class="whisper-banner hidden">
+    <div id="whisper-title" class="whisper-title"></div>
+    <div id="whisper-line" class="whisper-line"></div>
+  </div>
+
+  <!-- 底部极简键位微提示（开局数秒后自动淡出） -->
+  <div id="controls-tip" class="controls-tip hidden">
+    A / D 划桨乘浪 · 点击海面或按住 空格 抛钩打捞 · 捞起推进器后按 W / Shift 喷火跃浪
+  </div>
+
+  <!-- 移动端/触屏极简透明按钮（桌面端自动隐去或按需触发） -->
+  <div id="touch-controls" class="touch-controls hidden">
+    <div class="touch-group">
+      <button id="tc-left" class="touch-btn" type="button" aria-label="向左划桨">‹</button>
+      <button id="tc-right" class="touch-btn" type="button" aria-label="向右划桨">›</button>
+    </div>
+    <div class="touch-group">
+      <button id="tc-boost" class="touch-btn touch-boost hidden" type="button" aria-label="推进">火</button>
+      <button id="tc-hook" class="touch-btn touch-hook" type="button" aria-label="抛钩打捞">钩</button>
+    </div>
+  </div>
+
+  <!-- 开篇标题遮罩 -->
+  <div id="title-screen" class="overlay-screen">
+    <div class="title-box">
+      <div class="title-sub">MOON TIDE SKIFF · PROTOTYPE</div>
+      <h1>月潮孤舟</h1>
+      <p class="title-poem">
+        月亮越来越近了。<br />
+        天上总掉下人类笨拙又温柔的尝试。<br />
+        划着一叶挂灯的小船，去海里把它们捞起来吧。
+      </p>
+      <button id="btn-play" class="start-btn" type="button">解缆出海</button>
+      <div class="title-hint">建议开启声音 · 支持键鼠与触屏</div>
+    </div>
+  </div>
+
+  <!-- 结局诗意浮层 -->
+  <div id="ending-screen" class="overlay-screen ending-overlay hidden">
+    <div class="ending-box">
+      <div id="ending-kicker" class="title-sub">潮汐终章</div>
+      <h2 id="ending-title"></h2>
+      <p id="ending-poem" class="title-poem"></p>
+      <div id="ending-stats" class="ending-stats"></div>
+      <div class="ending-actions">
+        <button id="btn-continue" class="ghost-btn" type="button">继续在月海漂流</button>
+        <button id="btn-replay" class="start-btn" type="button">重新启航</button>
+      </div>
+    </div>
+  </div>
+
+  <script defer src="js/config.js"></script>
+  <script defer src="js/audio.js"></script>
+  <script defer src="js/world.js"></script>
+  <script defer src="js/boat.js"></script>
+  <script defer src="js/renderer.js"></script>
+  <script defer src="js/main.js"></script>
+</body>
+</html>
