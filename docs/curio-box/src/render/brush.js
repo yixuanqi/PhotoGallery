@@ -123,7 +123,40 @@
     }
     tctx.stroke();
 
-    if (theme === 'gravity') {
+    const cid = st ? st.climateId : '';
+    if (cid === 'thunder_violet') {
+      tctx.strokeStyle = 'rgba(116, 228, 255, 0.14)';
+      tctx.lineWidth = 1.4;
+      tctx.beginPath();
+      tctx.moveTo(32, 64); tctx.lineTo(128, 64); tctx.lineTo(160, 128); tctx.lineTo(288, 128);
+      tctx.moveTo(96, 256); tctx.lineTo(224, 256); tctx.lineTo(256, 320);
+      tctx.stroke();
+    } else if (cid === 'aurora_frost') {
+      tctx.strokeStyle = 'rgba(84, 186, 212, 0.18)';
+      tctx.lineWidth = 1.25;
+      [[96, 96], [288, 288]].forEach(([fx, fy]) => {
+        for (let k = 0; k < 3; k++) {
+          const a = (k * Math.PI) / 3;
+          tctx.beginPath();
+          tctx.moveTo(fx - Math.cos(a) * 18, fy - Math.sin(a) * 18);
+          tctx.lineTo(fx + Math.cos(a) * 18, fy + Math.sin(a) * 18);
+          tctx.stroke();
+        }
+      });
+    } else if (cid === 'crystal_prism') {
+      tctx.strokeStyle = 'rgba(232, 186, 78, 0.18)';
+      tctx.lineWidth = 1.15;
+      tctx.beginPath();
+      tctx.moveTo(192, 64); tctx.lineTo(320, 192); tctx.lineTo(192, 320); tctx.lineTo(64, 192); tctx.closePath();
+      tctx.stroke();
+    } else if (cid === 'horizon_void') {
+      tctx.strokeStyle = 'rgba(255, 206, 98, 0.15)';
+      tctx.lineWidth = 1.3;
+      tctx.beginPath();
+      tctx.arc(192, 192, 136, 0, Math.PI * 2);
+      tctx.arc(192, 192, 74, 0, Math.PI * 2);
+      tctx.stroke();
+    } else if (theme === 'gravity') {
       // 第 2 关星象天文台：精致暗金星盘刻度圆弧与闪烁微星
       tctx.strokeStyle = 'rgba(246, 208, 114, 0.14)';
       tctx.lineWidth = 1.3;

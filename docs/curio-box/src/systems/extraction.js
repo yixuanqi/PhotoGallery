@@ -5,9 +5,50 @@
   const META_STORAGE_KEY = 'curio_box_meta_v2';
 
   // ==================== 局内物理构筑词条奇物库 ====================
+  // ==================== v9.6b 四大学科羁绊共鸣定义（集齐 2 件同科奇物激活质变） ====================
+  const SYNERGY_DEFS = {
+    thermal: {
+      id: 'thermal',
+      icon: '🔥',
+      name: '热学共鸣',
+      short: '🔥 炽热星弹',
+      threshold: 2,
+      color: '#e65d2e',
+      perk: '蓄力重弹自带灼热轨迹：沿途融冰化水/沸腾、融化霜壳蜗卫，直击高压罐一发红温引爆！',
+    },
+    optics: {
+      id: 'optics',
+      icon: '🔆',
+      name: '光学共鸣',
+      short: '🔆 光网分光',
+      threshold: 2,
+      color: '#d99814',
+      perk: '星针与重弹穿过镜面光网自动分光为双折光束（伤害×1.25 破镜甲），凸透镜焦斑 +25%！',
+    },
+    electro: {
+      id: 'electro',
+      icon: '⚡',
+      name: '电学共鸣',
+      short: '⚡ 疾电弧步',
+      threshold: 2,
+      color: '#229fd4',
+      perk: '冲刺路径留下瞬时高压电弧：经过导电积水直接全池跳电麻痹，近距给守卫涂装电荷！',
+    },
+    relativity: {
+      id: 'relativity',
+      icon: '🕳️',
+      name: '相对论共鸣',
+      short: '🕳️ 微型视界',
+      threshold: 2,
+      color: '#884ee0',
+      perk: '满蓄重弹或超频金珠命中落点自动展开 1.6s 微型时间膨胀泡（0.15× 冻结蓄能并坍缩引爆）！',
+    },
+  };
+
   const REGULAR_CURIOS = [
     {
       id: 'vortex_core',
+      discipline: 'relativity',
       name: '引力漩涡核',
       icon: '🌀',
       rarity: 'epic',
@@ -18,6 +59,7 @@
     },
     {
       id: 'slingshot_lens',
+      discipline: 'optics',
       name: '吸星弹弓镜',
       icon: '🔭',
       rarity: 'epic',
@@ -28,6 +70,7 @@
     },
     {
       id: 'split_crystal',
+      discipline: 'optics',
       name: '折射分裂晶',
       icon: '💠',
       rarity: 'epic',
@@ -38,6 +81,7 @@
     },
     {
       id: 'monocle',
+      discipline: 'optics',
       name: '阳光棱镜露',
       icon: '💎',
       rarity: 'rare',
@@ -48,6 +92,7 @@
     },
     {
       id: 'aero_feather',
+      discipline: 'electro',
       name: '反重力风羽',
       icon: '🪶',
       rarity: 'rare',
@@ -58,6 +103,7 @@
     },
     {
       id: 'billiard_wax',
+      discipline: 'thermal',
       name: '滑蜡台球徽',
       icon: '🎱',
       rarity: 'epic',
@@ -68,6 +114,7 @@
     },
     {
       id: 'dew_skates',
+      discipline: 'thermal',
       name: '晨露滑行靴',
       icon: '⛸',
       rarity: 'rare',
@@ -78,6 +125,7 @@
     },
     {
       id: 'gale_fan',
+      discipline: 'thermal',
       name: '狂风蒲公英扇',
       icon: '🌬️',
       rarity: 'rare',
@@ -88,6 +136,7 @@
     },
     {
       id: 'chain_cue',
+      discipline: 'electro',
       name: '连环撞球母徽',
       icon: '🎯',
       rarity: 'epic',
@@ -98,6 +147,7 @@
     },
     {
       id: 'cliff_chime',
+      discipline: 'electro',
       name: '云海悬赏风铃',
       icon: '🔔',
       rarity: 'epic',
@@ -108,6 +158,7 @@
     },
     {
       id: 'event_horizon',
+      discipline: 'relativity',
       name: '视界怀表',
       icon: '⏳',
       rarity: 'epic',
@@ -118,6 +169,7 @@
     },
     {
       id: 'lorentz_prism',
+      discipline: 'relativity',
       name: '洛伦兹飞轮',
       icon: '⚡',
       rarity: 'epic',
@@ -128,6 +180,7 @@
     },
     {
       id: 'thermo_valve',
+      discipline: 'thermal',
       name: '热力学活门',
       icon: '🌡️',
       rarity: 'epic',
@@ -138,6 +191,7 @@
     },
     {
       id: 'mirror_prism',
+      discipline: 'optics',
       name: '全反射晶镜',
       icon: '🪞',
       rarity: 'epic',
@@ -148,6 +202,7 @@
     },
     {
       id: 'faraday_coil',
+      discipline: 'electro',
       name: '法拉第线圈',
       icon: '🔋',
       rarity: 'epic',
@@ -161,6 +216,7 @@
   const GRAND_CURIOS = [
     {
       id: 'orrery',
+      discipline: 'relativity',
       name: '天空星象仪',
       icon: '🪐',
       rarity: 'legendary',
@@ -171,6 +227,7 @@
     },
     {
       id: 'scarab',
+      discipline: 'relativity',
       name: '翡翠浮空核',
       icon: '🌿',
       rarity: 'legendary',
@@ -181,6 +238,7 @@
     },
     {
       id: 'pocket_core',
+      discipline: 'thermal',
       name: '太阳花冠金芯',
       icon: '🌻',
       rarity: 'legendary',
@@ -191,6 +249,7 @@
     },
     {
       id: 'star_jar',
+      discipline: 'optics',
       name: '云海琉璃灯',
       icon: '🏮',
       rarity: 'legendary',
@@ -256,6 +315,39 @@
       labels: ['起手12金 · 吸珠标准', '吸金/珠+ · 16金', '吸金/珠++ · 20金', '吸金/珠+++ · 25金'],
       shortPerk: '吸金/吸珠范围 & 起手金币',
     },
+    {
+      id: 'orbCap',
+      name: '星露珠匣扩容',
+      icon: '💠',
+      color: '#1e9cd4',
+      maxLv: 1,
+      costs: [680],
+      values: [3, 4],
+      labels: ['上限 3 颗星露珠', '上限 4 颗星露珠'],
+      shortPerk: '高阶扩建 · 永久 +1 弹珠上限',
+    },
+    {
+      id: 'salvagePod',
+      name: '云海打捞保险舱',
+      icon: '🛡️',
+      color: '#4f8c68',
+      maxLv: 3,
+      costs: [220, 440, 720],
+      ratios: [0.20, 0.30, 0.40, 0.50],
+      labels: ['失利打捞 20%', '失利打捞 30%', '失利打捞 40%', '失利打捞 50%'],
+      shortPerk: '高阶扩建 · 深空失利打捞率',
+    },
+    {
+      id: 'chartScope',
+      name: '深空航图望远镜',
+      icon: '🔭',
+      color: '#8856d6',
+      maxLv: 2,
+      costs: [200, 480],
+      rerolls: [0, 1, 2],
+      labels: ['航图 0 次重抽', '每趟 1 次重抽航线', '每趟 2 次重抽航线'],
+      shortPerk: '高阶扩建 · 罗盘航线重抽',
+    },
   ];
 
   const SKIN_DEFS = [
@@ -288,21 +380,196 @@
     },
   ];
 
+  // ==================== v9.6 纯离线「每日云海挑战 & 3 条物理悬赏令」 ====================
+  const DAILY_BOUNTY_POOL = [
+    {
+      id: 'cliff_drop_2',
+      icon: '☁️',
+      title: '云海清场者',
+      desc: '单趟将至少 2 名守卫击落云海崖边',
+      reward: 95,
+      check: (r) => (r.cliffDrops || 0) >= 2,
+    },
+    {
+      id: 'monster_chain_2',
+      icon: '🎱',
+      title: '动量台球手',
+      desc: '单趟触发至少 2 次怪物台球连撞',
+      reward: 100,
+      check: (r) => (r.monsterChains || 0) >= 2,
+    },
+    {
+      id: 'physics_lab_3',
+      icon: '⚗️',
+      title: '跨学科实验家',
+      desc: '单趟触发至少 3 次热/光/电/相对论高阶机关反应',
+      reward: 110,
+      check: (r) => (r.dailyLabTriggers || 0) >= 3,
+    },
+    {
+      id: 'stunt_bounty_80',
+      icon: '✨',
+      title: '物理特技大师',
+      desc: '单趟累计获得至少 80 💎 物理特技赏金',
+      reward: 115,
+      check: (r) => (r.stuntBounty || 0) >= 80,
+    },
+    {
+      id: 'slingshot_prism_3',
+      icon: '🪐',
+      title: '星轨折光射手',
+      desc: '单趟触发至少 3 次星轨弹弓/棱镜/折射暴击',
+      reward: 100,
+      check: (r) => (r.ricochetCrits || 0) >= 3,
+    },
+    {
+      id: 'daily_extract_win',
+      icon: '🎈',
+      title: '每日凯旋撤离',
+      desc: '安全乘热气球从今日每日云海空域撤离',
+      reward: 140,
+      check: (r, outcome) => outcome === 'extracted',
+    },
+  ];
+
+  function getLocalDateKey() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function hashStringSeed(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return (Math.abs(h) % 899999) + 100000;
+  }
+
+  function getDailyChallengeSpec() {
+    ensureMetaShape();
+    const dateKey = getLocalDateKey();
+    const seed = hashStringSeed(`CURIO_DAILY_${dateKey}`);
+    const combos = [
+      { anomalies: ['optics', 'thermal'], climateId: 'aurora_frost', title: '极光光热实验场' },
+      { anomalies: ['thermal', 'electro'], climateId: 'thunder_violet', title: '雷云水电实验场' },
+      { anomalies: ['optics', 'electro'], climateId: 'crystal_prism', title: '琉璃电光实验场' },
+      { anomalies: ['relativity', 'electro'], climateId: 'horizon_void', title: '深空时空雷暴带' },
+      { anomalies: ['friction', 'relativity'], climateId: 'aurora_frost', title: '霜晶引力滑道域' },
+      { anomalies: ['gravity', 'optics'], climateId: 'starry_night', title: '星夜棱镜观测穹' },
+    ];
+    const combo = combos[seed % combos.length];
+    const mutKeys = CB.stages && CB.stages.MUTATORS ? Object.keys(CB.stages.MUTATORS) : ['low_gravity'];
+    const mutId = mutKeys[(seed >> 3) % mutKeys.length];
+
+    // 固定 3 条不重复每日悬赏（第 3 条固定为每日凯旋撤离，前 2 条由今日种子确定性抽取）
+    const nonExtract = DAILY_BOUNTY_POOL.slice(0, DAILY_BOUNTY_POOL.length - 1);
+    const idxA = (seed >> 5) % nonExtract.length;
+    const idxB = (idxA + 1 + ((seed >> 9) % (nonExtract.length - 1))) % nonExtract.length;
+    const bounties = [
+      nonExtract[idxA],
+      nonExtract[idxB],
+      DAILY_BOUNTY_POOL[DAILY_BOUNTY_POOL.length - 1],
+    ];
+
+    const node = {
+      id: `daily_${dateKey}`,
+      leg: 2,
+      nodeType: 'standard',
+      isDaily: true,
+      dailyDateKey: dateKey,
+      altitude: 2880,
+      climateId: combo.climateId,
+      anomalies: combo.anomalies.slice(),
+      mutators: [mutId],
+      omenIcons: '📅',
+      omenTitle: `每日云海 · ${combo.title}`,
+      omenCue: '全球统一种子 · 完成 3 条物理悬赏领丰厚母港金库奖励',
+      dangerLabel: '📅 每日挑战',
+      haulMult: 1.65,
+      wantAtrium: false,
+    };
+
+    const dailyMeta = game.meta.daily;
+    const claimedSet = new Set(dailyMeta.claimedIds || []);
+    return {
+      dateKey,
+      seed,
+      title: combo.title,
+      node,
+      mutator: CB.stages && CB.stages.MUTATORS ? CB.stages.MUTATORS[mutId] : null,
+      bounties: bounties.map((b) => ({
+        ...b,
+        claimed: claimedSet.has(b.id),
+      })),
+      unclaimedCount: bounties.filter((b) => !claimedSet.has(b.id)).length,
+      bestHaul: dailyMeta.bestHaul || 0,
+      cleared: !!dailyMeta.cleared,
+    };
+  }
+
+  function recordDailyLabTrigger() {
+    if (game.run && game.run.phase === 'playing') {
+      game.run.dailyLabTriggers = (game.run.dailyLabTriggers || 0) + 1;
+    }
+  }
+
+  function evaluateDailyBounties(outcome, totalHaul) {
+    if (!game.run || !game.run.isDaily) return { newlyClaimed: [], totalReward: 0 };
+    const spec = getDailyChallengeSpec();
+    const dm = game.meta.daily;
+    const newlyClaimed = [];
+    let totalReward = 0;
+
+    if (outcome === 'extracted') {
+      dm.cleared = true;
+      if (totalHaul > (dm.bestHaul || 0)) dm.bestHaul = totalHaul;
+    }
+
+    for (const b of spec.bounties) {
+      if (b.claimed) continue;
+      if (b.check(game.run, outcome)) {
+        dm.claimedIds.push(b.id);
+        newlyClaimed.push(b);
+        totalReward += b.reward;
+      }
+    }
+
+    if (totalReward > 0) {
+      game.meta.bankValue += totalReward;
+    }
+    return { newlyClaimed, totalReward };
+  }
+
   function ensureMetaShape() {
     const m = game.meta;
     if (!m.upgrades || typeof m.upgrades !== 'object') {
-      m.upgrades = { maxHp: 0, chargeSpeed: 0, dashCd: 0, magnet: 0 };
+      m.upgrades = { maxHp: 0, chargeSpeed: 0, dashCd: 0, magnet: 0, orbCap: 0, salvagePod: 0, chartScope: 0 };
     } else {
       m.upgrades.maxHp = Math.max(0, Math.min(3, Number(m.upgrades.maxHp) || 0));
       m.upgrades.chargeSpeed = Math.max(0, Math.min(3, Number(m.upgrades.chargeSpeed) || 0));
       m.upgrades.dashCd = Math.max(0, Math.min(3, Number(m.upgrades.dashCd) || 0));
       m.upgrades.magnet = Math.max(0, Math.min(3, Number(m.upgrades.magnet) || 0));
+      m.upgrades.orbCap = Math.max(0, Math.min(1, Number(m.upgrades.orbCap) || 0));
+      m.upgrades.salvagePod = Math.max(0, Math.min(3, Number(m.upgrades.salvagePod) || 0));
+      m.upgrades.chartScope = Math.max(0, Math.min(2, Number(m.upgrades.chartScope) || 0));
+    }
+    const todayKey = getLocalDateKey();
+    if (!m.daily || typeof m.daily !== 'object' || m.daily.dateKey !== todayKey) {
+      m.daily = { dateKey: todayKey, claimedIds: [], bestHaul: 0, cleared: false };
+    } else if (!Array.isArray(m.daily.claimedIds)) {
+      m.daily.claimedIds = [];
     }
     if (!Array.isArray(m.unlockedSkins) || !m.unlockedSkins.includes('explorer')) {
       m.unlockedSkins = Array.isArray(m.unlockedSkins) ? ['explorer', ...m.unlockedSkins] : ['explorer'];
     }
     m.deepestLeg = Math.max(Number(m.deepestLeg) || 0, Array.isArray(m.clearedStages) ? m.clearedStages.length : 0);
     m.maxAltitude = Math.max(Number(m.maxAltitude) || 0, m.deepestLeg > 0 ? 1200 + (m.deepestLeg - 1) * 1150 : 0);
+    m.bossesCleared = Number(m.bossesCleared) || 0;
+    m.trialsCleared = Number(m.trialsCleared) || 0;
     for (const sk of SKIN_DEFS) {
       if (sk.freeStage > 0 && (m.deepestLeg >= sk.freeStage || (Array.isArray(m.clearedStages) && m.clearedStages.includes(sk.freeStage)))) {
         if (!m.unlockedSkins.includes(sk.id)) m.unlockedSkins.push(sk.id);
@@ -326,6 +593,9 @@
     const chDef = UPGRADE_DEFS[1];
     const dsDef = UPGRADE_DEFS[2];
     const mgDef = UPGRADE_DEFS[3];
+    const orbDef = UPGRADE_DEFS[4];
+    const salvDef = UPGRADE_DEFS[5];
+    const scopeDef = UPGRADE_DEFS[6];
     return {
       maxHp: hpDef.values[u.maxHp] || 100,
       chargeMult: chDef.mults[u.chargeSpeed] || 1.0,
@@ -336,6 +606,9 @@
       curioPickupR: mgDef.curioRadius[u.magnet] || 115,
       orbPickupR: mgDef.orbRadius[u.magnet] || 84,
       startCoins: mgDef.startCoins[u.magnet] || 12,
+      maxOrbs: (orbDef && orbDef.values[u.orbCap]) || 3,
+      salvageRatio: (salvDef && salvDef.ratios[u.salvagePod]) || 0.20,
+      chartRerolls: (scopeDef && scopeDef.rerolls[u.chartScope]) || 0,
     };
   }
 
@@ -499,6 +772,9 @@
           }
           if (parsed.deepestLeg) game.meta.deepestLeg = Number(parsed.deepestLeg) || 0;
           if (parsed.maxAltitude) game.meta.maxAltitude = Number(parsed.maxAltitude) || 0;
+          if (parsed.bossesCleared) game.meta.bossesCleared = Number(parsed.bossesCleared) || 0;
+          if (parsed.trialsCleared) game.meta.trialsCleared = Number(parsed.trialsCleared) || 0;
+          if (parsed.daily && typeof parsed.daily === 'object') game.meta.daily = parsed.daily;
         }
       }
     } catch (_) {}
@@ -531,15 +807,29 @@
     game.meta.autoPlayIntro = true;
     game.meta.deepestLeg = 0;
     game.meta.maxAltitude = 0;
+    game.meta.bossesCleared = 0;
+    game.meta.trialsCleared = 0;
+    game.meta.daily = { dateKey: getLocalDateKey(), claimedIds: [], bestHaul: 0, cleared: false };
     game.variant = 'explorer';
     saveMeta();
   }
 
   function resetRunState(keepCurios = false) {
     const carried = keepCurios ? game.player.curios.slice() : [];
+    const curSt = getCurrentSectorSpec();
+    const curNodeType = (curSt && curSt.nodeType) || 'standard';
     game.run = {
       stageId: game.currentStageId,
+      nodeType: curNodeType,
       phase: 'playing',
+      trialHeavyShots: 0,
+      trialGraceTimer: curNodeType === 'trial' ? 4.5 : 0,
+      trialPerfect: false,
+      periodicGustTimer: 5.5,
+      periodicGustActiveTimer: 0,
+      isDaily: !!(game.voyage && game.voyage.isDaily),
+      dailyDateKey: (game.voyage && game.voyage.isDaily) ? getLocalDateKey() : null,
+      dailyLabTriggers: 0,
       elapsed: 0,
       vaultOpened: false,
       hasGrandCurio: false,
@@ -591,6 +881,48 @@
     return game.player.curios.some((c) => c.id === id);
   }
 
+  function getSynergyCounts() {
+    const counts = { thermal: 0, optics: 0, electro: 0, relativity: 0 };
+    const list = (game.player && game.player.curios) || [];
+    for (let i = 0; i < list.length; i++) {
+      const d = list[i].discipline;
+      if (d && counts[d] !== undefined) counts[d]++;
+    }
+    return counts;
+  }
+
+  function getActiveSynergies() {
+    const counts = getSynergyCounts();
+    const res = [];
+    for (const k in SYNERGY_DEFS) {
+      const def = SYNERGY_DEFS[k];
+      if ((counts[k] || 0) >= def.threshold) res.push(def);
+    }
+    return res;
+  }
+
+  function hasSynergy(discId) {
+    const def = SYNERGY_DEFS[discId];
+    if (!def) return false;
+    const counts = getSynergyCounts();
+    return (counts[discId] || 0) >= def.threshold;
+  }
+
+  function checkAndAnnounceSynergy(addedCurio) {
+    if (!addedCurio || !addedCurio.discipline) return null;
+    const def = SYNERGY_DEFS[addedCurio.discipline];
+    if (!def) return null;
+    const counts = getSynergyCounts();
+    if (counts[addedCurio.discipline] === def.threshold) {
+      if (CB.audio && CB.audio.playTrialWin) CB.audio.playTrialWin();
+      if (CB.player && CB.player.spawnPopup) {
+        CB.player.spawnPopup(game.player.x, game.player.y - 72, `✨ 激活 ${def.short}（${def.name}）!`, def.color);
+      }
+      return def;
+    }
+    return null;
+  }
+
   function getCurioHaulValue() {
     let sum = 0;
     for (const c of game.player.curios) sum += c.value;
@@ -619,7 +951,9 @@
     const stage = getCurrentSectorSpec();
     const sectorMult = stage ? (stage.haulMult || 1.0) : 1.0;
     const chainMult = (game.voyage && game.voyage.active && game.voyage.chainMult) ? game.voyage.chainMult : 1.0;
-    return Math.round((getCurioHaulValue() + game.player.coins * 2 + getStuntBounty()) * sectorMult * chainMult);
+    const dblVaultMult = (CB.stages && CB.stages.hasMutator && CB.stages.hasMutator('double_vault')) ? 1.4 : 1.0;
+    const bossBonus = (stage && stage.nodeType === 'boss') ? 1.25 : 1.0;
+    return Math.round((getCurioHaulValue() + game.player.coins * 2 + getStuntBounty()) * sectorMult * chainMult * dblVaultMult * bossBonus);
   }
 
   function startNewVoyage(firstNode = null) {
@@ -634,6 +968,9 @@
       currentNode: node,
       nextChoices: [],
       visitedAnomalies: node && node.anomalies ? node.anomalies.slice() : [],
+      nextStartOverclock: false,
+      rerollsLeft: getMetaBonuses().chartRerolls || 0,
+      isDaily: !!(node && node.isDaily),
     };
     return node;
   }
@@ -666,6 +1003,7 @@
     v.pendingHaul = 0;
     v.chainMult = 1.0;
     v.nextChoices = [];
+    v.nextStartOverclock = false;
     saveMeta();
     return banked;
   }
@@ -924,6 +1262,7 @@
         if (dist < p.radius + 14) {
           p.curios.push(d.curio);
           recordCurioUnlocked(d.curio.id);
+          checkAndAnnounceSynergy(d.curio);
           p.lootCount = Math.min(20, p.lootCount + (d.isGrand ? 6 : 2));
           if (d.isGrand) {
             game.run.hasGrandCurio = true;
@@ -1110,6 +1449,8 @@
 
     if (outcome === 'extracted') {
       game.meta.extractions += 1;
+      if (stage && stage.nodeType === 'boss') game.meta.bossesCleared = (game.meta.bossesCleared || 0) + 1;
+      if (stage && stage.nodeType === 'trial') game.meta.trialsCleared = (game.meta.trialsCleared || 0) + 1;
       v.active = true;
       v.pendingHaul = Math.round((v.pendingHaul || 0) + totalHaul);
       if (v.pendingHaul > game.meta.bestHaul) game.meta.bestHaul = v.pendingHaul;
@@ -1139,7 +1480,8 @@
     } else {
       lostPending = Math.round((v.pendingHaul || 0) + totalHaul);
       if ((v.pendingHaul || 0) > 0) {
-        salvagedHaul = Math.round(v.pendingHaul * 0.2);
+        const salvRatio = getMetaBonuses().salvageRatio || 0.20;
+        salvagedHaul = Math.round(v.pendingHaul * salvRatio);
         game.meta.bankValue += salvagedHaul;
       }
       v.active = false;
@@ -1149,11 +1491,19 @@
       if (CB.audio) CB.audio.playRunFail();
     }
 
+    const dailyEval = evaluateDailyBounties(outcome, totalHaul);
     saveMeta();
     if (CB.ui && CB.ui.showRunSummary) {
       CB.ui.showRunSummary({
         stageId: curLeg,
         leg: curLeg,
+        nodeType: (stage && stage.nodeType) || 'standard',
+        isDaily: !!game.run.isDaily,
+        dailyBountiesClaimed: dailyEval.newlyClaimed,
+        dailyRewardGold: dailyEval.totalReward,
+        trialPerfect: !!game.run.trialPerfect,
+        trialHeavyShots: game.run.trialHeavyShots || 0,
+        mutatorObjs: (stage && stage.mutatorObjs) || [],
         altitude: curAlt,
         stageName: stage ? stage.name : '未知云域',
         stageTagline: stage ? stage.tagline : '',
@@ -1298,10 +1648,169 @@
     }
   }
 
+  function updatePeriodicGust(dt) {
+    if (!(CB.stages && CB.stages.hasMutator && CB.stages.hasMutator('periodic_gust'))) return;
+    const ex = game.run.extraction;
+    if (!ex || ex.active || !ex.gust) return;
+    if (game.run.periodicGustActiveTimer > 0) {
+      game.run.periodicGustActiveTimer -= dt;
+      if (game.run.periodicGustActiveTimer <= 0) {
+        ex.gust.active = false;
+        if (CB.audio && CB.audio.setAmbienceGust) CB.audio.setAmbienceGust(false);
+        game.run.periodicGustTimer = 11.5;
+      }
+      return;
+    }
+    game.run.periodicGustTimer -= dt;
+    if (game.run.periodicGustTimer <= 0) {
+      const dirs = [
+        { dirX: 1, dirY: 0, label: '东向阵风' },
+        { dirX: -1, dirY: 0, label: '西向阵风' },
+        { dirX: 0, dirY: 1, label: '南向阵风' },
+        { dirX: 0, dirY: -1, label: '北向阵风' },
+      ];
+      const pickD = dirs[Math.floor(Math.random() * dirs.length)];
+      ex.gust.active = true;
+      ex.gust.dirX = pickD.dirX;
+      ex.gust.dirY = pickD.dirY;
+      ex.gust.strength = 1;
+      ex.gust.label = pickD.label;
+      game.run.periodicGustActiveTimer = 4.5;
+      if (CB.audio && CB.audio.playGustStart) CB.audio.playGustStart();
+      if (CB.audio && CB.audio.setAmbienceGust) CB.audio.setAmbienceGust(true);
+      CB.player.spawnPopup(game.player.x, game.player.y - 52, `🌬️ 周期乱流（${pickD.label} · 顺风+45%）!`, '#1b8ab8');
+    }
+  }
+
+  function updateTrialVictory(dt) {
+    if (game.run.nodeType !== 'trial') return;
+    if (game.run.trialGraceTimer > 0) {
+      game.run.trialGraceTimer = Math.max(0, game.run.trialGraceTimer - dt);
+    }
+    if (game.guards.length === 0 && (!game.fallingGuards || game.fallingGuards.length === 0)) {
+      const perfect = (game.run.trialHeavyShots || 0) <= 2;
+      game.run.trialPerfect = perfect;
+      addStuntBounty(perfect ? 140 : 70);
+      if (perfect) {
+        const owned = new Set(game.player.curios.map((c) => c.id));
+        const pool = GRAND_CURIOS.filter((c) => !owned.has(c.id));
+        const prize = pool.length > 0
+          ? pool[Math.floor(Math.random() * pool.length)]
+          : GRAND_CURIOS[Math.floor(Math.random() * GRAND_CURIOS.length)];
+        if (prize) {
+          game.player.curios.push({ ...prize });
+          game.run.hasGrandCurio = true;
+          recordCurioUnlocked(prize.id);
+          CB.player.spawnPopup(game.player.x, game.player.y - 68, `✦ 一杆完美清台 · 获传说大金 ${prize.icon}${prize.name}!`, '#c98212');
+        }
+      } else {
+        CB.player.spawnPopup(game.player.x, game.player.y - 54, '🎯 试炼通关! +70💎', '#249472');
+      }
+      if (CB.audio && CB.audio.playTrialWin) CB.audio.playTrialWin();
+      completeRun('extracted');
+    }
+  }
+
+  // ==================== v9.5 浮空补给黑市经济引擎 ====================
+  function getMarketOffers() {
+    const owned = new Set(game.player.curios.map((c) => c.id));
+    const pool = REGULAR_CURIOS.filter((c) => !owned.has(c.id)).sort(() => Math.random() - 0.5);
+    const picks = (pool.length >= 3 ? pool : REGULAR_CURIOS.slice().sort(() => Math.random() - 0.5)).slice(0, 3);
+    return picks.map((c) => ({
+      curio: c,
+      cost: c.rarity === 'epic' ? 75 : 55,
+      bought: false,
+    }));
+  }
+
+  function getMarketBudget() {
+    const v = game.voyage || {};
+    return Math.round((v.pendingHaul || 0) + (game.meta.bankValue || 0));
+  }
+
+  function spendMarketFunds(cost) {
+    const v = game.voyage;
+    const avail = getMarketBudget();
+    if (avail < cost) return false;
+    if ((v.pendingHaul || 0) >= cost) {
+      v.pendingHaul = Math.round(v.pendingHaul - cost);
+    } else {
+      const rem = cost - (v.pendingHaul || 0);
+      v.pendingHaul = 0;
+      game.meta.bankValue = Math.max(0, Math.round((game.meta.bankValue || 0) - rem));
+      saveMeta();
+    }
+    return true;
+  }
+
+  function buyMarketRest(cost = 35) {
+    if (!spendMarketFunds(cost)) {
+      if (CB.audio && CB.audio.playUiLocked) CB.audio.playUiLocked();
+      return { ok: false, reason: 'funds' };
+    }
+    game.player.hp = game.player.maxHp;
+    game.voyage.nextStartOverclock = true;
+    if (CB.audio && CB.audio.playMarketBuy) CB.audio.playMarketBuy();
+    return { ok: true };
+  }
+
+  function buyMarketCurio(curioId, cost = 60) {
+    const def = REGULAR_CURIOS.find((c) => c.id === curioId);
+    if (!def) return { ok: false, reason: 'invalid' };
+    if (!spendMarketFunds(cost)) {
+      if (CB.audio && CB.audio.playUiLocked) CB.audio.playUiLocked();
+      return { ok: false, reason: 'funds' };
+    }
+    game.player.curios.push({ ...def });
+    recordCurioUnlocked(def.id);
+    const syn = checkAndAnnounceSynergy(def);
+    if (!syn && CB.audio && CB.audio.playMarketBuy) CB.audio.playMarketBuy();
+    return { ok: true, curio: def, activatedSynergy: syn };
+  }
+
+  function fuseMarketCurios(cost = 40) {
+    const regulars = game.player.curios.filter((c) => c.rarity !== 'legendary');
+    if (regulars.length < 2) {
+      if (CB.audio && CB.audio.playUiLocked) CB.audio.playUiLocked();
+      return { ok: false, reason: 'need_two' };
+    }
+    if (!spendMarketFunds(cost)) {
+      if (CB.audio && CB.audio.playUiLocked) CB.audio.playUiLocked();
+      return { ok: false, reason: 'funds' };
+    }
+    for (let k = 0; k < 2; k++) {
+      for (let i = game.player.curios.length - 1; i >= 0; i--) {
+        if (game.player.curios[i].rarity !== 'legendary') {
+          game.player.curios.splice(i, 1);
+          break;
+        }
+      }
+    }
+    const ownedIds = new Set(game.player.curios.map((c) => c.id));
+    const grandPool = GRAND_CURIOS.filter((c) => !ownedIds.has(c.id));
+    const forged = grandPool.length > 0
+      ? grandPool[Math.floor(Math.random() * grandPool.length)]
+      : GRAND_CURIOS[Math.floor(Math.random() * GRAND_CURIOS.length)];
+    game.player.curios.push({ ...forged });
+    recordCurioUnlocked(forged.id);
+    const syn = checkAndAnnounceSynergy(forged);
+    if (!syn && CB.audio && CB.audio.playTrialWin) CB.audio.playTrialWin();
+    return { ok: true, forged, activatedSynergy: syn };
+  }
+
   function updateExtractionLoop(dt) {
     if (game.run.phase !== 'playing') return;
     game.run.elapsed += dt;
     game.interactHint = null;
+
+    if (game.run.nodeType === 'trial') {
+      updateDeviceInteract();
+      updateTrialVictory(dt);
+      game.input.interactPressed = false;
+      return;
+    }
+
+    updatePeriodicGust(dt);
 
     if (game.run.alarmActive) {
       game.run.alarmPulseTimer -= dt;
@@ -1323,6 +1832,7 @@
   loadMeta();
 
   CB.extraction = {
+    SYNERGY_DEFS,
     REGULAR_CURIOS,
     GRAND_CURIOS,
     ALL_CURIOS,
@@ -1343,6 +1853,9 @@
     resetMeta,
     resetRunState,
     hasCurio,
+    getSynergyCounts,
+    getActiveSynergies,
+    hasSynergy,
     getCurioHaulValue,
     getStuntBounty,
     addStuntBounty,
@@ -1351,6 +1864,13 @@
     startNewVoyage,
     advanceVoyageToNode,
     bankVoyageAndFinish,
+    getMarketOffers,
+    getMarketBudget,
+    buyMarketRest,
+    buyMarketCurio,
+    fuseMarketCurios,
+    getDailyChallengeSpec,
+    recordDailyLabTrigger,
     getExtractCenter,
     getActiveGust,
     getVaultCenter,

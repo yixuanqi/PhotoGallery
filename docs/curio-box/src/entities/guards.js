@@ -219,6 +219,72 @@
       counterBadge: '💥 破甲/残血可崖杀',
       tip: '同时吃滑道台球、星轨弯道与花粉破防；未破甲高血量触崖会弹回，破甲后可秒杀。',
     },
+
+    // v9.6a 热学专属守卫：霜壳蜗卫（先热融壳化水 -> 再电击感电秒杀！）
+    frost_snail: {
+      name: '霜壳蜗卫',
+      hp: 118,
+      speed: 58,
+      chaseSpeed: 76,
+      radius: 22,
+      sightRange: 235,
+      fov: 1.0,
+      hearingBonus: 15,
+      bodyColor: '#76c8e4',
+      accentColor: '#e6fbff',
+      touchDamage: 14,
+      baseCoins: 7,
+      hasFrostShell: true,
+      mass: 1.65,
+      stageTag: '极光热变 · 冰晶硬壳',
+      traitBadge: '🧊 霜晶硬壳(-70%)',
+      counterBadge: '🔥 热融化水→⚡双倍电伤',
+      tip: '冰晶厚壳硬抗常规射击；先用凸透镜聚光、高压罐热爆或蒸汽融壳化水，湿身后极怕电击！',
+    },
+
+    // v9.6a 光学专属守卫：折光镜蛛（正面抗直弹 -> 镜面光网/星轨/木箱破镜甲！）
+    prism_weaver: {
+      name: '折光镜蛛',
+      hp: 96,
+      speed: 82,
+      chaseSpeed: 108,
+      radius: 19,
+      sightRange: 270,
+      fov: 1.15,
+      hearingBonus: 25,
+      bodyColor: '#f2c85b',
+      accentColor: '#aef2ff',
+      touchDamage: 12,
+      baseCoins: 7,
+      hasPrismCarapace: true,
+      mass: 0.95,
+      stageTag: '琉璃光廊 · 棱镜背甲',
+      traitBadge: '🔆 棱镜反直(-75%)',
+      counterBadge: '🪞 光网/聚光/台球碎甲',
+      tip: '正面棱镜甲能折射普通直线弹；利用镜面光网切割、凸透镜聚光、星轨弯道或木箱撞击即可碎甲！',
+    },
+
+    // v9.6a 电学专属守卫：蓄电铜偶（受电超载成活体电荷炸弹 -> 借它同极爆斥/异极拉怪！）
+    volt_automaton: {
+      name: '蓄电铜偶',
+      hp: 104,
+      speed: 78,
+      chaseSpeed: 104,
+      radius: 20,
+      sightRange: 255,
+      fov: 1.05,
+      hearingBonus: 30,
+      bodyColor: '#c98842',
+      accentColor: '#78ecff',
+      touchDamage: 14,
+      baseCoins: 8,
+      isVoltBody: true,
+      mass: 1.1,
+      stageTag: '雷云紫电 · 活体电容',
+      traitBadge: '⚡ 感电超载·自带电荷',
+      counterBadge: '🔋 借电荷同极爆斥下崖',
+      tip: '自带静电，被电击后超载加速并化作强电荷体——正好借它触发同极爆斥或异极吸怪，击败时引爆静电脉冲！',
+    },
   };
 
   function resolveKind(kind) {
@@ -264,6 +330,20 @@
       hasStarMembrane: !!spec.hasStarMembrane,
       hasThornShell: !!spec.hasThornShell,
       hasColossusArmor: !!spec.hasColossusArmor,
+      hasFrostShell: !!spec.hasFrostShell,
+      hasPrismCarapace: !!spec.hasPrismCarapace,
+      isVoltBody: !!spec.isVoltBody,
+      chargeSign: spec.isVoltBody ? 1 : 0,
+      meltedWetTimer: 0,
+      voltOverloadTimer: 0,
+      hasFrostShell: !!spec.hasFrostShell,
+      hasPrismCarapace: !!spec.hasPrismCarapace,
+      isVoltBody: !!spec.isVoltBody,
+      frostHeat: 0,
+      meltedWetTimer: 0,
+      voltOverloadTimer: 0,
+      chargeSign: spec.isVoltBody ? (Math.random() < 0.5 ? 1 : -1) : 0,
+      chargeTimer: spec.isVoltBody ? 999 : 0,
       armorBrokenTimer: 0, // >0 时盾碎/膜破/壳开，受到双倍脆弱伤害！
       shellClosed: false,  // 荆棘警哨眼警戒缩壳状态
 
@@ -417,6 +497,18 @@
     if (!map) return guards;
 
     const stage = map.stage || (CB.stages ? CB.stages.getStage(game.currentStageId) : null);
+
+    // 物理试炼靶场：精准按谜题坐标摆放 3 名目标守卫！
+    if (stage && stage.nodeType === 'trial' && Array.isArray(map.trialGuardSpawns)) {
+      const room = map.rooms[0];
+      for (const sp of map.trialGuardSpawns) {
+        const g = makeGuard(sp.kind, sp.x, sp.y, room);
+        g.facing = Math.PI;
+        guards.push(g);
+      }
+      game.guards = guards;
+      return guards;
+    }
     const nonSpawnRooms = map.rooms
       .filter((r) => r.role !== 'spawn')
       .sort((a, b) => a.distFromSpawn - b.distFromSpawn);
@@ -425,7 +517,11 @@
       friction: ['shield_charger', 'dew_hopper'],
       gravity: ['astro_sentinel', 'comet_orbiter'],
       stealth: ['vine_stalker', 'vine_magnet'],
-      fusion: ['shield_charger', 'astro_sentinel', 'vine_stalker'],
+      relativity: ['astro_sentinel', 'comet_orbiter'],
+      thermal: ['frost_snail', 'shield_charger'],
+      optics: ['prism_weaver', 'astro_sentinel'],
+      electro: ['volt_automaton', 'vine_magnet'],
+      fusion: ['frost_snail', 'prism_weaver', 'volt_automaton', 'shield_charger'],
     };
 
     let cursor = 0;
@@ -437,6 +533,8 @@
       if (room.role === 'atrium') {
         plan = ['colossus', 'astro_sentinel', 'dew_hopper'];
       } else if (room.role === 'vault') {
+        const isBoss = !!(stage && stage.nodeType === 'boss');
+        const hasDoubleVault = !!(CB.stages && CB.stages.hasMutator && CB.stages.hasMutator('double_vault'));
         const eliteKind = stage && stage.vaultElite ? stage.vaultElite : (stage && stage.id === 4 ? 'colossus' : 'lotus_warden');
         const escortKind = eliteKind === 'colossus'
           ? 'vine_stalker'
@@ -446,6 +544,9 @@
           ? 'vine_magnet'
           : 'dew_hopper';
         plan = [eliteKind, escortKind];
+        if (isBoss || hasDoubleVault) {
+          plan.push(eliteKind === 'colossus' ? 'astro_archon' : 'lotus_warden');
+        }
       } else if (room.role === 'gallery') {
         plan = [pair[0], pair[1]];
       } else if (room.role === 'corridor') {
@@ -466,6 +567,16 @@
       }
     }
 
+    if (stage && stage.nodeType === 'boss') {
+      const hpScale = 1.28 + Math.max(0, ((stage.leg || 3) - 3) * 0.08);
+      for (const g of guards) {
+        if (g.isElite) {
+          g.maxHp = Math.round(g.maxHp * hpScale);
+          g.hp = g.maxHp;
+          g.isStageBoss = true;
+        }
+      }
+    }
     game.guards = guards;
     return guards;
   }
@@ -687,6 +798,31 @@
     return false;
   }
 
+  function meltFrostShell(g, heatAmount = 35) {
+    if (!g || g.dead || !g.hasFrostShell) return false;
+    if ((g.meltedWetTimer || 0) > 0) {
+      g.meltedWetTimer = Math.max(g.meltedWetTimer, 7.5);
+      return false;
+    }
+    g.frostHeat = (g.frostHeat || 0) + heatAmount;
+    g.hitFlash = 0.7;
+    if (g.frostHeat >= 32) {
+      g.frostHeat = 0;
+      g.meltedWetTimer = 8.5;
+      g.armorBrokenTimer = Math.max(g.armorBrokenTimer || 0, 6.8);
+      g.aiState = 'stunned';
+      g.stateTimer = Math.max(g.stateTimer || 0, 1.5);
+      if (CB.audio && CB.audio.playPhaseShift) CB.audio.playPhaseShift('water');
+      if (CB.combat && CB.combat.spawnInkPuddle) CB.combat.spawnInkPuddle(g.x, g.y, '#46b8e0');
+      if (CB.combat && CB.combat.grantOrbRefund) CB.combat.grantOrbRefund(1, g.x, g.y, '融壳回珠');
+      if (CB.extraction && CB.extraction.addStuntBounty) CB.extraction.addStuntBounty(18);
+      CB.player.spawnDust(g.x, g.y - 10, '#88ecff', 14, 1.5);
+      CB.player.spawnPopup(g.x, g.y - g.radius - 28, '💧 冰壳融化 · 湿身易感电!', '#1e96c9');
+      return true;
+    }
+    return false;
+  }
+
   /**
    * 统一受击与物理破防结算引擎
    * hitMeta = { source: 'bullet'|'billiard', slingshot, prism, bounced, stealthAmbush, fromPollen }
@@ -716,7 +852,7 @@
 
     // ===== 0. 相对论质增破甲（高速陨石/木箱携带 γ >= 1.55 直接轰碎任意重甲与巨像金甲！） =====
     const relGamma = hitMeta.relGamma || 1.0;
-    if (relGamma >= 1.55 && (g.hasFrontShield || g.hasStarMembrane || g.hasThornShell || g.hasColossusArmor) && !isVulnerable) {
+    if (relGamma >= 1.55 && (g.hasFrontShield || g.hasStarMembrane || g.hasThornShell || g.hasColossusArmor || g.hasFrostShell || g.hasPrismCarapace) && !isVulnerable) {
       g.armorBrokenTimer = 5.6;
       g.shellClosed = false;
       armorJustBroken = true;
@@ -807,6 +943,54 @@
       finalCrit = true;
     }
 
+    // ===== 4.5. 霜壳蜗卫：冰壳硬抗常规直击(-70%)，融壳湿身后遭受电击触发 ×2.25 感电暴击！ =====
+    if (g.hasFrostShell) {
+      if (hitMeta.electro && (g.meltedWetTimer || 0) > 0) {
+        dmg = Math.round(dmg * 2.25);
+        finalTag = '⚡ 湿身感电暴击!';
+        finalCrit = true;
+        g.armorBrokenTimer = Math.max(g.armorBrokenTimer || 0, 5.0);
+        if (CB.extraction && CB.extraction.addStuntBounty) CB.extraction.addStuntBounty(22);
+      } else if ((g.meltedWetTimer || 0) <= 0 && !isVulnerable && !armorJustBroken && !hitMeta.thermal) {
+        if (isBilliard) {
+          dmg = Math.round(dmg * 0.72);
+          finalTag = '🧊 冰壳震颤 (加热融壳!)';
+        } else {
+          blocked = true;
+          dmg = Math.max(2, Math.round(dmg * 0.3));
+          finalCrit = false;
+          finalTag = g.hintCooldown <= 0 ? '🧊 冰壳硬抗! 聚光/热爆融壳' : '🧊 冰壳抵御!';
+          g.hintCooldown = 1.6;
+        }
+      }
+    }
+
+    // ===== 4.6. 折光镜蛛：棱镜背甲抵御正面直线弹(-75%)，光网/聚光/星轨/木箱一击碎甲！ =====
+    if (g.hasPrismCarapace && !isVulnerable && !armorJustBroken) {
+      if (isPrism || isSlingshot || isBilliard || hitMeta.laserWeb) {
+        g.armorBrokenTimer = 5.8;
+        armorJustBroken = true;
+        dmg = Math.round(dmg * 1.8);
+        finalTag = hitMeta.laserWeb ? '🪞 光网碎镜甲!' : isPrism ? '🔆 聚光碎镜甲!' : '💥 击碎棱镜甲!';
+        finalCrit = true;
+      } else if (isFrontHit && !isBounced) {
+        blocked = true;
+        dmg = Math.max(2, Math.round(dmg * 0.25));
+        finalCrit = false;
+        finalTag = g.hintCooldown <= 0 ? '🔆 棱镜反直! 用光网/聚光/木箱' : '🔆 棱镜偏折!';
+        g.hintCooldown = 1.6;
+      }
+    }
+
+    // ===== 4.7. 蓄电铜偶：感电后超载加速成为高能活体电荷体（便于同极爆斥/异极拉怪） =====
+    if (g.isVoltBody && hitMeta.electro) {
+      g.voltOverloadTimer = 6.5;
+      g.chargeTimer = 10.0;
+      finalTag = '⚡ 铜偶超载 · 活体电荷!';
+      finalCrit = true;
+      CB.player.spawnDust(g.x, g.y - 12, '#7ceeff', 12, 1.45);
+    }
+
     // ===== 5. 荆棘警哨眼：未警觉/花粉偷袭触发绝杀伏击；正面硬刚则缩壳减伤 75%！ =====
     if (g.hasThornShell) {
       const unaware = g.aiState === 'patrol' || g.aiState === 'investigate';
@@ -878,7 +1062,8 @@
           ? (440 + chargeRatio * 230) * massInv * fanBoost * ocBoost
           : 400 * massInv;
         const gustInfo = getGustBoostForDir(dirX, dirY);
-        launchSpd *= dewBoost * gustInfo.mult;
+        const lowGravBoost = (CB.stages && CB.stages.hasMutator && CB.stages.hasMutator('low_gravity')) ? 1.35 : 1.0;
+        launchSpd *= dewBoost * gustInfo.mult * lowGravBoost;
         const stunDur = isBilliard ? 1.85 : (isHeavyShot && (chargeRatio >= 0.72 || isOverclock) ? 0.95 : 0);
         launchGuardBilliard(g, dirX * launchSpd + gustInfo.addVx, dirY * launchSpd + gustInfo.addVy, { stunDuration: stunDur });
       } else if (!isNeedle) {
@@ -934,6 +1119,24 @@
 
       const dropCoins = g.baseCoins + (g.stolenCoins || 0);
       CB.combat.spawnCoins(g.x, g.y, dropCoins, 1.25);
+      if (g.isVoltBody) {
+        const deathSign = g.chargeSign || 1;
+        if (CB.audio && CB.audio.playElectroChain) CB.audio.playElectroChain();
+        CB.player.spawnDust(g.x, g.y - 10, deathSign > 0 ? '#ff8570' : '#74ebff', 18, 1.75);
+        CB.player.spawnPopup(g.x, g.y - 46, '⚡ 电容解体脉冲!', '#1e9cd4');
+        for (const other of game.guards) {
+          if (other === g || other.dead) continue;
+          const dOther = Math.hypot(other.x - g.x, other.y - g.y);
+          if (dOther <= 180) {
+            if (CB.physicsLab && CB.physicsLab.applyElectroCharge) CB.physicsLab.applyElectroCharge(other, deathSign, 8.0);
+            if (CB.physicsLab && CB.physicsLab.spawnLightningArc) CB.physicsLab.spawnLightningArc(g.x, g.y - 12, other.x, other.y - 12, deathSign);
+            damageGuard(other, 20, (other.x - g.x) / (dOther || 1), (other.y - g.y) / (dOther || 1), true, '⚡ 铜偶脉冲感电!', true, {
+              source: 'bullet',
+              electro: true,
+            });
+          }
+        }
+      }
       if (CB.extraction && CB.extraction.hasCurio('scarab') && CB.combat && CB.combat.spawnGravityVortex) {
         CB.combat.spawnGravityVortex(g.x, g.y, { duration: 3.6, radius: 176, pullForce: 265 });
       }
@@ -987,6 +1190,9 @@
       if (g.wormholeCd > 0) g.wormholeCd = Math.max(0, g.wormholeCd - dt);
       if (g.orbitReleaseCd > 0) g.orbitReleaseCd = Math.max(0, g.orbitReleaseCd - dt);
       if (g.armorBrokenTimer > 0) g.armorBrokenTimer = Math.max(0, g.armorBrokenTimer - gDt);
+      if ((g.meltedWetTimer || 0) > 0) g.meltedWetTimer = Math.max(0, g.meltedWetTimer - gDt);
+      if ((g.voltOverloadTimer || 0) > 0) g.voltOverloadTimer = Math.max(0, g.voltOverloadTimer - gDt);
+      if (g.isVoltBody && !g.chargeSign) { g.chargeSign = 1; g.chargeTimer = 999; }
       if (g.chargeCooldown > 0) g.chargeCooldown -= gDt;
       if (g.siphonCooldown > 0) g.siphonCooldown -= gDt;
       if (g.snareCooldown > 0) g.snareCooldown -= gDt;
@@ -1106,7 +1312,9 @@
           ? (g.knockVx * activeGust.dirX + g.knockVy * activeGust.dirY) / kSpdNow
           : 0;
         // 两极摩擦：冰镜露水滑道极低阻尼超远飙滑（105/s），粗糙石砖高阻尼（1120/s）；顺阵风大幅减阻并持续吹推！
-        const baseDecel = nowOnSlide ? 105 : 1120;
+        const hasFrostMut = !!(CB.stages && CB.stages.hasMutator && CB.stages.hasMutator('global_frost'));
+        const hasLowGravMut = !!(CB.stages && CB.stages.hasMutator && CB.stages.hasMutator('low_gravity'));
+        const baseDecel = (nowOnSlide ? 105 : (hasFrostMut ? 450 : 1120)) * (hasLowGravMut ? 0.75 : 1.0);
         const gustDecelMult = activeGust && gustAlign > 0.15 ? 0.62 : 1.0;
         const decel = (hasWax ? baseDecel * 0.65 : baseDecel) * gustDecelMult * gDt;
         const nextSpd = Math.max(0, kSpdNow - decel);
@@ -1156,7 +1364,8 @@
       }
 
       const ink = CB.combat.getInkAt(g.x, g.y);
-      const slowMult = (ink ? 0.52 : 1.0) * timeScale;
+      const overchargeSpd = (CB.stages && CB.stages.hasMutator && CB.stages.hasMutator('static_overcharge')) ? 1.15 : 1.0;
+      const slowMult = (ink ? 0.52 : 1.0) * timeScale * overchargeSpd;
 
       // 踏入金色花粉隐身雾：打喷嚏眩晕并强制解除荆棘缩壳/护盾！
       if (g.aiState !== 'stunned' && g.sneezeCooldown <= 0 && CB.combat.isInPollen(g.x, g.y)) {
@@ -1389,6 +1598,41 @@
             g.snareCooldown = 4.2;
             CB.combat.spawnInkPuddle(player.x, player.y, '#3e8c60');
             CB.player.spawnPopup(player.x, player.y - 32, '🌿 长老古藤网!', '#2a754c');
+          }
+        } else if (g.kind === 'frost_snail') {
+          const spd = g.chaseSpeed * slowMult;
+          steerGuardToward(g, player.x, player.y, spd, dt, map);
+          movedSpeed = spd;
+          if (g.fireCooldown <= 0 && distToPlayer < 260 && sees) {
+            g.fireCooldown = 2.4;
+            g.facing = Math.atan2(player.y - g.y, player.x - g.x);
+            fireWaterFan(g, 3);
+          }
+        } else if (g.kind === 'prism_weaver') {
+          const idealD = 185;
+          if (distToPlayer < idealD - 35) {
+            const awayX = g.x + (g.x - player.x);
+            const awayY = g.y + (g.y - player.y);
+            steerGuardToward(g, awayX, awayY, g.chaseSpeed * slowMult, dt, map);
+          } else {
+            const ang = Math.atan2(player.y - g.y, player.x - g.x) + g.orbitDir * 1.15;
+            steerGuardToward(g, g.x + Math.cos(ang) * 90, g.y + Math.sin(ang) * 90, g.chaseSpeed * slowMult, dt, map);
+          }
+          g.facing = Math.atan2(player.y - g.y, player.x - g.x);
+          movedSpeed = g.chaseSpeed * slowMult;
+          if (g.fireCooldown <= 0 && distToPlayer < 310 && sees) {
+            g.fireCooldown = 2.05;
+            fireStarVolley(g, 3);
+          }
+        } else if (g.kind === 'volt_automaton') {
+          const voltMult = (g.voltOverloadTimer || 0) > 0 ? 1.35 : 1.0;
+          const spd = g.chaseSpeed * slowMult * voltMult;
+          steerGuardToward(g, player.x, player.y, spd, dt, map);
+          movedSpeed = spd;
+          if (g.fireCooldown <= 0 && distToPlayer < 265 && sees) {
+            g.fireCooldown = (g.voltOverloadTimer || 0) > 0 ? 1.55 : 2.15;
+            g.facing = Math.atan2(player.y - g.y, player.x - g.x);
+            fireStarVolley(g, 1);
           }
         } else {
           // 吸金藤妖偶：贴近吸金 + 抛藤蔓减速网
@@ -2591,7 +2835,143 @@
       ctx.strokeStyle = INK;
       ctx.lineWidth = 1.6;
       drawEyes(ctx, g, faceSign * 4, -r * 0.85, faceSign, INK);
-    } else {
+    } else if (g.kind === 'frost_snail') {
+      const melted = (g.meltedWetTimer || 0) > 0;
+      ctx.fillStyle = hitWhite ? '#ffffff' : '#9ee6f7';
+      ctx.beginPath();
+      ctx.ellipse(0, -4, r * 1.08, r * 0.48, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.moveTo(faceSign * 10, -10);
+      ctx.lineTo(faceSign * 16, -21);
+      ctx.moveTo(faceSign * 14, -8);
+      ctx.lineTo(faceSign * 21, -17);
+      ctx.stroke();
+      ctx.fillStyle = '#dffaff';
+      ctx.beginPath();
+      ctx.arc(faceSign * 16, -22, 3, 0, Math.PI * 2);
+      ctx.arc(faceSign * 21, -18, 2.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = hitWhite ? '#ffffff' : (melted ? 'rgba(92, 198, 235, 0.72)' : '#d2f6ff');
+      ctx.strokeStyle = melted ? '#1d7fa8' : INK;
+      ctx.lineWidth = melted ? 2.0 : 2.5;
+      ctx.beginPath();
+      ctx.arc(-faceSign * 4, -17, r * (melted ? 0.66 : 0.84), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.strokeStyle = melted ? '#78e8ff' : '#58b8d8';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.arc(-faceSign * 4, -17, r * 0.44, 0, Math.PI * 1.6);
+      ctx.stroke();
+
+      if (!melted && g.armorBrokenTimer <= 0) {
+        ctx.fillStyle = '#a8f0ff';
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 1.6;
+        [[-10, -34], [-2, -39], [6, -33]].forEach(([ix, iy]) => {
+          ctx.beginPath();
+          ctx.moveTo(ix - 4, iy + 8);
+          ctx.lineTo(ix, iy);
+          ctx.lineTo(ix + 4, iy + 8);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        });
+      }
+      drawEyes(ctx, g, faceSign * 10, -9, faceSign, INK);
+    } else if (g.kind === 'prism_weaver') {
+      const legWave = Math.sin(g.walkPhase * 1.6) * 4;
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.2;
+      for (const side of [-1, 1]) {
+        for (let k = -1; k <= 1; k++) {
+          ctx.beginPath();
+          ctx.moveTo(side * 8, -10);
+          ctx.lineTo(side * (r + 5), -14 + k * 5 + side * legWave * 0.4);
+          ctx.lineTo(side * (r + 8), -2 + k * 4);
+          ctx.stroke();
+        }
+      }
+
+      ctx.fillStyle = hitWhite ? '#ffffff' : '#fff4d4';
+      ctx.beginPath();
+      ctx.arc(0, -14, r * 0.82, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      if (g.armorBrokenTimer <= 0 && g.aiState !== 'stunned') {
+        ctx.fillStyle = 'rgba(164, 240, 255, 0.84)';
+        ctx.strokeStyle = '#d99b1e';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(0, -r * 1.75);
+        ctx.lineTo(r * 0.92, -14);
+        ctx.lineTo(0, -3);
+        ctx.lineTo(-r * 0.92, -14);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
+        ctx.beginPath();
+        ctx.moveTo(0, -r * 1.55);
+        ctx.lineTo(r * 0.42, -14);
+        ctx.lineTo(0, -10);
+        ctx.closePath();
+        ctx.fill();
+      }
+      drawEyes(ctx, g, faceSign * 4, -14, faceSign, INK, '#56d8f7');
+    } else if (g.kind === 'volt_automaton') {
+      const overloaded = (g.voltOverloadTimer || 0) > 0;
+      drawFeet(ctx, g.walkPhase, '#6e4a28');
+
+      ctx.fillStyle = hitWhite ? '#ffffff' : (overloaded ? '#e8a23c' : g.bodyColor);
+      ctx.beginPath();
+      ctx.roundRect(-r * 0.86, -r * 1.38, r * 1.72, r * 1.4, 10);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.strokeStyle = overloaded ? '#7ef0ff' : '#ffd870';
+      ctx.lineWidth = 2.0;
+      for (const ry of [-8, -14, -20]) {
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.76, ry);
+        ctx.lineTo(r * 0.76, ry);
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.1;
+      ctx.beginPath();
+      ctx.moveTo(-7, -r * 1.38); ctx.lineTo(-10, -r * 1.82);
+      ctx.moveTo(7, -r * 1.38); ctx.lineTo(10, -r * 1.82);
+      ctx.stroke();
+      const orbCol = (g.chargeSign || 1) > 0 ? '#ff7868' : '#58e2ff';
+      ctx.fillStyle = orbCol;
+      ctx.beginPath();
+      ctx.arc(-10, -r * 1.86, 4.4, 0, Math.PI * 2);
+      ctx.arc(10, -r * 1.86, 4.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = overloaded ? 2.2 : 1.4;
+      ctx.beginPath();
+      ctx.moveTo(-6, -r * 1.86);
+      ctx.lineTo(0, -r * 1.86 + Math.sin(time * 32) * (overloaded ? 5 : 2.5));
+      ctx.lineTo(6, -r * 1.86);
+      ctx.stroke();
+
+      drawEyes(ctx, g, faceSign * 4, -r * 0.82, faceSign, INK, overloaded ? '#7ef0ff' : '#ffe475');
+        } else {
       // 花穹守卫巨像（第 4 关精英 Boss）：白玉鎏金巨身 + 太阳花冠 + 双重金甲光环！
       drawFeet(ctx, g.walkPhase, '#5e2c2a');
       ctx.fillStyle = hitWhite ? '#ffffff' : g.bodyColor;
@@ -2974,6 +3354,7 @@
     stunNearbyGuards,
     repelGuardsFrom,
     damageGuard,
+    meltFrostShell,
     updateGuards,
     drawGuardFloorAura,
     drawGuardBody,

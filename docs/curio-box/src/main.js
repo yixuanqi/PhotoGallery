@@ -22,6 +22,10 @@
     updateTouchHud,
     openChartModal,
     closeChartModal,
+    openMarketModal,
+    closeMarketModal,
+    openDailyModal,
+    closeDailyModal,
   } = CB.ui;
 
   const canvas = document.getElementById('gameCanvas');
@@ -223,12 +227,12 @@
     document.body.classList.toggle('platform-pc', !isMobile);
     document.body.classList.toggle('platform-mobile', isMobile);
 
-    const showTouch = isMobile && !game.introGateOpen && !game.introActive && !game.titleOpen && !game.hubOpen && !game.paused && !game.chartOpen && !game.portraitBlocked && game.run.phase === 'playing';
+    const showTouch = isMobile && !game.introGateOpen && !game.introActive && !game.titleOpen && !game.hubOpen && !game.paused && !game.chartOpen && !game.marketOpen && !game.dailyOpen && !game.portraitBlocked && game.run.phase === 'playing';
     if (touchControlsEl) {
       touchControlsEl.classList.toggle('hidden', !showTouch);
     }
     if (pcHintBarEl) {
-      const showPcHint = !isMobile && !game.introGateOpen && !game.introActive && !game.titleOpen && !game.hubOpen && !game.paused && !game.chartOpen && game.run.phase === 'playing';
+      const showPcHint = !isMobile && !game.introGateOpen && !game.introActive && !game.titleOpen && !game.hubOpen && !game.paused && !game.chartOpen && !game.marketOpen && !game.dailyOpen && game.run.phase === 'playing';
       pcHintBarEl.classList.toggle('hud-hidden', !showPcHint);
     }
     if (btnTouchModeRef) {
@@ -359,6 +363,8 @@
     reopenPauseAfterHub = false;
     setGamePaused(false, true);
     if (game.chartOpen) closeChartModal();
+    if (game.marketOpen) closeMarketModal();
+    if (game.dailyOpen) closeDailyModal();
     if (game.hubOpen) closeHub();
     setDrawerOpen(false);
     setSettingsOpen(false);
@@ -391,6 +397,8 @@
     reopenPauseAfterHub = false;
     setGamePaused(false, true);
     if (game.chartOpen) closeChartModal();
+    if (game.marketOpen) closeMarketModal();
+    if (game.dailyOpen) closeDailyModal();
     if (game.hubOpen) closeHub();
     reopenPauseAfterHub = false;
     setGamePaused(false, true);
@@ -488,6 +496,7 @@
     game.focusSpots = [];
     game.laserWebs = [];
     game.lightningArcs = [];
+    game.dilationBubbles = [];
     game.fallingGuards = [];
     game.fallingCrates = [];
     game.hitStop = 0;
@@ -510,6 +519,8 @@
     reopenPauseAfterHub = false;
     setGamePaused(false, true);
     if (game.chartOpen) closeChartModal();
+    if (game.marketOpen) closeMarketModal();
+    if (game.dailyOpen) closeDailyModal();
     if (game.hubOpen) closeHub();
     setDrawerOpen(false);
     lastMinimapTime = 0;
@@ -546,17 +557,43 @@
     }
   }
 
+  function startDailyChallenge(spec) {
+    if (!spec || !spec.node) return;
+    startNewVoyage(spec.node);
+    startStage(spec.node, { keepCurios: false, customSeed: spec.seed, stayOnTitle: false });
+    spawnPopup(game.player.x, game.player.y - 74, `📅 每日云海 #${spec.seed} · 达成 3 项悬赏赢金库奖励!`, '#c98212');
+  }
+
+  function openVoyageChart() {
+    openChartModal(
+      (chosenNode) => {
+        if (chosenNode && chosenNode.nodeType === 'market') {
+          advanceVoyageToNode(chosenNode);
+          if (CB.stages && CB.stages.generateNextChoices) {
+            game.voyage.nextChoices = CB.stages.generateNextChoices((game.voyage.leg || 1) + 1, chosenNode);
+          }
+          openMarketModal(
+            () => {
+              openVoyageChart();
+            },
+            () => {
+              handleBankAndReturnToPort();
+            }
+          );
+          return;
+        }
+        advanceVoyageToNode(chosenNode);
+        startStage(chosenNode, { keepCurios: true, stayOnTitle: false });
+      },
+      () => {
+        handleBankAndReturnToPort();
+      }
+    );
+  }
+
   function advanceAfterSummary() {
     if (game.run.phase === 'extracted') {
-      openChartModal(
-        (chosenNode) => {
-          advanceVoyageToNode(chosenNode);
-          startStage(chosenNode, { keepCurios: true, stayOnTitle: false });
-        },
-        () => {
-          handleBankAndReturnToPort();
-        }
-      );
+      openVoyageChart();
     } else {
       startStage(null, { keepCurios: false, stayOnTitle: false });
     }
@@ -598,6 +635,8 @@
     const btnSkipIntro = document.getElementById('btnSkipIntro');
     const btnReplayIntro = document.getElementById('btnReplayIntro');
     const btnTitleStart = document.getElementById('btnTitleStart');
+    const btnTitleDaily = document.getElementById('btnTitleDaily');
+    const dailyModalEl = document.getElementById('dailyModal');
     const btnTitleHub = document.getElementById('btnTitleHub');
     const btnTitleCodex = document.getElementById('btnTitleCodex');
     const btnTitleSettings = document.getElementById('btnTitleSettings');
@@ -812,6 +851,20 @@
       });
     }
     if (btnTitleStart) btnTitleStart.addEventListener('click', () => enterGameFromTitle(false));
+    if (btnTitleDaily) {
+      btnTitleDaily.addEventListener('click', () => {
+        if (CB.audio) {
+          CB.audio.unlock();
+          if (CB.audio.playUiClick) CB.audio.playUiClick();
+        }
+        openDailyModal((spec) => startDailyChallenge(spec));
+      });
+    }
+    if (dailyModalEl) {
+      dailyModalEl.addEventListener('click', (e) => {
+        if (e.target === dailyModalEl) closeDailyModal();
+      });
+    }
     if (btnTitleHub) btnTitleHub.addEventListener('click', () => {
       if (CB.audio) CB.audio.unlock();
       openHub('workshop');
@@ -999,6 +1052,7 @@
         return;
       }
       if (code === 'Escape') {
+        if (game.dailyOpen) { closeDailyModal(); return; }
         if (ageModal && !ageModal.classList.contains('hidden')) { setAgeModalOpen(false); return; }
         if (game.settingsOpen) { setSettingsOpen(false); return; }
         if (game.hubOpen) { closeHub(); return; }
@@ -1042,7 +1096,7 @@
         if (code === 'KeyV') toggleAudio();
         return;
       }
-      if (game.chartOpen) return;
+      if (game.chartOpen || game.marketOpen || game.dailyOpen) return;
       if (code === 'KeyR') startStage(null, { keepCurios: false });
       if (code === 'Enter' && game.run.phase !== 'playing') advanceAfterSummary();
       if (code === 'KeyM') toggleOverview();
@@ -1333,7 +1387,7 @@
       return;
     }
 
-    if (game.run.phase === 'playing' && !game.introGateOpen && !game.hubOpen && !game.titleOpen && !game.chartOpen && !game.portraitBlocked) {
+    if (game.run.phase === 'playing' && !game.introGateOpen && !game.hubOpen && !game.titleOpen && !game.chartOpen && !game.marketOpen && !game.dailyOpen && !game.portraitBlocked) {
       updatePlayer(rawDt);
       updateCombat(rawDt);
       updateGuards(rawDt);
@@ -1347,11 +1401,11 @@
     if (!game.titleOpen) {
       updateCombatHud(hudEls);
       if (game.touchActive) {
-        const shouldShowTouch = !game.hubOpen && !game.chartOpen && !game.paused && !game.portraitBlocked && game.run.phase === 'playing';
+        const shouldShowTouch = !game.hubOpen && !game.chartOpen && !game.marketOpen && !game.dailyOpen && !game.paused && !game.portraitBlocked && game.run.phase === 'playing';
         if (touchControlsEl) touchControlsEl.classList.toggle('hidden', !shouldShowTouch);
         if (shouldShowTouch) updateTouchHud(touchEls);
       } else if (pcHintBarEl) {
-        const shouldShowPc = !game.hubOpen && !game.chartOpen && !game.paused && game.run.phase === 'playing';
+        const shouldShowPc = !game.hubOpen && !game.chartOpen && !game.marketOpen && !game.dailyOpen && !game.paused && game.run.phase === 'playing';
         pcHintBarEl.classList.toggle('hud-hidden', !shouldShowPc);
       }
       syncStageUI();

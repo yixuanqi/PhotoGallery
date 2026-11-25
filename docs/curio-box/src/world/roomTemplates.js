@@ -1177,5 +1177,57 @@
     return { ground, edge };
   }
 
-  CB.roomTemplates = { buildRoomProps, buildRoomDecors };
+
+  // ==================== v9.5b 物理试炼靶场：3 套精修单房一杆清台谜题 ====================
+  function makeTrialLayout(room, variant = 0) {
+    const { x, y, w, h } = room;
+    const cy = y + h * 0.5;
+    const props = [];
+    const ground = [];
+    const guardSpawns = [];
+
+    const v = ((variant % 3) + 3) % 3;
+    if (v === 0) {
+      // 试炼 0：冰镜保龄球（超长冰镜滑道 + 双木箱 + 3 守卫排成一线贴近东侧敞开崖口！）
+      ground.push({ kind: 'dew_slide', x: x + 220, y: cy - 38, w: w - 260, h: 76, orient: 'h', seed: 91 });
+      props.push(makeCrate(x + 286, cy, 44, { keepExactPos: true }));
+      props.push(makeCrate(x + 436, cy, 44, { keepExactPos: true }));
+      props.push(makeBumper(x + 560, cy - 110, 22));
+      props.push(makeBumper(x + 560, cy + 110, 22));
+      guardSpawns.push(
+        { kind: 'shield_charger', x: x + w - 280, y: cy - 12 },
+        { kind: 'dew_hopper', x: x + w - 185, y: cy + 14 },
+        { kind: 'shield_charger', x: x + w - 108, y: cy - 4 }
+      );
+    } else if (v === 1) {
+      // 试炼 1：光热电三连实验（凸透镜 + 高压罐 + 冰道 + 正电桩 + 3 守卫！）
+      ground.push({ kind: 'dew_slide', x: x + 360, y: cy - 44, w: w - 430, h: 88, orient: 'h', seed: 92 });
+      props.push(makeConvexLens(x + 295, cy, 0));
+      props.push(makePressureCan(x + 455, cy));
+      props.push(makeChargePylon(x + 610, cy - 84, 1));
+      props.push(makeChargePylon(x + 760, cy + 84, 1));
+      props.push(makeInkwell(x + 690, cy, '#3cb6c9', { keepExactPos: true }));
+      guardSpawns.push(
+        { kind: 'frost_snail', x: x + w - 310, y: cy - 18 },
+        { kind: 'volt_automaton', x: x + w - 210, y: cy + 20 },
+        { kind: 'prism_weaver', x: x + w - 120, y: cy - 10 }
+      );
+    } else {
+      // 试炼 2：星轨虫洞切线甩射（中央星轨仪 + 对穿虫洞直指东崖 + 3 守卫！）
+      props.push(makeOrrery(x + 485, cy, 1));
+      const [whA, whB] = makeWormholePair(x + 485, cy - 118, x + w - 215, cy - 10);
+      props.push(whA, whB);
+      props.push(makeCrate(x + 310, cy - 48, 44, { keepExactPos: true }));
+      props.push(makeSingularity(x + 720, cy + 86));
+      guardSpawns.push(
+        { kind: 'astro_sentinel', x: x + 610, y: cy - 32 },
+        { kind: 'comet_orbiter', x: x + w - 150, y: cy + 8 },
+        { kind: 'astro_sentinel', x: x + w - 106, y: cy - 34 }
+      );
+    }
+
+    return { props, ground, guardSpawns };
+  }
+
+  CB.roomTemplates = { buildRoomProps, buildRoomDecors, makeTrialLayout };
 })();

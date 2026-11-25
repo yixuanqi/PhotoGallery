@@ -207,7 +207,10 @@
       <div id="titleLoadoutBanner" class="title-loadout-banner hidden"></div>
 
       <div class="title-actions">
-        <button id="btnTitleStart" class="title-btn-play">🎈 启航云海</button>
+        <div class="title-play-row">
+          <button id="btnTitleStart" class="title-btn-play">🎈 启航云海</button>
+          <button id="btnTitleDaily" class="title-btn-daily" title="每日统一种子与 3 条物理悬赏令（纯离线）">📅 每日挑战<span id="titleDailyBadge" class="hub-badge hidden"></span></button>
+        </div>
         <div class="title-sub-actions">
           <button id="btnTitleHub" class="title-btn-sub">⚓ 飞艇母港<span id="titleHubBadge" class="hub-badge hidden"></span></button>
           <button id="btnTitleCodex" class="title-btn-sub">📖 博物图鉴</button>
@@ -379,10 +382,94 @@
       </div>
 
       <div class="chart-footer">
-        <span class="chart-risk-note">⚠ 若在深空失利，未入库的暂存战利品仅能紧急打捞 20%</span>
+        <span id="chartRiskNote" class="chart-risk-note">⚠ 若在深空失利，未入库的暂存战利品仅能紧急打捞 20%</span>
         <div class="chart-footer-actions">
+          <button id="btnChartReroll" class="btn-sub hidden">🔭 重抽航线 (0)</button>
           <button id="btnChartBank" class="btn-hub">⚓ 见好就收 · 返航入库</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- v9.6 纯离线每日云海挑战 & 3 条物理悬赏令弹窗 -->
+  <div id="dailyModal" class="run-modal daily-modal hidden">
+    <div class="chart-card daily-card">
+      <div class="chart-header daily-header">
+        <div class="chart-title-block">
+          <span class="chart-crest">📅 DAILY CLOUD-SEA CHALLENGE · 全球统一种子（纯离线）</span>
+          <h2 id="dailyTitle">今日每日云海挑战</h2>
+          <p id="dailySub">每天零点刷新专属跨学科空域种子与 3 条物理特技悬赏，达成即刻奖励母港金库资产</p>
+        </div>
+        <button id="btnCloseDaily" class="modal-x-btn" title="关闭 (Esc)">✕</button>
+      </div>
+
+      <div class="chart-voyage-strip daily-strip">
+        <span>🗓 今日日期 <strong id="dailyDateVal">2026-01-01</strong></span>
+        <span>🎲 今日种子 <strong id="dailySeedVal">#000000</strong></span>
+        <span>🌪 变异词缀 <strong id="dailyMutatorVal">-</strong></span>
+        <span>🏆 今日最高 <strong id="dailyBestVal">0 💎</strong></span>
+      </div>
+
+      <div class="market-section-label">今日 3 条物理悬赏令（单趟达成即可领取金库资产）</div>
+      <div id="dailyBountiesList" class="daily-bounties-list"></div>
+
+      <div class="chart-footer">
+        <span class="daily-note">✨ 每日挑战不消耗母港金库，完成悬赏直接永久入库</span>
+        <div class="chart-footer-actions">
+          <button id="btnStartDaily" class="btn-main">🎈 开启今日云海挑战</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- v9.5 浮空补给黑市弹窗（零战斗休整 · 选购奇物 / 满血超频休整 / 两件熔铸传说大金） -->
+  <div id="marketModal" class="run-modal market-modal hidden">
+    <div class="chart-card market-card">
+      <div class="chart-header">
+        <div class="chart-title-block">
+          <span class="chart-crest">⚖️ FLOATING SUPPLY BAZAAR · 云海浮空补给黑市</span>
+          <h2 id="marketTitle">欢迎停靠浮空黑市飞艇</h2>
+          <p>优先使用本趟暂存估值结算（不足时自动从母港金库补足），零战斗休整后可直奔下一航段</p>
+        </div>
+      </div>
+
+      <div class="chart-voyage-strip market-strip">
+        <span>📦 暂存战利品 <strong id="marketPendingVal">0 💎</strong></span>
+        <span>🏛 母港金库 <strong id="marketBankVal">0</strong></span>
+        <span>♥ 生命值 <strong id="marketHpVal">100/100</strong></span>
+        <span>💎 持有奇物 <strong id="marketCurioCountVal">0 件</strong></span>
+      </div>
+
+      <div class="market-section-label">奇物货架 · 现场装填构筑</div>
+      <div id="marketOffersGrid" class="market-offers-grid"></div>
+
+      <div class="market-section-label">飞艇工坊特供服务</div>
+      <div class="market-services-row">
+        <button id="btnMarketRest" class="market-service-btn is-rest">
+          <span class="ms-icon">🍵</span>
+          <div class="ms-info">
+            <strong>满血休整 + 下段开局超频金珠</strong>
+            <small>立即回满生命，下一航段起手附带 12s ✦ 超频金珠</small>
+          </div>
+          <span class="ms-cost">35 💎</span>
+        </button>
+
+        <button id="btnMarketFuse" class="market-service-btn is-fuse">
+          <span class="ms-icon">⚗️</span>
+          <div class="ms-info">
+            <strong>奇物熔铸 · 2 合 1 传说大金</strong>
+            <small id="marketFuseSub">消耗 2 件普通/史诗奇物，随机熔铸 1 件未持有传说大金</small>
+          </div>
+          <span class="ms-cost">40 💎</span>
+        </button>
+      </div>
+
+      <div id="marketFeedback" class="market-feedback">☁ 挑选心仪补给后，点击右侧启航按钮展开前方云海航图</div>
+
+      <div class="chart-footer">
+        <button id="btnMarketBank" class="btn-hub">⚓ 见好就收 · 返航入库</button>
+        <button id="btnMarketContinue" class="btn-main">🧭 整备完毕 · 展开下一航段航图</button>
       </div>
     </div>
   </div>

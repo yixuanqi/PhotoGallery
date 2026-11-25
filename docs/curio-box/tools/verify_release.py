@@ -277,6 +277,18 @@ def run_verification(project_root: str, bundle_zip: str = None) -> dict:
             assert mod in module_exports, f"{rel}: unknown module CB.{mod}"
             assert prop in module_exports[mod], f"{rel}: missing property CB.{mod}.{prop}"
 
+    # 4.5. Undeclared ALL_CAPS constant guard across every IIFE module
+    std_caps = {'NAN', 'DOM', 'HUD', 'FPS', 'CSS', 'URL', 'API', 'IOS', 'MAX', 'MIN', 'RGB', 'HSL', 'SVG', 'PNG', 'JPG', 'EOF', 'UTF', 'JSON', 'HTML', 'PI', 'LN2', 'SQRT2', 'HP', 'AI', 'UI', 'FX', 'ID', 'XP', 'OK', 'MS', 'PX', 'PC', 'CB', 'IIFE'}
+    for rel, clean in clean_by_file.items():
+        declared = set(re.findall(r'\b(?:const|let|var|function)\s+([A-Z][A-Z0-9_]{2,})\b', clean))
+        for m in re.finditer(r'\b(?:const|let|var)\s*\{([^}]+)\}\s*=', clean):
+            for tok in re.findall(r'\b([A-Z][A-Z0-9_]{2,})\b', m.group(1)):
+                declared.add(tok)
+        for m in re.finditer(r'(?<![.\w$])([A-Z][A-Z0-9_]{2,})\b(?!\s*:)', clean):
+            tok = m.group(1)
+            if tok not in declared and tok not in std_caps:
+                raise AssertionError(f"{rel}: Undeclared ALL_CAPS identifier '{tok}'!")
+
     # 5. Data Registry Referential Integrity (stages.js <-> extraction.js <-> guards.js)
     stages_src = raw_by_file['src/world/stages.js']
     ext_src = raw_by_file['src/systems/extraction.js']

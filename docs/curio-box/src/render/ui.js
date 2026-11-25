@@ -29,6 +29,9 @@
     vine_elder: '#e85d3f',
     vine_magnet: '#2f9c88',
     colossus: '#ff4f4f',
+    frost_snail: '#76e0ff',
+    prism_weaver: '#ffd84d',
+    volt_automaton: '#ff944d',
   };
 
   let lastCurioKey = '';
@@ -248,7 +251,12 @@
     const dTitle = document.getElementById('drawerSectorTitle');
     const dOmen = document.getElementById('drawerSectorOmen');
     if (dTitle && st) dTitle.textContent = `第 ${leg} 航段 · 海拔 ${alt}m`;
-    if (dOmen && st) dOmen.textContent = `${st.omenIcons || '☁'} ${st.name} · ${st.dangerLabel || '未知空域'}`;
+    if (dOmen && st) {
+      const mutTxt = st.mutatorObjs && st.mutatorObjs.length > 0
+        ? ' · ' + st.mutatorObjs.map((mu) => mu.short).join(' / ')
+        : '';
+      dOmen.textContent = `${st.omenIcons || '☁'} ${st.name}${mutTxt}`;
+    }
   }
 
   function updateCombatHud(els) {
@@ -316,6 +324,12 @@
       } else if (run.phase === 'failed') {
         els.objEl.textContent = '✕ 发条停摆 · 返航失败';
         els.objEl.classList.add('obj-alarm');
+      } else if (run.nodeType === 'trial') {
+        const shots = run.trialHeavyShots || 0;
+        const leftG = game.guards.length;
+        const perfTxt = shots <= 2 ? `完美余弹 ${Math.max(0, 2 - shots)} 发` : '常规清场';
+        els.objEl.textContent = `🎯 试炼靶场 · 剩余 ${leftG} 目标 · ${perfTxt}（≤2重弹赠传说大金）`;
+        els.objEl.classList.add('obj-extract');
       } else if (ex.active) {
         const gustActive = !!(ex.gust && ex.gust.active);
         els.objEl.textContent = ex.inside
@@ -336,8 +350,11 @@
           els.objEl.textContent = '🔓 靠近太阳花神匣按 E 启封';
         } else {
           const st = game.map && game.map.stage ? game.map.stage : null;
+          const mutStr = st && st.mutatorObjs && st.mutatorObjs.length > 0
+            ? ' · ' + st.mutatorObjs.map((mu) => mu.short).join(' ')
+            : '';
           els.objEl.textContent = st
-            ? `第 ${st.leg || 1} 航段 · ${st.altitude || 1200}m · ${st.omenIcons || '☁'} ${st.name} · 搜寻 ☀ 金库`
+            ? `第 ${st.leg || 1} 航段 · ${st.omenIcons || '☁'} ${st.name}${mutStr} · 搜寻 ☀ 金库`
             : '☁ 探索未知空域 · 搜寻 ☀ 太阳花穹金库';
         }
       }
@@ -348,14 +365,24 @@
       if (key !== lastCurioKey) {
         lastCurioKey = key;
         if (p.curios.length === 0) {
-          els.curioTray.innerHTML = '<span class="curio-empty">奇物篮空 · 开匣收集</span>';
+          els.curioTray.innerHTML = '<span class="curio-empty">奇物篮空 · 集齐 2 件同学科奇物激活共鸣</span>';
         } else {
-          els.curioTray.innerHTML = p.curios
+          const activeSyns = CB.extraction && CB.extraction.getActiveSynergies ? CB.extraction.getActiveSynergies() : [];
+          const synDefs = (CB.extraction && CB.extraction.SYNERGY_DEFS) || {};
+          const synHtml = activeSyns
             .map(
-              (c) =>
-                `<span class="curio-chip ${c.rarity === 'legendary' ? 'curio-grand' : ''}" title="${c.name}（估值 ${c.value}）：${c.perk}">${c.icon}<small>${c.shortPerk || c.value}</small></span>`
+              (s) =>
+                `<span class="synergy-chip syn-${s.id}" title="✨ ${s.name}（已激活）：${s.perk}">${s.short}</span>`
             )
             .join('');
+          const curHtml = p.curios
+            .map((c) => {
+              const sd = c.discipline ? synDefs[c.discipline] : null;
+              const discTxt = sd ? ` · ${sd.icon}${sd.name}` : '';
+              return `<span class="curio-chip ${c.rarity === 'legendary' ? 'curio-grand' : ''}" title="${c.name}（估值 ${c.value}${discTxt}）：${c.perk}">${c.icon}<small>${c.shortPerk || c.value}</small></span>`;
+            })
+            .join('');
+          els.curioTray.innerHTML = synHtml + curHtml;
         }
       }
     }
@@ -385,11 +412,25 @@
     modal.classList.add(isWin ? 'modal-win' : 'modal-fail');
 
     stampEl.textContent = isWin ? data.grade : 'FAIL';
-    const stuntNote = data.stuntBounty > 0 ? `（含 ✨ 特技赏金 +${data.stuntBounty}）` : '';
+    const dailyGold = data.dailyRewardGold || 0;
+    const dailyNote = dailyGold > 0 ? ` · 📅 每日悬赏入库 +${dailyGold} 🏛!` : '';
+    const stuntNote = (data.stuntBounty > 0 ? `（含 ✨ 特技赏金 +${data.stuntBounty}）` : '') + dailyNote;
 
     if (isWin) {
-      titleEl.textContent = `第 ${leg} 航段（${alt}m）撤离成功！`;
-      subEl.textContent = `${data.omenIcons || '☁'} ${data.stageName} · 战利品已暂存飞艇货舱${stuntNote}，可展开航图深入深空或立即返航入库`;
+      if (data.nodeType === 'trial') {
+        titleEl.textContent = data.trialPerfect
+          ? `🎯 第 ${leg} 航段 · 一杆完美清台！`
+          : `🎯 第 ${leg} 航段 · 试炼靶场通关！`;
+        subEl.textContent = data.trialPerfect
+          ? `仅用 ${data.trialHeavyShots || 0} 发重弹全清目标，额外颁赠传说大金奇物${stuntNote}！`
+          : `共消耗 ${data.trialHeavyShots || 0} 发重弹清空试炼场${stuntNote}，可继续深入未知云海`;
+      } else if (data.nodeType === 'boss') {
+        titleEl.textContent = `👑 第 ${leg} 航段霸主空域凯旋！`;
+        subEl.textContent = `${data.omenIcons || '👑'} ${data.stageName} · 霸主秘宝已暂存货舱${stuntNote}，可展开航图冲向更深空域或见好就收入库`;
+      } else {
+        titleEl.textContent = `第 ${leg} 航段（${alt}m）撤离成功！`;
+        subEl.textContent = `${data.omenIcons || '☁'} ${data.stageName} · 战利品已暂存飞艇货舱${stuntNote}，可展开航图深入深空或立即返航入库`;
+      }
     } else {
       titleEl.textContent = `第 ${leg} 航段（${alt}m）发条停摆`;
       subEl.textContent = data.salvagedHaul > 0
@@ -778,7 +819,9 @@
           const unlocked = game.meta.unlockedCurios.includes(id);
           if (unlocked) {
             const tier = c.rarity === 'legendary' ? '☀ 传说大金' : c.rarity === 'epic' ? '✦ 史诗构筑' : '◆ 稀有构筑';
-            detail.innerHTML = `<strong>${c.icon} ${c.name}</strong>（${tier} · 基础估值 <strong>${c.value} 💎</strong>）<br/>${c.perk}`;
+            const sd = c.discipline && CB.extraction && CB.extraction.SYNERGY_DEFS ? CB.extraction.SYNERGY_DEFS[c.discipline] : null;
+            const synNote = sd ? `<br/><span class="codex-disc-badge">${sd.icon} ${sd.name} (2件质变)</span> ${sd.perk}` : '';
+            detail.innerHTML = `<strong>${c.icon} ${c.name}</strong>（${tier} · 基础估值 <strong>${c.value} 💎</strong>）<br/>${c.perk}${synNote}`;
           } else {
             detail.innerHTML = `<strong>❓ 尚未收录</strong><br/>前往浮岛开启${c.rarity === 'legendary' ? '「☀ 太阳花穹金库神匣」' : '「秘境花匣」'}并拾取即可解锁此奇物图鉴！`;
           }
@@ -895,6 +938,11 @@
     if (titleHubBadge && CB.extraction && CB.extraction.canAffordAnyUpgrade) {
       titleHubBadge.classList.toggle('hidden', !CB.extraction.canAffordAnyUpgrade());
     }
+    const titleDailyBadge = document.getElementById('titleDailyBadge');
+    if (titleDailyBadge && CB.extraction && CB.extraction.getDailyChallengeSpec) {
+      const dSpec = CB.extraction.getDailyChallengeSpec();
+      titleDailyBadge.classList.toggle('hidden', dSpec.unclaimedCount <= 0);
+    }
     if (audioBtn) audioBtn.textContent = game.audioMuted ? '🔇' : '🔊';
     const ctrlMiniEl = document.getElementById('titleControlsMini');
     if (ctrlMiniEl) {
@@ -923,13 +971,36 @@
     const altEl = document.getElementById('chartAltVal');
     const pendEl = document.getElementById('chartPendingVal');
     const chainEl = document.getElementById('chartChainVal');
+    const riskEl = document.getElementById('chartRiskNote');
     const grid = document.getElementById('chartNodesGrid');
     const btnBank = document.getElementById('btnChartBank');
+    const btnReroll = document.getElementById('btnChartReroll');
+
+    const metaB = CB.extraction && CB.extraction.getMetaBonuses ? CB.extraction.getMetaBonuses() : null;
+    const salvPct = Math.round(((metaB && metaB.salvageRatio) || 0.20) * 100);
+    if (riskEl) {
+      riskEl.textContent = `⚠ 若在深空失利，云海打捞保险舱将紧急打捞 ${salvPct}% 未入库暂存战利品`;
+    }
 
     if (titleEl) titleEl.textContent = `第 ${nextLeg} 航段 · 罗盘侦测到 ${choices.length} 条未知云海航线`;
     if (altEl) altEl.textContent = `${v.altitude || 1200}m`;
     if (pendEl) pendEl.textContent = `${v.pendingHaul || 0} 💎`;
     if (chainEl) chainEl.textContent = `×${nextChainMult}`;
+
+    if (btnReroll) {
+      const hasScope = (metaB && metaB.chartRerolls > 0) || (v.rerollsLeft || 0) > 0;
+      const left = v.rerollsLeft || 0;
+      btnReroll.classList.toggle('hidden', !hasScope);
+      btnReroll.disabled = left <= 0;
+      btnReroll.textContent = `🔭 重抽航线 (${left})`;
+      btnReroll.onclick = () => {
+        if ((v.rerollsLeft || 0) <= 0) return;
+        v.rerollsLeft -= 1;
+        v.nextChoices = CB.stages ? CB.stages.generateNextChoices(nextLeg, v.currentNode) : [];
+        if (CB.audio && CB.audio.playChartSelect) CB.audio.playChartSelect();
+        openChartModal(onSelectNode, onBankReturn);
+      };
+    }
 
     if (btnBank) {
       btnBank.textContent = `⚓ 见好就收 · 返航入库 (+${v.pendingHaul || 0} 🏛)`;
@@ -941,19 +1012,41 @@
 
     if (grid) {
       grid.innerHTML = choices.map((node, idx) => {
-        const isApex = node.anomalies && node.anomalies.length >= 3;
-        const isMulti = !isApex && node.anomalies && node.anomalies.length >= 2;
-        const cls = isApex ? 'is-apex' : isMulti ? 'is-multi' : '';
+        const isBoss = node.nodeType === 'boss';
+        const isTrial = node.nodeType === 'trial';
+        const isMarket = node.nodeType === 'market';
+        const isApex = !isBoss && !isTrial && !isMarket && node.anomalies && node.anomalies.length >= 3;
+        const isMulti = !isBoss && !isTrial && !isMarket && !isApex && node.anomalies && node.anomalies.length >= 2;
+        const cls = isBoss ? 'is-boss' : isTrial ? 'is-trial' : isMarket ? 'is-market' : isApex ? 'is-apex' : isMulti ? 'is-multi' : '';
         const effMult = (node.haulMult * nextChainMult).toFixed(2);
+        const mutDefs = CB.stages && CB.stages.MUTATORS ? CB.stages.MUTATORS : {};
+        const mutTags = Array.isArray(node.mutators)
+          ? node.mutators
+              .map((mid) => mutDefs[mid])
+              .filter(Boolean)
+              .map((m) => `<span class="cn-badge cn-mut" title="${m.desc}">${m.short}</span>`)
+              .join('')
+          : '';
+        const altTag = isBoss
+          ? `👑 海拔 ${node.altitude}m · 阶段霸主`
+          : isTrial
+          ? `🎯 海拔 ${node.altitude}m · 单房谜题`
+          : isMarket
+          ? `⚖️ 海拔 ${node.altitude}m · 零战斗黑市`
+          : `▲ 海拔 ${node.altitude}m · 未知空域`;
+        const multBadge = isMarket
+          ? '<span class="cn-badge cn-mult">购奇物 · 熔传说</span>'
+          : `<span class="cn-badge cn-mult">估值 ×${effMult}</span>`;
         return `
           <button class="chart-node-card ${cls}" data-chart-idx="${idx}">
-            <span class="chart-node-alt">▲ 海拔 ${node.altitude}m · 未知空域</span>
+            <span class="chart-node-alt">${altTag}</span>
             <div class="chart-node-icons">${node.omenIcons || '☁'}</div>
             <div class="chart-node-title">${node.omenTitle || '未知异常征兆'}</div>
             <div class="chart-node-cue">${node.omenCue || '罗盘仅捕获到微弱物理波动'}</div>
             <div class="chart-node-badges">
               <span class="cn-badge cn-danger">${node.dangerLabel || '未知空域'}</span>
-              <span class="cn-badge cn-mult">估值 ×${effMult}</span>
+              ${multBadge}
+              ${mutTags}
             </div>
           </button>
         `;
@@ -975,6 +1068,235 @@
     const modal = document.getElementById('chartModal');
     if (modal) modal.classList.add('hidden');
     game.chartOpen = false;
+  }
+
+  // ==================== v9.5 浮空补给黑市弹窗交互 ====================
+  function openMarketModal(onContinue, onBankReturn) {
+    const modal = document.getElementById('marketModal');
+    if (!modal || !CB.extraction) return;
+    hideRunSummary();
+    closeChartModal();
+    game.marketOpen = true;
+    modal.classList.remove('hidden');
+
+    const offers = CB.extraction.getMarketOffers();
+    let restBought = false;
+    let fusedDone = false;
+
+    const titleEl = document.getElementById('marketTitle');
+    const pendEl = document.getElementById('marketPendingVal');
+    const bankEl = document.getElementById('marketBankVal');
+    const hpEl = document.getElementById('marketHpVal');
+    const curCntEl = document.getElementById('marketCurioCountVal');
+    const grid = document.getElementById('marketOffersGrid');
+    const btnRest = document.getElementById('btnMarketRest');
+    const btnFuse = document.getElementById('btnMarketFuse');
+    const fuseSubEl = document.getElementById('marketFuseSub');
+    const fbEl = document.getElementById('marketFeedback');
+    const btnCont = document.getElementById('btnMarketContinue');
+    const btnBank = document.getElementById('btnMarketBank');
+
+    const setFeedback = (msg) => {
+      if (fbEl) fbEl.textContent = msg;
+    };
+
+    const refreshMarket = () => {
+      const v = game.voyage || {};
+      const budget = CB.extraction.getMarketBudget();
+      const regCount = game.player.curios.filter((c) => c.rarity !== 'legendary').length;
+      if (titleEl) titleEl.textContent = `第 ${v.leg || 2} 航段 · 浮空补给黑市（海拔 ${v.altitude || 2350}m）`;
+      if (pendEl) pendEl.textContent = `${v.pendingHaul || 0} 💎`;
+      if (bankEl) bankEl.textContent = `${game.meta.bankValue || 0}`;
+      if (hpEl) hpEl.textContent = `${Math.ceil(game.player.hp)}/${game.player.maxHp}`;
+      if (curCntEl) curCntEl.textContent = `${game.player.curios.length} 件`;
+
+      if (btnBank) {
+        btnBank.textContent = `⚓ 见好就收 · 返航入库 (+${v.pendingHaul || 0} 🏛)`;
+      }
+
+      if (btnRest) {
+        btnRest.disabled = restBought || budget < 35;
+        const costSpan = btnRest.querySelector('.ms-cost');
+        if (costSpan) costSpan.textContent = restBought ? '✓ 已休整' : '35 💎';
+      }
+
+      if (btnFuse) {
+        btnFuse.disabled = fusedDone || regCount < 2 || budget < 40;
+        const costSpan = btnFuse.querySelector('.ms-cost');
+        if (costSpan) costSpan.textContent = fusedDone ? '✓ 已熔铸' : '40 💎';
+        if (fuseSubEl) {
+          fuseSubEl.textContent = fusedDone
+            ? '本停靠点熔炉已使用，传说大金已装入奇物篮'
+            : regCount >= 2
+            ? `当前可熔铸（持有 ${regCount} 件常规奇物）→ 2 合 1 随机传说大金`
+            : `需至少持有 2 件普通/史诗奇物（当前 ${regCount}/2）`;
+        }
+      }
+
+      if (grid) {
+        const synCounts = CB.extraction.getSynergyCounts ? CB.extraction.getSynergyCounts() : {};
+        const synDefs = CB.extraction.SYNERGY_DEFS || {};
+        grid.innerHTML = offers.map((item, idx) => {
+          const c = item.curio;
+          const canBuy = !item.bought && budget >= item.cost;
+          const sd = c.discipline ? synDefs[c.discipline] : null;
+          const curCnt = c.discipline ? (synCounts[c.discipline] || 0) : 0;
+          const willActivate = !item.bought && sd && curCnt === (sd.threshold - 1);
+          const discBadge = sd
+            ? `<span class="mo-disc ${willActivate ? 'will-activate' : ''}">${sd.icon} ${sd.name} ${curCnt}/${sd.threshold}${willActivate ? ' · 购入激活!' : ''}</span>`
+            : '';
+          const cls = [
+            c.rarity === 'epic' ? 'is-epic' : '',
+            item.bought ? 'is-bought' : '',
+            !item.bought && !canBuy ? 'cant-afford' : '',
+          ].filter(Boolean).join(' ');
+          return `
+            <button class="market-offer-card ${cls}" data-market-idx="${idx}" ${item.bought ? 'disabled' : ''}>
+              <div class="mo-icon">${c.icon}</div>
+              <div class="mo-name">${c.name}</div>
+              ${discBadge}
+              <div class="mo-perk">${c.perk}</div>
+              <span class="mo-price">${item.bought ? '✓ 已装入奇物篮' : `💎 ${item.cost} 购入`}</span>
+            </button>
+          `;
+        }).join('');
+
+        grid.querySelectorAll('[data-market-idx]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const item = offers[Number(btn.dataset.marketIdx)];
+            if (!item || item.bought) return;
+            const res = CB.extraction.buyMarketCurio(item.curio.id, item.cost);
+            if (res.ok) {
+              item.bought = true;
+              setFeedback(res.activatedSynergy ? `✨ 购入 ${item.curio.icon} ${item.curio.name} 并激活【${res.activatedSynergy.short}】！${res.activatedSynergy.perk}` : `✨ 已购入 ${item.curio.icon} ${item.curio.name}，构筑立即生效！`);
+              refreshMarket();
+            } else {
+              setFeedback('⚠ 暂存估值与母港金库总额不足，无法购入此奇物');
+            }
+          });
+        });
+      }
+    };
+
+    if (btnRest) {
+      btnRest.onclick = () => {
+        if (restBought) return;
+        const res = CB.extraction.buyMarketRest(35);
+        if (res.ok) {
+          restBought = true;
+          setFeedback('🍵 生命值已回满，下一航段开局附带 12 秒 ✦ 超频金珠！');
+          refreshMarket();
+        } else {
+          setFeedback('⚠ 资金不足（需要 35 💎）');
+        }
+      };
+    }
+
+    if (btnFuse) {
+      btnFuse.onclick = () => {
+        if (fusedDone) return;
+        const res = CB.extraction.fuseMarketCurios(40);
+        if (res.ok && res.forged) {
+          fusedDone = true;
+          setFeedback(res.activatedSynergy ? `⚗️ 熔铸得 ${res.forged.icon} ${res.forged.name} 并激活【${res.activatedSynergy.short}】！` : `⚗️ 熔铸成功！获得传说大金 ${res.forged.icon} ${res.forged.name}（${res.forged.shortPerk}）！`);
+          refreshMarket();
+        } else if (res.reason === 'need_two') {
+          setFeedback('⚠ 至少需要 2 件普通/史诗奇物才可启动熔炉');
+        } else {
+          setFeedback('⚠ 资金不足（需要 40 💎）');
+        }
+      };
+    }
+
+    if (btnCont) {
+      btnCont.onclick = () => {
+        if (CB.audio && CB.audio.playChartSelect) CB.audio.playChartSelect();
+        closeMarketModal();
+        if (onContinue) onContinue();
+      };
+    }
+
+    if (btnBank) {
+      btnBank.onclick = () => {
+        closeMarketModal();
+        if (onBankReturn) onBankReturn();
+      };
+    }
+
+    setFeedback('☁ 挑选心仪补给后，点击右侧启航按钮展开前方云海航图');
+    refreshMarket();
+  }
+
+  function closeMarketModal() {
+    const modal = document.getElementById('marketModal');
+    if (modal) modal.classList.add('hidden');
+    game.marketOpen = false;
+  }
+
+  // ==================== v9.6 纯离线每日云海挑战弹窗 ====================
+  function openDailyModal(onStartDaily) {
+    const modal = document.getElementById('dailyModal');
+    if (!modal || !CB.extraction || !CB.extraction.getDailyChallengeSpec) return;
+    game.dailyOpen = true;
+    modal.classList.remove('hidden');
+
+    const spec = CB.extraction.getDailyChallengeSpec();
+    const titleEl = document.getElementById('dailyTitle');
+    const dateEl = document.getElementById('dailyDateVal');
+    const seedEl = document.getElementById('dailySeedVal');
+    const mutEl = document.getElementById('dailyMutatorVal');
+    const bestEl = document.getElementById('dailyBestVal');
+    const listEl = document.getElementById('dailyBountiesList');
+    const btnStart = document.getElementById('btnStartDaily');
+    const btnClose = document.getElementById('btnCloseDaily');
+
+    if (titleEl) titleEl.textContent = `今日云海 · ${spec.title}`;
+    if (dateEl) dateEl.textContent = spec.dateKey;
+    if (seedEl) seedEl.textContent = `#${spec.seed}`;
+    if (mutEl) mutEl.textContent = spec.mutator ? spec.mutator.short : '标准空域';
+    if (bestEl) bestEl.textContent = spec.cleared ? `${spec.bestHaul} 💎 ✓` : '尚未通关';
+
+    if (listEl) {
+      listEl.innerHTML = spec.bounties
+        .map((b) => `
+          <div class="daily-bounty-row ${b.claimed ? 'is-claimed' : ''}">
+            <span class="db-icon">${b.icon}</span>
+            <div class="db-info">
+              <strong>${b.title}</strong>
+              <small>${b.desc}</small>
+            </div>
+            <span class="db-reward">${b.claimed ? '✓ 已入库' : `+${b.reward} 🏛`}</span>
+          </div>
+        `)
+        .join('');
+    }
+
+    if (btnClose) {
+      btnClose.onclick = () => {
+        if (CB.audio && CB.audio.playUiClick) CB.audio.playUiClick();
+        closeDailyModal();
+      };
+    }
+
+    if (btnStart) {
+      btnStart.textContent = spec.unclaimedCount > 0
+        ? `🎈 挑战今日空域（尚有 ${spec.unclaimedCount} 项悬赏）`
+        : '🎈 再次刷榜 · 今日每日云海';
+      btnStart.onclick = () => {
+        if (CB.audio) {
+          CB.audio.unlock();
+          if (CB.audio.playChartSelect) CB.audio.playChartSelect();
+        }
+        closeDailyModal();
+        if (onStartDaily) onStartDaily(spec);
+      };
+    }
+  }
+
+  function closeDailyModal() {
+    const modal = document.getElementById('dailyModal');
+    if (modal) modal.classList.add('hidden');
+    game.dailyOpen = false;
   }
 
   function updateTouchHud(els) {
@@ -1028,5 +1350,9 @@
     updateTouchHud,
     openChartModal,
     closeChartModal,
+    openMarketModal,
+    closeMarketModal,
+    openDailyModal,
+    closeDailyModal,
   };
 })();

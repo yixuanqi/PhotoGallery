@@ -44,12 +44,15 @@
     if (metaB) {
       p.maxHp = metaB.maxHp;
     }
-    p.maxOrbs = 3;
-    p.orbs = p.maxOrbs;
+    const curStage = game.map && game.map.stage;
+    const isTrial = !!(curStage && curStage.nodeType === 'trial');
+    p.maxOrbs = metaB && metaB.maxOrbs ? metaB.maxOrbs : 3;
+    p.orbs = isTrial ? 2 : p.maxOrbs;
     p.orbRechargeTimer = 0;
     p.orbRechargeDuration = metaB ? metaB.orbRecharge : 4.2;
-    p.overclockOrb = false;
-    p.overclockTimer = 0;
+    p.overclockOrb = !!(game.voyage && game.voyage.nextStartOverclock);
+    p.overclockTimer = p.overclockOrb ? 12.0 : 0;
+    if (game.voyage && game.voyage.nextStartOverclock) game.voyage.nextStartOverclock = false;
     p.orbEmptyFlash = 0;
 
     if (resetStats) {
@@ -155,7 +158,8 @@
     }
 
     const metaBonuses = CB.extraction && CB.extraction.getMetaBonuses ? CB.extraction.getMetaBonuses() : null;
-    const baseRechargeDur = metaBonuses ? metaBonuses.orbRecharge : 4.2;
+    const hasOverchargeMut = !!(CB.stages && CB.stages.hasMutator && CB.stages.hasMutator('static_overcharge'));
+    const baseRechargeDur = (metaBonuses ? metaBonuses.orbRecharge : 4.2) * (hasOverchargeMut ? 0.8 : 1.0);
     p.orbRechargeDuration = baseRechargeDur;
     p.orbSpinAngle = (p.orbSpinAngle || 0) + dt * (p.overclockOrb ? 3.2 : 1.9);
     if (p.orbEmptyFlash > 0) p.orbEmptyFlash = Math.max(0, p.orbEmptyFlash - dt * 3.5);
@@ -168,7 +172,8 @@
       }
     }
     if (p.orbs < p.maxOrbs) {
-      p.orbRechargeTimer += dt;
+      const trialPause = game.run && game.run.nodeType === 'trial' && (game.run.trialGraceTimer || 0) > 0;
+      if (!trialPause) p.orbRechargeTimer += dt;
       if (p.orbRechargeTimer >= baseRechargeDur) {
         p.orbRechargeTimer -= baseRechargeDur;
         p.orbs = Math.min(p.maxOrbs, p.orbs + 1);
@@ -200,7 +205,7 @@
 
       const hasOrbForHeavy = p.orbs > 0 || p.overclockOrb;
       const effTap = cfgL.tapThreshold * (metaBonuses ? metaBonuses.tapMult : 1.0);
-      const rawMax = Math.max(effTap + 0.18, cfgL.maxCharge * (metaBonuses ? metaBonuses.chargeMult : 1.0));
+      const rawMax = Math.max(effTap + 0.18, cfgL.maxCharge * (metaBonuses ? metaBonuses.chargeMult : 1.0) * (hasOverchargeMut ? 0.75 : 1.0));
       const effMax = p.overclockOrb ? (effTap + (rawMax - effTap) * 0.52) : rawMax;
       p.effectiveMaxCharge = effMax;
       p.effectiveTapThreshold = effTap;
@@ -296,6 +301,8 @@
         p.chargeTime = 0;
         p.chargeRatio = 0;
         p.dashTimer = 0.17;
+        p.dashStartX = p.x;
+        p.dashStartY = p.y;
         const aeroCd = (CB.extraction && CB.extraction.hasCurio('aero_feather')) ? 0.85 : 1.0;
         const metaDashCd = (CB.extraction && CB.extraction.getMetaBonuses) ? CB.extraction.getMetaBonuses().dashCdMult : 1.0;
         p.dashCooldown = 0.42 * aeroCd * metaDashCd;
@@ -321,6 +328,11 @@
       p.dashTimer -= dt;
       if (Math.random() < 0.65) {
         spawnDust(p.x - p.dashDirX * 14, p.y, p.inInkColor || (p.onDewSlide ? '#8ae8f7' : '#eef9fc'), 1);
+      }
+      if (p.dashTimer <= 0 && CB.extraction && CB.extraction.hasSynergy && CB.extraction.hasSynergy('electro')) {
+        if (CB.physicsLab && CB.physicsLab.triggerDashElectroArc) {
+          CB.physicsLab.triggerDashElectroArc(p.dashStartX ?? p.x, p.dashStartY ?? p.y, p.x, p.y);
+        }
       }
       if (p.dashTimer <= 0 && CB.extraction && CB.extraction.hasCurio('aero_feather')) {
         if (CB.audio) CB.audio.playRepelWave();

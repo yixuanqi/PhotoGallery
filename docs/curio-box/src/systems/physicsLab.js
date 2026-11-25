@@ -7,6 +7,10 @@
     return !!(CB.extraction && CB.extraction.hasCurio && CB.extraction.hasCurio(id));
   }
 
+  function hasSynergy(discId) {
+    return !!(CB.extraction && CB.extraction.hasSynergy && CB.extraction.hasSynergy(discId));
+  }
+
   function getInk() {
     const pal = game.map && game.map.stage && game.map.stage.palette;
     return (pal && pal.ink) || '#2d4b52';
@@ -94,6 +98,16 @@
         }
       }
     }
+
+    // 3. 加热融化霜壳蜗卫的冰晶硬壳（冰→水！）
+    if (CB.guards && CB.guards.meltFrostShell) {
+      for (const g of game.guards) {
+        if (g.dead || !g.hasFrostShell) continue;
+        if (Math.hypot(g.x - x, g.y - y) <= radius + g.radius + 14) {
+          CB.guards.meltFrostShell(g, amount);
+        }
+      }
+    }
   }
 
   function heatPressureCan(can, deltaHeat, isHeavy = false) {
@@ -120,6 +134,7 @@
     const cy = can.y;
 
     if (CB.audio && CB.audio.playThermalBlast) CB.audio.playThermalBlast();
+    if (CB.extraction && CB.extraction.recordDailyLabTrigger) CB.extraction.recordDailyLabTrigger();
     game.hitStop = Math.max(game.hitStop, 0.048);
     game.camera.shake = Math.max(game.camera.shake, 8.8);
     CB.player.spawnDust(cx, cy - 10, '#ff8648', 22, 1.9);
@@ -145,6 +160,7 @@
           CB.guards.damageGuard(g, dmg, nx, ny, true, '🔥 热膨胀爆破!', true, {
             source: 'billiard',
             isHeavy: true,
+            thermal: true,
             launchSpeed: 740,
             relGamma: 1.62,
           });
@@ -221,7 +237,7 @@
         ly: lens.y,
         x: fx,
         y: fy,
-        radius: 48,
+        radius: hasSynergy('optics') ? 60 : 48,
         life: dur,
         maxLife: dur,
         tickTimer: 0,
@@ -230,6 +246,7 @@
     }
 
     if (CB.audio && CB.audio.playFocusBeam) CB.audio.playFocusBeam();
+    if (CB.extraction && CB.extraction.recordDailyLabTrigger) CB.extraction.recordDailyLabTrigger();
     CB.player.spawnDust(fx, fy - 8, '#ffe66d', 12, 1.45);
     CB.player.spawnPopup(fx, fy - 30, '🔆 凸透镜聚光灼烧!', '#d98814');
     applyHeatAt(fx, fy, 58, 36);
@@ -283,6 +300,7 @@
     }
 
     if (CB.audio && CB.audio.playLaserWeb) CB.audio.playLaserWeb();
+    if (CB.extraction && CB.extraction.recordDailyLabTrigger) CB.extraction.recordDailyLabTrigger();
     CB.player.spawnDust((mirror.x + partner.x) * 0.5, (mirror.y + partner.y) * 0.5 - 10, '#ffe875', 14, 1.5);
     CB.player.spawnPopup((mirror.x + partner.x) * 0.5, (mirror.y + partner.y) * 0.5 - 28, '🪞 镜面光网已织成!', '#d49014');
 
@@ -331,6 +349,7 @@
     const baseR = 205 * jumpMult;
 
     if (CB.audio && CB.audio.playElectroChain) CB.audio.playElectroChain();
+    if (CB.extraction && CB.extraction.recordDailyLabTrigger) CB.extraction.recordDailyLabTrigger();
     CB.player.spawnDust(pylon.x, pylon.y - 12, sign > 0 ? '#ff826e' : '#68e4ff', 14, 1.5);
 
     const shockedGuards = new Set();
@@ -368,6 +387,7 @@
         CB.guards.damageGuard(g, dmg, 0, 0, true, viaWater ? '⚡ 水域导电麻痹!' : (sign > 0 ? '⚡ 带正电 (+)' : '⚡ 带负电 (-)'), true, {
           source: 'bullet',
           isHeavy: false,
+          electro: true,
           slingshot: viaWater,
         });
       }
@@ -443,6 +463,102 @@
   }
 
   // ==================== 四、每帧统一物理实验室更新 ====================
+
+  // ==================== v9.6b 学科羁绊共鸣：疾电弧步 & 微型时间膨胀泡 ====================
+  function triggerDashElectroArc(x1, y1, x2, y2) {
+    const sign = (Math.floor(game.time * 2) % 2 === 0) ? 1 : -1;
+    spawnLightningArc(x1, y1 - 10, x2, y2 - 10, sign);
+    if (CB.audio && CB.audio.playElectroChain) CB.audio.playElectroChain();
+
+    const shocked = new Set();
+    const hitGuard = (g, fromX, fromY, viaWater) => {
+      if (g.dead || shocked.has(g.id)) return;
+      shocked.add(g.id);
+      applyElectroCharge(g, sign, 7.5);
+      spawnLightningArc(fromX, fromY - 12, g.x, g.y - 12, sign);
+      if (CB.guards && CB.guards.damageGuard) {
+        CB.guards.damageGuard(g, viaWater ? 24 : 15, 0, 0, true, viaWater ? '⚡ 弧步导电链!' : '⚡ 疾电弧步!', true, {
+          source: 'bullet',
+          electro: true,
+          slingshot: viaWater,
+        });
+      }
+      if (!g.dead) {
+        g.aiState = 'stunned';
+        g.stateTimer = Math.max(g.stateTimer || 0, viaWater ? 1.85 : 1.0);
+        if (viaWater) g.armorBrokenTimer = Math.max(g.armorBrokenTimer || 0, 3.8);
+      }
+    };
+
+    for (const g of game.guards) {
+      if (g.dead) continue;
+      const seg = distToSegment(g.x, g.y, x1, y1, x2, y2);
+      if (seg.dist <= g.radius + 54) {
+        hitGuard(g, seg.cx, seg.cy, false);
+      }
+    }
+
+    const mx = (x1 + x2) * 0.5;
+    const my = (y1 + y2) * 0.5;
+    let poolHits = 0;
+    if (game.map && game.map.dewSlides) {
+      for (const s of game.map.dewSlides) {
+        if (s.phase !== 'water') continue;
+        const nx = Math.max(s.x, Math.min(mx, s.x + s.w));
+        const ny = Math.max(s.y, Math.min(my, s.y + s.h));
+        if (Math.hypot(mx - nx, my - ny) <= 64 || Math.hypot(x2 - nx, y2 - ny) <= 44) {
+          s.electrifiedTimer = 1.4;
+          for (const g of game.guards) {
+            if (g.dead || shocked.has(g.id)) continue;
+            const gnx = Math.max(s.x, Math.min(g.x, s.x + s.w));
+            const gny = Math.max(s.y, Math.min(g.y, s.y + s.h));
+            if (Math.hypot(g.x - gnx, g.y - gny) <= 88) {
+              poolHits++;
+              hitGuard(g, gnx, gny, true);
+            }
+          }
+        }
+      }
+    }
+    if (game.inkPuddles) {
+      for (const ink of game.inkPuddles) {
+        if (distToSegment(ink.x, ink.y, x1, y1, x2, y2).dist <= ink.radius + 26) {
+          for (const g of game.guards) {
+            if (g.dead || shocked.has(g.id)) continue;
+            if (Math.hypot(g.x - ink.x, g.y - ink.y) <= ink.radius + 82) {
+              poolHits++;
+              hitGuard(g, ink.x, ink.y, true);
+            }
+          }
+        }
+      }
+    }
+
+    if (shocked.size > 0 && CB.extraction && CB.extraction.addStuntBounty) {
+      CB.extraction.addStuntBounty(poolHits > 0 ? 18 : 10);
+      if (poolHits > 0 && CB.combat && CB.combat.grantOrbRefund) {
+        CB.combat.grantOrbRefund(1, mx, my, '电步回珠');
+      }
+    }
+  }
+
+  function spawnMiniDilationBubble(x, y) {
+    if (!game.dilationBubbles) game.dilationBubbles = [];
+    if (game.dilationBubbles.length >= 3) game.dilationBubbles.shift();
+    const dur = 1.6 + (hasCurio('event_horizon') ? 0.6 : 0);
+    game.dilationBubbles.push({
+      x,
+      y,
+      fieldRadius: 118,
+      activeTimer: dur,
+      maxDuration: dur,
+      isMiniBubble: true,
+    });
+    if (CB.audio && CB.audio.playSingularityDilate) CB.audio.playSingularityDilate();
+    CB.player.spawnDust(x, y - 10, '#c090ff', 10, 1.35);
+    CB.player.spawnPopup(x, y - 34, '🕳️ 微型时间膨胀泡!', '#884ee0');
+  }
+
   function updatePhysicsLab(dt) {
     const map = game.map;
     if (!map) return;
@@ -470,6 +586,9 @@
             if (g.x >= s.x && g.x <= s.x + s.w && g.y >= s.y && g.y <= s.y + s.h) {
               g.steamFloat = Math.min(1, (g.steamFloat || 0) + dt * 4);
               g.hopZ = Math.max(g.hopZ || 0, 12 + Math.sin(game.time * 8 + g.x) * 4);
+              if (g.hasFrostShell && (g.meltedWetTimer || 0) <= 0 && CB.guards && CB.guards.meltFrostShell) {
+                CB.guards.meltFrostShell(g, dt * 45);
+              }
             }
           }
         }
@@ -574,6 +693,7 @@
             CB.guards.damageGuard(g, cutDmg, nx, ny, true, '🪞 镜面光网切割!', true, {
               source: 'bullet',
               prism: true,
+              laserWeb: true,
               isHeavy: true,
             });
           }
@@ -676,6 +796,19 @@
           if (Math.random() < dt * 4) {
             spawnLightningArc(a.x, a.y - 10, b.x, b.y - 10, -1);
           }
+        }
+      }
+    }
+
+    // 5.5. 更新相对论共鸣生成的「微型时间膨胀泡」
+    if (game.dilationBubbles && game.dilationBubbles.length > 0) {
+      for (let i = game.dilationBubbles.length - 1; i >= 0; i--) {
+        const b = game.dilationBubbles[i];
+        b.activeTimer -= dt;
+        if (b.activeTimer <= 0) {
+          b.activeTimer = 0.01;
+          if (CB.combat && CB.combat.collapseSingularity) CB.combat.collapseSingularity(b);
+          game.dilationBubbles.splice(i, 1);
         }
       }
     }
@@ -941,6 +1074,12 @@
   }
 
   function renderPhysicsFloor(ctx, time) {
+    if (game.dilationBubbles && game.dilationBubbles.length > 0 && CB.brush && CB.brush.drawSingularityField) {
+      for (let i = 0; i < game.dilationBubbles.length; i++) {
+        CB.brush.drawSingularityField(ctx, game.dilationBubbles[i], time);
+      }
+    }
+
     // 1. 凸透镜聚光灼烧焦斑与光锥
     if (game.focusSpots && game.focusSpots.length > 0) {
       ctx.save();
@@ -1087,7 +1226,10 @@
     triggerConvexLens,
     triggerMirrorPost,
     applyElectroCharge,
+    spawnLightningArc,
     triggerChargePylon,
+    triggerDashElectroArc,
+    spawnMiniDilationBubble,
     updatePhysicsLab,
     drawPressureCan,
     drawConvexLens,

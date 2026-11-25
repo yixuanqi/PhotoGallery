@@ -3287,3 +3287,448 @@ body.platform-mobile .mini-tool-btn {
     font-size: 10px;
   }
 }
+
+/* ==================== v9.5b 试炼靶场 / 阶段霸主 / 变异词缀航图徽标样式 ==================== */
+.chart-node-card.is-trial {
+  border-color: #269c7e;
+  background: linear-gradient(160deg, #f6fffb, #dff7ee);
+}
+
+.chart-node-card.is-trial .cn-danger {
+  background: #d8f5ea;
+  color: #156e56;
+  border-color: #5bc2a2;
+}
+
+.chart-node-card.is-boss {
+  border-color: #b83a34;
+  background: linear-gradient(160deg, #fff9f2, #ffe0d6);
+  box-shadow: 0 5px 0 rgba(168, 48, 42, 0.24);
+}
+
+.chart-node-card.is-boss .cn-danger {
+  background: #fddad6;
+  color: #9e231c;
+  border-color: #d96b63;
+}
+
+.cn-mut {
+  background: #f2ebff;
+  color: #5b38a8;
+  border: 1px solid #b89ef0;
+}
+
+/* ==================== v9.5 浮空补给黑市节点与整备弹窗样式 ==================== */
+.chart-node-card.is-market {
+  border-color: #c98e1e;
+  background: linear-gradient(160deg, #fffdf5, #fff0c8);
+}
+
+.chart-node-card.is-market .cn-danger {
+  background: #fff3cc;
+  color: #8f5c06;
+  border-color: #dba334;
+}
+
+.market-modal {
+  z-index: 45;
+}
+
+.market-card {
+  width: min(760px, 95vw);
+}
+
+.market-section-label {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #467380;
+  letter-spacing: 0.5px;
+  margin-bottom: -4px;
+}
+
+.market-offers-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.market-offer-card {
+  border: 2.2px solid #5c8e9c;
+  background: rgba(255, 254, 250, 0.96);
+  border-radius: 15px;
+  padding: 12px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 5px;
+  color: #24454d;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(46, 86, 102, 0.16);
+  transition: transform 0.1s ease, border-color 0.14s ease, opacity 0.15s ease;
+}
+
+.market-offer-card:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: #c98a18;
+}
+
+.market-offer-card.is-epic {
+  border-color: #9e74d4;
+  background: linear-gradient(165deg, #fdfaff, #f2e8ff);
+}
+
+.market-offer-card.is-bought {
+  opacity: 0.58;
+  cursor: default;
+  border-style: dashed;
+}
+
+.market-offer-card.cant-afford {
+  opacity: 0.65;
+}
+
+.mo-icon {
+  font-size: 26px;
+  line-height: 1.1;
+}
+
+.mo-name {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.mo-perk {
+  font-size: 10.8px;
+  color: #4f7782;
+  line-height: 1.35;
+  min-height: 30px;
+}
+
+.mo-price {
+  margin-top: 2px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #e6f7ee;
+  border: 1.4px solid #5db893;
+  color: #196b4d;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.market-offer-card.is-bought .mo-price {
+  background: #e8eef0;
+  border-color: #9cb2b8;
+  color: #546e75;
+}
+
+.market-services-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.market-service-btn {
+  border: 2.2px solid #4d8a7b;
+  background: rgba(246, 255, 251, 0.96);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  color: #21454d;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(36, 94, 78, 0.16);
+  transition: transform 0.1s ease, opacity 0.15s ease;
+}
+
+.market-service-btn.is-fuse {
+  border-color: #c2801a;
+  background: linear-gradient(155deg, #fffdf4, #fff0cc);
+}
+
+.market-service-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.market-service-btn:disabled {
+  opacity: 0.56;
+  cursor: default;
+}
+
+.ms-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.ms-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ms-info strong {
+  font-size: 12.5px;
+  font-weight: 900;
+}
+
+.ms-info small {
+  font-size: 10.6px;
+  color: #527882;
+  line-height: 1.3;
+}
+
+.ms-cost {
+  flex-shrink: 0;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #fff9e6;
+  border: 1.5px solid #cf9428;
+  color: #8a5605;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.market-feedback {
+  font-size: 11.8px;
+  font-weight: 700;
+  color: #2b7382;
+  background: rgba(235, 248, 252, 0.85);
+  border: 1.5px solid #96c2cf;
+  border-radius: 10px;
+  padding: 7px 11px;
+  text-align: center;
+}
+
+.market-card .chart-footer button {
+  border-radius: 12px;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+@media (max-width: 680px) {
+  .market-offers-grid,
+  .market-services-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==================== v9.6b 四大学科羁绊共鸣 HUD / 黑市 / 图鉴徽标样式 ==================== */
+.synergy-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  color: #fffef9;
+  border: 1.8px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 2px 6px rgba(24, 48, 62, 0.28);
+  white-space: nowrap;
+}
+
+.synergy-chip.syn-thermal {
+  background: linear-gradient(135deg, #f26c38, #c93b1e);
+}
+
+.synergy-chip.syn-optics {
+  background: linear-gradient(135deg, #f0b429, #c47e0e);
+}
+
+.synergy-chip.syn-electro {
+  background: linear-gradient(135deg, #32b8e8, #1c78ad);
+}
+
+.synergy-chip.syn-relativity {
+  background: linear-gradient(135deg, #9b64eb, #6130b8);
+}
+
+.mo-disc {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #edf6f9;
+  border: 1px solid #96bcc7;
+  color: #366470;
+}
+
+.mo-disc.will-activate {
+  background: linear-gradient(135deg, #fff5c4, #ffd859);
+  border-color: #c27d0c;
+  color: #704300;
+  box-shadow: 0 0 8px rgba(255, 206, 66, 0.72);
+}
+
+.codex-disc-badge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: #eaf5f9;
+  border: 1px solid #86b3c0;
+  color: #245766;
+  font-weight: 800;
+  font-size: 11px;
+}
+
+/* ==================== v9.6 母港高阶扩建 · 望远镜重抽 · 每日云海挑战样式 ==================== */
+.title-play-row {
+  display: flex;
+  gap: 9px;
+  width: 100%;
+}
+
+.title-play-row .title-btn-play {
+  flex: 1.45;
+}
+
+.title-btn-daily {
+  position: relative;
+  flex: 1;
+  border: 2.4px solid #b57a14;
+  border-radius: 15px;
+  padding: 12px 12px;
+  background: linear-gradient(180deg, #fff6d1 0%, #ffd870 100%);
+  color: #5e3804;
+  font-size: 14.5px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 4px 0 rgba(152, 98, 12, 0.34);
+  transition: transform 0.1s ease, filter 0.14s ease;
+}
+
+.title-btn-daily:hover {
+  filter: brightness(1.03);
+  transform: translateY(-1px);
+}
+
+.title-btn-daily:active {
+  transform: translateY(1px);
+}
+
+.chart-footer-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.chart-footer-actions .btn-sub {
+  border: 2px solid #5c42a6;
+  background: linear-gradient(180deg, #f4eeff, #e2d4ff);
+  color: #462a8c;
+  border-radius: 12px;
+  padding: 9px 14px;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.chart-footer-actions .btn-sub:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.daily-modal {
+  z-index: 46;
+}
+
+.daily-card {
+  width: min(700px, 95vw);
+}
+
+.daily-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.daily-bounties-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.daily-bounty-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 13px;
+  border-radius: 14px;
+  border: 2px solid #7aa8b3;
+  background: rgba(255, 254, 250, 0.96);
+}
+
+.daily-bounty-row.is-claimed {
+  border-color: #4ea886;
+  background: linear-gradient(135deg, #f2fff9, #e2f7ee);
+}
+
+.db-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.db-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.db-info strong {
+  font-size: 13px;
+  font-weight: 900;
+  color: #21454d;
+}
+
+.db-info small {
+  font-size: 11.2px;
+  color: #4f7782;
+}
+
+.db-reward {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 900;
+  background: #fff5cc;
+  border: 1.5px solid #cf9428;
+  color: #825104;
+}
+
+.daily-bounty-row.is-claimed .db-reward {
+  background: #d8f5e8;
+  border-color: #4ea886;
+  color: #166e4e;
+}
+
+.daily-note {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #3d7582;
+}
+
+.daily-card .chart-footer .btn-main {
+  border: 2px solid #1b6b7d;
+  border-radius: 12px;
+  padding: 9px 18px;
+  font-size: 13.5px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+@media (max-width: 560px) {
+  .title-play-row {
+    flex-direction: column;
+  }
+}

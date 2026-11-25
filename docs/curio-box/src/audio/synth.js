@@ -79,6 +79,66 @@
       intervalMin: 2300,
       intervalMax: 4200,
     },
+    5: {
+      // 雷云紫电空域：低沉雷云风压 + 远景清脆电弧微鸣
+      filterType: 'lowpass',
+      freq: 460,
+      q: 1.0,
+      lfoRate: 0.22,
+      lfoDepth: 190,
+      noiseVol: 0.082,
+      droneFreq: 92.5,
+      droneVol: 0.025,
+      accentType: 'thunder',
+      notes: [392.0, 466.16, 587.33, 698.46, 932.33],
+      intervalMin: 2300,
+      intervalMax: 4400,
+    },
+    6: {
+      // 极光霜晶空域：清冽极地微风 + 冰晶玻璃叮咚
+      filterType: 'bandpass',
+      freq: 920,
+      q: 1.25,
+      lfoRate: 0.14,
+      lfoDepth: 220,
+      noiseVol: 0.068,
+      droneFreq: 146.83,
+      droneVol: 0.018,
+      accentType: 'frost',
+      notes: [783.99, 987.77, 1174.66, 1567.98, 1975.53],
+      intervalMin: 2200,
+      intervalMax: 4200,
+    },
+    7: {
+      // 琉璃光廊空域：明澈高空晴风 + 棱镜谐振铃音
+      filterType: 'bandpass',
+      freq: 820,
+      q: 0.9,
+      lfoRate: 0.17,
+      lfoDepth: 150,
+      noiseVol: 0.062,
+      droneFreq: 0,
+      droneVol: 0,
+      accentType: 'crystal',
+      notes: [659.25, 783.99, 987.77, 1318.51, 1567.98],
+      intervalMin: 2100,
+      intervalMax: 3900,
+    },
+    8: {
+      // 深空视界奇点：低频引力共鸣 + 幽远星尘回响
+      filterType: 'lowpass',
+      freq: 310,
+      q: 1.1,
+      lfoRate: 0.07,
+      lfoDepth: 85,
+      noiseVol: 0.052,
+      droneFreq: 82.41,
+      droneVol: 0.032,
+      accentType: 'void',
+      notes: [329.63, 440.0, 493.88, 659.25, 880.0],
+      intervalMin: 2800,
+      intervalMax: 5200,
+    },
   };
 
   function buildSoftNoiseBuffer(audioCtx) {
@@ -183,6 +243,22 @@
       // 暮光雾林温润木琴点音 + 微萤颤鸣
       playTone('triangle', f, f * 0.985, 0.26, 0.034, 0);
       if (Math.random() < 0.5) playTone('sine', f * 1.25, f * 1.28, 0.22, 0.022, 0.16);
+    } else if (prof.accentType === 'thunder') {
+      // 雷云紫电：微弱静电咔哒 + 清冽高音
+      playNoise(0.14, 1800, 'bandpass', 0.032, 0, 2.2);
+      playTone('triangle', f, f * 1.01, 0.34, 0.024, 0.03);
+    } else if (prof.accentType === 'frost') {
+      // 极光霜晶：通透高音冰晶闪烁
+      playTone('sine', f, f * 1.003, 0.65, 0.022, 0);
+      playTone('sine', f * 1.5, f * 1.5, 0.42, 0.012, 0.05);
+    } else if (prof.accentType === 'crystal') {
+      // 琉璃光廊：明亮三度水晶铃
+      playTone('sine', f, f, 0.55, 0.024, 0);
+      playTone('triangle', f * 1.25, f * 1.25, 0.45, 0.015, 0.06);
+    } else if (prof.accentType === 'void') {
+      // 深空奇点：沉静慢滑星尘泛音
+      playTone('sine', f, f * 0.985, 0.95, 0.024, 0);
+      playTone('sine', f * 2, f * 1.98, 0.62, 0.01, 0.08);
     } else {
       // 落日鎏金穹暖五度竖琴轻拨
       playTone('triangle', f, f, 0.52, 0.034, 0);
@@ -938,6 +1014,19 @@
     }
   }
 
+
+  function playTrialWin() {
+    [523.25, 659.25, 783.99, 1046.5, 1318.51, 1567.98].forEach((f, idx) => {
+      playTone('triangle', f, f * 1.01, 0.32, 0.11, idx * 0.055);
+      playTone('sine', f * 2, f * 2, 0.24, 0.05, idx * 0.055);
+    });
+  }
+
+  function playMarketBuy() {
+    playTone('triangle', 659.25, 987.77, 0.14, 0.12, 0);
+    playTone('sine', 987.77, 1318.51, 0.2, 0.1, 0.06);
+  }
+
   CB.audio = {
     unlock,
     isAudioUnlocked,
@@ -1013,5 +1102,7 @@
     playLaserSlice,
     playElectroChain,
     playCoulombPop,
+    playTrialWin,
+    playMarketBuy,
   };
 })();

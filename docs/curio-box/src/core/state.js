@@ -98,6 +98,8 @@
     appPaused: false,
     paused: false,
     chartOpen: false,
+    marketOpen: false,
+    dailyOpen: false,
 
     // 当前关卡制进度（1~4 关）
     currentStageId: 1,
@@ -178,8 +180,17 @@
     // 单关撤离闭环状态
     run: {
       stageId: 1,
+      nodeType: 'standard', // 'standard' | 'trial' | 'boss'
       phase: 'playing', // 'playing' | 'extracted' | 'failed'
       elapsed: 0,
+      trialHeavyShots: 0,
+      trialGraceTimer: 0,
+      trialPerfect: false,
+      periodicGustTimer: 6.0,
+      periodicGustActiveTimer: 0,
+      isDaily: false,
+      dailyDateKey: null,
+      dailyLabTriggers: 0,
       vaultOpened: false,
       hasGrandCurio: false,
       alarmActive: false,
@@ -222,6 +233,15 @@
         chargeSpeed: 0,
         dashCd: 0,
         magnet: 0,
+        orbCap: 0,
+        salvagePod: 0,
+        chartScope: 0,
+      },
+      daily: {
+        dateKey: '',
+        claimedIds: [],
+        bestHaul: 0,
+        cleared: false,
       },
       unlockedSkins: ['explorer'],
       selectedSkin: 'explorer',
@@ -231,6 +251,8 @@
       autoPlayIntro: true,
       deepestLeg: 0,
       maxAltitude: 0,
+      bossesCleared: 0,
+      trialsCleared: 0,
     },
 
     // 未知云海航程状态（多航段连续探索与「入库 vs 深入」撤离博弈）
@@ -243,6 +265,9 @@
       currentNode: null,
       nextChoices: [],
       visitedAnomalies: [],
+      nextStartOverclock: false,
+      rerollsLeft: 0,
+      isDaily: false,
     },
 
     // 当前画面交互浮标提示
@@ -261,6 +286,7 @@
     focusSpots: [],
     laserWebs: [],
     lightningArcs: [],
+    dilationBubbles: [],
     curioDrops: [],
     guards: [],
     fallingGuards: [],

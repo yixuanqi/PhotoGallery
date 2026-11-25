@@ -34,10 +34,119 @@
       ? `${x1},${y1}|${x2},${y2}`
       : `${x2},${y2}|${x1},${y1}`;
 
+  function generateTrialMap(stage, seed) {
+    const w = CELL_W * 2;
+    const h = CELL_H;
+    const cell0 = { gx: 0, gy: 0, roomId: 0 };
+    const cell1 = { gx: 1, gy: 0, roomId: 0 };
+    const cells = new Map();
+    cells.set('0,0', cell0);
+    cells.set('1,0', cell1);
+
+    const room = {
+      id: 0,
+      role: 'spawn',
+      kind: 'corridor',
+      biome: stage.biome || 'lotus_pond',
+      subTheme: stage.primaryAnomaly || 'friction',
+      gx: 0,
+      gy: 0,
+      gw: 2,
+      gh: 1,
+      x: 0,
+      y: 0,
+      w,
+      h,
+      cells: [cell0, cell1],
+      cellKeys: new Set(['0,0', '1,0']),
+      neighbors: new Set(),
+      distFromSpawn: 0,
+      discovered: true,
+      adjacentSeen: true,
+      fogAlpha: 0,
+    };
+
+    const walls = [
+      { x: -WALL_T / 2, y: WALL_T / 2, w: WALL_T, h: h - WALL_T, height: 32, orient: 'v' },
+      { x: WALL_T / 2, y: -WALL_T / 2, w: CELL_W - WALL_T, h: WALL_T, height: 32, orient: 'h' },
+      { x: WALL_T / 2, y: h - WALL_T / 2, w: CELL_W - WALL_T, h: WALL_T, height: 32, orient: 'h' },
+    ];
+    const cliffEdges = [
+      { id: 'tr_e', x: w - WALL_T / 2, y: WALL_T / 2, w: WALL_T, h: h - WALL_T, orient: 'v', outwardX: 1, outwardY: 0, kind: 'open', broken: false, roomId: 0, seed: 11 },
+      { id: 'tr_n2', x: CELL_W + WALL_T / 2, y: -WALL_T / 2, w: CELL_W - WALL_T, h: WALL_T, orient: 'h', outwardX: 0, outwardY: -1, kind: 'open', broken: false, roomId: 0, seed: 12 },
+      { id: 'tr_s2', x: CELL_W + WALL_T / 2, y: h - WALL_T / 2, w: CELL_W - WALL_T, h: WALL_T, orient: 'h', outwardX: 0, outwardY: 1, kind: 'railing', broken: false, roomId: 0, seed: 13 },
+    ];
+    const posts = [
+      { x: -WALL_T / 2, y: -WALL_T / 2, w: WALL_T, h: WALL_T, height: 36 },
+      { x: -WALL_T / 2, y: h - WALL_T / 2, w: WALL_T, h: WALL_T, height: 36 },
+      { x: CELL_W - WALL_T / 2, y: -WALL_T / 2, w: WALL_T, h: WALL_T, height: 36 },
+      { x: CELL_W - WALL_T / 2, y: h - WALL_T / 2, w: WALL_T, h: WALL_T, height: 36 },
+      { x: w - WALL_T / 2, y: -WALL_T / 2, w: WALL_T, h: WALL_T, height: 36 },
+      { x: w - WALL_T / 2, y: h - WALL_T / 2, w: WALL_T, h: WALL_T, height: 36 },
+    ];
+
+    const layout = CB.roomTemplates.makeTrialLayout(room, stage.trialVariant || 0);
+    const dewSlides = layout.ground.filter((g) => g.kind === 'dew_slide');
+    const groundDecors = layout.ground.filter((g) => g.kind !== 'dew_slide');
+
+    return {
+      seed,
+      stage,
+      cellW: CELL_W,
+      cellH: CELL_H,
+      wallT: WALL_T,
+      rooms: [room],
+      cells,
+      walls,
+      posts,
+      doorways: [],
+      cliffEdges,
+      props: layout.props,
+      dewSlides,
+      groundDecors,
+      edgeDecors: [],
+      vineGates: [],
+      spawnRoomId: 0,
+      vaultRoomId: -1,
+      extractRoomId: -1,
+      spawnPoint: { x: 132, y: h * 0.5 },
+      trialGuardSpawns: layout.guardSpawns,
+      bounds: {
+        minX: -WALL_T,
+        minY: -WALL_T,
+        maxX: w + WALL_T,
+        maxY: h + WALL_T,
+        w: w + WALL_T * 2,
+        h: h + WALL_T * 2,
+        cx: w * 0.5,
+        cy: h * 0.5,
+      },
+      stats: {
+        roomCount: 1,
+        cellCount: 2,
+        cycles: 0,
+        hasAtrium: false,
+        lShapes: 0,
+        corridors: 1,
+        vineGates: 0,
+        openCliffs: 2,
+        railings: 1,
+        dSpawnVault: 0,
+        dSpawnExtract: 0,
+        dVaultExtract: 0,
+        genMs: 0.4,
+        attempts: 1,
+      },
+    };
+  }
+
   function generateMap(stageOrSpec = 1, inputSeed = undefined) {
     const t0 = performance.now();
     const stage = CB.stages.getStage(stageOrSpec);
     const baseSeed = inputSeed ?? Math.floor(Math.random() * 899999 + 100000);
+    if (stage && stage.nodeType === 'trial') {
+      return generateTrialMap(stage, baseSeed);
+    }
 
     for (let attempt = 0; attempt < 56; attempt++) {
       const seed = baseSeed + attempt * 997;

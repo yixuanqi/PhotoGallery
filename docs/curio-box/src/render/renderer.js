@@ -379,7 +379,7 @@
     }
     pushDrawItem(11, player.y + 4, player);
 
-    const extRoom = map.rooms[map.extractRoomId];
+    const extRoom = map.extractRoomId >= 0 ? map.rooms[map.extractRoomId] : null;
     if (extRoom) {
       const bx = extRoom.x + extRoom.w / 2;
       const by = extRoom.y + extRoom.h / 2;
@@ -602,6 +602,160 @@
         ctx.fillStyle = g;
         ctx.beginPath();
         ctx.arc(fx, fy, ff.r * 4.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      return;
+    }
+
+    if (skyType === 'thunder_violet') {
+      // ===== 雷云紫电空域：深紫风暴云层 + 周期远景闪电闪烁 + 斜向微雨 =====
+      const flashCycle = (time * 0.42) % 3.7;
+      const flashA = flashCycle < 0.14 ? Math.sin((flashCycle / 0.14) * Math.PI) * 0.24 : 0;
+      if (flashA > 0.01) {
+        ctx.fillStyle = `rgba(176, 232, 255, ${flashA})`;
+        ctx.fillRect(0, 0, W, H);
+      }
+
+      const stormGlow = ctx.createRadialGradient(W * 0.72, H * 0.24, 24, W * 0.72, H * 0.24, W * 0.48);
+      stormGlow.addColorStop(0, 'rgba(132, 102, 240, 0.28)');
+      stormGlow.addColorStop(1, 'rgba(28, 24, 52, 0)');
+      ctx.fillStyle = stormGlow;
+      ctx.fillRect(0, 0, W, H);
+
+      for (const c of SKY_CLOUDS) {
+        const parallax = c.layer === 0 ? 0.08 : 0.16;
+        const wrapW = W + 420;
+        const wrapH = H + 260;
+        const cx = ((c.x + time * c.speed * 1.15 - camera.x * parallax) % wrapW + wrapW) % wrapW - 210;
+        const cy = ((c.y - camera.y * parallax) % wrapH + wrapH) % wrapH - 130;
+        drawWatercolorCloud(ctx, cx, cy, c.scale, c.layer === 0 ? 0.42 : 0.62, '#241d42', '#524680');
+      }
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(176, 224, 255, 0.24)';
+      ctx.lineWidth = 1.25;
+      ctx.beginPath();
+      for (let i = 0; i < 42; i++) {
+        const rx = ((i * 97 + time * 140) % (W + 120)) - 60;
+        const ry = ((i * 131 + time * 420) % (H + 80)) - 40;
+        ctx.moveTo(rx, ry);
+        ctx.lineTo(rx - 9, ry + 26);
+      }
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+
+    if (skyType === 'aurora_frost') {
+      // ===== 极光霜晶空域：青绿飘带极光 + 飘落霜晶雪片 =====
+      ctx.save();
+      for (let band = 0; band < 3; band++) {
+        const baseY = H * (0.16 + band * 0.14);
+        const grad = ctx.createLinearGradient(0, baseY - 52, 0, baseY + 68);
+        grad.addColorStop(0, 'rgba(92, 255, 214, 0)');
+        grad.addColorStop(0.45, band === 1 ? 'rgba(98, 228, 255, 0.26)' : 'rgba(104, 255, 206, 0.28)');
+        grad.addColorStop(1, 'rgba(92, 255, 214, 0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(0, baseY + 64);
+        for (let x = 0; x <= W + 80; x += 80) {
+          const wave = Math.sin(x * 0.0045 + time * (0.55 + band * 0.15) + band * 1.9) * 32;
+          ctx.lineTo(x, baseY + wave - 36);
+        }
+        ctx.lineTo(W + 80, baseY + 72);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+
+      for (const c of SKY_CLOUDS) {
+        if (c.layer === 0) continue;
+        const wrapW = W + 420;
+        const wrapH = H + 260;
+        const cx = ((c.x + time * c.speed * 0.65 - camera.x * 0.12) % wrapW + wrapW) % wrapW - 210;
+        const cy = ((c.y - camera.y * 0.12) % wrapH + wrapH) % wrapH - 130;
+        drawWatercolorCloud(ctx, cx, cy, c.scale * 0.95, 0.34, '#24586e', '#92dce6');
+      }
+
+      ctx.fillStyle = 'rgba(232, 252, 255, 0.72)';
+      for (let i = 0; i < 36; i++) {
+        const sx = ((i * 89 + Math.sin(time * 0.9 + i) * 28 + time * 18) % (W + 40) + W + 40) % (W + 40) - 20;
+        const sy = ((i * 73 + time * (38 + (i % 4) * 12)) % (H + 40)) - 20;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 1.5 + (i % 3) * 0.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      return;
+    }
+
+    if (skyType === 'crystal_prism') {
+      // ===== 琉璃光廊空域：明澈白晴天 + 斜向七彩棱镜折射光带 =====
+      const prismCols = [
+        'rgba(255, 168, 186, 0.14)',
+        'rgba(255, 224, 128, 0.16)',
+        'rgba(148, 242, 214, 0.15)',
+        'rgba(146, 218, 255, 0.16)',
+        'rgba(202, 168, 255, 0.14)',
+      ];
+      ctx.save();
+      for (let i = 0; i < prismCols.length; i++) {
+        const bx = W * (0.08 + i * 0.17) + Math.sin(time * 0.35 + i) * 18;
+        ctx.fillStyle = prismCols[i];
+        ctx.beginPath();
+        ctx.moveTo(bx, 0);
+        ctx.lineTo(bx + W * 0.11, 0);
+        ctx.lineTo(bx + W * 0.28, H);
+        ctx.lineTo(bx + W * 0.15, H);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+
+      for (const c of SKY_CLOUDS) {
+        const parallax = c.layer === 0 ? 0.08 : 0.15;
+        const wrapW = W + 420;
+        const wrapH = H + 260;
+        const cx = ((c.x + time * c.speed * 0.8 - camera.x * parallax) % wrapW + wrapW) % wrapW - 210;
+        const cy = ((c.y - camera.y * parallax) % wrapH + wrapH) % wrapH - 130;
+        drawWatercolorCloud(ctx, cx, cy, c.scale, c.layer === 0 ? 0.56 : 0.82, '#d8effa', '#ffffff');
+      }
+      return;
+    }
+
+    if (skyType === 'horizon_void') {
+      // ===== 深空视界奇点：黑金引力透镜双星环 + 失重繁星 =====
+      const cx0 = W * 0.52 - ((camera.x * 0.04) % 120);
+      const cy0 = H * 0.44 - ((camera.y * 0.04) % 90);
+      const halo = ctx.createRadialGradient(cx0, cy0, 36, cx0, cy0, Math.min(W, H) * 0.48);
+      halo.addColorStop(0, 'rgba(8, 6, 18, 0.85)');
+      halo.addColorStop(0.28, 'rgba(255, 206, 98, 0.24)');
+      halo.addColorStop(0.56, 'rgba(138, 86, 224, 0.18)');
+      halo.addColorStop(1, 'rgba(10, 10, 24, 0)');
+      ctx.fillStyle = halo;
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.save();
+      ctx.translate(cx0, cy0);
+      ctx.rotate(time * 0.08);
+      ctx.strokeStyle = 'rgba(255, 218, 120, 0.34)';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, Math.min(W, H) * 0.30, Math.min(W, H) * 0.11, 0.26, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(168, 126, 255, 0.28)';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, Math.min(W, H) * 0.22, Math.min(W, H) * 0.22, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      for (const s of NIGHT_STARS) {
+        const sx = ((s.x - camera.x * 0.05) % (W + 40) + W + 40) % (W + 40) - 20;
+        const sy = ((s.y - camera.y * 0.05) % (H + 40) + H + 40) % (H + 40) - 20;
+        const tw = 0.35 + 0.65 * Math.abs(Math.sin(time * 1.8 + s.phase));
+        ctx.fillStyle = s.gold ? `rgba(255, 226, 132, ${tw})` : `rgba(208, 188, 255, ${tw * 0.8})`;
+        ctx.beginPath();
+        ctx.arc(sx, sy, s.r, 0, Math.PI * 2);
         ctx.fill();
       }
       return;
@@ -1278,6 +1432,51 @@
 
   // ==================== 无缝融合的宫崎骏水彩云海遮罩（彻底告别方块格子与重复印章） ====================
   function getCloudFogPalette(stage) {
+    const cid = stage ? stage.climateId : '';
+    if (cid === 'thunder_violet') {
+      return {
+        shadow: '#1a1433',
+        mid: '#2d2452',
+        body: '#413570',
+        highlight: '#6859a3',
+        rim: 'rgba(132, 232, 255, 0.36)',
+        sparkle: '#7ceeff',
+        isNight: true,
+      };
+    }
+    if (cid === 'aurora_frost') {
+      return {
+        shadow: '#6ea8bc',
+        mid: '#a6dce8',
+        body: '#d4f4fa',
+        highlight: '#f4feff',
+        rim: 'rgba(120, 255, 214, 0.56)',
+        sparkle: '#78ffd6',
+        isNight: false,
+      };
+    }
+    if (cid === 'crystal_prism') {
+      return {
+        shadow: '#b8dcf2',
+        mid: '#dff2fc',
+        body: '#f7fcff',
+        highlight: '#ffffff',
+        rim: 'rgba(255, 224, 128, 0.55)',
+        sparkle: '#ffd859',
+        isNight: false,
+      };
+    }
+    if (cid === 'horizon_void') {
+      return {
+        shadow: '#0c0a1c',
+        mid: '#1b1636',
+        body: '#2b224f',
+        highlight: '#4c3c80',
+        rim: 'rgba(255, 214, 110, 0.36)',
+        sparkle: '#ffd86b',
+        isNight: true,
+      };
+    }
     const theme = stage ? stage.theme : 'friction';
     if (theme === 'gravity') {
       return {

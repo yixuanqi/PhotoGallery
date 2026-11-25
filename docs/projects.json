@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": 9,
+  "catalogVersion": 10,
   "repository": "yixuanqi/PhotoGallery",
   "baseUrl": "https://yixuanqi.github.io/PhotoGallery/",
   "updatedAt": "2026-11-25",
@@ -796,7 +796,7 @@
       "kind": "interactive-web",
       "category": "game",
       "status": "development",
-      "summary": "手绘云海浮岛物理弹射冒险。驾驶飞艇探索未知航线，利用力学、热学、光学、电学与时空异常触发物理连锁，在深入空域与返航入库之间抉择。支持 PC 和移动端。",
+      "summary": "手绘云海浮岛物理弹射冒险。探索未知航线，利用力、热、光、电与时空物理连锁，构筑学科共鸣，挑战阶段霸主、浮空黑市与每日离线悬赏。支持 PC 和移动端。",
       "tags": [
         "Canvas 2D",
         "未知航线",
@@ -816,8 +816,8 @@
       "galaxy": {
         "icon": "🧭",
         "category": "online",
-        "description": "手绘云海浮岛物理弹射冒险。驾驶飞艇探索未知航线，利用力学、热学、光学、电学与时空异常触发物理连锁，在深入空域与返航入库之间抉择。支持 PC 和移动端。",
-        "note": "V9.4：新增手绘云海启幕门扉，首次点击解锁音频，改善开场动画首播音画同步与跳过体验。",
+        "description": "手绘云海浮岛物理弹射冒险。探索未知航线，利用力、热、光、电与时空物理连锁，构筑学科共鸣，挑战阶段霸主、浮空黑市与每日离线悬赏。支持 PC 和移动端。",
+        "note": "V9.6.1：新增学科共鸣、每日云海挑战及母港扩建，并修复深空视界奇点气候的黑屏问题。",
         "linkText": "↗ 进入游戏",
         "sourceUrl": null,
         "palette": [

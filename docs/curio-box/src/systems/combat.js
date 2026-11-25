@@ -80,11 +80,20 @@
 
   function getActiveSingularityAt(x, y) {
     const map = game.map;
-    if (!map || !map.props) return null;
-    for (const p of map.props) {
-      if (p.type !== 'singularity' || (p.activeTimer || 0) <= 0) continue;
-      const R = p.fieldRadius || 195;
-      if (Math.hypot(x - p.x, y - p.y) <= R) return p;
+    if (map && map.props) {
+      for (const p of map.props) {
+        if (p.type !== 'singularity' || (p.activeTimer || 0) <= 0) continue;
+        const R = p.fieldRadius || 195;
+        if (Math.hypot(x - p.x, y - p.y) <= R) return p;
+      }
+    }
+    if (game.dilationBubbles && game.dilationBubbles.length > 0) {
+      for (let i = 0; i < game.dilationBubbles.length; i++) {
+        const b = game.dilationBubbles[i];
+        if ((b.activeTimer || 0) > 0 && Math.hypot(x - b.x, y - b.y) <= (b.fieldRadius || 118)) {
+          return b;
+        }
+      }
     }
     return null;
   }
@@ -114,6 +123,7 @@
     sing.maxDuration = 3.6 + bonusDur;
     sing.activeTimer = sing.maxDuration;
     if (CB.audio && CB.audio.playSingularityDilate) CB.audio.playSingularityDilate();
+              if (CB.extraction && CB.extraction.recordDailyLabTrigger) CB.extraction.recordDailyLabTrigger();
     game.camera.shake = Math.max(game.camera.shake, 4.2);
     CB.player.spawnDust(sing.x, sing.y - 10, '#a875ff', 16, 1.55);
     CB.player.spawnDust(sing.x, sing.y - 10, '#ffe478', 8, 1.25);
@@ -1084,8 +1094,9 @@
     const impLen = Math.hypot(impVx, impVy) || 1;
     const gAlign = activeGust ? Math.max(0, (impVx * activeGust.dirX + impVy * activeGust.dirY) / impLen) : 0;
     const gustMult = activeGust && gAlign > 0.1 ? 1 + 0.45 * gAlign : 1.0;
-    crate.vx = (crate.vx || 0) + impVx * surfaceBoost * gustMult;
-    crate.vy = (crate.vy || 0) + impVy * surfaceBoost * gustMult;
+    const lgBoost = (CB.stages && CB.stages.hasMutator && CB.stages.hasMutator('low_gravity')) ? 1.35 : 1.0;
+    crate.vx = (crate.vx || 0) + impVx * surfaceBoost * gustMult * lgBoost;
+    crate.vy = (crate.vy || 0) + impVy * surfaceBoost * gustMult * lgBoost;
 
     const spd = Math.hypot(crate.vx, crate.vy);
     const maxSpd = onSlide ? 960 : 520;
@@ -1492,6 +1503,7 @@
                 other.pulse = 1;
                 exitWh.pulse = 1;
                 if (CB.audio && CB.audio.playWormholeWarp) CB.audio.playWormholeWarp();
+              if (CB.extraction && CB.extraction.recordDailyLabTrigger) CB.extraction.recordDailyLabTrigger();
                 CB.player.spawnDust(other.x, other.y - 8, other.color, 9, 1.3);
                 CB.player.spawnDust(exitWh.x, exitWh.y - 8, exitWh.color, 11, 1.45);
                 CB.player.spawnPopup(exitWh.x, exitWh.y - 28, '🌀 虫洞喷箱!', '#7c52e0');
@@ -1637,7 +1649,9 @@
         const gAlign = activeGust && spdAfter > 1
           ? (crate.vx * activeGust.dirX + crate.vy * activeGust.dirY) / spdAfter
           : 0;
-        const baseDecel = crate.onDewSlide ? 95 : 2650;
+        const hasFrostM = !!(CB.stages && CB.stages.hasMutator && CB.stages.hasMutator('global_frost'));
+        const hasLowGravM = !!(CB.stages && CB.stages.hasMutator && CB.stages.hasMutator('low_gravity'));
+        const baseDecel = (crate.onDewSlide ? 95 : (hasFrostM ? 960 : 2650)) * (hasLowGravM ? 0.75 : 1.0);
         const gustDecelMult = activeGust && gAlign > 0.15 ? 0.65 : 1.0;
         const decel = (hasWax ? baseDecel * 0.58 : baseDecel) * gustDecelMult * effDt;
         const nextSpd = Math.max(0, spdAfter - decel);
@@ -1853,6 +1867,9 @@
     }
     const cfg = isHeavy ? LAUNCHER.heavy : LAUNCHER.light;
     const t = isHeavy ? Math.max(0, Math.min(1, chargeRatio)) : 0;
+    if (isHeavy && game.run && game.run.nodeType === 'trial') {
+      game.run.trialHeavyShots = (game.run.trialHeavyShots || 0) + 1;
+    }
 
     p.fireCooldown = cfg.cooldown;
     const kick = isHeavy ? cfg.recoilKick * (0.75 + 0.55 * t) : cfg.recoilKick;
@@ -1904,6 +1921,10 @@
       weaponId: isHeavy ? 'heavy' : 'needle',
       isHeavy,
       isOverclock: useOverclock,
+      isScorching: isHeavy && !!(CB.extraction && CB.extraction.hasSynergy && CB.extraction.hasSynergy('thermal')),
+      spawnsMiniBubble: isHeavy && (t >= 0.82 || useOverclock) && !!(CB.extraction && CB.extraction.hasSynergy && CB.extraction.hasSynergy('relativity')),
+      miniBubbleSpawned: false,
+      webSplitDone: false,
       orbHandled: false,
       chargeRatio: t,
       fromPollen: !!p.inPollen,
@@ -2408,6 +2429,47 @@
 
         rustleGrassAt(b.x, b.y, 26, dx);
 
+        if (b.isScorching && CB.physicsLab && CB.physicsLab.applyHeatAt) {
+          CB.physicsLab.applyHeatAt(b.x, b.y, 38, 12);
+          if (Math.random() < 0.45) CB.player.spawnDust(b.x, b.y - 10, '#ff8e48', 1, 0.85);
+        }
+
+        if (!b.webSplitDone && game.laserWebs && game.laserWebs.length > 0 && CB.extraction && CB.extraction.hasSynergy && CB.extraction.hasSynergy('optics')) {
+          for (let wi = 0; wi < game.laserWebs.length; wi++) {
+            const w = game.laserWebs[wi];
+            const wx = w.x2 - w.x1;
+            const wy = w.y2 - w.y1;
+            const lenSq = wx * wx + wy * wy || 1;
+            const proj = Math.max(0, Math.min(1, ((b.x - w.x1) * wx + (b.y - w.y1) * wy) / lenSq));
+            const cxW = w.x1 + wx * proj;
+            const cyW = w.y1 + wy * proj;
+            if (Math.hypot(b.x - cxW, b.y - cyW) <= 13) {
+              b.webSplitDone = true;
+              const baseAng = Math.atan2(b.vy, b.vx);
+              const spread = 0.22;
+              const boostedDmg = Math.max(14, Math.round(b.damage * 1.25));
+              b.isPrismBeam = true;
+              b.damage = boostedDmg;
+              b.color = '#ffe868';
+              b.vx = Math.cos(baseAng - spread) * b.speed;
+              b.vy = Math.sin(baseAng - spread) * b.speed;
+              game.bullets.push({
+                ...b,
+                vx: Math.cos(baseAng + spread) * b.speed,
+                vy: Math.sin(baseAng + spread) * b.speed,
+                orbHandled: true,
+                miniBubbleSpawned: true,
+                spawnedVortex: true,
+                trail: [{ x: b.x, y: b.y }],
+              });
+              if (CB.audio && CB.audio.playSplitBounce) CB.audio.playSplitBounce();
+              CB.player.spawnDust(b.x, b.y - 10, '#fff08a', 8, 1.3);
+              CB.player.spawnPopup(b.x, b.y - 28, '🔆 光网分光!', '#d99814');
+              break;
+            }
+          }
+        }
+
         if (hit.hit) {
           if (hit.kind === 'guard') {
             const g = hit.target;
@@ -2483,6 +2545,7 @@
             const dmgResult = CB.guards.damageGuard(g, dmg, dx, dy, !!critTag, critTag, isSlingshotHit, {
               source: 'bullet',
               isHeavy: !!b.isHeavy,
+              thermal: !!b.isScorching,
               isOverclock: !!b.isOverclock,
               isNeedle,
               chargeRatio: b.chargeRatio || 0,
@@ -2511,6 +2574,10 @@
             if (hasVortexCurio && !b.spawnedVortex) {
               b.spawnedVortex = true;
               spawnGravityVortex(hit.x, hit.y);
+            }
+            if (b.spawnsMiniBubble && !b.miniBubbleSpawned && CB.physicsLab && CB.physicsLab.spawnMiniDilationBubble) {
+              b.miniBubbleSpawned = true;
+              CB.physicsLab.spawnMiniDilationBubble(hit.x, hit.y);
             }
             if (hasStarJar && isSlingshotHit && CB.guards && CB.guards.stunNearbyGuards) {
               CB.guards.stunNearbyGuards(hit.x, hit.y, 96, 1.15);
@@ -2564,7 +2631,7 @@
 
           if (hit.kind === 'pressure_can') {
             if (CB.physicsLab && CB.physicsLab.heatPressureCan) {
-              CB.physicsLab.heatPressureCan(hit.target, b.isHeavy ? 56 : 36, !!b.isHeavy);
+              CB.physicsLab.heatPressureCan(hit.target, b.isScorching ? 105 : (b.isHeavy ? 56 : 36), !!b.isHeavy);
             }
             alive = false;
             break;
@@ -2706,6 +2773,10 @@
           if (hasVortexCurio && !b.spawnedVortex) {
             b.spawnedVortex = true;
             spawnGravityVortex(hit.x + hit.nx * 14, hit.y + hit.ny * 14);
+          }
+          if (b.spawnsMiniBubble && !b.miniBubbleSpawned && CB.physicsLab && CB.physicsLab.spawnMiniDilationBubble) {
+            b.miniBubbleSpawned = true;
+            CB.physicsLab.spawnMiniDilationBubble(hit.x + hit.nx * 18, hit.y + hit.ny * 18);
           }
 
           if (b.bouncesLeft > 0 || isSuper) {
