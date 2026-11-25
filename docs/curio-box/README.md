@@ -185,3 +185,7 @@
 - **迷雾色盘统一按 `climateId` 驱动（`src/render/renderer.js`）**：修正 `getCloudFogPalette()` 中经典 4 套气候回退依赖 `stage.theme` 导致双法则/每日挑战空域（如 `星夜棱镜观测穹`）误套用落日暖橙迷雾的问题；8 套气候均严格按 `climateId` 精确匹配云海色盘。
 - **迷雾缓存切换安全加固（`src/render/renderer.js`）**：在 `refreshStageTheme()` 中主动清空 `cachedFogKey` 与静态云团数组，并在 `fogKey` 中纳入 `climateId`，彻底杜绝同种子切换气候或重玩每日挑战时的缓存串用。
 - **地砖、墙饰、崖边云雾与花栏全 8 气候统一（`src/render/brush.js`）**：消除 `createPaperPattern`、`drawWallBlock`、`drawCliffEdge`、`drawRailing` 中残留的 `stage.theme` 视觉分支；暗色/奇点/雷电气候统一采用青电/暗金铆钉墙饰，极光气候墙头点缀霜晶，崖边云雾与木质花栏按全部 8 套 `climateId` 精准配色。
+
+### 28. 质量护栏升级：全标识符 `no-undef` 静态检查 + 8 气候 / 13 守卫全分支无头烟测（v9.6.3）
+- **静态词法作用域未声明检查（`tools/verify_release.py`）**：升级为真正的词法作用域 `no-undef` 分析器，逐层解析 `function`、箭头函数、块作用域、`for` / `catch` 与嵌套对象/数组解构，可同时拦截全大写常量拼错（如 `SKY_STARS`）与小写/驼峰变量遗漏（已在首次运行中精准捕获并修复了 `brush.js` 断木花栏残桩中遗漏的 `theme` 引用报错！）。
+- **8 气候 & 13 守卫全分支无头烟测（`tools/headless_verify.js`）**：升级为 6 阶段回归套件，新增强制遍历全部 8 套 `CLIMATES`（含厚雾/散雾/断栏残桩/全图俯瞰/开场门扉与 4 分镜渲染）、全部 13 种 `GUARD_SPECS`（含图鉴剪影/解锁肖像、台球拖尾、时间膨胀矢量箭头、霜壳蜗卫融壳感电、折光镜蛛破镜与蓄电铜偶超载）、3 套试炼房、4 大学科共鸣、母港高阶扩建、黑市与每日离线挑战的完整运行覆盖。

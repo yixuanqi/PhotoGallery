@@ -2816,7 +2816,7 @@
 
     // 4. 若是已撞碎的木质花栏，在两端保留精致断木残桩
     if (kind === 'railing' && broken) {
-      const woodColor = theme === 'gravity' ? '#6376a8' : theme === 'stealth' ? '#7a6852' : '#b8824c';
+      const woodColor = cid === 'starry_night' ? '#6376a8' : cid === 'twilight_vine' ? '#7a6852' : cid === 'thunder_violet' ? '#5e538a' : cid === 'aurora_frost' ? '#73a3b8' : cid === 'horizon_void' ? '#564a78' : '#b8824c';
       ctx.fillStyle = woodColor;
       ctx.strokeStyle = ink;
       ctx.lineWidth = 1.6;

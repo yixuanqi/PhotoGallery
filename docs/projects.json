@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": 11,
+  "catalogVersion": 12,
   "repository": "yixuanqi/PhotoGallery",
   "baseUrl": "https://yixuanqi.github.io/PhotoGallery/",
   "updatedAt": "2026-11-25",
@@ -817,7 +817,7 @@
         "icon": "🧭",
         "category": "online",
         "description": "手绘云海浮岛物理弹射冒险。探索未知航线，利用力、热、光、电与时空物理连锁，构筑学科共鸣，挑战阶段霸主、浮空黑市与每日离线悬赏。支持 PC 和移动端。",
-        "note": "V9.6.2：统一 8 套气候视觉配色，修复云海迷雾缓存串色；包含浮空黑市、学科羁绊、母港扩建与每日离线挑战。",
+        "note": "V9.6.3：修复断木花栏未定义变量，增强全气候、全守卫回归验证与 no-undef 静态检查。",
         "linkText": "↗ 进入游戏",
         "sourceUrl": null,
         "palette": [
