@@ -14,7 +14,7 @@ import {
 import { capturePlayerInputBuffers, updatePlayer } from './player.js';
 import { equipWeapon, cycleWeapon } from './combat.js';
 import { updateEnemy, updateEnemyHitFeel, updateBoss, updateBoss2, updateBoss3, updateBoss4, triggerBoss4UltimateReaction, resetWardenState } from './ai.js';
-import { updateWorldEffects, updateCamera, updateAmbientOnly, snapCameraToPlayer } from './world.js';
+import { updateWorldEffects, updateCamera, updateAmbientOnly, snapCameraToPlayer, isRoomOccluded } from './world.js';
 import { render } from './renderer.js';
 import { prewarmStampsForList } from './stampAtlas.js';
 import { prewarmTerrainChunks, invalidateTerrainCache } from './renderTerrain.js';
@@ -384,6 +384,11 @@ function runGameFrame(timestamp) {
       for (let i = 0; i < G.enemies.length; i++) {
         const enemy = G.enemies[i];
         if (!enemy || !enemy.alive) continue;
+        // v45.6 Room-Occlusion AI Gate: enemies in hidden/occluded rooms can NEVER aggro, shoot, or blink through ceilings!
+        if (!G.echoSession && enemy.roomId && isRoomOccluded(enemy.roomId)) {
+          if (enemy.isMiniBoss && enemy.awake) resetWardenState(enemy);
+          continue;
+        }
         if (Math.abs(enemy.x - px) > 1350 || Math.abs(enemy.y - py) > 820) {
           if (enemy.isMiniBoss && enemy.awake && !G.echoSession) resetWardenState(enemy);
           continue;

@@ -662,23 +662,64 @@ function paintPlatformSolid(c, s, st) {
   drawTopBiomeOverlay(c, s.x, s.y, s.w, st, true);
 }
 
-/* ==================== 1024x800 CHUNKED OFFSCREEN CACHE ==================== */
+/* ==================== 1024x800 CHUNKED OFFSCREEN CACHE (v45.7 iOS WKWebView VRAM LRU Guard) ==================== */
 const _chunkCache = new Map();
+const _emptyChunks = new Set();
 let _cachedThemeMap = null;
 let _cachedModMap = null;
 let _cachedBakeScale = 1;
+
+const _IS_IOS_WEBKIT = (typeof navigator !== 'undefined') && (
+  /iPhone|iPad|iPod/i.test(navigator.userAgent || '') ||
+  (navigator.platform === 'MacIntel' && (navigator.maxTouchPoints || 0) > 1)
+);
+
+function getMaxTerrainChunks() {
+  if (_IS_IOS_WEBKIT) return 10; // Caps iOS WKWebView terrain VRAM at ~73 MB (10 x 1.5x chunks) to prevent Jetsam white-screen kill!
+  if (G.isMobile) return 16;
+  return 32;
+}
+
+function releaseChunkCanvas(entry) {
+  if (entry && entry.canvas) {
+    // Explicitly release WebKit IOSurface backing GPU memory immediately on eviction
+    entry.canvas.width = 0;
+    entry.canvas.height = 0;
+    entry.canvas = null;
+  }
+}
+
+function clearTerrainChunksWithRelease() {
+  for (const entry of _chunkCache.values()) {
+    releaseChunkCanvas(entry);
+  }
+  _chunkCache.clear();
+  _emptyChunks.clear();
+}
+
+function evictTerrainChunks(maxCount) {
+  while (_chunkCache.size > maxCount) {
+    const oldestKey = _chunkCache.keys().next().value;
+    if (oldestKey === undefined) break;
+    const oldEntry = _chunkCache.get(oldestKey);
+    _chunkCache.delete(oldestKey);
+    releaseChunkCanvas(oldEntry);
+  }
+}
 
 function getDesiredTerrainScale() {
   const eco = !!(G.isMobile && G.settings && (G.settings.mobileQuality === 'eco' || G.settings.mobileEcoMode));
   if (eco) return 1.25;
   const rs = Number(G.renderScale) || 1;
+  // Cap iOS offscreen terrain chunks at 1.5x (saves 44% GPU VRAM per chunk with crisp Retina output)
+  if (_IS_IOS_WEBKIT) return rs >= 1.25 ? 1.5 : 1;
   if (rs >= 1.75) return 2;
   if (rs >= 1.25) return 1.5;
   return 1;
 }
 
 export function invalidateTerrainCache() {
-  _chunkCache.clear();
+  clearTerrainChunksWithRelease();
   _cachedThemeMap = null;
   _cachedModMap = null;
 }
@@ -686,12 +727,18 @@ export function invalidateTerrainCache() {
 function getOrBakeChunk(cx, cy) {
   const wantScale = getDesiredTerrainScale();
   if (wantScale !== _cachedBakeScale) {
-    _chunkCache.clear();
+    clearTerrainChunksWithRelease();
     _cachedBakeScale = wantScale;
   }
   const key = `${cx},${cy}`;
+  if (_emptyChunks.has(key)) return null;
   let entry = _chunkCache.get(key);
-  if (entry !== undefined) return entry;
+  if (entry !== undefined) {
+    // Refresh LRU recency in O(1)
+    _chunkCache.delete(key);
+    _chunkCache.set(key, entry);
+    return entry;
+  }
 
   const wx0 = cx * CHUNK_W;
   const wy0 = cy * CHUNK_H;
@@ -708,7 +755,7 @@ function getOrBakeChunk(cx, cy) {
   }
 
   if (hit.length === 0) {
-    _chunkCache.set(key, null);
+    _emptyChunks.add(key);
     return null;
   }
 
@@ -740,6 +787,7 @@ function getOrBakeChunk(cx, cy) {
 
   entry = { canvas, wx: wx0, wy: wy0 };
   _chunkCache.set(key, entry);
+  evictTerrainChunks(getMaxTerrainChunks());
   return entry;
 }
 

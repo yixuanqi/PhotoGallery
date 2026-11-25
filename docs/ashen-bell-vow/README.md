@@ -1,3 +1,22 @@
+## v45.7 iOS WKWebView / Safari 专项加固（地形与背景显存 LRU 回收 + 防长按系统弹框）
+- **地形块与背景架构离屏画布显存 LRU 回收（`src/renderTerrain.js` / `src/render/backdropCache.js`）**：
+  * 自动识别 iOS / iPadOS WebKit 环境，将地形块与建筑背景离线烘焙倍率上限收敛至 **`1.5×`**（节省 44% 单块显存的同时保持视网膜清晰度）；
+  * 为 `_chunkCache` 与 `_panels` 接入 **O(1) LRU 淘汰队列**（iOS 上限 **10 块地形 + 8 块背景**，Android 16 块、PC 32 块），空块独立记录于零显存 `_emptyChunks`；
+  * 每次淘汰或清空缓存时显式将离屏画布设为 **`width = 0; height = 0`** 立即归还 WebKit IOSurface GPU 显存，根治 iPhone 长时间连续跑图触发系统 Jetsam 强杀白屏。
+- **iOS 防长按弹框、防误选与防橡皮筋回弹（`styles.css` / `src/input.js`）**：
+  * 全局注入 `-webkit-touch-callout: none`、`-webkit-tap-highlight-color: transparent` 与 `overscroll-behavior: none`，移动端摇杆、扇形按键与主画布锁定 `touch-action: none`；
+  * 在 `#touch-controls` 与 `#gameCanvas` 拦截 `contextmenu` / `selectstart`，并在非地图界面拦截 Safari `gesturestart`，彻底保证 iPhone 上**长按居合蓄力**与**短按 `0.16s` 轻重变招**零系统弹窗打断。
+
+---
+
+## v45.6 根治「隐身跨房穿墙偷袭」Bug（遮蔽房间 AI 休眠门控 + 远程/瞬移怪视线校验）
+- **根治起点高台莫名受到隐身 `-20` 斩击的问题（`src/main.js` / `src/ai/exoticEnemiesAi.js`）**：
+  * 定位元凶：起点 `r01_sanctuary` 正上方紧邻已遮蔽房间 `r19_belfry_outer`（断索钟楼），其中新部署的浮空怪「金钟执灯侍（`cantor_belfry_1`）」虽已被渲染层 `isRoomOccluded()` 隐藏，但 `src/main.js` 怪物更新循环未校验房间遮蔽，导致其跨天花板侦测到站在高台上的玩家并直接瞬移穿顶挥出隐身 `-20` 斩击；
+  * **全局遮蔽房间 AI 门控（`src/main.js`）**：非回响模式下，凡处于 `isRoomOccluded(enemy.roomId)` 遮蔽房间内的所有敌兵一律休眠，绝不跨房移动、发弹或瞬移；
+  * **远程与瞬移怪视线（`hasLineOfSight`）+ 垂直带钳位（`exoticEnemiesAi.js` / `enemiesAi.js` / `biomeEnemiesAi.js`）**：为金钟执灯侍、悬灯怨灵、敲钟祭司与衔铃风隼统一加入实墙视线检测与垂直仇恨范围限制，并将金钟执灯侍瞬移落点锁死在自身房间垂直带内，彻底杜绝任何穿墙偷袭。
+
+---
+
 ## v45.5 移动端攻弹合一拼刀、极简防误触键位与祭坛四页签重构
 - **攻弹合一拼刀系统（默认手机开启，设置页可切回独立弹反键，`src/combat/playerCombat.js` / `src/combat/damageCombat.js` / `src/player.js`）**：
   * **挥斩弹反敌方弹幕**：普攻刀光命中任意敌方弹幕（怨灵球、风刃、冰棱、墨网、熔铜滴、共鸣波）直接触发完美弹反归元，享有完整顿帧、回魂与墨印收益；

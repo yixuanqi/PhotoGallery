@@ -1102,6 +1102,28 @@ export function initInputListeners() {
     });
   });
 
+  // v45.7 iOS WKWebView / Safari Long-Press Callout & Accidental Gesture Suppression
+  const suppressTouchMenu = e => {
+    if (document.body && document.body.classList.contains('is-mobile')) {
+      e.preventDefault();
+    }
+  };
+  const touchRootEl = document.getElementById('touch-controls');
+  const canvasEl = document.getElementById('gameCanvas');
+  if (touchRootEl) {
+    touchRootEl.addEventListener('contextmenu', suppressTouchMenu);
+    touchRootEl.addEventListener('selectstart', suppressTouchMenu);
+  }
+  if (canvasEl) {
+    canvasEl.addEventListener('contextmenu', suppressTouchMenu);
+    canvasEl.addEventListener('selectstart', suppressTouchMenu);
+  }
+  document.addEventListener('gesturestart', e => {
+    if (document.body && document.body.classList.contains('is-mobile') && G.activeModal !== 'map') {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
   // Tappable HUD Flasks (Heal) & Ink Seals (Detonate) on Mobile
   const bindTapPulse = (id, act) => {
     const el = document.getElementById(id);

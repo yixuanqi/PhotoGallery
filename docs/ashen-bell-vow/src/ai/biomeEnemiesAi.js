@@ -4,7 +4,7 @@ import { COLORS, GRAVITY } from '../config.js';
 import { G, addShake, damp } from '../state.js';
 import { audio } from '../audio.js';
 import { updateCloak, spawnParticles, spawnShockwave, spawnFloatText } from '../vfx.js';
-import { aabbOverlap, moveAndCollide, getGroundSurfaceY } from '../physics.js';
+import { aabbOverlap, moveAndCollide, getGroundSurfaceY, hasLineOfSight } from '../physics.js';
 import { applyIncomingAttackToPlayer } from '../combat.js';
 import { t } from '../i18n.js';
 
@@ -46,7 +46,7 @@ export function updateFalcon(e, dt) {
     e.x += e.vx * dt;
     e.y += e.vy * dt;
     e.facing = dx >= 0 ? 1 : -1;
-    if (dist < 470 && e.stateTimer <= 0) {
+    if (dist < 470 && Math.abs(dy) < 280 && e.stateTimer <= 0 && hasLineOfSight(cx, cy, px, py)) {
       const wantsVolley = (e.volleyCd || 0) <= 0 && (dist > 205 || Math.random() < 0.42);
       e.attackKind = wantsVolley ? 'featherVolley' : 'dive';
       e.state = 'windup';

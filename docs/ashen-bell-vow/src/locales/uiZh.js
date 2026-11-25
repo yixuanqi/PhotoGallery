@@ -1,7 +1,7 @@
-// Simplified Chinese (zh-CN) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v45.5)
+// Simplified Chinese (zh-CN) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v45.7)
 export const UI_ZH = {
     // Document & Title
-    'doc.title': '灰钟残誓 v45.5 (1.0 RC) — 暗黑手绘魂系类银河恶魔城 · 25房立体箱庭与三系兵刃',
+    'doc.title': '灰钟残誓 v45.7 (1.0 RC) — 暗黑手绘魂系类银河恶魔城 · 25房立体箱庭与三系兵刃',
     'game.title': '灰钟残誓',
     'game.subtitle': 'ASHEN BELL VOW · 暗黑手绘魂系类银河恶魔城',
     'title.loading': '载入中...',

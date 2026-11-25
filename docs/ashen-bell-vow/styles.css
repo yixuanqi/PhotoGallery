@@ -17,12 +17,16 @@
     padding: 0;
     user-select: none;
     -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
   }
 
   html, body {
     width: 100%;
     height: 100%;
     overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-text-size-adjust: 100%;
     background: var(--bg-void);
     color: var(--parchment);
     font-family: "Noto Serif SC", "Songti SC", "STSong", Georgia, serif;
@@ -33,6 +37,7 @@
     width: 100vw;
     height: 100vh;
     overflow: hidden;
+    overscroll-behavior: none;
     background: radial-gradient(circle at 50% 35%, #121927 0%, #070a10 80%);
   }
 
@@ -5850,4 +5855,21 @@
     bottom: 164px;
     width: 50px;
     height: 50px;
+  }
+
+  /* ==================== v45.7 iOS SAFARI / WKWEBVIEW LONG-PRESS & RUBBER-BAND HARDENING ==================== */
+  body.is-mobile #gameCanvas,
+  body.is-mobile #touch-controls,
+  body.is-mobile .joystick-zone,
+  body.is-mobile .action-fan,
+  body.is-mobile .t-btn,
+  body.is-mobile .fan-btn,
+  body.is-mobile .mobile-interact-btn,
+  body.is-mobile #flasks-btn,
+  body.is-mobile #seals-btn {
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }

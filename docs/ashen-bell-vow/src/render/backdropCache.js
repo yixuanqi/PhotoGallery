@@ -8,7 +8,21 @@ import { drawGlowSprite } from '../vfx.js';
 const _panels = new Map();
 const _stats = { hits: 0, misses: 0 };
 
+const _IS_IOS_WEBKIT = (typeof navigator !== 'undefined') && (
+  /iPhone|iPad|iPod/i.test(navigator.userAgent || '') ||
+  (navigator.platform === 'MacIntel' && (navigator.maxTouchPoints || 0) > 1)
+);
+const _MAX_PANELS = _IS_IOS_WEBKIT ? 8 : 20;
+
+function releaseBackdropCanvas(canvas) {
+  if (canvas) {
+    canvas.width = 0;
+    canvas.height = 0;
+  }
+}
+
 export function invalidateBackdropCache() {
+  for (const cvs of _panels.values()) releaseBackdropCanvas(cvs);
   _panels.clear();
 }
 
@@ -20,12 +34,16 @@ export function getBackdropCacheStats() {
   };
 }
 
-const _PANEL_BAKE_SCALE = (typeof window !== 'undefined' && (window.devicePixelRatio || 1) >= 1.5) ? 2 : 1;
+const _PANEL_BAKE_SCALE = (typeof window !== 'undefined' && (window.devicePixelRatio || 1) >= 1.5)
+  ? (_IS_IOS_WEBKIT ? 1.5 : 2)
+  : 1;
 
 function getOrBakePanel(key, w, h, paintFn) {
   let canvas = _panels.get(key);
   if (canvas) {
     _stats.hits++;
+    _panels.delete(key);
+    _panels.set(key, canvas);
     return canvas;
   }
   _stats.misses++;
@@ -41,6 +59,13 @@ function getOrBakePanel(key, w, h, paintFn) {
   if (sc !== 1) c.scale(sc, sc);
   paintFn(c, logW, logH);
   _panels.set(key, canvas);
+  while (_panels.size > _MAX_PANELS) {
+    const oldKey = _panels.keys().next().value;
+    if (oldKey === undefined) break;
+    const oldCvs = _panels.get(oldKey);
+    _panels.delete(oldKey);
+    releaseBackdropCanvas(oldCvs);
+  }
   return canvas;
 }
 

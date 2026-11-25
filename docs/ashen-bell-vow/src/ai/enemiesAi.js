@@ -4,7 +4,7 @@ import { G, addShake, triggerBossBanner, getCombatScaling, getBladeDamageMult, i
 import { audio } from '../audio.js';
 import { triggerHaptic } from '../input.js';
 import { updateCloak, spawnParticles, spawnShockwave, spawnFloatText } from '../vfx.js';
-import { aabbOverlap, moveAndCollide, getGroundSurfaceY } from '../physics.js';
+import { aabbOverlap, moveAndCollide, getGroundSurfaceY, hasLineOfSight } from '../physics.js';
 import { applyIncomingAttackToPlayer, applyEnemyHitFeel, damageEnemyHP, addPostureToEnemy } from '../combat.js';
 import { t, locBoss } from '../i18n.js';
 
@@ -488,14 +488,14 @@ export function updatePriest(e, dt) {
         e.stateTimer = 0.95;
         e.chantTargetId = bestAlly.id;
         audio.playResonanceBell(587.33, false);
-      } else if ((e.rippleCd || 0) <= 0 && dist < 310 && Math.abs(py - cy) < 95) {
+      } else if ((e.rippleCd || 0) <= 0 && dist < 310 && Math.abs(py - cy) < 95 && hasLineOfSight(cx, cy, px, py)) {
         // v45.1 Mid-range golden ground resonance ripple (jump or parry!)
         e.state = 'ripple';
         e.stateTimer = 0.62;
         e.didHit = false;
         e.chantTargetId = null;
         audio.playResonanceBell(440, false);
-      } else if (dist < 480) {
+      } else if (dist < 480 && hasLineOfSight(cx, cy, px, py)) {
         // No ally left: self-channel golden ward orb
         e.state = 'chant';
         e.stateTimer = 0.88;
@@ -815,7 +815,8 @@ export function updateWraith(e, dt) {
     e.facing = dx >= 0 ? 1 : -1;
 
     if (e.state === 'hover') {
-      if (dist < 95 && (e.blinkCd || 0) <= 0) {
+      const canSee = dist < 490 && Math.abs(dy) < 260 && hasLineOfSight(e.x + e.w * 0.5, e.y + e.h * 0.5, G.player.x + G.player.w * 0.5, G.player.y + G.player.h * 0.5);
+      if (canSee && dist < 95 && (e.blinkCd || 0) <= 0) {
         // v45.1 Panic Blink Retreat when cornered by player!
         e.blinkCd = 5.0;
         const fleeDir = dx >= 0 ? -1 : 1;
@@ -827,7 +828,7 @@ export function updateWraith(e, dt) {
         e.state = 'windup';
         e.attackKind = 'twinArc';
         e.stateTimer = 0.62;
-      } else if (dist < 490 && e.stateTimer <= 0) {
+      } else if (canSee && e.stateTimer <= 0) {
         e.state = 'windup';
         e.attackKind = Math.random() < 0.42 ? 'twinArc' : 'singleOrb';
         e.stateTimer = e.attackKind === 'twinArc' ? 0.74 : 0.68;

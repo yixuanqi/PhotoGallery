@@ -4,7 +4,7 @@ import { COLORS, GRAVITY } from '../config.js';
 import { G, addShake, damp } from '../state.js';
 import { audio } from '../audio.js';
 import { updateCloak, spawnParticles, spawnShockwave, spawnFloatText } from '../vfx.js';
-import { aabbOverlap, moveAndCollide, getGroundSurfaceY } from '../physics.js';
+import { aabbOverlap, moveAndCollide, getGroundSurfaceY, hasLineOfSight } from '../physics.js';
 import { applyIncomingAttackToPlayer } from '../combat.js';
 import { t } from '../i18n.js';
 
@@ -320,15 +320,17 @@ export function updateCantor(e, dt) {
     e.y += e.vy * dt;
     e.facing = dx >= 0 ? 1 : -1;
 
-    if (dist < 520 && e.stateTimer <= 0) {
+    if (dist < 520 && Math.abs(dy) < 250 && e.stateTimer <= 0 && hasLineOfSight(ex, ey, px, py)) {
       if ((e.blinkCd || 0) <= 0 && (dist > 220 || Math.random() < 0.42)) {
-        // Teleport behind/near player for a swift sacred bell-blade cleave!
+        // Teleport behind/near player (clamped strictly to own room vertical band so it NEVER clips through floors/ceilings!)
         e.blinkCd = 4.6;
         spawnParticles(ex, ey, 16, { color: COLORS.goldBright, speed: 200, spark: true, life: 0.34 });
         const destX = px - G.player.facing * 88 - e.w * 0.5;
-        const gY = getGroundSurfaceY(destX + e.w * 0.5, py + 40);
-        e.x = Math.max(e.homeX - 280, Math.min(e.homeX + 280, destX));
-        e.y = Math.min(gY - e.h - 12, py - e.h * 0.55);
+        const clampedX = Math.max(e.homeX - 280, Math.min(e.homeX + 280, destX));
+        const gY = getGroundSurfaceY(clampedX + e.w * 0.5, Math.min(e.homeY + 180, py + 40));
+        const rawY = Math.min(gY - e.h - 12, py - e.h * 0.55);
+        e.x = clampedX;
+        e.y = Math.max(e.homeY - 170, Math.min(e.homeY + 170, rawY));
         e.facing = (px - (e.x + e.w * 0.5)) >= 0 ? 1 : -1;
         audio.playShadowBlink();
         audio.playGlintCue(false);
