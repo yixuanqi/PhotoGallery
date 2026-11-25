@@ -245,14 +245,22 @@
     return ctx;
   }
 
-  function unlock() {
+  function isAudioUnlocked() {
+    return !!(ctx && ctx.state === 'running');
+  }
+
+  function unlock(onReady) {
     if (!ctx) initAudioCore();
     if (ctx) {
       primeSilentFrame(ctx);
       if (ctx.state === 'suspended' && !suspendedByBg) {
-        ctx.resume().catch(() => {});
+        ctx.resume()
+          .then(() => { if (onReady) onReady(); })
+          .catch(() => { if (onReady) onReady(); });
+        return;
       }
     }
+    if (onReady) onReady();
   }
 
   function suspendAudio() {
@@ -773,8 +781,8 @@
 
   // ==================== 开场 10 秒水彩过场动画程序化配乐提示音 ====================
   function playIntroCue(sceneIndex = 0) {
-    if (game.audioMuted || suspendedByBg) return;
-    if (!ctx || ctx.state !== 'running') return;
+    if (game.audioMuted || suspendedByBg) return false;
+    if (!ctx || ctx.state !== 'running') return false;
     if (sceneIndex === 0) {
       // Scene 1：云海破晓 · 柔风与竖琴长音琶音
       playNoise(0.95, 720, 'bandpass', 0.08, 0, 1.1);
@@ -802,6 +810,7 @@
         playTone('sine', f * 2, f * 2, 0.46, 0.04, idx * 0.065);
       });
     }
+    return true;
   }
 
 
@@ -931,6 +940,7 @@
 
   CB.audio = {
     unlock,
+    isAudioUnlocked,
     suspendAudio,
     resumeAudio,
     setMuted,

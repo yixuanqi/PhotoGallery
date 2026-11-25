@@ -120,8 +120,13 @@
 
     const cueIdx = intro.t < 2.6 ? 0 : intro.t < 5.5 ? 1 : intro.t < 8.1 ? 2 : 3;
     if (cueIdx !== intro.lastCue) {
-      intro.lastCue = cueIdx;
-      if (CB.audio && CB.audio.playIntroCue) CB.audio.playIntroCue(cueIdx);
+      let played = true;
+      if (CB.audio && CB.audio.playIntroCue && !game.audioMuted) {
+        played = CB.audio.playIntroCue(cueIdx) !== false;
+      }
+      if (played) {
+        intro.lastCue = cueIdx;
+      }
     }
 
     if (intro.t >= DURATION) {
@@ -1521,6 +1526,82 @@
     ctx.restore();
   }
 
+
+  // ==================== 轻量手绘云海点击启幕门扉（与分镜 1 t=0 无缝衔接） ====================
+  function renderIntroGate(ctx, W, H, time) {
+    ctx.save();
+
+    // 1. 破晓前静谧深蓝晨曦天空（与分镜 1 起始帧色盘一致，点击即无缝破晓！）
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, '#132144');
+    sky.addColorStop(0.55, '#2c4478');
+    sky.addColorStop(1, '#8c7b9e');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, H);
+
+    // 2. 轻柔闪烁的晨曦微星
+    for (const st of DAWN_STARS) {
+      const tw = 0.35 + 0.65 * Math.abs(Math.sin(time * 2.2 + st.phase));
+      ctx.fillStyle = st.gold ? `rgba(255, 236, 150, ${tw})` : `rgba(226, 242, 255, ${tw * 0.9})`;
+      ctx.beginPath();
+      ctx.arc(st.nx * W, st.ny * H, st.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 左上微弱晨光呼吸晕
+    const breath = 0.72 + Math.sin(time * 1.4) * 0.14;
+    const sunG = ctx.createRadialGradient(W * 0.16, H * 0.18, 12, W * 0.16, H * 0.18, Math.max(W, H) * 0.56);
+    sunG.addColorStop(0, `rgba(255, 238, 186, ${0.22 * breath})`);
+    sunG.addColorStop(1, 'rgba(255, 238, 186, 0)');
+    ctx.fillStyle = sunG;
+    ctx.fillRect(0, 0, W, H);
+
+    // 3. 缓慢涌动的远景云海地平线
+    drawCloudSeaHorizon(ctx, W, H, time * 0.65, 0.05);
+
+    // 4. 柔和浮动的双幕水彩云扉（坐标与分镜 1 t=0 精准对齐，点击后直接向两侧推开！）
+    const gatePal = {
+      shade: '#7a92be',
+      mid: '#a8bce0',
+      top: '#dce6f7',
+      rim: 'rgba(255, 246, 214, 0.58)',
+    };
+    const driftA = Math.sin(time * 0.65) * 8;
+    const driftB = Math.cos(time * 0.58) * 6;
+    const baseSc = Math.max(1.15, W / 740);
+
+    drawPainterlyCloud(ctx, W * 0.34 + driftA, H * 0.46 + driftB * 0.5, baseSc * 1.48, 0.94, gatePal);
+    drawPainterlyCloud(ctx, W * 0.66 - driftA, H * 0.50 - driftB * 0.5, baseSc * 1.54, 0.94, gatePal);
+    drawPainterlyCloud(ctx, W * 0.50 + driftB, H * 0.66, baseSc * 1.62, 0.88, gatePal);
+
+    // 5. 缓缓上升的金色星尘花粉粒
+    for (const m of MOTES) {
+      const mx = ((m.nx + time * m.spd * 0.35) % 1) * W;
+      const my = ((m.ny - time * m.spd * 0.55 + 2) % 1) * H;
+      const ma = 0.24 + 0.32 * Math.sin(time * 2.4 + m.phase);
+      ctx.fillStyle = m.color;
+      ctx.globalAlpha = ma;
+      ctx.beginPath();
+      ctx.arc(mx, my, m.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // 6. 冷压水彩纸颗粒 + 轻柔宽银幕暗幕边条
+    const paperPat = getPaperOverlay(ctx);
+    if (paperPat) {
+      ctx.fillStyle = paperPat;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    const barH = H < 500 ? 18 : 34;
+    ctx.fillStyle = 'rgba(24, 48, 64, 0.78)';
+    ctx.fillRect(0, 0, W, barH);
+    ctx.fillRect(0, H - barH, W, barH);
+
+    ctx.restore();
+  }
+
   CB.intro = {
     DURATION,
     startIntro,
@@ -1529,5 +1610,6 @@
     getProgress,
     updateIntro,
     renderIntro,
+    renderIntroGate,
   };
 })();

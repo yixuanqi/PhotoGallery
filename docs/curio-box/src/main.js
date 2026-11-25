@@ -9,7 +9,7 @@
   const { populateGuardsForMap, updateGuards } = CB.guards;
   const { resetRunState, updateExtractionLoop, startNewVoyage, advanceVoyageToNode, bankVoyageAndFinish } = CB.extraction;
   const { initRenderer, refreshStageTheme, renderWorld } = CB.renderer;
-  const { startIntro, skipIntro, isIntroActive, getProgress: getIntroProgress, updateIntro, renderIntro } = CB.intro;
+  const { startIntro, skipIntro, isIntroActive, getProgress: getIntroProgress, updateIntro, renderIntro, renderIntroGate } = CB.intro;
   const {
     renderMinimap,
     updateStatsBanner,
@@ -36,6 +36,8 @@
   const touchControlsEl = document.getElementById('touchControls');
   const quickDrawerEl = document.getElementById('quickDrawer');
   const portraitOverlayEl = document.getElementById('portraitOverlay');
+  const introGateOverlayEl = document.getElementById('introGateOverlay');
+  const introGatePromptEl = document.getElementById('introGatePrompt');
   const introOverlayEl = document.getElementById('introOverlay');
   const introProgressFillEl = document.getElementById('introProgressFill');
   const settingsModalEl = document.getElementById('settingsModal');
@@ -221,12 +223,12 @@
     document.body.classList.toggle('platform-pc', !isMobile);
     document.body.classList.toggle('platform-mobile', isMobile);
 
-    const showTouch = isMobile && !game.introActive && !game.titleOpen && !game.hubOpen && !game.paused && !game.chartOpen && !game.portraitBlocked && game.run.phase === 'playing';
+    const showTouch = isMobile && !game.introGateOpen && !game.introActive && !game.titleOpen && !game.hubOpen && !game.paused && !game.chartOpen && !game.portraitBlocked && game.run.phase === 'playing';
     if (touchControlsEl) {
       touchControlsEl.classList.toggle('hidden', !showTouch);
     }
     if (pcHintBarEl) {
-      const showPcHint = !isMobile && !game.introActive && !game.titleOpen && !game.hubOpen && !game.paused && !game.chartOpen && game.run.phase === 'playing';
+      const showPcHint = !isMobile && !game.introGateOpen && !game.introActive && !game.titleOpen && !game.hubOpen && !game.paused && !game.chartOpen && game.run.phase === 'playing';
       pcHintBarEl.classList.toggle('hud-hidden', !showPcHint);
     }
     if (btnTouchModeRef) {
@@ -238,6 +240,11 @@
       btnTouchModeRef.textContent = labelMap[game.touchMode] || '💻 布局: 自动(PC)';
       btnTouchModeRef.classList.toggle('active', game.touchMode !== 'auto');
     }
+    if (introGatePromptEl) {
+      introGatePromptEl.textContent = isMobile
+        ? '🔊 轻触任意处 · 开启声画序幕'
+        : '🔊 点击任意处 / 按空格 · 开启声画序幕';
+    }
     if (game.titleOpen) updateTitleCard();
   }
 
@@ -248,9 +255,11 @@
   }
 
   function syncChromeVisibility() {
-    const inIntro = !!game.introActive;
-    const onTitle = !!game.titleOpen && !inIntro;
-    const hidePlayHud = inIntro || onTitle;
+    const inGate = !!game.introGateOpen;
+    const inIntro = !!game.introActive && !inGate;
+    const onTitle = !!game.titleOpen && !inIntro && !inGate;
+    const hidePlayHud = inGate || inIntro || onTitle;
+    if (introGateOverlayEl) introGateOverlayEl.classList.toggle('hidden', !inGate);
     if (introOverlayEl) introOverlayEl.classList.toggle('hidden', !inIntro);
     if (titleOverlayEl) titleOverlayEl.classList.toggle('hidden', !onTitle);
     if (hudTopEl) hudTopEl.classList.toggle('hud-hidden', hidePlayHud);
@@ -345,6 +354,38 @@
     syncTouchControlsUI();
   }
 
+  function openIntroGate() {
+    clearAllHeldInputs();
+    reopenPauseAfterHub = false;
+    setGamePaused(false, true);
+    if (game.chartOpen) closeChartModal();
+    if (game.hubOpen) closeHub();
+    setDrawerOpen(false);
+    setSettingsOpen(false);
+    game.titleOpen = false;
+    game.introActive = false;
+    game.introGateOpen = true;
+    syncChromeVisibility();
+  }
+
+  function launchFromIntroGate(skipToTitle = false) {
+    if (!game.introGateOpen) return;
+    game.introGateOpen = false;
+    const proceed = () => {
+      if (skipToTitle) {
+        if (CB.audio && CB.audio.playUiClick) CB.audio.playUiClick();
+        openTitleScreen();
+      } else {
+        playOpeningCutscene();
+      }
+    };
+    if (CB.audio && CB.audio.unlock) {
+      CB.audio.unlock(proceed);
+    } else {
+      proceed();
+    }
+  }
+
   function playOpeningCutscene() {
     clearAllHeldInputs();
     reopenPauseAfterHub = false;
@@ -355,6 +396,7 @@
     setGamePaused(false, true);
     setDrawerOpen(false);
     setSettingsOpen(false);
+    game.introGateOpen = false;
     game.titleOpen = false;
     game.introActive = true;
     if (titleOverlayEl) titleOverlayEl.classList.remove('title-reveal');
@@ -402,6 +444,7 @@
     setGamePaused(false, true);
     if (game.hubOpen) closeHub();
     setDrawerOpen(false);
+    game.introGateOpen = false;
     game.titleOpen = true;
     game.mapOverview = false;
     if (btnOverviewRef) {
@@ -551,6 +594,7 @@
     const btnCloseHub = document.getElementById('btnCloseHub');
     const btnHubResume = document.getElementById('btnHubResume');
     const btnHubLaunch = document.getElementById('btnHubLaunch');
+    const btnGateSkip = document.getElementById('btnGateSkip');
     const btnSkipIntro = document.getElementById('btnSkipIntro');
     const btnReplayIntro = document.getElementById('btnReplayIntro');
     const btnTitleStart = document.getElementById('btnTitleStart');
@@ -726,6 +770,19 @@
         setDrawerOpen(false);
       }
     });
+
+    // 云海启幕门扉交互（点击任意处同步解锁 Web Audio 并从 0.0s 完整播片头）
+    if (btnGateSkip) {
+      btnGateSkip.addEventListener('click', (e) => {
+        e.stopPropagation();
+        launchFromIntroGate(true);
+      });
+    }
+    if (introGateOverlayEl) {
+      introGateOverlayEl.addEventListener('click', () => {
+        launchFromIntroGate(false);
+      });
+    }
 
     // 10 秒开场动画交互（点跳过立刻进主菜单；轻触画面解锁音频）
     if (btnSkipIntro) {
@@ -927,6 +984,14 @@
     initTouchControls(touchEls);
 
     initInput(canvas, (code) => {
+      if (game.introGateOpen) {
+        if (code === 'Escape') {
+          launchFromIntroGate(true);
+        } else if (code === 'Space' || code === 'Enter') {
+          launchFromIntroGate(false);
+        }
+        return;
+      }
       if (game.introActive) {
         if (code === 'Escape' || code === 'Space' || code === 'Enter') {
           skipIntro();
@@ -1201,8 +1266,13 @@
     game.camera.zoom = 0.72;
   }
   if (game.meta.autoPlayIntro !== false) {
-    playOpeningCutscene();
+    if (CB.audio && CB.audio.isAudioUnlocked && CB.audio.isAudioUnlocked()) {
+      playOpeningCutscene();
+    } else {
+      openIntroGate();
+    }
   } else {
+    game.introGateOpen = false;
     game.introActive = false;
     game.titleOpen = true;
     syncChromeVisibility();
@@ -1228,7 +1298,7 @@
       return;
     }
 
-    if (game.paused && !game.titleOpen && !game.introActive) {
+    if (game.paused && !game.titleOpen && !game.introActive && !game.introGateOpen) {
       renderWorld(ctx);
       renderMinimap(mctx, miniCanvas);
       requestAnimationFrame(loop);
@@ -1237,6 +1307,12 @@
 
     game.time += rawDt;
     syncMouseWorld();
+
+    if (game.introGateOpen) {
+      renderIntroGate(ctx, game.viewW, game.viewH, game.time);
+      requestAnimationFrame(loop);
+      return;
+    }
 
     if (game.introActive && isIntroActive()) {
       if (!game.portraitBlocked) {
@@ -1257,7 +1333,7 @@
       return;
     }
 
-    if (game.run.phase === 'playing' && !game.hubOpen && !game.titleOpen && !game.chartOpen && !game.portraitBlocked) {
+    if (game.run.phase === 'playing' && !game.introGateOpen && !game.hubOpen && !game.titleOpen && !game.chartOpen && !game.portraitBlocked) {
       updatePlayer(rawDt);
       updateCombat(rawDt);
       updateGuards(rawDt);

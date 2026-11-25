@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": 8,
+  "catalogVersion": 9,
   "repository": "yixuanqi/PhotoGallery",
   "baseUrl": "https://yixuanqi.github.io/PhotoGallery/",
   "updatedAt": "2026-11-25",
@@ -817,7 +817,7 @@
         "icon": "🧭",
         "category": "online",
         "description": "手绘云海浮岛物理弹射冒险。驾驶飞艇探索未知航线，利用力学、热学、光学、电学与时空异常触发物理连锁，在深入空域与返航入库之间抉择。支持 PC 和移动端。",
-        "note": "V9.3：新增未知云海航图与跨学科物理连锁，优化渲染裁切、特效对象池与移动端帧率。",
+        "note": "V9.4：新增手绘云海启幕门扉，首次点击解锁音频，改善开场动画首播音画同步与跳过体验。",
         "linkText": "↗ 进入游戏",
         "sourceUrl": null,
         "palette": [
