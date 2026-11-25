@@ -106,6 +106,56 @@
       shortPerk: '崖杀+4金·回8血',
       perk: '每次击落云海额外喷出 4 金币、回复 8 生命值，且特技赏金额外 +15',
     },
+    {
+      id: 'event_horizon',
+      name: '视界怀表',
+      icon: '⏳',
+      rarity: 'epic',
+      value: 74,
+      color: '#9b6ee8',
+      shortPerk: '时膨+1.2s·坍缩+40%',
+      perk: '黑洞时间膨胀场持续时间 +1.2s，奇点坍缩引爆的蓄积动量与伤害 +40%',
+    },
+    {
+      id: 'lorentz_prism',
+      name: '洛伦兹飞轮',
+      icon: '⚡',
+      rarity: 'epic',
+      value: 76,
+      color: '#46c8f5',
+      shortPerk: '质增提速·虫洞+25%',
+      perk: '轨道公转加速与相对论质增阈值降低 20%，虫洞折跃喷射速度额外 +25%',
+    },
+    {
+      id: 'thermo_valve',
+      name: '热力学活门',
+      icon: '🌡️',
+      rarity: 'epic',
+      value: 76,
+      color: '#e86838',
+      shortPerk: '升温+45%·热爆+30%',
+      perk: '聚光融冰、沸腾与高压罐升温速率 +45%，热膨胀爆破冲击半径 +30%',
+    },
+    {
+      id: 'mirror_prism',
+      name: '全反射晶镜',
+      icon: '🪞',
+      rarity: 'epic',
+      value: 78,
+      color: '#e8b62c',
+      shortPerk: '光网+2.5s·光伤+35%',
+      perk: '镜面光网持续时间 +2.5s，光网切割与凸透镜聚光灼烧伤害 +35%',
+    },
+    {
+      id: 'faraday_coil',
+      name: '法拉第线圈',
+      icon: '🔋',
+      rarity: 'epic',
+      value: 78,
+      color: '#32a8dc',
+      shortPerk: '跳电+40%·库仑+35%',
+      perk: '水域导电链跳跃距离 +40%，正负电荷同极斥飞与异极强吸力度 +35%',
+    },
   ];
 
   const GRAND_CURIOS = [
@@ -177,8 +227,9 @@
       costs: [140, 290, 480],
       mults: [1.0, 0.90, 0.80, 0.70],
       tapMults: [1.0, 0.95, 0.90, 0.85],
-      labels: ['标准蓄力', '耗时 -10%', '耗时 -20%', '耗时 -30%'],
-      shortPerk: '重弹蓄力提速',
+      orbRecharge: [4.2, 3.7, 3.2, 2.7],
+      labels: ['蓄力标准 · 4.2s回珠', '蓄力-10% · 3.7s回珠', '蓄力-20% · 3.2s回珠', '蓄力-30% · 2.7s回珠'],
+      shortPerk: '重弹蓄力 & 星珠回充',
     },
     {
       id: 'dashCd',
@@ -200,9 +251,10 @@
       costs: [110, 240, 400],
       coinRadius: [68, 102, 136, 172],
       curioRadius: [115, 150, 185, 225],
+      orbRadius: [84, 122, 160, 202],
       startCoins: [12, 16, 20, 25],
-      labels: ['起手12金', '吸金+ · 16金', '吸金++ · 20金', '吸金+++ · 25金'],
-      shortPerk: '吸金范围 & 起手金币',
+      labels: ['起手12金 · 吸珠标准', '吸金/珠+ · 16金', '吸金/珠++ · 20金', '吸金/珠+++ · 25金'],
+      shortPerk: '吸金/吸珠范围 & 起手金币',
     },
   ];
 
@@ -222,7 +274,7 @@
       name: '青花釉面精灵',
       cost: 220,
       freeStage: 2,
-      badge: '通关第2关或金库解锁',
+      badge: '从第2航段撤离或金库解锁',
       desc: '天青瓷釉光环与双飘带',
     },
     {
@@ -231,7 +283,7 @@
       name: '嫩芽软绒团子',
       cost: 340,
       freeStage: 3,
-      badge: '通关第3关或金库解锁',
+      badge: '从第3航段撤离或金库解锁',
       desc: '摇曳嫩绿双芽与金铃斗篷',
     },
   ];
@@ -249,8 +301,10 @@
     if (!Array.isArray(m.unlockedSkins) || !m.unlockedSkins.includes('explorer')) {
       m.unlockedSkins = Array.isArray(m.unlockedSkins) ? ['explorer', ...m.unlockedSkins] : ['explorer'];
     }
+    m.deepestLeg = Math.max(Number(m.deepestLeg) || 0, Array.isArray(m.clearedStages) ? m.clearedStages.length : 0);
+    m.maxAltitude = Math.max(Number(m.maxAltitude) || 0, m.deepestLeg > 0 ? 1200 + (m.deepestLeg - 1) * 1150 : 0);
     for (const sk of SKIN_DEFS) {
-      if (sk.freeStage > 0 && Array.isArray(m.clearedStages) && m.clearedStages.includes(sk.freeStage)) {
+      if (sk.freeStage > 0 && (m.deepestLeg >= sk.freeStage || (Array.isArray(m.clearedStages) && m.clearedStages.includes(sk.freeStage)))) {
         if (!m.unlockedSkins.includes(sk.id)) m.unlockedSkins.push(sk.id);
       }
     }
@@ -276,9 +330,11 @@
       maxHp: hpDef.values[u.maxHp] || 100,
       chargeMult: chDef.mults[u.chargeSpeed] || 1.0,
       tapMult: chDef.tapMults[u.chargeSpeed] || 1.0,
+      orbRecharge: chDef.orbRecharge[u.chargeSpeed] || 4.2,
       dashCdMult: dsDef.mults[u.dashCd] || 1.0,
       coinPickupR: mgDef.coinRadius[u.magnet] || 68,
       curioPickupR: mgDef.curioRadius[u.magnet] || 115,
+      orbPickupR: mgDef.orbRadius[u.magnet] || 84,
       startCoins: mgDef.startCoins[u.magnet] || 12,
     };
   }
@@ -441,6 +497,8 @@
           if (typeof parsed.autoPlayIntro === 'boolean') {
             game.meta.autoPlayIntro = parsed.autoPlayIntro;
           }
+          if (parsed.deepestLeg) game.meta.deepestLeg = Number(parsed.deepestLeg) || 0;
+          if (parsed.maxAltitude) game.meta.maxAltitude = Number(parsed.maxAltitude) || 0;
         }
       }
     } catch (_) {}
@@ -471,6 +529,8 @@
     game.meta.seenGuards = [];
     game.meta.defeatedGuards = {};
     game.meta.autoPlayIntro = true;
+    game.meta.deepestLeg = 0;
+    game.meta.maxAltitude = 0;
     game.variant = 'explorer';
     saveMeta();
   }
@@ -550,10 +610,64 @@
     }
   }
 
+  function getCurrentSectorSpec() {
+    if (game.map && game.map.stage) return game.map.stage;
+    return CB.stages ? CB.stages.getStage(game.currentStageId) : null;
+  }
+
   function getTotalHaulValue() {
-    const stage = CB.stages ? CB.stages.getStage(game.currentStageId) : null;
-    const mult = stage ? stage.haulMult : 1.0;
-    return Math.round((getCurioHaulValue() + game.player.coins * 2 + getStuntBounty()) * mult);
+    const stage = getCurrentSectorSpec();
+    const sectorMult = stage ? (stage.haulMult || 1.0) : 1.0;
+    const chainMult = (game.voyage && game.voyage.active && game.voyage.chainMult) ? game.voyage.chainMult : 1.0;
+    return Math.round((getCurioHaulValue() + game.player.coins * 2 + getStuntBounty()) * sectorMult * chainMult);
+  }
+
+  function startNewVoyage(firstNode = null) {
+    const isFirst = (game.meta.runs || 0) === 0;
+    const node = firstNode || (CB.stages ? CB.stages.createInitialVoyageNode(isFirst) : null);
+    game.voyage = {
+      active: true,
+      leg: node ? node.leg : 1,
+      altitude: node ? node.altitude : 1200,
+      pendingHaul: 0,
+      chainMult: 1.0,
+      currentNode: node,
+      nextChoices: [],
+      visitedAnomalies: node && node.anomalies ? node.anomalies.slice() : [],
+    };
+    return node;
+  }
+
+  function advanceVoyageToNode(node) {
+    if (!node) return null;
+    const v = game.voyage;
+    v.active = true;
+    v.leg = node.leg || (v.leg + 1);
+    v.altitude = node.altitude || (1200 + (v.leg - 1) * 1150);
+    v.chainMult = Number((1.0 + (v.leg - 1) * 0.25).toFixed(2));
+    v.currentNode = node;
+    v.nextChoices = [];
+    if (Array.isArray(node.anomalies)) {
+      for (const a of node.anomalies) {
+        if (!v.visitedAnomalies.includes(a)) v.visitedAnomalies.push(a);
+      }
+    }
+    return node;
+  }
+
+  function bankVoyageAndFinish() {
+    const v = game.voyage;
+    const banked = Math.max(0, Math.round(v.pendingHaul || 0));
+    if (banked > 0) {
+      game.meta.bankValue += banked;
+      if (banked > game.meta.bestHaul) game.meta.bestHaul = banked;
+    }
+    v.active = false;
+    v.pendingHaul = 0;
+    v.chainMult = 1.0;
+    v.nextChoices = [];
+    saveMeta();
+    return banked;
   }
 
   function pickCurio(isGiant, fixedId = null) {
@@ -561,7 +675,7 @@
       const exact = ALL_CURIOS.find((c) => c.id === fixedId);
       if (exact && !hasCurio(fixedId)) return { ...exact };
     }
-    const stage = CB.stages ? CB.stages.getStage(game.currentStageId) : null;
+    const stage = getCurrentSectorSpec();
     const basePool = isGiant ? GRAND_CURIOS : REGULAR_CURIOS;
     const preferredIds = stage ? (isGiant ? stage.grandCurioIds : stage.curioPool) : null;
     const stagePool = preferredIds
@@ -984,42 +1098,72 @@
     game.interactHint = null;
     game.meta.runs += 1;
 
+    const stage = getCurrentSectorSpec();
+    const v = game.voyage;
+    const curLeg = (v && v.leg) || (stage && stage.leg) || 1;
+    const curAlt = (v && v.altitude) || (stage && stage.altitude) || 1200;
     const totalHaul = getTotalHaulValue();
     const grade = outcome === 'extracted' ? computeRunGrade(totalHaul) : 'F';
 
+    let salvagedHaul = 0;
+    let lostPending = 0;
+
     if (outcome === 'extracted') {
       game.meta.extractions += 1;
-      game.meta.bankValue += totalHaul;
-      if (totalHaul > game.meta.bestHaul) game.meta.bestHaul = totalHaul;
+      v.active = true;
+      v.pendingHaul = Math.round((v.pendingHaul || 0) + totalHaul);
+      if (v.pendingHaul > game.meta.bestHaul) game.meta.bestHaul = v.pendingHaul;
+      if (curLeg > (game.meta.deepestLeg || 0)) game.meta.deepestLeg = curLeg;
+      if (curAlt > (game.meta.maxAltitude || 0)) game.meta.maxAltitude = curAlt;
+
       for (const c of game.player.curios) {
         if (!game.meta.unlockedCurios.includes(c.id)) game.meta.unlockedCurios.push(c.id);
       }
-      if (!game.meta.clearedStages.includes(game.currentStageId)) {
-        game.meta.clearedStages.push(game.currentStageId);
+      if (!game.meta.clearedStages.includes(curLeg)) {
+        game.meta.clearedStages.push(curLeg);
       }
       for (const sk of SKIN_DEFS) {
-        if (sk.freeStage === game.currentStageId && !game.meta.unlockedSkins.includes(sk.id)) {
+        if (sk.freeStage > 0 && curLeg >= sk.freeStage && !game.meta.unlockedSkins.includes(sk.id)) {
           game.meta.unlockedSkins.push(sk.id);
           CB.player.spawnPopup(game.player.x, game.player.y - 54, `✨ 解锁新外观 · ${sk.name}!`, '#c98212');
         }
       }
+
+      if (CB.stages && CB.stages.generateNextChoices) {
+        v.nextChoices = CB.stages.generateNextChoices(curLeg + 1, v.currentNode);
+      }
+
       if (CB.audio) CB.audio.playExtractSuccess();
       CB.player.spawnDust(game.player.x, game.player.y - 16, '#ffd65c', 26, 2.1);
       CB.player.spawnDust(game.player.x, game.player.y - 16, '#6bc5e8', 18, 1.8);
     } else {
+      lostPending = Math.round((v.pendingHaul || 0) + totalHaul);
+      if ((v.pendingHaul || 0) > 0) {
+        salvagedHaul = Math.round(v.pendingHaul * 0.2);
+        game.meta.bankValue += salvagedHaul;
+      }
+      v.active = false;
+      v.pendingHaul = 0;
+      v.chainMult = 1.0;
+      v.nextChoices = [];
       if (CB.audio) CB.audio.playRunFail();
     }
 
     saveMeta();
     if (CB.ui && CB.ui.showRunSummary) {
-      const stage = CB.stages ? CB.stages.getStage(game.currentStageId) : null;
-      const nextStage = CB.stages ? CB.stages.getNextStage(game.currentStageId) : null;
       CB.ui.showRunSummary({
-        stageId: game.currentStageId,
-        stageName: stage ? stage.name : '',
+        stageId: curLeg,
+        leg: curLeg,
+        altitude: curAlt,
+        stageName: stage ? stage.name : '未知云域',
         stageTagline: stage ? stage.tagline : '',
-        haulMult: stage ? stage.haulMult : 1.0,
-        nextStage,
+        omenIcons: stage ? (stage.omenIcons || '☁') : '☁',
+        haulMult: stage ? (stage.haulMult || 1.0) : 1.0,
+        chainMult: v.chainMult || 1.0,
+        pendingHaul: v.pendingHaul || 0,
+        salvagedHaul,
+        lostPending,
+        nextChoices: v.nextChoices || [],
         outcome,
         grade,
         totalHaul,
@@ -1056,7 +1200,7 @@
     let nearest = null;
     let bestD = 82;
     for (const prop of game.map.props) {
-      if (prop.type !== 'prism' && prop.type !== 'orrery') continue;
+      if (prop.type !== 'prism' && prop.type !== 'orrery' && prop.type !== 'convex_lens' && prop.type !== 'charge_pylon') continue;
       const d = Math.hypot(p.x - prop.x, p.y - prop.y);
       if (d < bestD) {
         bestD = d;
@@ -1097,6 +1241,9 @@
         nearest.polarity *= -1;
         nearest.hitFlash = 0.9;
         nearest.pulse = 1;
+        if (nearest.polarity < 0 && CB.combat && CB.combat.releaseOrbitingBodies) {
+          CB.combat.releaseOrbitingBodies(nearest);
+        }
         const nowAttract = nearest.polarity > 0;
         if (CB.audio) CB.audio.playPolarityFlip(nowAttract);
         CB.player.spawnDust(nearest.x, nearest.y - 16, nowAttract ? '#6ed8f5' : '#ff9d7a', 10, 1.25);
@@ -1105,6 +1252,47 @@
           nearest.y - 38,
           nowAttract ? '🪐 切换 · 引力弯道场' : '☀ 切换 · 斥力偏折场',
           nowAttract ? '#1f84a8' : '#cf5b38'
+        );
+      }
+    } else if (nearest.type === 'convex_lens') {
+      game.interactHint = {
+        x: nearest.x,
+        y: nearest.y - nearest.height - 24,
+        key: 'E',
+        text: '旋转凸透镜焦向 45°',
+        accent: '#d9961c',
+        progress: 0,
+      };
+      if (inp.interactPressed) {
+        nearest.angle = (nearest.angle || 0) + Math.PI / 4;
+        nearest.hitFlash = 0.85;
+        nearest.pulse = 0.85;
+        if (CB.audio) CB.audio.playPrismRotate();
+        CB.player.spawnDust(nearest.x, nearest.y - 14, '#ffe675', 8, 1.2);
+        CB.player.spawnPopup(nearest.x, nearest.y - 40, '🔆 调整聚光焦向', '#c98412');
+      }
+    } else if (nearest.type === 'charge_pylon') {
+      const isPos = (nearest.chargeSign || 1) >= 0;
+      game.interactHint = {
+        x: nearest.x,
+        y: nearest.y - nearest.height - 24,
+        key: 'E',
+        text: isPos ? '切换电荷桩 → 负电极 (-)' : '切换电荷桩 → 正电极 (+)',
+        accent: isPos ? '#2ca8d6' : '#e05a4c',
+        progress: 0,
+      };
+      if (inp.interactPressed) {
+        nearest.chargeSign = isPos ? -1 : 1;
+        nearest.hitFlash = 0.85;
+        nearest.pulse = 0.9;
+        const nowPos = nearest.chargeSign > 0;
+        if (CB.audio) CB.audio.playPolarityFlip(nowPos);
+        CB.player.spawnDust(nearest.x, nearest.y - 16, nowPos ? '#ff8270' : '#68e4ff', 9, 1.25);
+        CB.player.spawnPopup(
+          nearest.x,
+          nearest.y - 42,
+          nowPos ? '⚡ 正电荷桩 (+)' : '⚡ 负电荷桩 (-)',
+          nowPos ? '#d9483b' : '#2498c9'
         );
       }
     }
@@ -1158,7 +1346,11 @@
     getCurioHaulValue,
     getStuntBounty,
     addStuntBounty,
+    getCurrentSectorSpec,
     getTotalHaulValue,
+    startNewVoyage,
+    advanceVoyageToNode,
+    bankVoyageAndFinish,
     getExtractCenter,
     getActiveGust,
     getVaultCenter,

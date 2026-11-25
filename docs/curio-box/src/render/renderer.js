@@ -10,6 +10,8 @@
     drawProp,
     drawDewSlide,
     drawOrreryField,
+    drawSingularityField,
+    drawWormholeLinks,
     drawGravityVortex,
     drawInkPuddle,
     drawPollenCloud,
@@ -22,6 +24,8 @@
     drawEnemyBullet,
     drawCoin,
     drawCurioDrop,
+    drawDormantOrb,
+    drawOrbReturnFly,
     drawInteractPrompt,
   } = CB.brush;
   const { drawMochiPlayer } = CB.drawPlayer;
@@ -31,6 +35,41 @@
   let paperPattern = null;
   let fogCanvas = null;
   let fogCtx = null;
+
+  // v9.3 零闭包 Y 轴排序渲染池（消除每帧 250+ 匿名闭包与临时对象 GC 抖动）
+  const drawQueue = [];
+  let drawQueueLen = 0;
+  function pushDrawItem(kind, sortY, ref, ax = 0, ay = 0) {
+    let slot = drawQueue[drawQueueLen];
+    if (!slot) {
+      slot = { kind: 0, sortY: 0, ref: null, ax: 0, ay: 0 };
+      drawQueue[drawQueueLen] = slot;
+    }
+    slot.kind = kind;
+    slot.sortY = sortY;
+    slot.ref = ref;
+    slot.ax = ax;
+    slot.ay = ay;
+    drawQueueLen++;
+  }
+  function sortDrawQueue(len) {
+    for (let i = 1; i < len; i++) {
+      const cur = drawQueue[i];
+      const curY = cur.sortY;
+      let j = i - 1;
+      while (j >= 0 && drawQueue[j].sortY > curY) {
+        drawQueue[j + 1] = drawQueue[j];
+        j--;
+      }
+      drawQueue[j + 1] = cur;
+    }
+  }
+
+  // 云海迷雾拓扑缓存（仅在房间揭雾状态变化时重建云团基底，每帧零 Set/Object 分配）
+  let cachedFogKey = '';
+  let cachedSolidCells = [];
+  let cachedSolidRooms = [];
+  let cachedStaticPuffs = [];
 
   function fogHash(x, y, k = 0) {
     const s = Math.sin(x * 127.1 + y * 311.7 + k * 74.7) * 43758.5453;
@@ -117,6 +156,8 @@
       enemyBullets,
       coinsList,
       curioDrops,
+      droppedOrbs,
+      orbReturnFlies,
       guards,
       fallingGuards,
       fallingCrates,
@@ -149,153 +190,220 @@
       }
     }
 
-    // 1.5. 按细胞精确绘制浮岛悬崖底座与垂藤（支持非矩形 L 型花廊！）
-    for (const room of map.rooms) {
+    // 计算世界空间视口裁切盒（自动剔除屏幕外房间与道具，大幅提升中低端手机与 144Hz 帧率）
+    const invZoom = 1 / Math.max(0.15, camera.zoom || 1);
+    const halfW = viewW * 0.5 * invZoom + 140;
+    const halfH = viewH * 0.5 * invZoom + 150;
+    const visMinX = camera.x - halfW;
+    const visMaxX = camera.x + halfW;
+    const visMinY = camera.y - halfH;
+    const visMaxY = camera.y + halfH;
+    const rectVisible = (rx, ry, rw, rh) =>
+      rx + rw >= visMinX && rx <= visMaxX && ry + rh >= visMinY && ry <= visMaxY;
+    const ptVisible = (px, py, pad = 70) =>
+      px + pad >= visMinX && px - pad <= visMaxX && py + pad >= visMinY && py - pad <= visMaxY;
+
+    // 1.5. 按细胞精确绘制可见浮岛悬崖底座与垂藤
+    for (let i = 0; i < map.rooms.length; i++) {
+      const room = map.rooms[i];
+      if (!rectVisible(room.x, room.y, room.w, room.h + 90)) continue;
       drawIslandUnderside(ctx, room, map, time);
     }
 
-    // 2. 绘制每个房间的阳光石灰石地砖、3 大生态区分色与职能地标
-    for (const room of map.rooms) {
+    // 2. 绘制可见房间的阳光石灰石地砖、生态区分色与职能地标
+    for (let i = 0; i < map.rooms.length; i++) {
+      const room = map.rooms[i];
+      if (!rectVisible(room.x, room.y, room.w, room.h)) continue;
       drawRoomFloor(ctx, room, map, time);
     }
 
     // 2.2. 云海崖边低矮石边线与向下飘散云雾提示
     if (map.cliffEdges) {
-      for (const edge of map.cliffEdges) {
+      for (let i = 0; i < map.cliffEdges.length; i++) {
+        const edge = map.cliffEdges[i];
+        if (!rectVisible(edge.x - 24, edge.y - 24, edge.w + 48, edge.h + 48)) continue;
         drawCliffEdge(ctx, edge, time);
       }
     }
 
-    // 2.4. 贴地肌理层（柔和青苔晕染、对齐砖格色差石板、有机荷塘洼、落英、摇曳草丛）
+    // 2.4. 贴地肌理层（视口裁剪跳过屏幕外装饰）
     if (map.groundDecors) {
-      for (const d of map.groundDecors) {
+      for (let i = 0; i < map.groundDecors.length; i++) {
+        const d = map.groundDecors[i];
+        if (!ptVisible(d.x, d.y, 90)) continue;
         drawGroundDecor(ctx, d, time);
       }
     }
 
-    // 2.5. 嵌入式低摩擦露水冰镜滑道（始终位于贴地肌理之上，零遮挡叠压）
+    // 2.5. 嵌入式低摩擦露水冰镜滑道
     if (map.dewSlides) {
-      for (const slide of map.dewSlides) {
+      for (let i = 0; i < map.dewSlides.length; i++) {
+        const slide = map.dewSlides[i];
+        if (!rectVisible(slide.x, slide.y, slide.w, slide.h)) continue;
         drawDewSlide(ctx, slide, time);
       }
     }
 
-    // 2.8. 藤蔓花闸 <-> 向日葵花盘地面发光藤蔓导管（一眼看清机关联动关系！）
+    // 2.8. 藤蔓花闸 <-> 向日葵花盘地面发光藤蔓导管
     if (map.vineGates) {
-      for (const gate of map.vineGates) {
-        drawGateConduit(ctx, gate, time);
+      for (let i = 0; i < map.vineGates.length; i++) {
+        drawGateConduit(ctx, map.vineGates[i], time);
       }
     }
 
     // 3. 绘制连接石桥/云海木桥门槛
-    for (const door of map.doorways) {
+    for (let i = 0; i < map.doorways.length; i++) {
+      const door = map.doorways[i];
+      if (!ptVisible(door.cx, door.cy, 80)) continue;
       drawDoorwayThreshold(ctx, door);
     }
 
-    // 3.4. 浮空星轨仪引力/斥力场光环与活跃引力漩涡
-    for (const prop of map.props) {
+    // 3.4. 浮空星轨仪引力/斥力场、黑洞时间膨胀场、虫洞空间连脉与活跃引力漩涡
+    drawWormholeLinks(ctx, map, time);
+    for (let i = 0; i < map.props.length; i++) {
+      const prop = map.props[i];
       if (prop.type === 'orrery') {
-        drawOrreryField(ctx, prop, time);
+        if (ptVisible(prop.x, prop.y, prop.fieldRadius || 220)) drawOrreryField(ctx, prop, time);
+      } else if (prop.type === 'singularity') {
+        if (ptVisible(prop.x, prop.y, prop.fieldRadius || 210)) drawSingularityField(ctx, prop, time);
       }
     }
     if (vortices) {
-      for (const v of vortices) {
-        drawGravityVortex(ctx, v, time);
+      for (let i = 0; i < vortices.length; i++) {
+        const v = vortices[i];
+        if (ptVisible(v.x, v.y, v.radius || 180)) drawGravityVortex(ctx, v, time);
       }
+    }
+    if (CB.physicsLab && CB.physicsLab.renderPhysicsFloor) {
+      CB.physicsLab.renderPhysicsFloor(ctx, time);
     }
 
     // 3.5. 地面水彩秘露减速池
-    for (const ink of inkPuddles) {
-      drawInkPuddle(ctx, ink);
+    for (let i = 0; i < inkPuddles.length; i++) {
+      const ink = inkPuddles[i];
+      if (ptVisible(ink.x, ink.y, ink.radius + 20)) drawInkPuddle(ctx, ink);
     }
 
     // 3.6. 守卫视野锥、冲锋预警通道与风铃吸金磁场
-    for (const g of guards) {
-      drawGuardFloorAura(ctx, g, time);
+    for (let i = 0; i < guards.length; i++) {
+      const g = guards[i];
+      if (!g.dead && ptVisible(g.x, g.y, g.sightRange || 260)) drawGuardFloorAura(ctx, g, time);
     }
 
     // 3.7. 声波涟漪扩散警戒环
-    for (const r of ripples) {
-      drawSoundRipple(ctx, r);
+    for (let i = 0; i < ripples.length; i++) {
+      drawSoundRipple(ctx, ripples[i]);
     }
 
-    // 4. 跑动小脚印
-    for (const fp of footprints) {
-      const a = (fp.life / fp.maxLife) * (fp.color ? 0.54 : 0.22);
+    // 4. 跑动小脚印（单次 save/restore 批量绘制）
+    if (footprints.length > 0) {
       ctx.save();
-      ctx.globalAlpha = a;
-      ctx.fillStyle = fp.color || '#6a8e8a';
-      ctx.beginPath();
-      ctx.ellipse(fp.x, fp.y, fp.r * 1.2, fp.r * 0.75, 0, 0, Math.PI * 2);
-      ctx.fill();
+      for (let i = 0; i < footprints.length; i++) {
+        const fp = footprints[i];
+        if (!ptVisible(fp.x, fp.y, 20)) continue;
+        ctx.globalAlpha = (fp.life / fp.maxLife) * (fp.color ? 0.54 : 0.22);
+        ctx.fillStyle = fp.color || '#6a8e8a';
+        ctx.beginPath();
+        ctx.ellipse(fp.x, fp.y, fp.r * 1.2, fp.r * 0.75, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
     }
 
-    // 4.5. 1 次墙面折射预判线 + 日光折射棱镜双光束预判
+    // 4.5. 1 次墙面折射预判线 + 日光折射棱镜/虫洞预判
     if (!game.mapOverview && !game.titleOpen && !game.paused && !game.input.aimCancelHover && game.run.phase === 'playing' && CB.combat) {
       const preview = CB.combat.computeAimPreview();
       drawAimPreview(ctx, preview, time);
     }
 
-    // 5. 统一 Y 轴深度排序（墙体、角柱、藤蔓花闸、沿墙园艺装饰、家具机关、金币、奇物、守卫、主角、热气球）
-    const drawList = [];
-    for (const w of map.walls) {
-      drawList.push({ sortY: w.y + w.h, draw: () => drawWallBlock(ctx, w) });
+    // 5. 零闭包对象池 Y 轴深度排序 + 视口裁切（kind: 1..12）
+    drawQueueLen = 0;
+    for (let i = 0; i < map.walls.length; i++) {
+      const w = map.walls[i];
+      if (rectVisible(w.x, w.y - 36, w.w, w.h + 44)) pushDrawItem(1, w.y + w.h, w);
     }
     if (map.cliffEdges) {
-      for (const edge of map.cliffEdges) {
-        if (edge.kind === 'railing' && !edge.broken) {
-          drawList.push({ sortY: edge.y + edge.h, draw: () => drawRailing(ctx, edge, time) });
+      for (let i = 0; i < map.cliffEdges.length; i++) {
+        const edge = map.cliffEdges[i];
+        if (edge.kind === 'railing' && !edge.broken && rectVisible(edge.x, edge.y - 28, edge.w, edge.h + 36)) {
+          pushDrawItem(2, edge.y + edge.h, edge);
         }
       }
     }
-    for (const post of map.posts) {
-      drawList.push({ sortY: post.y + post.h + 1, draw: () => drawCornerPost(ctx, post) });
+    for (let i = 0; i < map.posts.length; i++) {
+      const post = map.posts[i];
+      if (rectVisible(post.x, post.y - 40, post.w, post.h + 46)) pushDrawItem(3, post.y + post.h + 1, post);
     }
     if (map.vineGates) {
-      for (const gate of map.vineGates) {
-        if ((gate.openAnim || 0) < 0.98) {
-          drawList.push({ sortY: gate.y + gate.h + 2, draw: () => drawVineGate(ctx, gate, time) });
+      for (let i = 0; i < map.vineGates.length; i++) {
+        const gate = map.vineGates[i];
+        if ((gate.openAnim || 0) < 0.98 && rectVisible(gate.x, gate.y - 36, gate.w, gate.h + 44)) {
+          pushDrawItem(4, gate.y + gate.h + 2, gate);
         }
       }
     }
     if (map.edgeDecors) {
-      for (const ed of map.edgeDecors) {
-        drawList.push({ sortY: ed.y + 4, draw: () => drawEdgeDecor(ctx, ed, time) });
+      for (let i = 0; i < map.edgeDecors.length; i++) {
+        const ed = map.edgeDecors[i];
+        if (ptVisible(ed.x, ed.y, 48)) pushDrawItem(5, ed.y + 4, ed);
       }
     }
-    for (const prop of map.props) {
+    for (let i = 0; i < map.props.length; i++) {
+      const prop = map.props[i];
       if (prop.broken) continue;
-      const syProp = prop.shape === 'circle' ? prop.y + prop.r * 0.7 : prop.y + prop.h;
-      drawList.push({ sortY: syProp, draw: () => drawProp(ctx, prop, time) });
+      if (prop.shape === 'circle') {
+        if (!ptVisible(prop.x, prop.y, (prop.r || 24) + 54)) continue;
+        pushDrawItem(6, prop.y + prop.r * 0.7, prop);
+      } else {
+        if (!rectVisible(prop.x - 16, prop.y - 42, prop.w + 32, prop.h + 54)) continue;
+        pushDrawItem(6, prop.y + prop.h, prop);
+      }
     }
-    for (const c of coinsList) {
-      drawList.push({ sortY: c.y, draw: () => drawCoin(ctx, c) });
+    for (let i = 0; i < coinsList.length; i++) {
+      const c = coinsList[i];
+      if (ptVisible(c.x, c.y, 28)) pushDrawItem(7, c.y, c);
     }
-    for (const cd of curioDrops) {
-      drawList.push({ sortY: cd.y + 2, draw: () => drawCurioDrop(ctx, cd, time) });
+    for (let i = 0; i < curioDrops.length; i++) {
+      const cd = curioDrops[i];
+      if (ptVisible(cd.x, cd.y, 44)) pushDrawItem(8, cd.y + 2, cd);
     }
-    for (const g of guards) {
-      if (g.dead) continue;
-      drawList.push({ sortY: g.y + 3, draw: () => drawGuardBody(ctx, g, time) });
+    if (droppedOrbs) {
+      for (let i = 0; i < droppedOrbs.length; i++) {
+        const orb = droppedOrbs[i];
+        if (ptVisible(orb.x, orb.y, 34)) pushDrawItem(9, orb.y + 1, orb);
+      }
     }
-    drawList.push({
-      sortY: player.y + 4,
-      draw: () => drawMochiPlayer(ctx, player, time, game.variant, 0, 0),
-    });
+    for (let i = 0; i < guards.length; i++) {
+      const g = guards[i];
+      if (!g.dead && ptVisible(g.x, g.y, g.radius + 76)) pushDrawItem(10, g.y + 3, g);
+    }
+    pushDrawItem(11, player.y + 4, player);
 
     const extRoom = map.rooms[map.extractRoomId];
     if (extRoom) {
       const bx = extRoom.x + extRoom.w / 2;
       const by = extRoom.y + extRoom.h / 2;
-      drawList.push({
-        sortY: by - 46,
-        draw: () => drawExtractBalloon(ctx, bx, by, time),
-      });
+      if (ptVisible(bx, by, 140)) pushDrawItem(12, by - 46, null, bx, by);
     }
 
-    drawList.sort((a, b) => a.sortY - b.sortY);
-    for (const item of drawList) item.draw();
+    sortDrawQueue(drawQueueLen);
+    for (let i = 0; i < drawQueueLen; i++) {
+      const item = drawQueue[i];
+      switch (item.kind) {
+        case 1: drawWallBlock(ctx, item.ref); break;
+        case 2: drawRailing(ctx, item.ref, time); break;
+        case 3: drawCornerPost(ctx, item.ref); break;
+        case 4: drawVineGate(ctx, item.ref, time); break;
+        case 5: drawEdgeDecor(ctx, item.ref, time); break;
+        case 6: drawProp(ctx, item.ref, time); break;
+        case 7: drawCoin(ctx, item.ref); break;
+        case 8: drawCurioDrop(ctx, item.ref, time); break;
+        case 9: drawDormantOrb(ctx, item.ref, time); break;
+        case 10: drawGuardBody(ctx, item.ref, time); break;
+        case 11: drawMochiPlayer(ctx, item.ref, time, game.variant, 0, 0); break;
+        case 12: drawExtractBalloon(ctx, item.ax, item.ay, time); break;
+      }
+    }
 
     // 5.2. 向南/东/西坠入云海的守卫与木箱（旋转缩小坠落演出）
     if (fallingCrates) {
@@ -313,9 +421,15 @@
     for (const pc of pollenClouds) {
       drawPollenCloud(ctx, pc, time);
     }
+    if (CB.physicsLab && CB.physicsLab.renderPhysicsOverlay) {
+      CB.physicsLab.renderPhysicsOverlay(ctx, time);
+    }
 
     // 5.5. 弹射子弹、棱镜光束、守卫弹丸与打击火花粒子
     for (const b of bullets) drawBullet(ctx, b);
+    if (orbReturnFlies) {
+      for (const f of orbReturnFlies) drawOrbReturnFly(ctx, f);
+    }
     for (const eb of enemyBullets) drawEnemyBullet(ctx, eb);
     for (const pt of particles) {
       const a = Math.max(0, pt.life / pt.maxLife);
@@ -797,7 +911,7 @@
       ctx.font = '700 12.5px "PingFang SC", sans-serif';
       ctx.textAlign = 'center';
       const st = game.map && game.map.stage ? game.map.stage : null;
-      const dockLabel = st ? `⚓ 第 ${st.id} 关 · ${st.name}` : '⚓ 浮岛登船台';
+      const dockLabel = st ? `⚓ 第 ${st.leg || 1} 航段 · 海拔 ${st.altitude || 1200}m · ${st.omenIcons || '☁'}` : '⚓ 浮岛登船台';
       ctx.fillText(dockLabel, cx, y + 54);
     } else if (role === 'vault') {
       const alarmFlash = game.run.alarmActive ? 0.16 + 0.14 * Math.sin(time * 7) : 0.18;
@@ -1322,9 +1436,10 @@
     const { cellW, cellH } = map;
     const fp = getCloudFogPalette(map.stage);
 
-    // A. 将所有厚云覆盖区合批绘制到离屏 Canvas，实现 0 接缝连绵大云海！
+    // A. 将所有厚云覆盖区合批绘制到离屏 Canvas（缓存静态云团基底，每帧仅就地更新漂移坐标！）
     if (solidRooms.length > 0) {
-      const fogScale = Math.min(window.devicePixelRatio || 1, 1.5);
+      const maxFogScale = game.platform === 'mobile' ? 1.25 : 1.5;
+      const fogScale = Math.min(window.devicePixelRatio || 1, maxFogScale);
       const targetW = Math.max(1, Math.floor(viewW * fogScale));
       const targetH = Math.max(1, Math.floor(viewH * fogScale));
       if (!fogCanvas) {
@@ -1336,19 +1451,47 @@
         fogCanvas.height = targetH;
       }
 
-      const solidCells = [];
-      const solidKeySet = new Set();
-      for (const room of solidRooms) {
-        for (const c of room.cells) {
-          solidCells.push({ cell: c, room });
-          solidKeySet.add(`${c.gx},${c.gy}`);
+      let fogKey = `${map.seed}:`;
+      for (let i = 0; i < solidRooms.length; i++) fogKey += solidRooms[i].id + ',';
+
+      if (fogKey !== cachedFogKey) {
+        cachedFogKey = fogKey;
+        cachedSolidRooms = solidRooms.slice();
+        cachedSolidCells = [];
+        const solidKeySet = new Set();
+        for (let i = 0; i < solidRooms.length; i++) {
+          const rm = solidRooms[i];
+          for (let j = 0; j < rm.cells.length; j++) {
+            const c = rm.cells[j];
+            cachedSolidCells.push({ cell: c, room: rm });
+            solidKeySet.add(`${c.gx},${c.gy}`);
+          }
+        }
+        cachedStaticPuffs = [];
+        for (let i = 0; i < cachedSolidCells.length; i++) {
+          const baseList = buildCellCloudPuffs(cachedSolidCells[i].cell, map, solidKeySet, 0, 0);
+          for (let k = 0; k < baseList.length; k++) {
+            const pf = baseList[k];
+            cachedStaticPuffs.push({
+              bx: pf.x,
+              by: pf.y,
+              x: pf.x,
+              y: pf.y,
+              r: pf.r,
+              layer: pf.layer,
+              h1: pf.h1,
+              h2: pf.h2,
+            });
+          }
         }
       }
 
-      const allPuffs = [];
-      for (const item of solidCells) {
-        const list = buildCellCloudPuffs(item.cell, map, solidKeySet, time, 0);
-        for (let i = 0; i < list.length; i++) allPuffs.push(list[i]);
+      const solidCells = cachedSolidCells;
+      const allPuffs = cachedStaticPuffs;
+      for (let i = 0; i < allPuffs.length; i++) {
+        const pf = allPuffs[i];
+        pf.x = pf.bx + Math.sin(time * (0.42 + pf.h1 * 0.35) + pf.h2 * 6.28) * (6 + pf.h1 * 6);
+        pf.y = pf.by + Math.cos(time * (0.36 + pf.h2 * 0.3) + pf.h1 * 6.28) * (3.5 + pf.h2 * 4);
       }
 
       fogCtx.save();
@@ -1622,7 +1765,7 @@
     ctx.globalAlpha = alpha;
     ctx.textAlign = 'center';
 
-    const title = `第 ${stage.id} 关 · ${stage.name}`;
+    const title = `第 ${stage.leg || 1} 航段 · 海拔 ${stage.altitude || 1200}m · ${stage.omenIcons || ''} ${stage.name}`;
     const sub = stage.introHint || stage.tagline;
 
     ctx.font = '700 13px "PingFang SC", sans-serif';

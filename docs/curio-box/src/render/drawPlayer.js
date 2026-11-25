@@ -50,6 +50,9 @@
     ctx.restore();
 
     drawMiniBlaster(ctx, p, px, py, liftY, variant);
+    if (typeof p.orbs === 'number') {
+      drawOrbitingOrbs(ctx, p, px, py, liftY, time);
+    }
     if (needAlphaWrap) ctx.restore();
     if (stealthFade) {
       ctx.save();
@@ -792,6 +795,86 @@
       ctx.stroke();
       ctx.restore();
     }
+  }
+
+
+  function drawOrbitingOrbs(ctx, p, px, py, liftY, time) {
+    const maxOrbs = p.maxOrbs || 3;
+    const orbs = Math.max(0, p.orbs || 0);
+    const spin = p.orbSpinAngle || (time * 1.9);
+    const centerX = px;
+    const centerY = py - 18 - liftY;
+    const rx = 28;
+    const ry = 13;
+
+    ctx.save();
+    for (let i = 0; i < maxOrbs; i++) {
+      const a = spin + (i * Math.PI * 2) / maxOrbs;
+      const ox = centerX + Math.cos(a) * rx;
+      const oy = centerY + Math.sin(a) * ry + Math.sin(time * 4.5 + i * 2) * 1.8;
+      const isFilled = i < orbs;
+      const isRecharging = i === orbs && orbs < maxOrbs;
+
+      if (isFilled) {
+        const glow = ctx.createRadialGradient(ox, oy, 1, ox, oy, 9.5);
+        glow.addColorStop(0, 'rgba(130, 236, 255, 0.85)');
+        glow.addColorStop(1, 'rgba(130, 236, 255, 0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(ox, oy, 9.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#6fe2f7';
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(ox, oy, 4.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(ox - 1.3, oy - 1.3, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        const flashCol = (p.orbEmptyFlash || 0) > 0.1 ? 'rgba(232, 92, 74, 0.72)' : 'rgba(56, 118, 134, 0.36)';
+        ctx.strokeStyle = flashCol;
+        ctx.lineWidth = 1.3;
+        ctx.setLineDash([2.5, 2.5]);
+        ctx.beginPath();
+        ctx.arc(ox, oy, 4.1, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        if (isRecharging) {
+          const pct = Math.max(0.08, Math.min(1, (p.orbRechargeTimer || 0) / (p.orbRechargeDuration || 4.2)));
+          ctx.fillStyle = 'rgba(110, 224, 248, 0.72)';
+          ctx.beginPath();
+          ctx.arc(ox, oy, 3.6 * pct, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    if (p.overclockOrb) {
+      const ga = -spin * 1.45;
+      const gx = centerX + Math.cos(ga) * (rx + 5);
+      const gy = centerY - 12 + Math.sin(ga) * (ry * 0.75);
+      const pulse = 1 + Math.sin(time * 12) * 0.14;
+
+      const gg = ctx.createRadialGradient(gx, gy, 1.5, gx, gy, 14 * pulse);
+      gg.addColorStop(0, 'rgba(255, 244, 150, 0.95)');
+      gg.addColorStop(0.55, 'rgba(255, 206, 56, 0.45)');
+      gg.addColorStop(1, 'rgba(255, 206, 56, 0)');
+      ctx.fillStyle = gg;
+      ctx.beginPath();
+      ctx.arc(gx, gy, 14 * pulse, 0, Math.PI * 2);
+      ctx.fill();
+
+      drawMiniStar(ctx, gx, gy, 6.2 * pulse, '#ffe052');
+    }
+
+    ctx.restore();
   }
 
   CB.drawPlayer = { drawMochiPlayer };

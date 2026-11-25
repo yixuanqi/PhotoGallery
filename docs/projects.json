@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": 7,
+  "catalogVersion": 8,
   "repository": "yixuanqi/PhotoGallery",
   "baseUrl": "https://yixuanqi.github.io/PhotoGallery/",
   "updatedAt": "2026-11-25",
@@ -796,11 +796,11 @@
       "kind": "interactive-web",
       "category": "game",
       "status": "development",
-      "summary": "手绘云海浮岛物理弹射冒险。探索四个主题关卡，利用场景机关与物理战斗挑战守卫，积累奇物与母港强化。支持 PC 和移动端。",
+      "summary": "手绘云海浮岛物理弹射冒险。驾驶飞艇探索未知航线，利用力学、热学、光学、电学与时空异常触发物理连锁，在深入空域与返航入库之间抉择。支持 PC 和移动端。",
       "tags": [
         "Canvas 2D",
-        "四关主题",
-        "物理弹射",
+        "未知航线",
+        "物理连锁",
         "手绘冒险"
       ],
       "techStack": [
@@ -816,8 +816,8 @@
       "galaxy": {
         "icon": "🧭",
         "category": "online",
-        "description": "手绘云海浮岛物理弹射冒险。探索四个主题关卡，利用场景机关与物理战斗挑战守卫，积累奇物与母港强化。支持 PC 和移动端。",
-        "note": "V8.2：重绘十秒手绘水彩开场动画，新增局内暂停菜单，支持键鼠和移动触控。",
+        "description": "手绘云海浮岛物理弹射冒险。驾驶飞艇探索未知航线，利用力学、热学、光学、电学与时空异常触发物理连锁，在深入空域与返航入库之间抉择。支持 PC 和移动端。",
+        "note": "V9.3：新增未知云海航图与跨学科物理连锁，优化渲染裁切、特效对象池与移动端帧率。",
         "linkText": "↗ 进入游戏",
         "sourceUrl": null,
         "palette": [

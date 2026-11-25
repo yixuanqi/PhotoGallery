@@ -233,7 +233,166 @@
       hitFlash: 0,
       pulse: 0,
       slingshotGlow: 0,
+      orbitGlow: 0,
       bounce: 1.0,
+      destructible: false,
+    };
+  }
+
+  let singularityUid = 1;
+  function makeSingularity(cx, cy) {
+    return {
+      id: `sing_${singularityUid++}`,
+      type: 'singularity',
+      shape: 'circle',
+      x: cx,
+      y: cy,
+      r: 20,
+      height: 30,
+      fieldRadius: 195,
+      activeTimer: 0,
+      maxDuration: 3.6,
+      cooldown: 0,
+      spin: 0,
+      hitFlash: 0,
+      pulse: 0,
+      bounce: 0.85,
+      destructible: false,
+    };
+  }
+
+  let wormholePairUid = 1;
+  function makeWormholePair(x1, y1, x2, y2) {
+    const pairId = `wh_${wormholePairUid++}`;
+    return [
+      {
+        id: `${pairId}_a`,
+        pairId,
+        portalSide: 'A',
+        type: 'wormhole',
+        shape: 'circle',
+        x: x1,
+        y: y1,
+        r: 21,
+        height: 16,
+        color: '#46d8f7',
+        spin: 0,
+        pulse: 0,
+        hitFlash: 0,
+        bounce: 1.0,
+        destructible: false,
+      },
+      {
+        id: `${pairId}_b`,
+        pairId,
+        portalSide: 'B',
+        type: 'wormhole',
+        shape: 'circle',
+        x: x2,
+        y: y2,
+        r: 21,
+        height: 16,
+        color: '#c47cff',
+        spin: 0,
+        pulse: 0,
+        hitFlash: 0,
+        bounce: 1.0,
+        destructible: false,
+      },
+    ];
+  }
+
+  let canUid = 1;
+  function makePressureCan(cx, cy) {
+    return {
+      id: `can_${canUid++}`,
+      type: 'pressure_can',
+      shape: 'circle',
+      x: cx,
+      y: cy,
+      r: 17,
+      height: 26,
+      heat: 0,
+      coolDelay: 0,
+      hitFlash: 0,
+      wobble: 0,
+      broken: false,
+      bounce: 0.85,
+      destructible: false,
+    };
+  }
+
+  let lensUid = 1;
+  function makeConvexLens(cx, cy, angle = 0) {
+    return {
+      id: `lens_${lensUid++}`,
+      type: 'convex_lens',
+      shape: 'circle',
+      x: cx,
+      y: cy,
+      r: 18,
+      height: 26,
+      angle,
+      focalDist: 124,
+      hitFlash: 0,
+      pulse: 0,
+      bounce: 1.0,
+      destructible: false,
+    };
+  }
+
+  let mirrorPairUid = 1;
+  function makeMirrorPair(x1, y1, x2, y2) {
+    const pairId = `mir_${mirrorPairUid++}`;
+    const ang = Math.atan2(y2 - y1, x2 - x1) + Math.PI * 0.5;
+    return [
+      {
+        id: `${pairId}_1`,
+        pairId,
+        type: 'mirror_post',
+        shape: 'circle',
+        x: x1,
+        y: y1,
+        r: 16,
+        height: 26,
+        angle: ang,
+        hitFlash: 0,
+        pulse: 0,
+        bounce: 1.0,
+        destructible: false,
+      },
+      {
+        id: `${pairId}_2`,
+        pairId,
+        type: 'mirror_post',
+        shape: 'circle',
+        x: x2,
+        y: y2,
+        r: 16,
+        height: 26,
+        angle: ang,
+        hitFlash: 0,
+        pulse: 0,
+        bounce: 1.0,
+        destructible: false,
+      },
+    ];
+  }
+
+  let pylonUid = 1;
+  function makeChargePylon(cx, cy, chargeSign = 1) {
+    return {
+      id: `pylon_${pylonUid++}`,
+      type: 'charge_pylon',
+      shape: 'circle',
+      x: cx,
+      y: cy,
+      r: 17,
+      height: 28,
+      chargeSign: chargeSign >= 0 ? 1 : -1,
+      hitFlash: 0,
+      pulse: 0,
+      bounce: 0.9,
       destructible: false,
     };
   }
@@ -269,6 +428,22 @@
         // 一颗花粉隐身花苞 + 一串共鸣风铃，轻点静音即可体验潜行与诱敌
         props.push(makePollenBud(x + 114, y + h - 102));
         props.push(makeChime(x + w - 116, y + 110));
+      } else if (theme === 'relativity') {
+        props.push(makeSingularity(x + w - 135, y + 124));
+        const [whA, whB] = makeWormholePair(x + 130, y + h - 104, x + w - 118, y + h - 104);
+        props.push(whA, whB);
+        props.push(makeCrate(x + 215, y + h - 104, 42, { keepExactPos: true }));
+      } else if (theme === 'thermal') {
+        props.push(makeConvexLens(x + 150, y + 314, 0));
+        props.push(makePressureCan(x + w - 165, y + 314));
+      } else if (theme === 'optics') {
+        props.push(makeConvexLens(x + w - 145, y + 128, Math.PI * 0.75));
+        const [m1, m2] = makeMirrorPair(x + 146, y + h - 104, x + w - 146, y + h - 104);
+        props.push(m1, m2);
+      } else if (theme === 'electro') {
+        props.push(makeChargePylon(x + 150, y + 314, 1));
+        props.push(makeChargePylon(x + w - 150, y + 314, -1));
+        props.push(makeCrate(cx, y + 314, 42, { keepExactPos: true }));
       } else {
         // 第 4 关终章：左星轨、下滑道木箱，简洁明快
         props.push(makeOrrery(x + w - 130, y + 112, 1));
@@ -296,12 +471,32 @@
         props.push(makePollenBud(cx + 136, cy + 78));
         props.push(makeChime(cx + 136, cy - 78));
         props.push(makeBook(cx - 144, cy + 76, 98, 60, rng));
+      } else if (theme === 'relativity') {
+        props.push(makeSingularity(cx - 150, cy - 74));
+        props.push(makeOrrery(cx + 150, cy + 74, 1));
+        const [whA, whB] = makeWormholePair(cx - 145, cy + 86, cx + 152, cy - 84);
+        props.push(whA, whB);
+      } else if (theme === 'thermal') {
+        props.push(makePressureCan(cx - 142, cy - 78));
+        props.push(makePressureCan(cx + 142, cy + 78));
+        props.push(makeConvexLens(cx + 142, cy - 78, Math.PI * 0.75));
+        props.push(makeCrate(cx - 142, cy + 78, 44));
+      } else if (theme === 'optics') {
+        props.push(makeConvexLens(cx - 148, cy - 78, 0));
+        props.push(makeConvexLens(cx + 148, cy + 78, Math.PI));
+        const [m1, m2] = makeMirrorPair(cx - 144, cy + 82, cx + 144, cy - 82);
+        props.push(m1, m2);
+      } else if (theme === 'electro') {
+        props.push(makeChargePylon(cx - 148, cy - 78, 1));
+        props.push(makeChargePylon(cx + 148, cy + 78, -1));
+        props.push(makeCrate(cx + 142, cy - 78, 44));
+        props.push(makeInkwell(cx - 142, cy + 78, '#3cb6c9'));
       } else {
-        // 第 4 关终极融合金库：星轨仪 + 棱镜 + 滑道木箱 + 花粉苞
         props.push(makeOrrery(cx - 148, cy - 82, 1));
-        props.push(makePrism(cx + 148, cy - 82, Math.PI * 0.75));
+        props.push(makeSingularity(cx + 148, cy - 82));
         props.push(makeCrate(cx - 142, cy + 88, 44));
-        props.push(makePollenBud(cx + 142, cy + 88));
+        const [whA, whB] = makeWormholePair(cx + 142, cy + 88, cx - 152, cy + 16);
+        props.push(whA, whB);
       }
       return props;
     }
@@ -319,6 +514,22 @@
         props.push(makePollenBud(x + 110, y + 92));
         props.push(makeChime(x + w - 110, y + h - 92));
         props.push(makePollenBud(x + w - 110, y + 92));
+      } else if (theme === 'relativity') {
+        props.push(makeSingularity(x + 118, y + 96));
+        const [whA, whB] = makeWormholePair(x + w - 112, y + 96, x + w - 112, y + h - 92);
+        props.push(whA, whB);
+      } else if (theme === 'thermal') {
+        props.push(makePressureCan(x + 112, y + 92));
+        props.push(makePressureCan(x + w - 112, y + h - 92));
+        props.push(makeConvexLens(x + w - 112, y + 92, Math.PI));
+      } else if (theme === 'optics') {
+        const [m1, m2] = makeMirrorPair(x + 112, y + 92, x + w - 112, y + 92);
+        props.push(m1, m2);
+        props.push(makeConvexLens(x + w - 112, y + h - 92, -Math.PI * 0.75));
+      } else if (theme === 'electro') {
+        props.push(makeChargePylon(x + 112, y + 92, 1));
+        props.push(makeChargePylon(x + w - 112, y + h - 92, -1));
+        props.push(makeInkwell(x + w - 112, y + 92, '#3cb6c9'));
       } else {
         props.push(makeOrrery(x + 116, y + 96, -1));
         props.push(makePollenBud(x + w - 110, y + 92));
@@ -338,8 +549,9 @@
       // 下方露水滑道配双台球木箱：先用星轨/漩涡聚怪，再推箱连扫！
       props.push(makeCrate(cx - 72, cy + 114, 44));
       props.push(makeCrate(cx + 72, cy + 114, 44));
-      props.push(makePollenBud(cx - 265, cy));
-      props.push(makeChime(cx + 265, cy));
+      props.push(makeSingularity(cx - 255, cy));
+      const [whA, whB] = makeWormholePair(cx + 255, cy - 48, cx - 165, cy + 180);
+      props.push(whA, whB);
       return props;
     }
 
@@ -393,6 +605,19 @@
             props.push(makeBumper(acx + (isH ? 105 : 80), acy + (isH ? 58 : -64), 22));
           }
         });
+      } else if (theme === 'relativity') {
+        props.push(makeSingularity(pcx, pcy));
+        if (arms.length >= 2) {
+          const a0x = arms[0].gx * CELL_W + CELL_W / 2;
+          const a0y = arms[0].gy * CELL_H + CELL_H / 2;
+          const a1x = arms[1].gx * CELL_W + CELL_W / 2;
+          const a1y = arms[1].gy * CELL_H + CELL_H / 2;
+          const [whA, whB] = makeWormholePair(a0x, a0y, a1x, a1y);
+          props.push(whA, whB);
+          props.push(makeCrate(a0x - 78, a0y + 42, 44));
+          props.push(makeOrrery(a1x + 84, a1y - 46, 1));
+          props.push(makeChest(a0x + 76, a0y - 68, false));
+        }
       } else {
         // 古藤潜行 L 廊：拐角掩体 + 双翼花粉隐身与风铃诱敌
         props.push(makeBook(pcx, pcy, 108, 76, rng));
@@ -440,6 +665,21 @@
           props.push(makeOrrery(cx - 28, cy - 125, 1));
           props.push(makeOrrery(cx + 28, cy + 125, -1));
           props.push(makePrism(cx + 98, cy, Math.PI));
+        }
+      } else if (theme === 'relativity') {
+        if (isH) {
+          props.push(makeSingularity(cx, cy));
+          const [whA, whB] = makeWormholePair(cx - 210, cy - 42, cx + 210, cy + 42);
+          props.push(whA, whB);
+          props.push(makeOrrery(cx - 120, cy + 62, 1));
+          props.push(makeCrate(cx + 125, cy - 58, 44));
+          props.push(makeChest(cx, cy - 102, false));
+        } else {
+          props.push(makeSingularity(cx, cy));
+          const [whA, whB] = makeWormholePair(cx - 46, cy - 165, cx + 46, cy + 165);
+          props.push(whA, whB);
+          props.push(makeOrrery(cx + 66, cy - 82, 1));
+          props.push(makeCrate(cx - 62, cy + 88, 44));
         }
       } else {
         // 古藤潜行花廊：错落大花坛 + 花粉隐身跳点 + 风铃诱敌
@@ -501,15 +741,104 @@
         props.push(makePrism(ox(92), oy(46), fx > 0 ? Math.PI : 0));
         props.push(makeRuler(cx, cy, 120, 32));
       } else if (arch === 2) {
-        // 命题 3：双极星轨（左吸右斥，玩出蛇形弹道）
         props.push(makeOrrery(ox(-95), oy(-36), 1));
         props.push(makeOrrery(ox(95), oy(36), -1));
-        props.push(makeBumper(cx, oy(-76), 22));
+        const [whA, whB] = makeWormholePair(cx - 95 * fx, oy(72), cx + 95 * fx, oy(-72));
+        props.push(whA, whB);
       } else {
         // 命题 4：星轨 + 棱镜连招（弯道先打棱镜再一分为二！）
         props.push(makeOrrery(ox(-76), oy(0), 1));
         props.push(makePrism(ox(96), oy(-48), Math.PI * 0.75));
         props.push(makeBook(ox(96), oy(58), 104, 64, rng));
+      }
+    } else if (theme === 'relativity') {
+      if (arch === 0) {
+        props.push(makeSingularity(cx, cy));
+        props.push(makeCrate(ox(-112), oy(-48), 44));
+        props.push(makeCrate(ox(112), oy(48), 44));
+      } else if (arch === 1) {
+        const [whA, whB] = makeWormholePair(ox(-98), oy(-48), ox(126), oy(62));
+        props.push(whA, whB);
+        props.push(makeOrrery(cx, cy, 1));
+        props.push(makeCrate(ox(-110), oy(60), 44));
+      } else if (arch === 2) {
+        props.push(makeOrrery(ox(-82), oy(0), 1));
+        props.push(makeSingularity(ox(92), oy(-36)));
+        props.push(makeBumper(ox(92), oy(68), 23));
+      } else {
+        const [whA, whB] = makeWormholePair(ox(-112), oy(0), ox(112), oy(-56));
+        props.push(whA, whB);
+        props.push(makeEraser(cx, oy(66), 116, 52));
+        props.push(makeCrate(ox(-42), oy(-52), 44));
+      }
+    } else if (theme === 'thermal') {
+      if (arch === 0) {
+        // 命题 1：聚光融冰 + 高压罐热爆局
+        props.push(makeConvexLens(ox(-114), cy, fx > 0 ? 0 : Math.PI));
+        props.push(makePressureCan(cx, cy));
+        props.push(makeCrate(ox(116), cy, 44));
+      } else if (arch === 1) {
+        // 命题 2：双高压罐连环热爆
+        props.push(makePressureCan(ox(-78), oy(-42)));
+        props.push(makePressureCan(ox(78), oy(42)));
+        props.push(makeBumper(cx, cy, 22));
+      } else if (arch === 2) {
+        // 命题 3：沸腾蒸汽隐身伏击局
+        props.push(makeConvexLens(ox(-92), oy(-56), Math.PI * 0.25));
+        props.push(makePressureCan(ox(96), oy(52)));
+        props.push(makeCrate(ox(-86), oy(52), 44));
+      } else {
+        // 命题 4：水电热联动角
+        props.push(makePressureCan(ox(-88), cy));
+        props.push(makeChargePylon(ox(96), cy, 1));
+        props.push(makeCrate(cx, oy(-66), 44));
+      }
+    } else if (theme === 'optics') {
+      if (arch === 0) {
+        // 命题 1：镜面光网封路切割局
+        const [m1, m2] = makeMirrorPair(ox(-118), oy(-48), ox(118), oy(48));
+        props.push(m1, m2);
+        props.push(makeCrate(ox(-92), oy(56), 44));
+      } else if (arch === 1) {
+        // 命题 2：双凸透镜交叉聚光熔炉（光→热引爆高压罐！）
+        props.push(makeConvexLens(ox(-112), oy(-46), fx > 0 ? 0.32 : Math.PI - 0.32));
+        props.push(makeConvexLens(ox(112), oy(46), fx > 0 ? Math.PI + 0.32 : -0.32));
+        props.push(makePressureCan(cx, cy));
+      } else if (arch === 2) {
+        // 命题 3：光网 + 弹力菌伞弹射切割
+        const [m1, m2] = makeMirrorPair(cx, oy(-86), cx, oy(86));
+        props.push(m1, m2);
+        props.push(makeEraser(ox(-110), cy, 88, 48));
+        props.push(makeBumper(ox(110), cy, 22));
+      } else {
+        // 命题 4：棱镜分光 + 凸透镜聚光室
+        props.push(makePrism(ox(-96), cy, fx > 0 ? 0 : Math.PI));
+        props.push(makeConvexLens(ox(68), oy(-48), Math.PI * 0.75));
+        props.push(makePressureCan(ox(96), oy(56)));
+      }
+    } else if (theme === 'electro') {
+      if (arch === 0) {
+        // 命题 1：水域导电链（冰融水/秘露水池 + 正电桩）
+        props.push(makeChargePylon(ox(-108), cy, 1));
+        props.push(makeInkwell(cx, cy, '#3cb6c9'));
+        props.push(makePressureCan(ox(110), cy));
+      } else if (arch === 1) {
+        // 命题 2：双同极正电桩爆斥推崖局
+        props.push(makeChargePylon(ox(-96), oy(-44), 1));
+        props.push(makeChargePylon(ox(96), oy(44), 1));
+        props.push(makeCrate(cx, cy, 44));
+      } else if (arch === 2) {
+        // 命题 3：正负异极强吸对撞局（木箱带正电、守卫带负电强吸互撞！）
+        props.push(makeChargePylon(ox(-108), oy(-42), 1));
+        props.push(makeChargePylon(ox(108), oy(42), -1));
+        props.push(makeCrate(ox(-86), oy(54), 44));
+        props.push(makeCrate(ox(86), oy(-54), 44));
+      } else {
+        // 命题 4：电桩 + 镜面光网跨学科联动（异极强吸把怪拉进激光光网！）
+        const [m1, m2] = makeMirrorPair(cx, oy(-82), cx, oy(82));
+        props.push(m1, m2);
+        props.push(makeChargePylon(ox(-112), cy, 1));
+        props.push(makeChargePylon(ox(112), cy, -1));
       }
     } else {
       // stealth（古藤密廊）
@@ -577,7 +906,7 @@
     };
 
     // 1. 严格遵守物理分家：仅「晨露荷塘 (friction)」与「终极花穹融合房 (fusion)」铺设嵌入式露水滑道
-    if (theme === 'friction' || theme === 'fusion') {
+    if (theme === 'friction' || theme === 'fusion' || theme === 'thermal' || theme === 'electro') {
       if (role === 'spawn') {
         addSlide({
           kind: 'dew_slide',
@@ -620,7 +949,7 @@
       } else if (role === 'vault' && theme === 'friction') {
         addSlide({ kind: 'dew_slide', x: cx - 180, y: cy - 114, w: 360, h: 52, orient: 'h', seed: 41 });
         addSlide({ kind: 'dew_slide', x: cx - 180, y: cy + 62, w: 360, h: 52, orient: 'h', seed: 42 });
-      } else if (role !== 'extract' && theme === 'friction') {
+      } else if (role !== 'extract' && (theme === 'friction' || theme === 'thermal' || theme === 'electro')) {
         const arch = room.archetypeIdx ?? 0;
         if (arch === 0) {
           addSlide({ kind: 'dew_slide', x: cx - 175, y: cy - 30, w: 350, h: 60, orient: 'h', seed: 50 });

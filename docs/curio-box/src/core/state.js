@@ -96,6 +96,7 @@
     portraitDismissed: false,
     appPaused: false,
     paused: false,
+    chartOpen: false,
 
     // 当前关卡制进度（1~4 关）
     currentStageId: 1,
@@ -131,13 +132,21 @@
       onDewSlide: false,
       slideSoundTimer: 0,
 
-      // 单一核心武器：轻点 / 蓄力状态
+      // 单一核心武器：轻点调频星针（无限静音）/ 蓄力星露重弹（3 颗星露弹珠三轨回收）
       fireCooldown: 0,
       recoil: 0,
       charging: false,
       chargeTime: 0,
       chargeRatio: 0,
       chargeStageNotified: 0, // 0: 未过重弹阈值 | 1: 进入重弹 | 2: 满蓄力
+      orbs: 3,
+      maxOrbs: 3,
+      orbRechargeTimer: 0,
+      orbRechargeDuration: 4.2,
+      overclockOrb: false,
+      overclockTimer: 0,
+      orbSpinAngle: 0,
+      orbEmptyFlash: 0,
 
       // 软萌动画与二级弹性参数
       walkPhase: 0,
@@ -219,6 +228,20 @@
       seenGuards: [],
       defeatedGuards: {},
       autoPlayIntro: true,
+      deepestLeg: 0,
+      maxAltitude: 0,
+    },
+
+    // 未知云海航程状态（多航段连续探索与「入库 vs 深入」撤离博弈）
+    voyage: {
+      active: false,
+      leg: 1,
+      altitude: 1200,
+      pendingHaul: 0,
+      chainMult: 1.0,
+      currentNode: null,
+      nextChoices: [],
+      visitedAnomalies: [],
     },
 
     // 当前画面交互浮标提示
@@ -232,6 +255,11 @@
     pollenClouds: [],
     vortices: [],
     coinsList: [],
+    droppedOrbs: [],
+    orbReturnFlies: [],
+    focusSpots: [],
+    laserWebs: [],
+    lightningArcs: [],
     curioDrops: [],
     guards: [],
     fallingGuards: [],

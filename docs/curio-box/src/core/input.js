@@ -64,7 +64,7 @@
       unlockAudio();
       notifyKind('mouse');
       const code = e.code;
-      const gameplayActive = !game.introActive && !game.hubOpen && !game.titleOpen && !game.menuOpen && !game.settingsOpen && !game.paused && !game.portraitBlocked;
+      const gameplayActive = !game.introActive && !game.hubOpen && !game.titleOpen && !game.menuOpen && !game.settingsOpen && !game.paused && !game.chartOpen && !game.portraitBlocked;
       if (gameplayActive) {
         if (code === 'KeyW' || code === 'ArrowUp') keys.up = true;
         if (code === 'KeyS' || code === 'ArrowDown') keys.down = true;
@@ -101,7 +101,7 @@
 
     canvas.addEventListener('mousedown', (e) => {
       unlockAudio();
-      if (game.run.phase !== 'playing' || game.introActive || game.hubOpen || game.titleOpen || game.menuOpen || game.settingsOpen || game.paused || game.portraitBlocked) return;
+      if (game.run.phase !== 'playing' || game.introActive || game.hubOpen || game.titleOpen || game.menuOpen || game.settingsOpen || game.paused || game.chartOpen || game.portraitBlocked) return;
       keys.useTouchAim = false;
       if (e.button === 0) {
         keys.fireHeld = true;
@@ -192,7 +192,7 @@
         e.preventDefault();
         e.stopPropagation();
         unlockAudio();
-        if (game.run.phase !== 'playing' || game.introActive || game.hubOpen || game.titleOpen || game.paused || game.portraitBlocked) return;
+        if (game.run.phase !== 'playing' || game.introActive || game.hubOpen || game.titleOpen || game.paused || game.chartOpen || game.portraitBlocked) return;
         if (movePid !== null) return;
         movePid = e.pointerId;
         if (moveHost.setPointerCapture) {
@@ -285,7 +285,7 @@
         e.preventDefault();
         e.stopPropagation();
         unlockAudio();
-        if (game.run.phase !== 'playing' || game.introActive || game.hubOpen || game.titleOpen || game.paused || game.portraitBlocked) return;
+        if (game.run.phase !== 'playing' || game.introActive || game.hubOpen || game.titleOpen || game.paused || game.chartOpen || game.portraitBlocked) return;
         if (aimPid !== null) return;
         aimPid = e.pointerId;
         if (els.aimZone.setPointerCapture) {
@@ -324,7 +324,7 @@
         e.preventDefault();
         e.stopPropagation();
         unlockAudio();
-        if (game.run.phase !== 'playing' || game.introActive || game.hubOpen || game.titleOpen || game.paused || game.portraitBlocked) return;
+        if (game.run.phase !== 'playing' || game.introActive || game.hubOpen || game.titleOpen || game.paused || game.chartOpen || game.portraitBlocked) return;
         keys.dashPressed = true;
         els.dashBtn.classList.add('pressed');
       });
@@ -341,7 +341,7 @@
         e.preventDefault();
         e.stopPropagation();
         unlockAudio();
-        if (game.run.phase !== 'playing' || game.introActive || game.hubOpen || game.titleOpen || game.paused || game.portraitBlocked) return;
+        if (game.run.phase !== 'playing' || game.introActive || game.hubOpen || game.titleOpen || game.paused || game.chartOpen || game.portraitBlocked) return;
         intPid = e.pointerId;
         if (els.interactBtn.setPointerCapture) {
           try { els.interactBtn.setPointerCapture(e.pointerId); } catch (_) {}

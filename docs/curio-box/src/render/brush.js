@@ -359,6 +359,12 @@
     else if (prop.type === 'chime') drawChime(ctx, prop, time);
     else if (prop.type === 'sunflower_switch') drawSunflowerSwitch(ctx, prop, time);
     else if (prop.type === 'orrery') drawOrrery(ctx, prop, time);
+    else if (prop.type === 'singularity') drawSingularity(ctx, prop, time);
+    else if (prop.type === 'wormhole') drawWormhole(ctx, prop, time);
+    else if (prop.type === 'pressure_can' && CB.physicsLab) CB.physicsLab.drawPressureCan(ctx, prop, time);
+    else if (prop.type === 'convex_lens' && CB.physicsLab) CB.physicsLab.drawConvexLens(ctx, prop, time);
+    else if (prop.type === 'mirror_post' && CB.physicsLab) CB.physicsLab.drawMirrorPost(ctx, prop, time);
+    else if (prop.type === 'charge_pylon' && CB.physicsLab) CB.physicsLab.drawChargePylon(ctx, prop, time);
 
     ctx.restore();
   }
@@ -1223,7 +1229,7 @@
 
     const bPoints = preview.bouncePoints || [];
     for (const bp of bPoints) {
-      ctx.fillStyle = bp.isPrism ? '#ffe45e' : bp.isSuper ? '#ff8fb1' : '#ffd257';
+      ctx.fillStyle = bp.isWormhole ? '#b878ff' : bp.isPrism ? '#ffe45e' : bp.isSuper ? '#ff8fb1' : '#ffd257';
       ctx.strokeStyle = INK;
       ctx.lineWidth = 1.8;
       ctx.beginPath();
@@ -1249,14 +1255,15 @@
     const liftY = -10;
     ctx.save();
 
-    if (b.slingshotCharged || b.isPrismBeam) {
-      const g = ctx.createRadialGradient(b.x, b.y + liftY, 1, b.x, b.y + liftY, b.slingshotCharged ? 18 : 16);
-      g.addColorStop(0, b.slingshotCharged ? 'rgba(92, 230, 255, 0.92)' : 'rgba(255, 238, 112, 0.85)');
-      g.addColorStop(0.55, b.slingshotCharged ? 'rgba(255, 224, 96, 0.45)' : 'rgba(255, 224, 96, 0.25)');
+    if (b.slingshotCharged || b.isPrismBeam || b.isOverclock) {
+      const radG = b.isOverclock ? 21 : (b.slingshotCharged ? 18 : 16);
+      const g = ctx.createRadialGradient(b.x, b.y + liftY, 1, b.x, b.y + liftY, radG);
+      g.addColorStop(0, b.isOverclock ? 'rgba(255, 244, 150, 0.96)' : (b.slingshotCharged ? 'rgba(92, 230, 255, 0.92)' : 'rgba(255, 238, 112, 0.85)'));
+      g.addColorStop(0.55, b.isOverclock ? 'rgba(82, 228, 255, 0.52)' : (b.slingshotCharged ? 'rgba(255, 224, 96, 0.45)' : 'rgba(255, 224, 96, 0.25)'));
       g.addColorStop(1, 'rgba(92, 230, 255, 0)');
       ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.arc(b.x, b.y + liftY, b.slingshotCharged ? 18 : 16, 0, Math.PI * 2);
+      ctx.arc(b.x, b.y + liftY, radG, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -1325,6 +1332,13 @@
     ctx.fill();
 
     ctx.translate(eb.x, eb.y + liftY);
+    if (eb.dilated) {
+      ctx.strokeStyle = 'rgba(168, 114, 255, 0.85)';
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.arc(0, 0, eb.radius + 4.5, 0, Math.PI * 2);
+      ctx.stroke();
+    }
     if (style === 'bubble') {
       // 第 1 关：晶莹弹跳露水泡
       ctx.fillStyle = 'rgba(116, 232, 252, 0.78)';
@@ -2497,26 +2511,55 @@
     ctx.roundRect(x - 3.5, y - 3, w + 7, h + 6, r + 3.5);
     ctx.stroke();
 
-    // 1. 柔和清透晨露玻璃基底渐变（带浅凹槽上沿内阴影）
+    const phase = slide.phase || 'ice';
+    const electrified = (slide.electrifiedTimer || 0) > 0;
+
+    // 1. 三态相变基底（冰镜 / 导电积水 / 沸腾隐身蒸汽）
     const grad = isH
       ? ctx.createLinearGradient(x, y, x, y + h)
       : ctx.createLinearGradient(x, y, x + w, y);
-    grad.addColorStop(0, 'rgba(104, 206, 234, 0.58)');
-    grad.addColorStop(0.18, 'rgba(176, 238, 252, 0.64)');
-    grad.addColorStop(0.55, 'rgba(226, 251, 255, 0.72)');
-    grad.addColorStop(1, 'rgba(128, 222, 246, 0.58)');
+    if (phase === 'water') {
+      grad.addColorStop(0, electrified ? 'rgba(116, 224, 255, 0.85)' : 'rgba(54, 152, 198, 0.72)');
+      grad.addColorStop(0.5, electrified ? 'rgba(228, 250, 255, 0.88)' : 'rgba(84, 184, 224, 0.76)');
+      grad.addColorStop(1, electrified ? 'rgba(116, 224, 255, 0.85)' : 'rgba(44, 134, 180, 0.72)');
+    } else if (phase === 'steam') {
+      grad.addColorStop(0, 'rgba(232, 248, 252, 0.68)');
+      grad.addColorStop(0.5, 'rgba(255, 255, 255, 0.82)');
+      grad.addColorStop(1, 'rgba(224, 245, 250, 0.68)');
+    } else {
+      grad.addColorStop(0, 'rgba(104, 206, 234, 0.58)');
+      grad.addColorStop(0.18, 'rgba(176, 238, 252, 0.64)');
+      grad.addColorStop(0.55, 'rgba(226, 251, 255, 0.72)');
+      grad.addColorStop(1, 'rgba(128, 222, 246, 0.58)');
+    }
 
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.roundRect(x, y, w, h, r);
     ctx.fill();
 
-    // 2. 精致天青冰晶内嵌边框 + 上沿微白水光
-    ctx.strokeStyle = 'rgba(48, 162, 196, 0.56)';
-    ctx.lineWidth = 1.9;
+    ctx.strokeStyle = phase === 'water'
+      ? (electrified ? '#ffe45e' : 'rgba(34, 122, 168, 0.72)')
+      : phase === 'steam'
+      ? 'rgba(182, 220, 232, 0.75)'
+      : 'rgba(48, 162, 196, 0.56)';
+    ctx.lineWidth = electrified ? 2.8 : 1.9;
     ctx.beginPath();
     ctx.roundRect(x, y, w, h, r);
     ctx.stroke();
+
+    if (phase === 'steam') {
+      const count = Math.max(4, Math.floor(Math.max(w, h) / 48));
+      for (let k = 0; k < count; k++) {
+        const fx = isH ? x + ((k + 0.5) / count) * w : x + w * 0.5 + Math.sin(time * 3 + k) * 10;
+        const fy = isH ? y + h * 0.5 + Math.cos(time * 3.4 + k) * 9 : y + ((k + 0.5) / count) * h;
+        const pr = 14 + Math.sin(time * 4.5 + k * 1.7) * 4;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.52)';
+        ctx.beginPath();
+        ctx.arc(fx, fy - 4, pr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
 
     // 3. 镜面斜向高光带与流动水膜波纹（裁剪在滑道内部）
     ctx.save();
@@ -2912,6 +2955,267 @@
     ctx.restore();
   }
 
+
+  function drawDormantOrb(ctx, orb, time) {
+    const hover = Math.sin(time * 5.2 + orb.phase) * 3.5;
+    const drawY = orb.y - orb.z - 9 + hover;
+    const fade = orb.life < 1.4 ? Math.max(0.25, Math.abs(Math.sin(time * 16))) : 1;
+
+    drawSoftShadow(ctx, orb.x, orb.y + 3, 9.5, 5.2, 0.2 * fade);
+
+    ctx.save();
+    ctx.globalAlpha = fade;
+    ctx.translate(orb.x, drawY);
+
+    const g = ctx.createRadialGradient(0, 0, 2, 0, 0, 20);
+    g.addColorStop(0, 'rgba(128, 236, 255, 0.78)');
+    g.addColorStop(1, 'rgba(128, 236, 255, 0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, 20, 0, Math.PI * 2);
+    ctx.fill();
+
+    const frac = Math.max(0, orb.life / orb.maxLife);
+    ctx.strokeStyle = 'rgba(46, 178, 212, 0.65)';
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.arc(0, 0, 11.5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac);
+    ctx.stroke();
+
+    ctx.fillStyle = '#72e4fa';
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1.9;
+    ctx.beginPath();
+    ctx.arc(0, 0, 7.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(-2.3, -2.3, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  function drawOrbReturnFly(ctx, f) {
+    const col = f.isOverclock ? '#ffe052' : '#74e8ff';
+    ctx.save();
+    const g = ctx.createRadialGradient(f.x, f.y, 1, f.x, f.y, 15);
+    g.addColorStop(0, f.isOverclock ? 'rgba(255, 240, 130, 0.95)' : 'rgba(120, 236, 255, 0.95)');
+    g.addColorStop(1, 'rgba(120, 236, 255, 0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, 15, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = col;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, f.isOverclock ? 6.2 : 5.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+
+  // ==================== v9.1 黑洞奇点时间膨胀场 & 空间折叠虫洞环渲染 ====================
+  function drawSingularityField(ctx, prop, time) {
+    const { x, y, fieldRadius, activeTimer, maxDuration, cooldown } = prop;
+    const R = fieldRadius || 195;
+    const isActive = (activeTimer || 0) > 0;
+
+    ctx.save();
+    ctx.translate(x, y);
+
+    if (isActive) {
+      const pct = Math.max(0, Math.min(1, activeTimer / (maxDuration || 3.6)));
+      const pulse = 1 + Math.sin(time * 5.5) * 0.03;
+
+      const g = ctx.createRadialGradient(0, 0, 18, 0, 0, R * pulse);
+      g.addColorStop(0, 'rgba(92, 42, 168, 0.34)');
+      g.addColorStop(0.65, 'rgba(138, 86, 232, 0.16)');
+      g.addColorStop(1, 'rgba(138, 86, 232, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(0, 0, R * pulse, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.save();
+      ctx.rotate(time * 0.14);
+      ctx.strokeStyle = 'rgba(182, 134, 255, 0.58)';
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.arc(0, 0, R, 0, Math.PI * 2);
+      ctx.stroke();
+
+      for (let i = 0; i < 12; i++) {
+        const a = (i * Math.PI) / 6;
+        const inner = i % 3 === 0 ? R - 13 : R - 7;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * inner, Math.sin(a) * inner);
+        ctx.lineTo(Math.cos(a) * R, Math.sin(a) * R);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      ctx.strokeStyle = pct < 0.25 ? '#ff7c6e' : '#ffe066';
+      ctx.lineWidth = 4.2;
+      ctx.beginPath();
+      ctx.arc(0, 0, R + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pct);
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = (cooldown || 0) > 0 ? 'rgba(130, 120, 160, 0.22)' : 'rgba(148, 102, 236, 0.32)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([8, 10]);
+      ctx.beginPath();
+      ctx.arc(0, 0, R * 0.72, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    ctx.restore();
+  }
+
+  function drawSingularity(ctx, prop, time) {
+    const { x, y, r, activeTimer, cooldown, spin, hitFlash, pulse } = prop;
+    const isActive = (activeTimer || 0) > 0;
+    const hover = Math.sin(time * 3.0 + x * 0.02) * 3.2;
+    const sc = 1 + (pulse || 0) * 0.2 + (isActive ? 0.14 : 0);
+
+    drawSoftShadow(ctx, x, y + 6, r * 1.1, r * 0.6, 0.26);
+
+    ctx.save();
+    ctx.translate(x, y - 20 + hover);
+    ctx.scale(sc, sc);
+
+    ctx.save();
+    ctx.rotate(spin || time * 1.8);
+    const diskGrad = ctx.createRadialGradient(0, 0, 8, 0, 0, 26);
+    diskGrad.addColorStop(0, 'rgba(255, 232, 138, 0.85)');
+    diskGrad.addColorStop(0.55, isActive ? 'rgba(164, 104, 255, 0.72)' : 'rgba(128, 86, 212, 0.45)');
+    diskGrad.addColorStop(1, 'rgba(128, 86, 212, 0)');
+    ctx.fillStyle = diskGrad;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 26, 11, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = isActive ? '#ffe478' : 'rgba(196, 152, 255, 0.75)';
+    ctx.lineWidth = isActive ? 2.4 : 1.7;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 22, 8.5, 0.3, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.fillStyle = (hitFlash || 0) > 0.2 ? '#ffffff' : ((cooldown || 0) > 0 ? '#3a3454' : '#120c24');
+    ctx.strokeStyle = isActive ? '#ffe066' : '#b78cff';
+    ctx.lineWidth = isActive ? 2.8 : 2.1;
+    ctx.beginPath();
+    ctx.arc(0, 0, 11.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = isActive ? '#ffe066' : '#d4b8ff';
+    ctx.beginPath();
+    ctx.arc(-3, -3, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  function drawWormholeLinks(ctx, map, time) {
+    if (!map || !map.props) return;
+    if (!map._wormholePairs) {
+      const byId = Object.create(null);
+      const cached = [];
+      for (let i = 0; i < map.props.length; i++) {
+        const p = map.props[i];
+        if (p.type !== 'wormhole') continue;
+        if (!byId[p.pairId]) {
+          byId[p.pairId] = p;
+        } else {
+          cached.push([byId[p.pairId], p]);
+        }
+      }
+      map._wormholePairs = cached;
+    }
+    const pairList = map._wormholePairs;
+    if (!pairList.length) return;
+
+    ctx.save();
+    for (let i = 0; i < pairList.length; i++) {
+      const pair = pairList[i];
+      const a = pair[0];
+      const b = pair[1];
+      if (a.broken || b.broken) continue;
+      const mx = (a.x + b.x) * 0.5;
+      const my = (a.y + b.y) * 0.5 - 24;
+      const grad = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+      grad.addColorStop(0, 'rgba(70, 216, 247, 0.28)');
+      grad.addColorStop(1, 'rgba(196, 124, 255, 0.28)');
+
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 2.4;
+      ctx.setLineDash([8, 9]);
+      ctx.lineDashOffset = -(time * 28);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.quadraticCurveTo(mx, my, b.x, b.y);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  function drawWormhole(ctx, prop, time) {
+    const { x, y, r, portalSide, color, spin, pulse } = prop;
+    const sc = 1 + (pulse || 0) * 0.22;
+    const isA = portalSide === 'A';
+    const col = color || (isA ? '#46d8f7' : '#c47cff');
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(sc, sc);
+
+    const g = ctx.createRadialGradient(0, 0, 4, 0, 0, r * 1.45);
+    g.addColorStop(0, isA ? 'rgba(70, 216, 247, 0.55)' : 'rgba(196, 124, 255, 0.55)');
+    g.addColorStop(0.65, isA ? 'rgba(70, 216, 247, 0.18)' : 'rgba(196, 124, 255, 0.18)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.45, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = isA ? '#12384f' : '#2a1647';
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2.8;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.86, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.save();
+    ctx.rotate(spin || time * (isA ? 3 : -3));
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2.0;
+    for (let i = 0; i < 3; i++) {
+      const a = (i * Math.PI * 2) / 3;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.54, a, a + 0.95);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
   CB.brush = {
     createPaperPattern,
     drawSoftShadow,
@@ -2923,6 +3227,8 @@
     drawProp,
     drawDewSlide,
     drawOrreryField,
+    drawSingularityField,
+    drawWormholeLinks,
     drawGravityVortex,
     drawInkPuddle,
     drawPollenCloud,
@@ -2935,6 +3241,8 @@
     drawEnemyBullet,
     drawCoin,
     drawCurioDrop,
+    drawDormantOrb,
+    drawOrbReturnFly,
     drawInteractPrompt,
   };
 })();

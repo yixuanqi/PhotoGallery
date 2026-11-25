@@ -12,17 +12,18 @@
     tapThreshold: 0.20,
     maxCharge: 0.64,
     light: {
-      cooldown: 0.17,
-      speed: 900,
-      damage: 16,
-      ricochetMult: 1.45,
-      sneakMult: 1.75,
+      cooldown: 0.19,
+      speed: 920,
+      damage: 4,
+      executionDamage: 28,
+      ricochetMult: 1.4,
+      sneakMult: 4.5,
       maxBounces: 1,
       range: 760,
-      previewRange: 300,
-      noiseRadius: 68,
-      bulletRadius: 3.4,
-      crateImpulse: 185,
+      previewRange: 290,
+      noiseRadius: 62,
+      bulletRadius: 3.2,
+      crateImpulse: 125,
       color: '#5cc4d6',
       trailColor: '#3ea3b5',
       bouncedColor: '#e05848',
@@ -60,6 +61,215 @@
     return !!(CB.extraction && CB.extraction.hasCurio(id));
   }
 
+  function getRelativisticGamma(speed) {
+    const hasLorentz = hasBuildCurio('lorentz_prism');
+    const thresh = hasLorentz ? 440 : 540;
+    if (!speed || speed <= thresh) return 1.0;
+    const cEff = hasLorentz ? 1120 : 1280;
+    const beta = Math.min(0.92, (speed - thresh) / (cEff - thresh) * 0.92);
+    return Math.min(2.8, 1 / Math.sqrt(Math.max(0.12, 1 - beta * beta)));
+  }
+
+  function findPairedWormhole(wh) {
+    if (!wh || !game.map || !game.map.props) return null;
+    for (const p of game.map.props) {
+      if (p.type === 'wormhole' && p.pairId === wh.pairId && p !== wh) return p;
+    }
+    return null;
+  }
+
+  function getActiveSingularityAt(x, y) {
+    const map = game.map;
+    if (!map || !map.props) return null;
+    for (const p of map.props) {
+      if (p.type !== 'singularity' || (p.activeTimer || 0) <= 0) continue;
+      const R = p.fieldRadius || 195;
+      if (Math.hypot(x - p.x, y - p.y) <= R) return p;
+    }
+    return null;
+  }
+
+  function getTimeScaleAt(x, y) {
+    return getActiveSingularityAt(x, y) ? 0.15 : 1.0;
+  }
+
+  function activateSingularity(sing, isHeavy = false) {
+    if (!sing || sing.type !== 'singularity') return;
+    sing.hitFlash = 1;
+    sing.pulse = 1;
+
+    if ((sing.activeTimer || 0) > 0) {
+      if (isHeavy) {
+        collapseSingularity(sing);
+      } else {
+        sing.activeTimer = Math.min(sing.maxDuration || 3.6, sing.activeTimer + 0.65);
+        CB.player.spawnDust(sing.x, sing.y - 12, '#c89cff', 8, 1.2);
+      }
+      return;
+    }
+
+    if ((sing.cooldown || 0) > 0) return;
+
+    const bonusDur = hasBuildCurio('event_horizon') ? 1.2 : 0;
+    sing.maxDuration = 3.6 + bonusDur;
+    sing.activeTimer = sing.maxDuration;
+    if (CB.audio && CB.audio.playSingularityDilate) CB.audio.playSingularityDilate();
+    game.camera.shake = Math.max(game.camera.shake, 4.2);
+    CB.player.spawnDust(sing.x, sing.y - 10, '#a875ff', 16, 1.55);
+    CB.player.spawnDust(sing.x, sing.y - 10, '#ffe478', 8, 1.25);
+    CB.player.spawnPopup(sing.x, sing.y - 38, '⏳ 引力时间膨胀 · 0.15× 冻结局!', '#7c48d6');
+  }
+
+  function collapseSingularity(sing) {
+    if (!sing || (sing.activeTimer || 0) <= 0) return;
+    sing.activeTimer = 0;
+    sing.cooldown = 3.2;
+    sing.pulse = 1;
+    sing.hitFlash = 1;
+
+    const R = sing.fieldRadius || 195;
+    const ehBoost = hasBuildCurio('event_horizon') ? 1.40 : 1.0;
+    let releasedCount = 0;
+
+    for (const g of game.guards) {
+      if (g.dead) continue;
+      const dx = g.x - sing.x;
+      const dy = g.y - sing.y;
+      const d = Math.hypot(dx, dy);
+      const hasStored = Math.hypot(g.dilatedStoredVx || 0, g.dilatedStoredVy || 0) > 25 || (g.dilatedStoredDmg || 0) > 0;
+      if (d <= R + 18 || hasStored) {
+        releasedCount++;
+        let vx = (g.dilatedStoredVx || 0) * ehBoost;
+        let vy = (g.dilatedStoredVy || 0) * ehBoost;
+        const storedDmg = Math.round((g.dilatedStoredDmg || 0) * ehBoost);
+        g.dilatedStoredVx = 0;
+        g.dilatedStoredVy = 0;
+        g.dilatedStoredDmg = 0;
+
+        const outDirX = d > 1 ? dx / d : Math.cos(Math.random() * 6.28);
+        const outDirY = d > 1 ? dy / d : Math.sin(Math.random() * 6.28);
+        if (Math.hypot(vx, vy) < 380) {
+          vx += outDirX * 480 * ehBoost;
+          vy += outDirY * 480 * ehBoost;
+        }
+        const totSpd = Math.hypot(vx, vy) || 1;
+        const nDirX = vx / totSpd;
+        const nDirY = vy / totSpd;
+
+        if (storedDmg > 0 && CB.guards && CB.guards.damageGuard) {
+          CB.guards.damageGuard(g, storedDmg, nDirX, nDirY, true, '⏳ 时空坍缩引爆!', true, {
+            source: 'billiard',
+            isHeavy: true,
+            launchSpeed: Math.min(1080, totSpd),
+            skipDilationStore: true,
+          });
+        }
+        if (!g.dead && CB.guards && CB.guards.launchGuardBilliard) {
+          CB.guards.launchGuardBilliard(g, vx, vy, { stunDuration: 1.8 });
+        }
+      }
+    }
+
+    if (game.map && game.map.props) {
+      for (const prop of game.map.props) {
+        if (prop.broken || prop.type !== 'crate') continue;
+        const cx = prop.x + prop.w / 2;
+        const cy = prop.y + prop.h / 2;
+        const hasStored = Math.hypot(prop.dilatedStoredVx || 0, prop.dilatedStoredVy || 0) > 25;
+        const d = Math.hypot(cx - sing.x, cy - sing.y);
+        if (d <= R + 12 || hasStored) {
+          let vx = (prop.dilatedStoredVx || 0) * ehBoost;
+          let vy = (prop.dilatedStoredVy || 0) * ehBoost;
+          prop.dilatedStoredVx = 0;
+          prop.dilatedStoredVy = 0;
+          if (Math.hypot(vx, vy) < 320 && d > 1) {
+            vx += ((cx - sing.x) / d) * 460 * ehBoost;
+            vy += ((cy - sing.y) / d) * 460 * ehBoost;
+          }
+          pushCrate(prop, vx, vy, true);
+        }
+      }
+    }
+
+    if (CB.audio && CB.audio.playSingularityCollapse) CB.audio.playSingularityCollapse();
+    game.hitStop = Math.max(game.hitStop, releasedCount > 0 ? 0.055 : 0.032);
+    game.camera.shake = Math.max(game.camera.shake, releasedCount > 0 ? 8.5 : 5.2);
+    CB.player.spawnDust(sing.x, sing.y - 10, '#c99eff', 22, 1.9);
+    CB.player.spawnDust(sing.x, sing.y - 10, '#ffe475', 14, 1.7);
+    emitSoundRipple(sing.x, sing.y, 260, 'slam', '#9b6ee8');
+    if (releasedCount > 0) {
+      if (CB.extraction && CB.extraction.addStuntBounty) CB.extraction.addStuntBounty(22 * releasedCount);
+      grantOrbRefund(1, sing.x, sing.y, '坍缩回珠');
+      CB.player.spawnPopup(sing.x, sing.y - 42, `⏳ 时空坍缩爆发 ×${releasedCount}!`, '#884ee0');
+    }
+  }
+
+  function releaseOrbitingBodies(orrery, targetOnly = null) {
+    if (!orrery) return 0;
+    let released = 0;
+    const lorentzBoost = hasBuildCurio('lorentz_prism') ? 1.18 : 1.0;
+
+    for (const g of game.guards) {
+      if (g.dead || g.orbitOrreryId !== orrery.id) continue;
+      if (targetOnly && targetOnly !== g) continue;
+      const tangAngle = g.orbitAngle + (g.orbitDir || 1) * (Math.PI / 2);
+      const outSpd = Math.min(1120, Math.max(680, (g.orbitSpeed || 620) * 1.24 * lorentzBoost));
+      g.orbitOrreryId = null;
+      g.orbitReleaseCd = 0.65;
+      if (CB.guards && CB.guards.launchGuardBilliard) {
+        CB.guards.launchGuardBilliard(g, Math.cos(tangAngle) * outSpd, Math.sin(tangAngle) * outSpd, {
+          stunDuration: 2.0,
+        });
+      }
+      released++;
+      CB.player.spawnDust(g.x, g.y - 10, '#78eeff', 14, 1.65);
+      CB.player.spawnPopup(g.x, g.y - g.radius - 26, '🪐 切线陨石甩射!', '#1d94c4');
+    }
+
+    if (game.map && game.map.props) {
+      for (const prop of game.map.props) {
+        if (prop.broken || prop.type !== 'crate' || prop.orbitOrreryId !== orrery.id) continue;
+        if (targetOnly && targetOnly !== prop) continue;
+        const tangAngle = prop.orbitAngle + (prop.orbitDir || 1) * (Math.PI / 2);
+        const outSpd = Math.min(1120, Math.max(680, (prop.orbitSpeed || 640) * 1.25 * lorentzBoost));
+        prop.orbitOrreryId = null;
+        prop.orbitReleaseCd = 0.65;
+        prop.vx = Math.cos(tangAngle) * outSpd;
+        prop.vy = Math.sin(tangAngle) * outSpd;
+        prop.sliding = true;
+        released++;
+        const cx = prop.x + prop.w / 2;
+        const cy = prop.y + prop.h / 2;
+        CB.player.spawnDust(cx, cy - 8, '#ffe278', 12, 1.55);
+        CB.player.spawnPopup(cx, cy - 28, '🪐 轨道甩箱!', '#1d94c4');
+      }
+    }
+
+    if (released > 0) {
+      orrery.pulse = 1;
+      orrery.hitFlash = 1;
+      if (CB.audio && CB.audio.playOrbitLaunch) CB.audio.playOrbitLaunch();
+      if (CB.extraction && CB.extraction.addStuntBounty) CB.extraction.addStuntBounty(25 * released);
+      grantOrbRefund(1, orrery.x, orrery.y, '甩射回珠');
+      game.hitStop = Math.max(game.hitStop, 0.042);
+      game.camera.shake = Math.max(game.camera.shake, 6.8);
+    }
+    return released;
+  }
+
+  function hasOrbitingBody(orrery) {
+    if (!orrery) return false;
+    for (const g of game.guards) {
+      if (!g.dead && g.orbitOrreryId === orrery.id) return true;
+    }
+    if (game.map && game.map.props) {
+      for (const p of game.map.props) {
+        if (!p.broken && p.type === 'crate' && p.orbitOrreryId === orrery.id) return true;
+      }
+    }
+    return false;
+  }
+
   // ==================== 低摩擦露水滑道查询 ====================
   function getDewSlideAt(x, y) {
     const map = game.map;
@@ -67,6 +277,8 @@
     for (let i = 0; i < map.dewSlides.length; i++) {
       const s = map.dewSlides[i];
       if (x >= s.x && x <= s.x + s.w && y >= s.y && y <= s.y + s.h) {
+        // 仅冰镜态与沸腾浮空蒸汽态具备极低摩擦，融化成的积水态呈现高阻尼导电减速！
+        if (s.phase === 'water') return null;
         return s;
       }
     }
@@ -158,6 +370,7 @@
     const includeRailings = opts.includeRailings !== false;
     const includeOpenCliffs = !!opts.includeOpenCliffs;
     const ignorePrismId = opts.ignorePrismId || null;
+    const ignoreWormholeId = opts.ignoreWormholeId || null;
     const ignoreProp = opts.ignoreProp || null;
     const ignoreGuard = opts.ignoreGuard || null;
 
@@ -200,11 +413,18 @@
     for (const prop of map.props) {
       if (prop.broken || prop === ignoreProp) continue;
       if (prop.type === 'prism' && ignorePrismId && prop.id === ignorePrismId) continue;
+      if (prop.type === 'wormhole' && ignoreWormholeId && prop.id === ignoreWormholeId) continue;
       if (prop.destructible && !includeDestructibles) continue;
 
       let kind = 'prop';
       if (prop.type === 'prism') kind = 'prism';
       else if (prop.type === 'orrery') kind = 'orrery';
+      else if (prop.type === 'singularity') kind = 'singularity';
+      else if (prop.type === 'wormhole') kind = 'wormhole';
+      else if (prop.type === 'pressure_can') kind = 'pressure_can';
+      else if (prop.type === 'convex_lens') kind = 'convex_lens';
+      else if (prop.type === 'mirror_post') kind = 'mirror_post';
+      else if (prop.type === 'charge_pylon') kind = 'charge_pylon';
       else if (prop.type === 'chime') kind = 'chime';
       else if (prop.type === 'sunflower_switch') kind = 'sunflower_switch';
       else if (prop.destructible) kind = 'destructible';
@@ -344,7 +564,7 @@
     let vortexPreviewPoint = null;
 
     const isLockable = (kind) =>
-      kind === 'guard' || kind === 'destructible' || kind === 'chime' || kind === 'sunflower_switch';
+      kind === 'guard' || kind === 'destructible' || kind === 'chime' || kind === 'sunflower_switch' || kind === 'singularity' || kind === 'pressure_can' || kind === 'convex_lens' || kind === 'mirror_post' || kind === 'charge_pylon';
 
     const buildGuardKnockbackPreview = (guard, hitDx, hitDy, flags = {}) => {
       if (!guard || guard.dead || guardPreviews.length >= 3) return;
@@ -576,6 +796,7 @@
       let isPrism = !!state.isPrism;
       let isSuper = !!state.isSuper;
       let ignorePrismId = state.ignorePrismId || null;
+      let ignoreWormholeId = state.ignoreWormholeId || null;
 
       let curPoints = [{ x, y }];
       const flushPath = () => {
@@ -626,6 +847,7 @@
           pad,
           includeGuards: true,
           ignorePrismId,
+          ignoreWormholeId,
         });
 
         x = hit.x;
@@ -679,6 +901,35 @@
             });
           }
           return;
+        }
+
+        if (hit.kind === 'wormhole' && state.depth < 2) {
+          const whIn = hit.target;
+          const whOut = findPairedWormhole(whIn);
+          if (whOut) {
+            bouncePoints.push({ x: whIn.x, y: whIn.y, isWormhole: true });
+            bouncePoints.push({ x: whOut.x, y: whOut.y, isWormhole: true });
+            const remainW = Math.max(210, maxRange - traveled + 120);
+            traceBranch(
+              whOut.x + ndx * (whOut.r + 4),
+              whOut.y + ndy * (whOut.r + 4),
+              ndx,
+              ndy,
+              remainW,
+              {
+                bounced: true,
+                isPrism,
+                isSuper: true,
+                slingshot: true,
+                curveAccum,
+                ignoreWormholeId: whOut.id,
+                depth: state.depth + 1,
+                maxSteps: 54,
+                isSecondary: true,
+              }
+            );
+            return;
+          }
         }
 
         if (hit.kind === 'prism' && state.depth < 2) {
@@ -794,6 +1045,7 @@
       vortex: '#5298e0',
     };
 
+    if (game.ripples.length >= 18) game.ripples.shift();
     game.ripples.push({
       x,
       y,
@@ -815,6 +1067,15 @@
     if (!crate || crate.broken || crate.type !== 'crate') return;
     const cx = crate.x + crate.w / 2;
     const cy = crate.y + crate.h / 2;
+
+    if (getActiveSingularityAt(cx, cy)) {
+      crate.dilatedStoredVx = (crate.dilatedStoredVx || 0) + impVx * 1.15;
+      crate.dilatedStoredVy = (crate.dilatedStoredVy || 0) + impVy * 1.15;
+      crate.wobble = 0.7;
+      CB.player.spawnDust(cx, cy - 8, '#c699ff', 6, 1.0);
+      CB.player.spawnPopup(cx, cy - 26, '⏳ 木箱蓄积动量!', '#884ee0');
+      return;
+    }
     const onSlide = !!getDewSlideAt(cx, cy);
 
     // 极化启动手感：滑道上水膜加持 ×1.38 瞬间高速飞出；粗糙苔石砖上仅 ×0.72 沉闷挪动
@@ -869,6 +1130,7 @@
       const vx = (edge.outwardX * outBias + dirX * 0.55 + (Math.random() - 0.5) * 0.9) * spd;
       const vy = (edge.outwardY * outBias + dirY * 0.55 + (Math.random() - 0.5) * 0.9) * spd;
       const colors = ['#c9945a', '#9c6838', '#68be7c', '#ffa6be', '#ffe278'];
+      if (game.particles.length >= 160) game.particles.shift();
       game.particles.push({
         x: px,
         y: py - 8,
@@ -936,9 +1198,53 @@
     const wallRestitution = hasWax ? 0.84 : 0.72;
 
     for (const crate of crates) {
+      if (crate.wormholeCd > 0) crate.wormholeCd = Math.max(0, crate.wormholeCd - dt);
+      if (crate.orbitReleaseCd > 0) crate.orbitReleaseCd = Math.max(0, crate.orbitReleaseCd - dt);
+
       let cx = crate.x + crate.w / 2;
       let cy = crate.y + crate.h / 2;
       const cr = Math.min(crate.w, crate.h) * 0.48;
+      const timeScale = getTimeScaleAt(cx, cy);
+      const effDt = dt * timeScale;
+
+      if (crate.orbitOrreryId) {
+        const orr = map.props.find((p) => p.id === crate.orbitOrreryId && p.type === 'orrery');
+        if (!orr || orr.polarity < 0) {
+          crate.orbitOrreryId = null;
+        } else {
+          const lorentzAcc = hasBuildCurio('lorentz_prism') ? 1.28 : 1.0;
+          crate.orbitTime = (crate.orbitTime || 0) + effDt;
+          crate.orbitSpeed = Math.min(980, (crate.orbitSpeed || 480) + 320 * lorentzAcc * effDt);
+          const angSpd = crate.orbitSpeed / Math.max(54, crate.orbitRadius || 76);
+          crate.orbitAngle += (crate.orbitDir || 1) * angSpd * effDt;
+          const nxPos = orr.x + Math.cos(crate.orbitAngle) * crate.orbitRadius;
+          const nyPos = orr.y + Math.sin(crate.orbitAngle) * crate.orbitRadius;
+          crate.x = nxPos - crate.w / 2;
+          crate.y = nyPos - crate.h / 2;
+          cx = nxPos;
+          cy = nyPos;
+          const tangA = crate.orbitAngle + (crate.orbitDir || 1) * (Math.PI / 2);
+          crate.vx = Math.cos(tangA) * crate.orbitSpeed;
+          crate.vy = Math.sin(tangA) * crate.orbitSpeed;
+          crate.relGamma = getRelativisticGamma(crate.orbitSpeed);
+          orr.orbitGlow = Math.max(orr.orbitGlow || 0, 0.9);
+          crate.trail = crate.trail || [];
+          crate.trail.push({ x: cx, y: cy, dew: false, rel: crate.relGamma > 1.3 });
+          if (crate.trail.length > 9) crate.trail.shift();
+
+          for (const g of game.guards) {
+            if (g.dead) continue;
+            if (Math.hypot(g.x - cx, g.y - cy) < g.radius + cr + 4) {
+              releaseOrbitingBodies(orr, crate);
+              break;
+            }
+          }
+          if (crate.orbitOrreryId && crate.orbitTime >= 1.55) {
+            releaseOrbitingBodies(orr, crate);
+          }
+          continue;
+        }
+      }
 
       // 1. 活跃引力漩涡牵引台球木箱
       if (game.vortices && game.vortices.length > 0) {
@@ -968,8 +1274,9 @@
       }
 
       crate.sliding = true;
+      crate.relGamma = getRelativisticGamma(spd0);
       const steps = spd0 > 340 ? 2 : 1;
-      const subDt = dt / steps;
+      const subDt = effDt / steps;
 
       for (let s = 0; s < steps; s++) {
         if (crate.broken) break;
@@ -1166,6 +1473,78 @@
             continue;
           }
 
+          if (other.type === 'wormhole') {
+            if ((crate.wormholeCd || 0) <= 0 && Math.hypot(cx - other.x, cy - other.y) < cr + other.r + 4) {
+              const exitWh = findPairedWormhole(other);
+              if (exitWh) {
+                const spdW = Math.hypot(crate.vx, crate.vy);
+                const boost = (hasBuildCurio('lorentz_prism') ? 1.42 : 1.18);
+                const newSpd = Math.min(1120, Math.max(460, spdW * boost));
+                const ddx = spdW > 1 ? crate.vx / spdW : 1;
+                const ddy = spdW > 1 ? crate.vy / spdW : 0;
+                crate.x = exitWh.x + ddx * (exitWh.r + cr + 4) - crate.w / 2;
+                crate.y = exitWh.y + ddy * (exitWh.r + cr + 4) - crate.h / 2;
+                cx = crate.x + crate.w / 2;
+                cy = crate.y + crate.h / 2;
+                crate.vx = ddx * newSpd;
+                crate.vy = ddy * newSpd;
+                crate.wormholeCd = 0.4;
+                other.pulse = 1;
+                exitWh.pulse = 1;
+                if (CB.audio && CB.audio.playWormholeWarp) CB.audio.playWormholeWarp();
+                CB.player.spawnDust(other.x, other.y - 8, other.color, 9, 1.3);
+                CB.player.spawnDust(exitWh.x, exitWh.y - 8, exitWh.color, 11, 1.45);
+                CB.player.spawnPopup(exitWh.x, exitWh.y - 28, '🌀 虫洞喷箱!', '#7c52e0');
+              }
+            }
+            continue;
+          }
+
+          if (other.type === 'orrery' && other.polarity > 0) {
+            const distO = Math.hypot(cx - other.x, cy - other.y);
+            const spdO = Math.hypot(crate.vx, crate.vy);
+            if ((crate.orbitReleaseCd || 0) <= 0 && spdO > 240 && distO < 118 && distO > other.r + cr + 6) {
+              const rdx = (cx - other.x) / distO;
+              const rdy = (cy - other.y) / distO;
+              const cross = rdx * crate.vy - rdy * crate.vx;
+              crate.orbitOrreryId = other.id;
+              crate.orbitAngle = Math.atan2(cy - other.y, cx - other.x);
+              crate.orbitRadius = Math.max(66, Math.min(98, distO));
+              crate.orbitDir = cross >= 0 ? 1 : -1;
+              crate.orbitSpeed = Math.max(460, spdO);
+              crate.orbitTime = 0;
+              other.pulse = 0.85;
+              if (CB.audio && CB.audio.playOrbitCapture) CB.audio.playOrbitCapture();
+              CB.player.spawnDust(cx, cy - 8, '#72e8ff', 9, 1.3);
+              CB.player.spawnPopup(other.x, other.y - 34, '🪐 轨道捕获加速!', '#1f98c4');
+              break;
+            }
+          }
+
+          if (other.type === 'singularity') {
+            if (Math.hypot(cx - other.x, cy - other.y) < cr + other.r + 4 && (other.activeTimer || 0) <= 0) {
+              activateSingularity(other, false);
+            }
+            bounceOffCircle(other.x, other.y, other.r, 0.8, false);
+            continue;
+          }
+
+          if (other.type === 'pressure_can') {
+            if (Math.hypot(cx - other.x, cy - other.y) < cr + other.r + 4 && CB.physicsLab && CB.physicsLab.heatPressureCan) {
+              CB.physicsLab.heatPressureCan(other, 60, true);
+            }
+            bounceOffCircle(other.x, other.y, other.r, 0.8, false);
+            continue;
+          }
+
+          if (other.type === 'charge_pylon') {
+            if (Math.hypot(cx - other.x, cy - other.y) < cr + other.r + 4 && CB.physicsLab && CB.physicsLab.triggerChargePylon) {
+              CB.physicsLab.triggerChargePylon(other, null);
+            }
+            bounceOffCircle(other.x, other.y, other.r, 0.85, false);
+            continue;
+          }
+
           if (other.type === 'chime') {
             if (bounceOffCircle(other.x, other.y, other.r, 0.8, false)) {
               ringChime(other);
@@ -1215,18 +1594,23 @@
 
               const waxMult = hasWax ? 1.45 : 1.0;
               const slideBonus = crate.onDewSlide ? 1.25 : 1.0;
-              const impactDmg = Math.round((22 + (curSpd / 320) * 32) * waxMult * slideBonus);
-              const launchSpd = Math.max(540, curSpd * 1.18) * (crate.onDewSlide ? 1.15 : 1.0);
-              CB.guards.damageGuard(g, impactDmg, nx, ny, true, '🎱 滑道台球!', true, {
+              const relGamma = getRelativisticGamma(curSpd);
+              const isRelativistic = relGamma >= 1.55;
+              const impactDmg = Math.round((22 + (curSpd / 320) * 32) * waxMult * slideBonus * (isRelativistic ? relGamma * 0.85 : 1.0));
+              const launchSpd = Math.max(540, curSpd * 1.18) * (crate.onDewSlide ? 1.15 : 1.0) * (isRelativistic ? Math.min(1.5, relGamma * 0.82) : 1.0);
+              CB.guards.damageGuard(g, impactDmg, nx, ny, true, isRelativistic ? `⚡ 相对论质增 ×${relGamma.toFixed(1)}!` : '🎱 滑道台球!', true, {
                 source: 'billiard',
                 launchSpeed: launchSpd,
+                relGamma,
               });
+              if (isRelativistic && CB.audio && CB.audio.playRelativisticBoom) CB.audio.playRelativisticBoom();
               if (!g.dead) {
                 g.aiState = 'stunned';
                 g.stateTimer = Math.max(g.stateTimer, 1.95);
               }
               if (game.run) game.run.billiardHits += 1;
               if (CB.extraction && CB.extraction.addStuntBounty) CB.extraction.addStuntBounty(12);
+              grantOrbRefund(1, g.x, g.y, '台球回珠');
               if (CB.audio && CB.audio.playCrateClack) CB.audio.playCrateClack(true);
               game.hitStop = Math.max(game.hitStop, 0.042);
               game.camera.shake = Math.max(game.camera.shake, 6.4);
@@ -1255,7 +1639,7 @@
           : 0;
         const baseDecel = crate.onDewSlide ? 95 : 2650;
         const gustDecelMult = activeGust && gAlign > 0.15 ? 0.65 : 1.0;
-        const decel = (hasWax ? baseDecel * 0.58 : baseDecel) * gustDecelMult * dt;
+        const decel = (hasWax ? baseDecel * 0.58 : baseDecel) * gustDecelMult * effDt;
         const nextSpd = Math.max(0, spdAfter - decel);
         crate.vx = (crate.vx / spdAfter) * nextSpd;
         crate.vy = (crate.vy / spdAfter) * nextSpd;
@@ -1278,7 +1662,7 @@
 
         if (nextSpd > 65) {
           crate.trail = crate.trail || [];
-          crate.trail.push({ x: cx, y: cy, dew: crate.onDewSlide });
+          crate.trail.push({ x: cx, y: cy, dew: crate.onDewSlide, rel: (crate.relGamma || 1) > 1.35 });
           if (crate.trail.length > 7) crate.trail.shift();
         } else if (crate.trail && crate.trail.length > 0) {
           crate.trail.shift();
@@ -1287,9 +1671,186 @@
     }
   }
 
-  // ==================== 单一核心工具发射（轻点静音 / 蓄力重弹） ====================
+  function grantOrbRefund(amount = 1, fromX = null, fromY = null, tag = '') {
+    const p = game.player;
+    if (!p || amount <= 0) return;
+
+    let becameOverclock = false;
+    let gainedNormal = 0;
+
+    for (let k = 0; k < amount; k++) {
+      if (p.orbs < p.maxOrbs) {
+        p.orbs += 1;
+        gainedNormal += 1;
+        if (p.orbs >= p.maxOrbs) p.orbRechargeTimer = 0;
+      } else {
+        if (!p.overclockOrb) becameOverclock = true;
+        p.overclockOrb = true;
+        p.overclockTimer = 8.0;
+      }
+
+      if (fromX !== null && fromY !== null) {
+        const ang = Math.random() * Math.PI * 2;
+        game.orbReturnFlies.push({
+          x: fromX,
+          y: fromY - 10,
+          sx: fromX,
+          sy: fromY - 10,
+          cx: (fromX + p.x) * 0.5 + Math.cos(ang) * 55,
+          cy: (fromY + p.y) * 0.5 - 38 + Math.sin(ang) * 40,
+          t: 0,
+          dur: 0.34 + k * 0.08,
+          isOverclock: becameOverclock || (gainedNormal === 0 && p.overclockOrb),
+        });
+      }
+    }
+
+    if (CB.audio && CB.audio.playOrbReturn) CB.audio.playOrbReturn(becameOverclock);
+    if (becameOverclock) {
+      CB.player.spawnPopup(p.x, p.y - 52, '✦ 超频金珠就绪!', '#d99012');
+    } else if (gainedNormal > 0 && tag) {
+      CB.player.spawnPopup(p.x, p.y - 44, `✦ ${tag} +${gainedNormal}珠`, '#1fa2c9');
+    }
+  }
+
+  function spawnDormantOrb(x, y) {
+    const map = game.map;
+    let ox = x;
+    let oy = y;
+    if (map && map.cliffEdges) {
+      for (const edge of map.cliffEdges) {
+        const cx = Math.max(edge.x, Math.min(ox, edge.x + edge.w));
+        const cy = Math.max(edge.y, Math.min(oy, edge.y + edge.h));
+        const d = Math.hypot(ox - cx, oy - cy);
+        if (d < 20) {
+          ox -= edge.outwardX * (24 - d);
+          oy -= edge.outwardY * (24 - d);
+        }
+      }
+    }
+    if (game.droppedOrbs.length >= 6) game.droppedOrbs.shift();
+    game.droppedOrbs.push({
+      x: ox,
+      y: oy,
+      z: 10,
+      vz: 85,
+      vx: (Math.random() - 0.5) * 45,
+      vy: (Math.random() - 0.5) * 45,
+      life: 6.5,
+      maxLife: 6.5,
+      pickupDelay: 0.22,
+      phase: Math.random() * 6.28,
+    });
+  }
+
+  function updateDormantOrbsAndFlies(dt) {
+    const p = game.player;
+    const map = game.map;
+    const orbPullR = (CB.extraction && CB.extraction.getMetaBonuses) ? CB.extraction.getMetaBonuses().orbPickupR : 84;
+
+    for (let i = game.orbReturnFlies.length - 1; i >= 0; i--) {
+      const f = game.orbReturnFlies[i];
+      f.t += dt / (f.dur || 0.35);
+      const u = Math.min(1, f.t);
+      const m = 1 - u;
+      f.x = m * m * f.sx + 2 * m * u * f.cx + u * u * p.x;
+      f.y = m * m * f.sy + 2 * m * u * f.cy + u * u * (p.y - 16);
+      if (f.t >= 1) {
+        CB.player.spawnDust(p.x, p.y - 16, f.isOverclock ? '#ffe266' : '#7ae8ff', 6, 1.0);
+        game.orbReturnFlies.splice(i, 1);
+      }
+    }
+
+    for (let i = game.droppedOrbs.length - 1; i >= 0; i--) {
+      const o = game.droppedOrbs[i];
+      o.life -= dt;
+      if (o.life <= 0) {
+        game.droppedOrbs.splice(i, 1);
+        continue;
+      }
+      if (o.pickupDelay > 0) o.pickupDelay -= dt;
+
+      o.x += o.vx * dt;
+      o.y += o.vy * dt;
+      o.vx *= Math.exp(-6 * dt);
+      o.vy *= Math.exp(-6 * dt);
+
+      if (o.z > 0 || o.vz > 0) {
+        o.z += o.vz * dt;
+        o.vz -= 460 * dt;
+        if (o.z <= 0) {
+          o.z = 0;
+          o.vz = Math.abs(o.vz) > 35 ? Math.abs(o.vz) * 0.4 : 0;
+        }
+      }
+
+      if (game.vortices && game.vortices.length > 0) {
+        for (const v of game.vortices) {
+          const dx = v.x - o.x;
+          const dy = v.y - o.y;
+          const d = Math.hypot(dx, dy);
+          const R = v.radius * Math.min(1, v.grow);
+          if (d < R * 1.1 && d > 12) {
+            o.x += (dx / d) * 260 * dt;
+            o.y += (dy / d) * 260 * dt;
+          }
+        }
+      }
+
+      if (map && map.cliffEdges) {
+        for (const edge of map.cliffEdges) {
+          const cx = Math.max(edge.x, Math.min(o.x, edge.x + edge.w));
+          const cy = Math.max(edge.y, Math.min(o.y, edge.y + edge.h));
+          const d = Math.hypot(o.x - cx, o.y - cy);
+          if (d < 16) {
+            o.x -= edge.outwardX * (18 - d);
+            o.y -= edge.outwardY * (18 - d);
+          }
+        }
+      }
+
+      if (o.pickupDelay <= 0) {
+        const dist = Math.hypot(p.x - o.x, p.y - o.y);
+        const effPull = p.dashTimer > 0 ? orbPullR * 1.35 : orbPullR;
+        if (dist < effPull) {
+          const pull = 280 + (1 - dist / effPull) * 320;
+          o.x += ((p.x - o.x) / (dist || 1)) * pull * dt;
+          o.y += ((p.y - o.y) / (dist || 1)) * pull * dt;
+        }
+        if (dist < p.radius + 13) {
+          if (p.orbs < p.maxOrbs) {
+            p.orbs += 1;
+            if (p.orbs >= p.maxOrbs) p.orbRechargeTimer = 0;
+            CB.player.spawnPopup(p.x, p.y - 42, '✦ 拾回星露珠!', '#1fa2c9');
+          } else {
+            p.overclockOrb = true;
+            p.overclockTimer = 8.0;
+            CB.player.spawnPopup(p.x, p.y - 46, '✦ 凝结超频金珠!', '#d99012');
+          }
+          if (CB.audio && CB.audio.playOrbPickup) CB.audio.playOrbPickup();
+          CB.player.spawnDust(o.x, o.y - 8, '#8ceeff', 7, 1.1);
+          game.droppedOrbs.splice(i, 1);
+        }
+      }
+    }
+  }
+
+  // ==================== 单一核心工具发射（轻点静音星针 / 蓄力星露重弹） ====================
   function fireLauncher(chargeRatio = 0, isHeavy = false) {
     const p = game.player;
+    let useOverclock = false;
+    if (isHeavy) {
+      if (p.overclockOrb) {
+        useOverclock = true;
+        p.overclockOrb = false;
+        p.overclockTimer = 0;
+      } else if (p.orbs > 0) {
+        p.orbs = Math.max(0, p.orbs - 1);
+      } else {
+        isHeavy = false;
+        chargeRatio = 0;
+      }
+    }
     const cfg = isHeavy ? LAUNCHER.heavy : LAUNCHER.light;
     const t = isHeavy ? Math.max(0, Math.min(1, chargeRatio)) : 0;
 
@@ -1310,13 +1871,15 @@
     const extraBounce = hasBuildCurio('monocle') ? 1 : 0;
 
     const spd = (isHeavy ? cfg.baseSpeed + cfg.maxBonusSpeed * t : cfg.speed) * speedMult;
-    const dmg = isHeavy ? Math.round(cfg.baseDamage + cfg.maxBonusDamage * t) : cfg.damage;
+    const ocDmgMult = useOverclock ? 1.25 : 1.0;
+    const ocImpMult = useOverclock ? 1.30 : 1.0;
+    const dmg = isHeavy ? Math.round((cfg.baseDamage + cfg.maxBonusDamage * t) * ocDmgMult) : cfg.damage;
     const bounces = isHeavy
-      ? cfg.maxBounces + (t >= 0.85 ? cfg.fullChargeBonusBounce : 0) + extraBounce
+      ? cfg.maxBounces + (t >= 0.85 || useOverclock ? cfg.fullChargeBonusBounce : 0) + extraBounce
       : cfg.maxBounces + extraBounce;
     const range = isHeavy ? cfg.baseRange + cfg.maxBonusRange * t : cfg.range;
     const fanCrateBoost = isHeavy && hasBuildCurio('gale_fan') ? 1.25 : 1.0;
-    const crateImpulse = (isHeavy ? cfg.baseCrateImpulse + cfg.maxBonusCrateImpulse * t : cfg.crateImpulse) * fanCrateBoost;
+    const crateImpulse = (isHeavy ? cfg.baseCrateImpulse + cfg.maxBonusCrateImpulse * t : cfg.crateImpulse) * fanCrateBoost * ocImpMult;
     const noiseR = isHeavy ? cfg.baseNoiseRadius + cfg.maxBonusNoiseRadius * t : cfg.noiseRadius;
 
     game.bullets.push({
@@ -1340,6 +1903,8 @@
       bouncedColor: cfg.bouncedColor,
       weaponId: isHeavy ? 'heavy' : 'needle',
       isHeavy,
+      isOverclock: useOverclock,
+      orbHandled: false,
       chargeRatio: t,
       fromPollen: !!p.inPollen,
       isPrismBeam: false,
@@ -1400,6 +1965,9 @@
         trailColor: '#f5a623',
         bouncedColor: '#ff7043',
         weaponId: b.weaponId,
+        isHeavy: !!b.isHeavy,
+        isOverclock: !!b.isOverclock,
+        orbHandled: true,
         fromPollen: b.fromPollen,
         isPrismBeam: true,
         prismSplits: b.prismSplits + 1,
@@ -1422,6 +1990,10 @@
     }
     if (b.prismSplits < 1) {
       CB.player.spawnPopup(prism.x, prism.y - 32, '✦ 棱镜双光束!', '#d48d14');
+    }
+    if (b.isHeavy && !b.orbHandled) {
+      b.orbHandled = true;
+      grantOrbRefund(1, prism.x, prism.y, '棱镜回珠');
     }
   }
 
@@ -1490,6 +2062,7 @@
       const r = pc.radius * Math.min(1, pc.grow);
       if (Math.hypot(x - pc.x, y - pc.y) <= r) return true;
     }
+    if (CB.physicsLab && CB.physicsLab.isInSteam && CB.physicsLab.isInSteam(x, y)) return true;
     return false;
   }
 
@@ -1713,6 +2286,20 @@
         } else if (prop.type === 'orrery') {
           if (prop.pulse > 0) prop.pulse = Math.max(0, prop.pulse - dt * 3.2);
           if (prop.slingshotGlow > 0) prop.slingshotGlow = Math.max(0, prop.slingshotGlow - dt * 2.5);
+          if (prop.orbitGlow > 0) prop.orbitGlow = Math.max(0, prop.orbitGlow - dt * 2.2);
+        } else if (prop.type === 'singularity') {
+          prop.spin = (prop.spin || 0) + dt * ((prop.activeTimer || 0) > 0 ? 4.2 : 1.4);
+          if (prop.pulse > 0) prop.pulse = Math.max(0, prop.pulse - dt * 3.0);
+          if ((prop.cooldown || 0) > 0) prop.cooldown = Math.max(0, prop.cooldown - dt);
+          if ((prop.activeTimer || 0) > 0) {
+            prop.activeTimer -= dt;
+            if (prop.activeTimer <= 0) {
+              collapseSingularity(prop);
+            }
+          }
+        } else if (prop.type === 'wormhole') {
+          prop.spin = (prop.spin || 0) + dt * (prop.portalSide === 'A' ? 3.0 : -3.0);
+          if (prop.pulse > 0) prop.pulse = Math.max(0, prop.pulse - dt * 3.2);
         } else if (prop.type === 'chime') {
           if (prop.ringAnim > 0) prop.ringAnim = Math.max(0, prop.ringAnim - dt * 1.4);
           if (prop.ringCooldown > 0) prop.ringCooldown = Math.max(0, prop.ringCooldown - dt);
@@ -1812,6 +2399,7 @@
           includeGuards: true,
           includeClosedGates: false,
           ignorePrismId: b.lastPrismId,
+          ignoreWormholeId: b.lastWormholeId || null,
         });
 
         b.x = hit.x;
@@ -1823,65 +2411,95 @@
         if (hit.hit) {
           if (hit.kind === 'guard') {
             const g = hit.target;
+            if (g.orbitOrreryId && map) {
+              const orr = map.props.find((p) => p.id === g.orbitOrreryId);
+              if (orr) {
+                releaseOrbitingBodies(orr, g);
+                if (b.isHeavy) b.orbHandled = true;
+                alive = false;
+                break;
+              }
+            }
             const wasUnaware = g.aiState === 'patrol' || g.aiState === 'investigate';
             const isSlingshotHit = b.slingshotCharged;
             const isPrismHit = b.isPrismBeam;
             const isRicochetCrit = b.bounceCount > 0 && !isPrismHit && !isSlingshotHit;
-            const isPollenAmbush = b.fromPollen && (b.weaponId === 'needle' || wasUnaware);
-            const isSneakCrit = b.weaponId === 'needle' && wasUnaware;
+            const isNeedle = b.weaponId === 'needle' && !b.isHeavy;
+            const isVulnerableGuard = g.aiState === 'stunned' || g.armorBrokenTimer > 0;
+            const isPollenAmbush = b.fromPollen && (isNeedle || wasUnaware);
+            const isSneakCrit = isNeedle && wasUnaware;
+            const isNeedleExecute = isNeedle && isVulnerableGuard && g.hp <= g.maxHp * 0.45;
             const isStunCrit = g.aiState === 'stunned';
 
             let dmg = b.damage;
             const monocleBoost = hasMonocle ? 1.25 : 1.0;
 
-            if (isSlingshotHit) {
-              const slingMult = (hasOrreryGrand ? 1.95 : hasLensCurio ? 1.75 : 1.45) * monocleBoost;
-              dmg *= slingMult;
-              if (game.run) {
-                game.run.slingshotCrits += 1;
-                game.run.ricochetCrits += 1;
+            if (isNeedleExecute) {
+              dmg = LAUNCHER.light.executionDamage;
+            } else if (isNeedle && !isPollenAmbush && !isSneakCrit && !isSlingshotHit && !isPrismHit) {
+              dmg = LAUNCHER.light.damage;
+            } else {
+              if (isSlingshotHit) {
+                const slingMult = (hasOrreryGrand ? 1.95 : hasLensCurio ? 1.75 : 1.45) * monocleBoost;
+                dmg *= slingMult;
+                if (game.run) {
+                  game.run.slingshotCrits += 1;
+                  game.run.ricochetCrits += 1;
+                }
+                if (CB.extraction && CB.extraction.addStuntBounty) CB.extraction.addStuntBounty(15);
               }
-              if (CB.extraction && CB.extraction.addStuntBounty) CB.extraction.addStuntBounty(15);
+              if (isPrismHit) {
+                dmg *= 1.35 * monocleBoost;
+                if (game.run) game.run.ricochetCrits += 1;
+                if (!isSlingshotHit && CB.extraction && CB.extraction.addStuntBounty) CB.extraction.addStuntBounty(8);
+              } else if (isRicochetCrit) {
+                dmg *= Math.pow(b.ricochetMult, Math.min(2, b.bounceCount)) * monocleBoost;
+                if (game.run) game.run.ricochetCrits += 1;
+                if (CB.extraction && CB.extraction.addStuntBounty) CB.extraction.addStuntBounty(8);
+              }
+              if (isPollenAmbush) dmg = Math.max(24, dmg * 1.8);
+              else if (isSneakCrit) dmg = Math.max(22, dmg * b.sneakMult);
+              if (isStunCrit) dmg *= 1.35;
+              dmg = Math.round(dmg);
             }
-            if (isPrismHit) {
-              dmg *= 1.35 * monocleBoost;
-              if (game.run) game.run.ricochetCrits += 1;
-              if (!isSlingshotHit && CB.extraction && CB.extraction.addStuntBounty) CB.extraction.addStuntBounty(8);
-            } else if (isRicochetCrit) {
-              dmg *= Math.pow(b.ricochetMult, Math.min(2, b.bounceCount)) * monocleBoost;
-              if (game.run) game.run.ricochetCrits += 1;
-              if (CB.extraction && CB.extraction.addStuntBounty) CB.extraction.addStuntBounty(8);
-            }
-            if (isPollenAmbush) dmg *= 1.6;
-            else if (isSneakCrit) dmg *= b.sneakMult;
-            if (isStunCrit) dmg *= 1.35;
-            dmg = Math.round(dmg);
 
             const critTag = isSlingshotHit
               ? '🪐 星轨弹弓!'
               : isPrismHit
               ? '✦ 棱镜光束!'
+              : isNeedleExecute
+              ? '⚡ 点穴处决!'
               : isPollenAmbush
               ? '🌼 花粉偷袭!'
-              : isRicochetCrit
+              : isRicochetCrit && !isNeedle
               ? (b.bounceCount >= 2 ? '连弹暴击!' : '折射暴击!')
               : isSneakCrit
-              ? '潜行暴击!'
-              : isStunCrit
+              ? '🌼 潜行伏击!'
+              : isStunCrit && !isNeedle
               ? '破防重击!'
               : null;
 
             if (isSlingshotHit && CB.audio) CB.audio.playSlingshotCrit();
-            CB.guards.damageGuard(g, dmg, dx, dy, !!critTag, critTag, isSlingshotHit, {
+            const dmgResult = CB.guards.damageGuard(g, dmg, dx, dy, !!critTag, critTag, isSlingshotHit, {
               source: 'bullet',
               isHeavy: !!b.isHeavy,
+              isOverclock: !!b.isOverclock,
+              isNeedle,
               chargeRatio: b.chargeRatio || 0,
               slingshot: isSlingshotHit,
               prism: isPrismHit,
               bounced: b.bounceCount > 0,
               stealthAmbush: isPollenAmbush || isSneakCrit,
               fromPollen: b.fromPollen,
-            });
+            }) || {};
+
+            const scoredPhysicsTrick = isSlingshotHit || isPrismHit || isNeedleExecute || isPollenAmbush || !!dmgResult.armorJustBroken;
+            if (scoredPhysicsTrick && !b.orbHandled) {
+              b.orbHandled = true;
+              grantOrbRefund(1, hit.x, hit.y, isSlingshotHit ? '弹弓回珠' : isNeedleExecute ? '处决回珠' : '破防回珠');
+            } else if (b.isHeavy && !b.orbHandled && !dmgResult.blocked && (b.bounceCount > 0 || isVulnerableGuard)) {
+              b.orbHandled = true;
+            }
             CB.player.spawnDust(
               hit.x,
               hit.y - 10,
@@ -1896,6 +2514,85 @@
             }
             if (hasStarJar && isSlingshotHit && CB.guards && CB.guards.stunNearbyGuards) {
               CB.guards.stunNearbyGuards(hit.x, hit.y, 96, 1.15);
+            }
+            alive = false;
+            break;
+          }
+
+          if (hit.kind === 'wormhole') {
+            const whIn = hit.target;
+            const whOut = findPairedWormhole(whIn);
+            if (whOut && (b.wormholeCount || 0) < 2) {
+              whIn.pulse = 1;
+              whOut.pulse = 1;
+              b.wormholeCount = (b.wormholeCount || 0) + 1;
+              b.lastWormholeId = whOut.id;
+              const boost = hasBuildCurio('lorentz_prism') ? 1.32 : 1.18;
+              b.speed = Math.min(1280, b.speed * boost);
+              b.baseSpeed = b.speed;
+              b.vx = dx * b.speed;
+              b.vy = dy * b.speed;
+              b.x = whOut.x + dx * (whOut.r + 4);
+              b.y = whOut.y + dy * (whOut.r + 4);
+              b.maxRange += 240;
+              b.slingshotCharged = true;
+              b.trail = [{ x: whOut.x, y: whOut.y }, { x: b.x, y: b.y }];
+              if (CB.audio && CB.audio.playWormholeWarp) CB.audio.playWormholeWarp();
+              CB.player.spawnDust(whIn.x, whIn.y - 10, whIn.color, 8, 1.25);
+              CB.player.spawnDust(whOut.x, whOut.y - 10, whOut.color, 10, 1.4);
+              if (b.wormholeCount === 1) {
+                CB.player.spawnPopup(whOut.x, whOut.y - 28, '🌀 虫洞加速穿射!', '#7c52e0');
+                if (CB.extraction && CB.extraction.addStuntBounty) CB.extraction.addStuntBounty(10);
+                if (b.isHeavy && !b.orbHandled) {
+                  b.orbHandled = true;
+                  grantOrbRefund(1, whOut.x, whOut.y, '虫洞回珠');
+                }
+              }
+              continue;
+            }
+          }
+
+          if (hit.kind === 'singularity') {
+            activateSingularity(hit.target, !!b.isHeavy);
+            if (b.isHeavy && !b.orbHandled) {
+              b.orbHandled = true;
+              grantOrbRefund(1, hit.target.x, hit.target.y, '奇点回珠');
+            }
+            alive = false;
+            break;
+          }
+
+          if (hit.kind === 'pressure_can') {
+            if (CB.physicsLab && CB.physicsLab.heatPressureCan) {
+              CB.physicsLab.heatPressureCan(hit.target, b.isHeavy ? 56 : 36, !!b.isHeavy);
+            }
+            alive = false;
+            break;
+          }
+
+          if (hit.kind === 'convex_lens') {
+            if (CB.physicsLab && CB.physicsLab.triggerConvexLens) {
+              CB.physicsLab.triggerConvexLens(hit.target, b);
+            }
+            if (b.isHeavy && !b.orbHandled) {
+              b.orbHandled = true;
+              grantOrbRefund(1, hit.target.x, hit.target.y, '透镜回珠');
+            }
+            alive = false;
+            break;
+          }
+
+          if (hit.kind === 'mirror_post') {
+            if (CB.physicsLab && CB.physicsLab.triggerMirrorPost) {
+              CB.physicsLab.triggerMirrorPost(hit.target, b);
+            }
+            alive = false;
+            break;
+          }
+
+          if (hit.kind === 'charge_pylon') {
+            if (CB.physicsLab && CB.physicsLab.triggerChargePylon) {
+              CB.physicsLab.triggerChargePylon(hit.target, b);
             }
             alive = false;
             break;
@@ -1973,6 +2670,10 @@
             if (targetProp.type === 'crate' && !targetProp.broken) {
               const impMag = (b.crateImpulse || 380) * (b.slingshotCharged ? 1.3 : 1.0);
               pushCrate(targetProp, dx * impMag, dy * impMag, true);
+              if (b.isHeavy && !b.orbHandled) {
+                b.orbHandled = true;
+                spawnDormantOrb(hit.x - dx * 18, hit.y - dy * 18);
+              }
             }
 
             damageProp(targetProp, dmg, hit.x, hit.y);
@@ -1992,6 +2693,12 @@
           if (hit.kind === 'orrery' && hit.target) {
             hit.target.hitFlash = 1;
             hit.target.pulse = 1;
+            const released = releaseOrbitingBodies(hit.target);
+            if (released > 0) {
+              if (b.isHeavy) b.orbHandled = true;
+              alive = false;
+              break;
+            }
           }
           const isSuper = hit.target && (hit.target.type === 'eraser' || hit.target.type === 'bumper');
           if (isSuper && hit.target) hit.target.hitFlash = 1;
@@ -2063,6 +2770,9 @@
       if (b.trail.length > (b.slingshotCharged ? 11 : 7)) b.trail.shift();
 
       if (!alive) {
+        if (b.isHeavy && !b.orbHandled) {
+          spawnDormantOrb(b.x, b.y);
+        }
         game.bullets.splice(i, 1);
       }
     }
@@ -2083,7 +2793,9 @@
         eb.vy = (eb.vy / s) * eb.speed;
       }
 
-      const step = eb.speed * dt;
+      const ebTimeScale = getTimeScaleAt(eb.x, eb.y);
+      eb.dilated = ebTimeScale < 0.5;
+      const step = eb.speed * dt * ebTimeScale;
       const dx = eb.vx / (eb.speed || 1);
       const dy = eb.vy / (eb.speed || 1);
       const wallHit = raycastScene(eb.x, eb.y, dx, dy, step, {
@@ -2126,8 +2838,9 @@
       }
     }
 
-    // 4. 更新活跃引力漩涡
+    // 4. 更新活跃引力漩涡与遗落/回飞星露弹珠
     updateVortices(dt);
+    updateDormantOrbsAndFlies(dt);
 
     // 5. 声波涟漪扩散
     for (let i = game.ripples.length - 1; i >= 0; i--) {
@@ -2243,6 +2956,16 @@
     emitSoundRipple,
     spawnGravityVortex,
     fireLauncher,
+    getRelativisticGamma,
+    findPairedWormhole,
+    getActiveSingularityAt,
+    getTimeScaleAt,
+    activateSingularity,
+    collapseSingularity,
+    releaseOrbitingBodies,
+    hasOrbitingBody,
+    grantOrbRefund,
+    spawnDormantOrb,
     damageProp,
     breakRailing,
     damageRailing,

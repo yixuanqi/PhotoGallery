@@ -804,6 +804,131 @@
     }
   }
 
+
+  function playOrbReturn(isOverclock = false) {
+    if (isOverclock) {
+      [880, 1108.73, 1318.51, 1760].forEach((f, idx) => {
+        playTone('sine', f, f * 1.02, 0.2, 0.11, idx * 0.032);
+      });
+    } else {
+      playTone('sine', jitter(820, 0.04), 1480, 0.12, 0.13, 0);
+      playTone('triangle', 1318.5, 1760, 0.11, 0.075, 0.035);
+    }
+  }
+
+  function playOrbPickup() {
+    playTone('sine', 740, 1174.66, 0.11, 0.12, 0);
+    playTone('sine', 1174.66, 1567.98, 0.13, 0.09, 0.04);
+  }
+
+  function playOrbEmpty() {
+    playTone('triangle', 260, 165, 0.065, 0.11, 0);
+    playNoise(0.035, 1400, 'bandpass', 0.065, 0, 2.0);
+  }
+
+  function playChartSelect() {
+    playNoise(0.22, 1250, 'bandpass', 0.13, 0, 1.3);
+    playTone('triangle', 587.33, 880, 0.15, 0.12, 0);
+    playTone('sine', 880, 1174.66, 0.22, 0.11, 0.06);
+  }
+
+
+  function playOrbitCapture() {
+    playTone('sine', 340, 820, 0.18, 0.14, 0);
+    playTone('triangle', 680, 1240, 0.16, 0.09, 0.03);
+  }
+
+  function playOrbitLaunch() {
+    playTone('sawtooth', 260, 72, 0.16, 0.22, 0);
+    playNoise(0.18, 2200, 'bandpass', 0.2, 0, 1.5);
+    [880, 1318.5, 1760].forEach((f, idx) => {
+      playTone('sine', f, f * 1.12, 0.2, 0.11, idx * 0.025);
+    });
+  }
+
+  function playWormholeWarp() {
+    playTone('sine', 1240, 260, 0.11, 0.14, 0);
+    playTone('sine', 320, 1520, 0.15, 0.15, 0.06);
+    playTone('triangle', 987.77, 1479.98, 0.14, 0.08, 0.09);
+  }
+
+  function playSingularityDilate() {
+    playTone('sine', 240, 52, 0.42, 0.26, 0);
+    playTone('triangle', 480, 140, 0.34, 0.13, 0.04);
+    playNoise(0.28, 720, 'lowpass', 0.14, 0, 1.0);
+    playTone('sine', 880, 860, 0.18, 0.07, 0.18);
+  }
+
+  function playSingularityCollapse() {
+    playTone('sine', 95, 420, 0.12, 0.16, 0);
+    playTone('square', 220, 44, 0.22, 0.28, 0.09);
+    playNoise(0.24, 1500, 'bandpass', 0.24, 0.09, 1.1);
+    [523.25, 783.99, 1046.5, 1567.98].forEach((f, idx) => {
+      playTone('sine', f, f * 1.02, 0.28, 0.11, 0.11 + idx * 0.028);
+    });
+  }
+
+  function playRelativisticBoom() {
+    playTone('sawtooth', 310, 46, 0.18, 0.28, 0);
+    playNoise(0.16, 2400, 'bandpass', 0.22, 0, 1.4);
+    playTone('sine', 1174.66, 2349.32, 0.2, 0.12, 0.02);
+  }
+
+
+  // ==================== v9.2 热 · 光 · 电跨学科连锁音效 ====================
+  function playPhaseShift(phase = 'water') {
+    if (phase === 'steam') {
+      playNoise(0.32, 2400, 'highpass', 0.16, 0, 1.0);
+      playTone('sine', 420, 980, 0.22, 0.08, 0);
+    } else {
+      playNoise(0.16, 1100, 'bandpass', 0.12, 0, 1.5);
+      playTone('sine', 540, 380, 0.14, 0.09, 0);
+    }
+  }
+
+  function playThermalHiss(intensity = 0.5) {
+    playNoise(0.1, 1800 + intensity * 1400, 'bandpass', 0.09 + intensity * 0.07, 0, 2.0);
+    playTone('triangle', 320 + intensity * 260, 420 + intensity * 300, 0.09, 0.07, 0);
+  }
+
+  function playThermalBlast() {
+    playTone('sawtooth', 190, 38, 0.28, 0.3, 0);
+    playNoise(0.32, 950, 'lowpass', 0.28, 0, 0.9);
+    playNoise(0.24, 2400, 'highpass', 0.16, 0.04, 1.1);
+  }
+
+  function playFocusBeam() {
+    playTone('sine', 660, 1320, 0.24, 0.12, 0);
+    playTone('triangle', 990, 1980, 0.18, 0.08, 0.05);
+  }
+
+  function playLaserWeb() {
+    [784, 1046.5, 1568].forEach((f, idx) => {
+      playTone('sine', f, f * 1.03, 0.2, 0.1, idx * 0.03);
+    });
+  }
+
+  function playLaserSlice() {
+    playNoise(0.11, 3200, 'bandpass', 0.18, 0, 2.2);
+    playTone('sawtooth', 1480, 520, 0.12, 0.13, 0);
+  }
+
+  function playElectroChain() {
+    playNoise(0.18, 2800, 'bandpass', 0.22, 0, 1.8);
+    playTone('square', 920, 1840, 0.07, 0.1, 0);
+    playTone('square', 1380, 620, 0.09, 0.09, 0.05);
+    playTone('sine', 1760, 2640, 0.12, 0.09, 0.09);
+  }
+
+  function playCoulombPop(isRepel = true) {
+    if (isRepel) {
+      playTone('sawtooth', 260, 880, 0.14, 0.18, 0);
+      playNoise(0.12, 2200, 'bandpass', 0.16, 0, 1.6);
+    } else {
+      playTone('sine', 760, 280, 0.14, 0.13, 0);
+    }
+  }
+
   CB.audio = {
     unlock,
     suspendAudio,
@@ -860,5 +985,23 @@
     setAmbienceGust,
     playGustStart,
     playIntroCue,
+    playOrbReturn,
+    playOrbPickup,
+    playOrbEmpty,
+    playChartSelect,
+    playOrbitCapture,
+    playOrbitLaunch,
+    playWormholeWarp,
+    playSingularityDilate,
+    playSingularityCollapse,
+    playRelativisticBoom,
+    playPhaseShift,
+    playThermalHiss,
+    playThermalBlast,
+    playFocusBeam,
+    playLaserWeb,
+    playLaserSlice,
+    playElectroChain,
+    playCoulombPop,
   };
 })();

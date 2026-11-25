@@ -43,13 +43,17 @@
     const H = canvas.height;
     mctx.clearRect(0, 0, W, H);
 
-    let minGx = Infinity, minGy = Infinity, maxGx = -Infinity, maxGy = -Infinity;
-    for (const c of map.cells.values()) {
-      if (c.gx < minGx) minGx = c.gx;
-      if (c.gy < minGy) minGy = c.gy;
-      if (c.gx + 1 > maxGx) maxGx = c.gx + 1;
-      if (c.gy + 1 > maxGy) maxGy = c.gy + 1;
+    if (!map._miniBounds) {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const c of map.cells.values()) {
+        if (c.gx < minX) minX = c.gx;
+        if (c.gy < minY) minY = c.gy;
+        if (c.gx + 1 > maxX) maxX = c.gx + 1;
+        if (c.gy + 1 > maxY) maxY = c.gy + 1;
+      }
+      map._miniBounds = { minGx: minX, minGy: minY, maxGx: maxX, maxGy: maxY };
     }
+    const { minGx, minGy, maxGx, maxGy } = map._miniBounds;
 
     const spanX = Math.max(1, maxGx - minGx);
     const spanY = Math.max(1, maxGy - minGy);
@@ -228,14 +232,23 @@
     mctx.stroke();
   }
 
+  let lastOrbRenderKey = '';
+
   function updateStatsBanner(el) {
     const m = game.map;
     if (!m || !el) return;
     const st = m.stage || (CB.stages ? CB.stages.getStage(game.currentStageId) : null);
-    const multTxt = st && st.haulMult > 1 ? ` · ×${st.haulMult}估值` : '';
+    const leg = (st && st.leg) || (game.voyage && game.voyage.leg) || 1;
+    const alt = (st && st.altitude) || (game.voyage && game.voyage.altitude) || 1200;
+    const multTxt = st && st.haulMult > 1 ? ` · ×${st.haulMult}` : '';
     el.textContent = st
-      ? `第 ${st.id} 关 · ${st.name}${multTxt}`
+      ? `第 ${leg} 航段 · ${alt}m${multTxt}`
       : `云岛 #${m.seed}`;
+
+    const dTitle = document.getElementById('drawerSectorTitle');
+    const dOmen = document.getElementById('drawerSectorOmen');
+    if (dTitle && st) dTitle.textContent = `第 ${leg} 航段 · 海拔 ${alt}m`;
+    if (dOmen && st) dOmen.textContent = `${st.omenIcons || '☁'} ${st.name} · ${st.dangerLabel || '未知空域'}`;
   }
 
   function updateCombatHud(els) {
@@ -245,6 +258,35 @@
 
     if (els.hpFill) els.hpFill.style.width = `${Math.max(0, Math.min(100, (p.hp / p.maxHp) * 100))}%`;
     if (els.hpText) els.hpText.textContent = `${Math.ceil(p.hp)}`;
+
+    if (els.orbTray) {
+      const maxOrbs = p.maxOrbs || 3;
+      const curOrbs = Math.max(0, p.orbs || 0);
+      const rechPct = curOrbs < maxOrbs
+        ? Math.round(Math.max(0, Math.min(1, (p.orbRechargeTimer || 0) / (p.orbRechargeDuration || 4.2))) * 20) * 5
+        : 0;
+      const emptyFlag = (p.orbEmptyFlash || 0) > 0.15 ? 1 : 0;
+      const ocFlag = p.overclockOrb ? 1 : 0;
+      const orbKey = `${curOrbs}|${maxOrbs}|${rechPct}|${emptyFlag}|${ocFlag}`;
+      if (orbKey !== lastOrbRenderKey) {
+        lastOrbRenderKey = orbKey;
+        let htmlOrbs = '';
+        for (let i = 0; i < maxOrbs; i++) {
+          if (i < curOrbs) {
+            htmlOrbs += '<span class="orb-pip filled"></span>';
+          } else if (i === curOrbs) {
+            htmlOrbs += `<span class="orb-pip recharging ${emptyFlag ? 'empty-flash' : ''}"><span class="orb-fill-inner" style="height:${rechPct}%"></span></span>`;
+          } else {
+            htmlOrbs += `<span class="orb-pip ${emptyFlag ? 'empty-flash' : ''}"></span>`;
+          }
+        }
+        if (ocFlag) {
+          htmlOrbs += '<span class="orb-overclock-chip" title="超频金珠：下次重弹蓄力减半 + 击退 +30%">✦</span>';
+        }
+        els.orbTray.innerHTML = htmlOrbs;
+      }
+    }
+
     if (els.coinEl) els.coinEl.textContent = `${p.coins}`;
     if (els.stuntEl && CB.extraction) {
       const sv = CB.extraction.getStuntBounty();
@@ -295,8 +337,8 @@
         } else {
           const st = game.map && game.map.stage ? game.map.stage : null;
           els.objEl.textContent = st
-            ? `第 ${st.id} 关 · ${st.tagline} · 搜寻 ☀ 金库`
-            : '☁ 探索空中花房 · 搜寻 ☀ 太阳花穹金库';
+            ? `第 ${st.leg || 1} 航段 · ${st.altitude || 1200}m · ${st.omenIcons || '☁'} ${st.name} · 搜寻 ☀ 金库`
+            : '☁ 探索未知空域 · 搜寻 ☀ 太阳花穹金库';
         }
       }
     }
@@ -323,52 +365,61 @@
     const modal = document.getElementById('runModal');
     if (!modal) return;
     const isWin = data.outcome === 'extracted';
-    const nextStage = data.nextStage || null;
+    const leg = data.leg || 1;
+    const alt = data.altitude || 1200;
 
     const stampEl = document.getElementById('summaryStamp');
     const titleEl = document.getElementById('summaryTitle');
     const subEl = document.getElementById('summarySub');
+    const haulLabelEl = document.getElementById('summaryHaulLabel');
+    const bankLabelEl = document.getElementById('summaryBankLabel');
     const haulEl = document.getElementById('summaryHaul');
     const bankEl = document.getElementById('summaryBank');
     const curiosEl = document.getElementById('summaryCurios');
     const statsEl = document.getElementById('summaryStats');
     const btnNext = document.getElementById('btnNextRun');
+    const btnBankReturn = document.getElementById('btnBankReturn');
     const btnRetry = document.getElementById('btnRetrySeed');
 
     modal.classList.remove('hidden', 'modal-win', 'modal-fail');
     modal.classList.add(isWin ? 'modal-win' : 'modal-fail');
 
     stampEl.textContent = isWin ? data.grade : 'FAIL';
-    const stuntNote = data.stuntBounty > 0 ? `（含 ✨ 物理特技赏金 +${data.stuntBounty}）` : '';
-    if (isWin && !nextStage) {
-      titleEl.textContent = '🏆 终极花穹凯旋 · 全四关制霸！';
-      subEl.textContent = `热气球冲破云海，第 ${data.stageId} 关（×${data.haulMult} 倍估值）战利品已全部入库${stuntNote}`;
-    } else if (isWin) {
-      titleEl.textContent = `第 ${data.stageId} 关「${data.stageName}」撤离成功！`;
-      subEl.textContent = `战利品已安全入库${stuntNote}，可携当前奇物构筑飞往第 ${nextStage.id} 关「${nextStage.name}」`;
+    const stuntNote = data.stuntBounty > 0 ? `（含 ✨ 特技赏金 +${data.stuntBounty}）` : '';
+
+    if (isWin) {
+      titleEl.textContent = `第 ${leg} 航段（${alt}m）撤离成功！`;
+      subEl.textContent = `${data.omenIcons || '☁'} ${data.stageName} · 战利品已暂存飞艇货舱${stuntNote}，可展开航图深入深空或立即返航入库`;
     } else {
-      titleEl.textContent = `第 ${data.stageId} 关「${data.stageName}」撤离失败`;
-      subEl.textContent = `本关携带的估值 ${data.totalHaul} 战利品${stuntNote}散落在浮岛中，母港金库资产安全保留`;
+      titleEl.textContent = `第 ${leg} 航段（${alt}m）发条停摆`;
+      subEl.textContent = data.salvagedHaul > 0
+        ? `紧急打捞回 ${data.salvagedHaul} 💎 入库，母港原有金库资产安全保留`
+        : `本航段未入库战利品散落在云海中，母港金库资产安全保留`;
     }
 
+    if (haulLabelEl) haulLabelEl.textContent = isWin ? '本航段估值' : '散落战利品估值';
+    if (bankLabelEl) bankLabelEl.textContent = isWin ? '本趟货舱暂存（未入库）' : '飞艇母港金库资产';
+    haulEl.textContent = isWin ? `+${data.totalHaul}` : `-${data.lostPending || data.totalHaul}`;
+    bankEl.textContent = isWin ? `${data.pendingHaul || data.totalHaul}` : `${game.meta.bankValue}`;
+
     if (btnNext) {
-      if (isWin && nextStage) {
-        btnNext.textContent = `前往第 ${nextStage.id} 关 · ${nextStage.name}（携带奇物）(Enter)`;
-      } else if (isWin) {
-        btnNext.textContent = '开启新一轮四关远征 (Enter)';
-      } else {
-        btnNext.textContent = `重新挑战第 ${data.stageId} 关 (Enter / R)`;
+      btnNext.textContent = isWin
+        ? '🧭 展开云海航图 · 深入未知空域 (Enter)'
+        : '🎈 开启新一趟云海航程 (Enter / R)';
+    }
+    if (btnBankReturn) {
+      btnBankReturn.classList.toggle('hidden', !isWin);
+      if (isWin) {
+        btnBankReturn.textContent = `⚓ 返航入库 (+${data.pendingHaul || data.totalHaul} 🏛)`;
       }
     }
     if (btnRetry) {
-      btnRetry.textContent = isWin ? `重玩第 ${data.stageId} 关 (R)` : '同种子复仇本关 (T)';
+      btnRetry.classList.toggle('hidden', isWin);
+      btnRetry.textContent = '⚓ 飞艇母港整备 (H)';
     }
 
-    haulEl.textContent = isWin ? `+${data.totalHaul}` : `-${data.totalHaul}`;
-    bankEl.textContent = `${game.meta.bankValue}`;
-
     if (data.curios.length === 0) {
-      curiosEl.innerHTML = '<span class="summary-empty">本关未拾取奇物（启封秘境花匣或太阳花神匣即可获取物理构筑词条）</span>';
+      curiosEl.innerHTML = '<span class="summary-empty">本航段未拾取奇物（启封秘境花匣或太阳花神匣即可获取物理构筑词条）</span>';
     } else {
       curiosEl.innerHTML = data.curios
         .map(
@@ -383,8 +434,6 @@
 
     const mm = Math.floor(data.elapsed / 60);
     const ss = String(Math.floor(data.elapsed % 60)).padStart(2, '0');
-    const totalKinds = CB.extraction ? CB.extraction.ALL_CURIOS.length : 11;
-    const clearedCnt = (game.meta.clearedStages || []).length;
     statsEl.innerHTML = `
       <div><span>✨ 特技赏金</span><strong>+${data.stuntBounty || 0}</strong></div>
       <div><span>☁ 崖边击落</span><strong>${data.cliffDrops || 0}</strong></div>
@@ -392,9 +441,9 @@
       <div><span>📦 木箱台球</span><strong>${data.billiardHits || 0}</strong></div>
       <div><span>🪐 星轨/折射</span><strong>${data.slingshotCrits || 0}/${data.ricochetCrits}</strong></div>
       <div><span>击倒守卫</span><strong>${data.guardsDefeated}</strong></div>
-      <div><span>本关耗时</span><strong>${mm}:${ss}</strong></div>
-      <div><span>关卡进度</span><strong>${clearedCnt}/4</strong></div>
-      <div><span>奇物图鉴</span><strong>${game.meta.unlockedCurios.length}/${totalKinds}</strong></div>
+      <div><span>航段耗时</span><strong>${mm}:${ss}</strong></div>
+      <div><span>空域深度</span><strong>${alt}m</strong></div>
+      <div><span>奇物收录</span><strong>${game.meta.unlockedCurios.length} 件</strong></div>
     `;
   }
 
@@ -543,13 +592,13 @@
     if (bankEl) bankEl.textContent = `${game.meta.bankValue}`;
 
     const curioCntEl = document.getElementById('codexCurioCount');
-    if (curioCntEl) curioCntEl.textContent = `${game.meta.unlockedCurios.length}/${ALL_CURIOS.length}`;
+    if (curioCntEl) curioCntEl.textContent = `已收录 ${game.meta.unlockedCurios.length}`;
 
     const guardSpecs = (CB.guards && CB.guards.GUARD_SPECS) || {};
     const guardKeys = Object.keys(guardSpecs);
     const seenGuards = game.meta.seenGuards || [];
     const guardCntEl = document.getElementById('codexGuardCount');
-    if (guardCntEl) guardCntEl.textContent = `${seenGuards.length}/${guardKeys.length}`;
+    if (guardCntEl) guardCntEl.textContent = `已遭遇 ${seenGuards.length}`;
 
     // Tab 高亮与面板显隐
     document.querySelectorAll('[data-hub-tab]').forEach((btn) => {
@@ -573,13 +622,13 @@
       if (armedCurio) {
         statusEl.textContent = `📦 补给舱已装填：${armedCurio.icon} ${armedCurio.name}（下次全新启航自动携带）`;
       } else {
-        statusEl.textContent = `🏛 母港累计撤离 ${game.meta.extractions} 次 · 历史最高单关估值 ${game.meta.bestHaul}`;
+        statusEl.textContent = `🏛 累计撤离 ${game.meta.extractions} 次 · 最深纪录 ${game.meta.deepestLeg ? '第 ' + game.meta.deepestLeg + ' 航段 (' + game.meta.maxAltitude + 'm)' : '尚未启航'}`;
       }
     }
     if (btnLaunch) {
       btnLaunch.textContent = armedCurio
-        ? `🎈 携 ${armedCurio.icon} 启航第 ${game.currentStageId} 关`
-        : `🎈 启航第 ${game.currentStageId} 关`;
+        ? `🎈 携 ${armedCurio.icon} 启航云海`
+        : '🎈 启航云海';
     }
 
     if (activeHubTab === 'workshop') {
@@ -705,18 +754,22 @@
       const grid = document.getElementById('codexCurioGrid');
       const detail = document.getElementById('codexCurioDetail');
       if (grid) {
-        grid.innerHTML = ALL_CURIOS.map((c) => {
+        const unlockedCuriosList = ALL_CURIOS.filter((c) => game.meta.unlockedCurios.includes(c.id));
+        const lockedCuriosList = ALL_CURIOS.filter((c) => !game.meta.unlockedCurios.includes(c.id));
+        const visibleCurios = [...unlockedCuriosList, ...lockedCuriosList.slice(0, 3)];
+
+        grid.innerHTML = visibleCurios.map((c) => {
           const unlocked = game.meta.unlockedCurios.includes(c.id);
           const isSel = selectedCodexCurioId === c.id;
-          const rarCls = `rarity-${c.rarity}`;
+          const rarCls = unlocked ? `rarity-${c.rarity}` : '';
           return `
             <div class="codex-curio-card ${rarCls} ${unlocked ? '' : 'locked'} ${isSel ? 'selected' : ''}" data-codex-curio="${c.id}">
               <div class="codex-curio-icon">${unlocked ? c.icon : '❓'}</div>
-              <div class="codex-curio-name">${unlocked ? c.name : '未收录奇物'}</div>
-              <div class="codex-curio-tag">${unlocked ? (c.shortPerk || ('+' + c.value)) : (c.rarity === 'legendary' ? '☀ 金库神匣' : '秘境花匣')}</div>
+              <div class="codex-curio-name">${unlocked ? c.name : '云海未知奇物'}</div>
+              <div class="codex-curio-tag">${unlocked ? (c.shortPerk || ('+' + c.value)) : '深空花匣探索'}</div>
             </div>
           `;
-        }).join('');
+        }).join('') + (lockedCuriosList.length > 3 ? '<div class="codex-mystery-note">☁ 更深处的云海空域尚藏有更多未知物理奇物……</div>' : '');
 
         const showDetail = (id) => {
           selectedCodexCurioId = id;
@@ -751,28 +804,33 @@
       const grid = document.getElementById('codexGuardGrid');
       if (grid) {
         const defeatedMap = game.meta.defeatedGuards || {};
-        grid.innerHTML = guardKeys.map((kind) => {
+        const seenList = guardKeys.filter((k) => seenGuards.includes(k));
+        const unseenList = guardKeys.filter((k) => !seenGuards.includes(k));
+        const visibleGuards = [...seenList, ...unseenList.slice(0, 2)];
+
+        grid.innerHTML = visibleGuards.map((kind) => {
           const spec = guardSpecs[kind];
           const seen = seenGuards.includes(kind);
           const kills = defeatedMap[kind] || 0;
+          const cleanTag = (spec.stageTag || '').replace(/第\s*\d+\s*关\s*·\s*/g, '');
           return `
-            <div class="codex-guard-card ${spec.isElite ? 'is-elite' : ''} ${seen ? '' : 'locked'}">
+            <div class="codex-guard-card ${spec.isElite && seen ? 'is-elite' : ''} ${seen ? '' : 'locked'}">
               <canvas class="guard-portrait-canvas" data-guard-canvas="${kind}" width="76" height="76"></canvas>
               <div class="guard-codex-info">
                 <div class="guard-codex-top">
-                  <span class="guard-codex-name">${seen ? spec.name : '未知浮岛守卫'}</span>
+                  <span class="guard-codex-name">${seen ? spec.name : '未知空域守卫'}</span>
                   <span class="guard-codex-kills">${seen ? `击破 ×${kills}` : '未遭遇'}</span>
                 </div>
-                <div class="guard-codex-stage">${spec.stageTag || ''} ${seen ? `· ♥${spec.hp}` : ''}</div>
+                <div class="guard-codex-stage">${seen ? `${cleanTag} · ♥${spec.hp}` : '未知海拔云域'}</div>
                 <div class="guard-badge-row">
                   <span class="g-badge g-badge-trait">${seen ? (spec.traitBadge || '⚙ 浮岛守卫') : '❓ 未知特性'}</span>
-                  <span class="g-badge g-badge-counter">${seen ? (spec.counterBadge || '🎱 物理破防') : '探索遭遇解锁'}</span>
+                  <span class="g-badge g-badge-counter">${seen ? (spec.counterBadge || '🎱 物理破防') : '深入空域解锁'}</span>
                 </div>
-                <div class="guard-codex-tip">${seen ? (spec.tip || '') : '进入对应关卡房间或交锋后即可解锁完整破防档案。'}</div>
+                <div class="guard-codex-tip">${seen ? (spec.tip || '') : '深入更高海拔的云海空域遭遇交锋后，即可记录完整破防档案。'}</div>
               </div>
             </div>
           `;
-        }).join('');
+        }).join('') + (unseenList.length > 2 ? '<div class="codex-mystery-note">☁ 更深处的未知空域仍有未曾谋面的机械守卫游弋……</div>' : '');
 
         grid.querySelectorAll('[data-guard-canvas]').forEach((cv) => {
           const kind = cv.dataset.guardCanvas;
@@ -788,7 +846,6 @@
 
   // ==================== v7 动态标题页数据刷新 & 移动端触控反馈 ====================
   function updateTitleCard() {
-    const st = CB.stages ? CB.stages.getStage(game.currentStageId) : null;
     const tagEl = document.getElementById('titleTagline');
     const bankEl = document.getElementById('titleBankVal');
     const clearEl = document.getElementById('titleClearVal');
@@ -797,18 +854,15 @@
     const loadoutEl = document.getElementById('titleLoadoutBanner');
     const startBtn = document.getElementById('btnTitleStart');
     const audioBtn = document.getElementById('btnTitleAudio');
+    const voyageBadge = document.getElementById('titleVoyageBadge');
 
-    if (tagEl && st) {
-      tagEl.textContent = `第 ${st.id} 关 · ${st.name} · ${st.tagline}`;
-    }
+    const deepest = game.meta.deepestLeg || 0;
+    const maxAlt = game.meta.maxAltitude || 0;
+    if (tagEl) tagEl.textContent = '驶入未知云海 · 以物理法则破阵、夺宝、乘风撤离';
     if (bankEl) bankEl.textContent = `${game.meta.bankValue || 0}`;
-    if (clearEl) clearEl.textContent = `${(game.meta.clearedStages || []).length}/4`;
-
-    const totalCurios = CB.extraction ? CB.extraction.ALL_CURIOS.length : 14;
-    if (curioEl) curioEl.textContent = `${(game.meta.unlockedCurios || []).length}/${totalCurios}`;
-
-    const totalGuards = CB.guards && CB.guards.GUARD_SPECS ? Object.keys(CB.guards.GUARD_SPECS).length : 10;
-    if (guardEl) guardEl.textContent = `${(game.meta.seenGuards || []).length}/${totalGuards}`;
+    if (clearEl) clearEl.textContent = deepest > 0 ? `第 ${deepest} 航段 (${maxAlt}m)` : '未启航';
+    if (curioEl) curioEl.textContent = `${(game.meta.unlockedCurios || []).length}`;
+    if (guardEl) guardEl.textContent = `${(game.meta.seenGuards || []).length}`;
 
     const armed =
       game.meta.loadoutCurioId && CB.extraction && CB.extraction.REGULAR_CURIOS
@@ -823,37 +877,104 @@
       }
     }
 
-    if (startBtn && st) {
+    if (voyageBadge) {
+      voyageBadge.textContent = deepest > 0
+        ? `🧭 历史最深航迹：第 ${deepest} 航段 · 海拔 ${maxAlt}m · 云海深处仍有未知法则等待发掘`
+        : '🧭 3 颗星露弹珠物理循环 · 滑道台球 / 星轨弯道 / 崖边秒杀瞬回弹珠';
+    }
+
+    if (startBtn) {
       const hasProgress = (game.meta.runs || 0) > 0 || (game.meta.bankValue || 0) > 0;
       startBtn.textContent = armed
-        ? `🎈 携 ${armed.icon} 启航 · 第 ${st.id} 关`
+        ? `🎈 携 ${armed.icon} 启航云海`
         : hasProgress
-        ? `🎈 继续远征 · 第 ${st.id} 关`
-        : `🎈 开始冒险 · 第 ${st.id} 关`;
+        ? '🎈 再次启航云海'
+        : '🎈 启航探索云海';
     }
     const titleHubBadge = document.getElementById('titleHubBadge');
     if (titleHubBadge && CB.extraction && CB.extraction.canAffordAnyUpgrade) {
       titleHubBadge.classList.toggle('hidden', !CB.extraction.canAffordAnyUpgrade());
     }
-    if (audioBtn) {
-      audioBtn.textContent = game.audioMuted ? '🔇' : '🔊';
-    }
+    if (audioBtn) audioBtn.textContent = game.audioMuted ? '🔇' : '🔊';
     const ctrlMiniEl = document.getElementById('titleControlsMini');
     if (ctrlMiniEl) {
       ctrlMiniEl.textContent = game.platform === 'mobile'
-        ? '左手浮空移动 · 右摇杆点射 / 拖拽蓄力（滑入 ✕ 取消）· 右侧冲刺与智能交互'
-        : 'WASD 移动 · 左键轻点静音 / 按住蓄力重弹 · 空格冲刺 · E 交互与热气球升空';
+        ? '左手浮空移动 · 右摇杆轻点星针 / 拖拽蓄力重弹（滑入 ✕ 取消）· 右侧冲刺与智能交互'
+        : 'WASD 移动 · 左键轻点调频星针 / 按住蓄力重弹（3 颗星露珠）· 空格冲刺 · E 交互';
+    }
+  }
+
+  function openChartModal(onSelectNode, onBankReturn) {
+    const modal = document.getElementById('chartModal');
+    if (!modal) return;
+    hideRunSummary();
+    game.chartOpen = true;
+    modal.classList.remove('hidden');
+
+    const v = game.voyage;
+    const nextLeg = (v.leg || 1) + 1;
+    const nextChainMult = Number((1.0 + (nextLeg - 1) * 0.25).toFixed(2));
+    const choices = (v.nextChoices && v.nextChoices.length > 0)
+      ? v.nextChoices
+      : (CB.stages ? CB.stages.generateNextChoices(nextLeg, v.currentNode) : []);
+    v.nextChoices = choices;
+
+    const titleEl = document.getElementById('chartTitle');
+    const altEl = document.getElementById('chartAltVal');
+    const pendEl = document.getElementById('chartPendingVal');
+    const chainEl = document.getElementById('chartChainVal');
+    const grid = document.getElementById('chartNodesGrid');
+    const btnBank = document.getElementById('btnChartBank');
+
+    if (titleEl) titleEl.textContent = `第 ${nextLeg} 航段 · 罗盘侦测到 ${choices.length} 条未知云海航线`;
+    if (altEl) altEl.textContent = `${v.altitude || 1200}m`;
+    if (pendEl) pendEl.textContent = `${v.pendingHaul || 0} 💎`;
+    if (chainEl) chainEl.textContent = `×${nextChainMult}`;
+
+    if (btnBank) {
+      btnBank.textContent = `⚓ 见好就收 · 返航入库 (+${v.pendingHaul || 0} 🏛)`;
+      btnBank.onclick = () => {
+        closeChartModal();
+        if (onBankReturn) onBankReturn();
+      };
     }
 
-    const cleared = game.meta.clearedStages || [];
-    document.querySelectorAll('[data-title-stage]').forEach((btn) => {
-      const sid = Number(btn.dataset.titleStage);
-      const stItem = CB.stages ? CB.stages.getStage(sid) : null;
-      const isCleared = cleared.includes(sid);
-      btn.classList.toggle('active', sid === game.currentStageId);
-      btn.classList.toggle('cleared', isCleared);
-      if (stItem) btn.textContent = isCleared ? `✓ ${stItem.shortName}` : stItem.shortName;
-    });
+    if (grid) {
+      grid.innerHTML = choices.map((node, idx) => {
+        const isApex = node.anomalies && node.anomalies.length >= 3;
+        const isMulti = !isApex && node.anomalies && node.anomalies.length >= 2;
+        const cls = isApex ? 'is-apex' : isMulti ? 'is-multi' : '';
+        const effMult = (node.haulMult * nextChainMult).toFixed(2);
+        return `
+          <button class="chart-node-card ${cls}" data-chart-idx="${idx}">
+            <span class="chart-node-alt">▲ 海拔 ${node.altitude}m · 未知空域</span>
+            <div class="chart-node-icons">${node.omenIcons || '☁'}</div>
+            <div class="chart-node-title">${node.omenTitle || '未知异常征兆'}</div>
+            <div class="chart-node-cue">${node.omenCue || '罗盘仅捕获到微弱物理波动'}</div>
+            <div class="chart-node-badges">
+              <span class="cn-badge cn-danger">${node.dangerLabel || '未知空域'}</span>
+              <span class="cn-badge cn-mult">估值 ×${effMult}</span>
+            </div>
+          </button>
+        `;
+      }).join('');
+
+      grid.querySelectorAll('[data-chart-idx]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const chosen = choices[Number(btn.dataset.chartIdx)];
+          if (!chosen) return;
+          if (CB.audio && CB.audio.playChartSelect) CB.audio.playChartSelect();
+          closeChartModal();
+          if (onSelectNode) onSelectNode(chosen);
+        });
+      });
+    }
+  }
+
+  function closeChartModal() {
+    const modal = document.getElementById('chartModal');
+    if (modal) modal.classList.add('hidden');
+    game.chartOpen = false;
   }
 
   function updateTouchHud(els) {
@@ -905,5 +1026,7 @@
     renderHubModal,
     updateTitleCard,
     updateTouchHud,
+    openChartModal,
+    closeChartModal,
   };
 })();

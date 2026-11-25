@@ -13,12 +13,18 @@
 
   <!-- 顶部极简水彩 HUD（标题页自动隐藏） -->
   <div id="hudTop" class="hud-top hud-hidden">
-    <div class="pill objective-pill" id="objectiveBanner">第 1 关 · 晨露荷塘 · 搜寻 ☀ 金库</div>
+    <div class="pill objective-pill" id="objectiveBanner">第 1 航段 · 1200m · 搜寻 ☀ 金库</div>
     <div class="pill combat-pill">
       <span class="hp-wrap">
         <i class="hp-icon">♥</i>
         <span class="hp-bar"><span id="hpFill" class="hp-fill"></span></span>
         <strong id="hpText">100</strong>
+      </span>
+      <span class="divider"></span>
+      <span class="orb-wrap" id="orbTray" title="星露弹珠（蓄力重弹消耗 1 颗；物理连撞/崖杀/破防瞬回，打空可捡回）">
+        <span class="orb-pip filled"></span>
+        <span class="orb-pip filled"></span>
+        <span class="orb-pip filled"></span>
       </span>
       <span class="divider"></span>
       <span class="metric" title="本关金币">🪙 <strong id="coinCount">10</strong></span>
@@ -57,16 +63,14 @@
     <!-- 折叠设置与关卡抽屉 -->
     <div id="quickDrawer" class="quick-drawer hidden">
       <div class="drawer-head">
-        <span id="mapStats" class="drawer-stats">第 1 关 · 晨露荷塘</span>
+        <span id="mapStats" class="drawer-stats">第 1 航段 · 1200m</span>
         <button id="btnCloseDrawer" class="drawer-close" title="收起">✕</button>
       </div>
 
-      <div class="drawer-label">自由选关</div>
-      <div class="drawer-grid stage-group">
-        <button data-stage="1" class="active" title="第 1 关：低摩擦露水滑道 + 台球木箱连撞">1 晨露荷塘</button>
-        <button data-stage="2" title="第 2 关：深蓝星夜天文台 · 占星光盾偶需星轨弯道/棱镜破膜">2 星象天文</button>
-        <button data-stage="3" title="第 3 关：暮光翡翠雾林 · 警哨眼缩壳抗直，需花粉隐身/风铃绝杀">3 暮光古藤</button>
-        <button data-stage="4" title="第 4 关：金粉落日花穹 · 融合全三关主题怪与花穹守卫巨像">4 落日花穹</button>
+      <div class="drawer-label">当前空域读数</div>
+      <div id="drawerSectorBox" class="drawer-sector-box">
+        <strong id="drawerSectorTitle">第 1 航段 · 海拔 1200m</strong>
+        <small id="drawerSectorOmen">❄️ 晨露冰镜 · 轻风空域</small>
       </div>
 
       <div class="drawer-label">探险家外观</div>
@@ -157,11 +161,11 @@
       <div class="title-profile-pill">
         <span>🏛 金库 <strong id="titleBankVal">0</strong></span>
         <i>·</i>
-        <span>✓ <strong id="titleClearVal">0/4</strong></span>
+        <span>🏔 最深 <strong id="titleClearVal">未启航</strong></span>
         <i>·</i>
-        <span>💎 <strong id="titleCurioVal">0/14</strong></span>
+        <span>💎 奇物 <strong id="titleCurioVal">0</strong></span>
         <i>·</i>
-        <span>⚙ <strong id="titleGuardVal">0/10</strong></span>
+        <span>⚙ 遭遇 <strong id="titleGuardVal">0</strong></span>
       </div>
       <div class="title-util-bar">
         <button id="btnReplayIntro" class="title-util-btn" title="重播 10 秒水彩开场动画">🎬 片头</button>
@@ -177,19 +181,16 @@
     <div class="title-card">
       <div class="title-crest">☁ CURIO BOX · 水彩物理撤离花房</div>
       <h1 class="title-main">云海空中花房</h1>
-      <p id="titleTagline" class="title-tagline">第 1 关 · 晨露荷塘 · 高摩擦苔石 vs 冰镜滑道 · 砸盾台球</p>
+      <p id="titleTagline" class="title-tagline">驶入未知云海 · 以物理法则破阵、夺宝、乘风撤离</p>
 
-      <div class="title-stage-pills" id="titleStagePills">
-        <button data-title-stage="1" class="active">1 晨露荷塘</button>
-        <button data-title-stage="2">2 星象天文</button>
-        <button data-title-stage="3">3 暮光古藤</button>
-        <button data-title-stage="4">4 落日花穹</button>
+      <div class="title-voyage-badge" id="titleVoyageBadge">
+        🧭 未知云海航程 · 3 颗星露弹珠循环做局 · 深入深空解锁双法则空域
       </div>
 
       <div id="titleLoadoutBanner" class="title-loadout-banner hidden"></div>
 
       <div class="title-actions">
-        <button id="btnTitleStart" class="title-btn-play">🎈 开始冒险 · 第 1 关</button>
+        <button id="btnTitleStart" class="title-btn-play">🎈 启航云海</button>
         <div class="title-sub-actions">
           <button id="btnTitleHub" class="title-btn-sub">⚓ 飞艇母港<span id="titleHubBadge" class="hub-badge hidden"></span></button>
           <button id="btnTitleCodex" class="title-btn-sub">📖 博物图鉴</button>
@@ -273,7 +274,7 @@
           <span class="pause-badge">⏸ PAUSED</span>
           <h2>游戏已暂停</h2>
         </div>
-        <span id="pauseStageBadge" class="pause-stage-pill">第 1 关 · 晨露荷塘</span>
+        <span id="pauseStageBadge" class="pause-stage-pill">第 1 航段 · 1200m</span>
       </div>
 
       <div class="pause-stats">
@@ -314,11 +315,11 @@
 
       <div class="summary-ledger">
         <div class="ledger-box">
-          <span>本关战利品估值</span>
+          <span id="summaryHaulLabel">本航段战利品估值</span>
           <strong id="summaryHaul">+0</strong>
         </div>
         <div class="ledger-box ledger-bank">
-          <span>飞艇母港金库资产</span>
+          <span id="summaryBankLabel">本趟暂存 · 待入库</span>
           <strong id="summaryBank">0</strong>
         </div>
       </div>
@@ -329,9 +330,42 @@
       <div class="summary-stats" id="summaryStats"></div>
 
       <div class="summary-actions">
-        <button id="btnNextRun" class="btn-main">前往下一关 (Enter)</button>
-        <button id="btnSummaryHub" class="btn-hub">⚓ 飞艇母港 (H)</button>
-        <button id="btnRetrySeed" class="btn-sub">重玩本关 (R)</button>
+        <button id="btnNextRun" class="btn-main">🧭 展开云海航图 (Enter)</button>
+        <button id="btnBankReturn" class="btn-hub">⚓ 返航母港入库</button>
+        <button id="btnRetrySeed" class="btn-sub">⚓ 飞艇母港整备 (H)</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 未知云海罗盘航图（撤离后分支抉择：深入未知空域 vs 返航母港入库） -->
+  <div id="chartModal" class="run-modal chart-modal hidden">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title-block">
+          <span class="chart-crest">🧭 CLOUD SEA COMPASS · 未知空域侦测</span>
+          <h2 id="chartTitle">前方云海出现 3 条未知航线</h2>
+          <p id="chartSub">选择一条异常征兆航线继续深入，连航估值再享加成；或携当前战利品安全返航母港</p>
+        </div>
+      </div>
+
+      <div class="chart-voyage-strip">
+        <span>🎈 当前海拔 <strong id="chartAltVal">1200m</strong></span>
+        <span>📦 暂存战利品 <strong id="chartPendingVal">0 💎</strong></span>
+        <span>✨ 下航段连航倍率 <strong id="chartChainVal">×1.25</strong></span>
+        <span>♥ 航渡休整 <strong>+30 HP · 满弹珠</strong></span>
+      </div>
+
+      <div class="chart-compass-horizon">
+        <div class="chart-fog-ribbon">☁ ☁ 更深处的云海仍被厚雾遮蔽 · 仅侦测到近邻异常波动 ☁ ☁</div>
+        <div id="chartNodesGrid" class="chart-nodes-grid"></div>
+      </div>
+
+      <div class="chart-footer">
+        <span class="chart-risk-note">⚠ 若在深空失利，未入库的暂存战利品仅能紧急打捞 20%</span>
+        <div class="chart-footer-actions">
+          <button id="btnChartBank" class="btn-hub">⚓ 见好就收 · 返航入库</button>
+        </div>
       </div>
     </div>
   </div>
@@ -342,8 +376,8 @@
       <div class="hub-header">
         <div class="hub-tabs">
           <button class="hub-tab active" data-hub-tab="workshop">⚓ 飞艇母港</button>
-          <button class="hub-tab" data-hub-tab="curios">💎 奇物图鉴 <small id="codexCurioCount">0/14</small></button>
-          <button class="hub-tab" data-hub-tab="guards">⚙ 守卫图鉴 <small id="codexGuardCount">0/10</small></button>
+          <button class="hub-tab" data-hub-tab="curios">💎 奇物图鉴 <small id="codexCurioCount">已收录 0</small></button>
+          <button class="hub-tab" data-hub-tab="guards">⚙ 守卫图鉴 <small id="codexGuardCount">已遭遇 0</small></button>
         </div>
         <div class="hub-header-right">
           <span class="hub-bank-pill" title="飞艇母港可用金库资产">🏛 <strong id="hubBankVal">0</strong></span>
@@ -390,7 +424,7 @@
       <div class="hub-footer">
         <span id="hubStatusText" class="hub-status-text">撤离带回的 🏛 资产可在此永久强化或装填出发奇物</span>
         <div class="hub-footer-actions">
-          <button id="btnHubLaunch" class="btn-main">🎈 携装启航本关</button>
+          <button id="btnHubLaunch" class="btn-main">🎈 携装启航云海</button>
           <button id="btnHubResume" class="btn-sub">返回浮岛 (Esc)</button>
         </div>
       </div>
@@ -419,6 +453,7 @@
   <script src="./src/systems/extraction.js"></script>
   <script src="./src/entities/player.js"></script>
   <script src="./src/entities/guards.js"></script>
+  <script src="./src/systems/physicsLab.js"></script>
   <script src="./src/render/brush.js"></script>
   <script src="./src/render/drawPlayer.js"></script>
   <script src="./src/render/intro.js"></script>

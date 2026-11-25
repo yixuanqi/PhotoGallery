@@ -290,6 +290,20 @@
       fireCooldown: 1.0 + Math.random() * 0.6,
       bossCycle: 0,
 
+      // v9.1 力学轨道捕获 / 相对论质增 / 引力时间膨胀 / 虫洞折跃状态
+      orbitOrreryId: null,
+      orbitAngle: 0,
+      orbitRadius: 80,
+      orbitSpeed: 0,
+      orbitTime: 0,
+      orbitReleaseCd: 0,
+      wormholeCd: 0,
+      dilatedStoredVx: 0,
+      dilatedStoredVy: 0,
+      dilatedStoredDmg: 0,
+      relGamma: 1.0,
+      isTimeDilated: false,
+
       // 冲锋与打滑状态
       chargeDirX: 1,
       chargeDirY: 0,
@@ -423,11 +437,15 @@
       if (room.role === 'atrium') {
         plan = ['colossus', 'astro_sentinel', 'dew_hopper'];
       } else if (room.role === 'vault') {
-        if (stage && stage.id === 4) plan = ['colossus', 'vine_stalker'];
-        else if (stage && stage.id === 1) plan = ['lotus_warden', 'dew_hopper'];
-        else if (stage && stage.id === 2) plan = ['astro_archon', 'comet_orbiter'];
-        else if (stage && stage.id === 3) plan = ['vine_elder', 'vine_magnet'];
-        else plan = [pair[0], pair[1]];
+        const eliteKind = stage && stage.vaultElite ? stage.vaultElite : (stage && stage.id === 4 ? 'colossus' : 'lotus_warden');
+        const escortKind = eliteKind === 'colossus'
+          ? 'vine_stalker'
+          : eliteKind === 'astro_archon'
+          ? 'comet_orbiter'
+          : eliteKind === 'vine_elder'
+          ? 'vine_magnet'
+          : 'dew_hopper';
+        plan = [eliteKind, escortKind];
       } else if (room.role === 'gallery') {
         plan = [pair[0], pair[1]];
       } else if (room.role === 'corridor') {
@@ -617,6 +635,9 @@
     if (CB.extraction && CB.extraction.addStuntBounty) {
       CB.extraction.addStuntBounty(cliffBounty);
     }
+    if (CB.combat && CB.combat.grantOrbRefund) {
+      CB.combat.grantOrbRefund(2, safe.x, safe.y, '崖杀回珠');
+    }
 
     // 云海悬赏风铃：击落云海额外回 8 血 + 绿金星尘粒子！
     if (hasCliffChime && game.player && game.player.hp > 0) {
@@ -693,8 +714,41 @@
     const isFrontHit = faceDot < -0.18;
     const isBackHit = faceDot > 0.25;
 
+    // ===== 0. 相对论质增破甲（高速陨石/木箱携带 γ >= 1.55 直接轰碎任意重甲与巨像金甲！） =====
+    const relGamma = hitMeta.relGamma || 1.0;
+    if (relGamma >= 1.55 && (g.hasFrontShield || g.hasStarMembrane || g.hasThornShell || g.hasColossusArmor) && !isVulnerable) {
+      g.armorBrokenTimer = 5.6;
+      g.shellClosed = false;
+      armorJustBroken = true;
+      dmg = Math.round(dmg * 1.45);
+      finalTag = `⚡ 相对论质增破甲 ×${relGamma.toFixed(1)}!`;
+      finalCrit = true;
+    }
+
+    // ===== 0.5. 黑洞时间膨胀场内受击：蓄积动量与伤害，待奇点坍缩一瞬间全部引爆！ =====
+    if (!hitMeta.skipDilationStore && CB.combat && CB.combat.getActiveSingularityAt && CB.combat.getActiveSingularityAt(g.x, g.y)) {
+      const storeDmg = Math.max(8, Math.round(dmg * 0.72));
+      const storeImp = hitMeta.launchSpeed
+        ? hitMeta.launchSpeed
+        : (hitMeta.isHeavy ? 520 + (hitMeta.chargeRatio || 0) * 240 : 180);
+      g.dilatedStoredDmg = (g.dilatedStoredDmg || 0) + storeDmg;
+      g.dilatedStoredVx = (g.dilatedStoredVx || 0) + dirX * storeImp;
+      g.dilatedStoredVy = (g.dilatedStoredVy || 0) + dirY * storeImp;
+      dmg = Math.max(4, Math.round(dmg * 0.32));
+      g.hitFlash = 1;
+      g.squash = -0.25;
+      g.hp -= dmg;
+      CB.player.spawnDust(g.x, g.y - 10, '#c699ff', 7, 1.1);
+      CB.player.spawnPopup(g.x, g.y - g.radius - 26, `⏳ 动量蓄积 +${Math.round(storeImp)}`, '#884ee0');
+      if (CB.audio && !skipHitSfx) CB.audio.playHit(true);
+      if (g.hp <= 0) {
+        g.hp = 1;
+      }
+      return { blocked: false, armorJustBroken, killed: false, dilatedStored: true };
+    }
+
     // ===== 1. 荷叶盾甲冲锋卫：正面举盾格挡直线弹！ =====
-    if (g.hasFrontShield && !isVulnerable) {
+    if (g.hasFrontShield && !isVulnerable && !armorJustBroken) {
       if (isBilliard) {
         // 台球木箱高速直接砸碎青铜荷叶大盾！
         g.armorBrokenTimer = 5.2;
@@ -797,34 +851,37 @@
     g.squash = blocked ? -0.14 : -0.36;
 
     const isHeavyShot = !!hitMeta.isHeavy;
+    const isOverclock = !!hitMeta.isOverclock;
+    const isNeedle = !!hitMeta.isNeedle;
     const chargeRatio = hitMeta.chargeRatio || 0;
     const isChainHit = !!hitMeta.isChain;
     const onDew = !!(CB.combat && CB.combat.getDewSlideAt && CB.combat.getDewSlideAt(g.x, g.y));
 
     if (blocked) {
-      g.knockVx += dirX * 45;
-      g.knockVy += dirY * 45;
+      g.knockVx += dirX * (isNeedle ? 12 : 45);
+      g.knockVy += dirY * (isNeedle ? 12 : 45);
     } else if (!isChainHit) {
-      const shouldBilliard = isBilliard || isHeavyShot || isSlingshot || isVulnerable || armorJustBroken || !!g.skidding;
+      const shouldBilliard = isBilliard || isHeavyShot || isSlingshot || armorJustBroken || (!isNeedle && (isVulnerable || !!g.skidding));
       if (shouldBilliard) {
         const massInv = 1 / Math.sqrt(g.mass || 1);
         const dewBoost = onDew ? 1.24 : 1.0;
         const hasGaleFan = !!(CB.extraction && CB.extraction.hasCurio('gale_fan'));
         const fanBoost = hasGaleFan && (isHeavyShot || isSlingshot) ? 1.35 : 1.0;
+        const ocBoost = isOverclock ? 1.30 : 1.0;
         let launchSpd = hitMeta.launchSpeed
           ? hitMeta.launchSpeed * massInv
           : isBilliard
           ? 575 * massInv
           : isSlingshot
-          ? 560 * massInv * fanBoost
+          ? 560 * massInv * fanBoost * ocBoost
           : isHeavyShot
-          ? (440 + chargeRatio * 230) * massInv * fanBoost
+          ? (440 + chargeRatio * 230) * massInv * fanBoost * ocBoost
           : 400 * massInv;
         const gustInfo = getGustBoostForDir(dirX, dirY);
         launchSpd *= dewBoost * gustInfo.mult;
-        const stunDur = isBilliard ? 1.85 : (isHeavyShot && chargeRatio >= 0.72 ? 0.9 : 0);
+        const stunDur = isBilliard ? 1.85 : (isHeavyShot && (chargeRatio >= 0.72 || isOverclock) ? 0.95 : 0);
         launchGuardBilliard(g, dirX * launchSpd + gustInfo.addVx, dirY * launchSpd + gustInfo.addVy, { stunDuration: stunDur });
-      } else {
+      } else if (!isNeedle) {
         const kb = (isCrit ? 265 : 150) / Math.sqrt(g.mass || 1);
         g.knockVx += dirX * kb;
         g.knockVy += dirY * kb;
@@ -885,6 +942,7 @@
         : `${g.name} 击破!`;
       CB.player.spawnPopup(g.x, g.y - 34, deathText, '#d49014');
     }
+    return { blocked, armorJustBroken, killed: g.dead };
   }
 
   function canSeePlayer(g, player) {
@@ -921,16 +979,59 @@
         continue;
       }
 
+      const timeScale = CB.combat && CB.combat.getTimeScaleAt ? CB.combat.getTimeScaleAt(g.x, g.y) : 1.0;
+      g.isTimeDilated = timeScale < 0.5;
+      const gDt = dt * timeScale;
+
       if (g.hitFlash > 0) g.hitFlash = Math.max(0, g.hitFlash - dt * 6);
-      if (g.armorBrokenTimer > 0) g.armorBrokenTimer = Math.max(0, g.armorBrokenTimer - dt);
-      if (g.chargeCooldown > 0) g.chargeCooldown -= dt;
-      if (g.siphonCooldown > 0) g.siphonCooldown -= dt;
-      if (g.snareCooldown > 0) g.snareCooldown -= dt;
-      if (g.fireCooldown > 0) g.fireCooldown -= dt;
-      if (g.sneezeCooldown > 0) g.sneezeCooldown -= dt;
-      if (g.hintCooldown > 0) g.hintCooldown -= dt;
-      if (g.orreryLaunchCd > 0) g.orreryLaunchCd = Math.max(0, g.orreryLaunchCd - dt);
-      if (g.slideSoundTimer > 0) g.slideSoundTimer = Math.max(0, g.slideSoundTimer - dt);
+      if (g.wormholeCd > 0) g.wormholeCd = Math.max(0, g.wormholeCd - dt);
+      if (g.orbitReleaseCd > 0) g.orbitReleaseCd = Math.max(0, g.orbitReleaseCd - dt);
+      if (g.armorBrokenTimer > 0) g.armorBrokenTimer = Math.max(0, g.armorBrokenTimer - gDt);
+      if (g.chargeCooldown > 0) g.chargeCooldown -= gDt;
+      if (g.siphonCooldown > 0) g.siphonCooldown -= gDt;
+      if (g.snareCooldown > 0) g.snareCooldown -= gDt;
+      if (g.fireCooldown > 0) g.fireCooldown -= gDt;
+      if (g.sneezeCooldown > 0) g.sneezeCooldown -= gDt;
+      if (g.hintCooldown > 0) g.hintCooldown -= gDt;
+      if (g.orreryLaunchCd > 0) g.orreryLaunchCd = Math.max(0, g.orreryLaunchCd - gDt);
+      if (g.slideSoundTimer > 0) g.slideSoundTimer = Math.max(0, g.slideSoundTimer - gDt);
+
+      // ===== 真实轨道捕获公转加速（守卫化身高速红温卫星，点射或满圈切线甩出！） =====
+      if (g.orbitOrreryId) {
+        const orr = map.props.find((p) => p.id === g.orbitOrreryId && p.type === 'orrery');
+        if (!orr || orr.polarity < 0) {
+          g.orbitOrreryId = null;
+        } else {
+          const lorentzAcc = CB.extraction && CB.extraction.hasCurio('lorentz_prism') ? 1.28 : 1.0;
+          g.orbitTime = (g.orbitTime || 0) + gDt;
+          g.orbitSpeed = Math.min(980, (g.orbitSpeed || 460) + 310 * lorentzAcc * gDt);
+          const angSpd = g.orbitSpeed / Math.max(54, g.orbitRadius || 78);
+          g.orbitAngle += (g.orbitDir || 1) * angSpd * gDt;
+          g.x = orr.x + Math.cos(g.orbitAngle) * g.orbitRadius;
+          g.y = orr.y + Math.sin(g.orbitAngle) * g.orbitRadius;
+          const tangA = g.orbitAngle + (g.orbitDir || 1) * (Math.PI / 2);
+          g.knockVx = Math.cos(tangA) * g.orbitSpeed;
+          g.knockVy = Math.sin(tangA) * g.orbitSpeed;
+          g.billiardMode = true;
+          g.billiardSpin += gDt * (12 + g.orbitSpeed * 0.02);
+          g.relGamma = CB.combat && CB.combat.getRelativisticGamma ? CB.combat.getRelativisticGamma(g.orbitSpeed) : 1.0;
+          orr.orbitGlow = Math.max(orr.orbitGlow || 0, 0.95);
+          g.billiardTrail.push({ x: g.x, y: g.y, dew: false, rel: g.relGamma > 1.3 });
+          if (g.billiardTrail.length > 10) g.billiardTrail.shift();
+
+          for (const other of game.guards) {
+            if (other === g || other.dead) continue;
+            if (Math.hypot(other.x - g.x, other.y - g.y) < g.radius + other.radius + 5) {
+              if (CB.combat && CB.combat.releaseOrbitingBodies) CB.combat.releaseOrbitingBodies(orr, g);
+              break;
+            }
+          }
+          if (g.orbitOrreryId && g.orbitTime >= 1.65) {
+            if (CB.combat && CB.combat.releaseOrbitingBodies) CB.combat.releaseOrbitingBodies(orr, g);
+          }
+          continue;
+        }
+      }
       if (g.billiardHitCd) {
         for (const key in g.billiardHitCd) {
           g.billiardHitCd[key] -= dt;
@@ -984,10 +1085,11 @@
       const kSpd0 = Math.hypot(g.knockVx, g.knockVy);
       if (g.billiardMode) {
         g.billiardSpin += dt * (8 + kSpd0 * 0.018);
+        g.relGamma = CB.combat && CB.combat.getRelativisticGamma ? CB.combat.getRelativisticGamma(kSpd0) : 1.0;
         const steps = kSpd0 > 320 ? 3 : 2;
-        const subDt = dt / steps;
+        const subDt = gDt / steps;
         for (let s = 0; s < steps; s++) {
-          if (g.dead || !g.billiardMode) break;
+          if (g.dead || !g.billiardMode || g.orbitOrreryId) break;
           moveGuardBilliardStep(g, subDt, map);
         }
         if (g.dead) {
@@ -1006,7 +1108,7 @@
         // 两极摩擦：冰镜露水滑道极低阻尼超远飙滑（105/s），粗糙石砖高阻尼（1120/s）；顺阵风大幅减阻并持续吹推！
         const baseDecel = nowOnSlide ? 105 : 1120;
         const gustDecelMult = activeGust && gustAlign > 0.15 ? 0.62 : 1.0;
-        const decel = (hasWax ? baseDecel * 0.65 : baseDecel) * gustDecelMult * dt;
+        const decel = (hasWax ? baseDecel * 0.65 : baseDecel) * gustDecelMult * gDt;
         const nextSpd = Math.max(0, kSpdNow - decel);
         if (kSpdNow > 0.001) {
           g.knockVx = (g.knockVx / kSpdNow) * nextSpd;
@@ -1029,7 +1131,7 @@
           }
         }
 
-        g.billiardTrail.push({ x: g.x, y: g.y, dew: nowOnSlide });
+        g.billiardTrail.push({ x: g.x, y: g.y, dew: nowOnSlide, rel: (g.relGamma || 1) > 1.35 });
         if (g.billiardTrail.length > 7) g.billiardTrail.shift();
 
         if (nextSpd < (nowOnSlide ? 80 : 112)) {
@@ -1054,7 +1156,7 @@
       }
 
       const ink = CB.combat.getInkAt(g.x, g.y);
-      const slowMult = ink ? 0.52 : 1.0;
+      const slowMult = (ink ? 0.52 : 1.0) * timeScale;
 
       // 踏入金色花粉隐身雾：打喷嚏眩晕并强制解除荆棘缩壳/护盾！
       if (g.aiState !== 'stunned' && g.sneezeCooldown <= 0 && CB.combat.isInPollen(g.x, g.y)) {
@@ -1338,7 +1440,7 @@
           CB.player.damagePlayer(g.touchDamage, g.chargeDirX, g.chargeDirY);
         }
 
-        g.stateTimer -= onSlide ? dt * 0.2 : dt;
+        g.stateTimer -= onSlide ? gDt * 0.2 : gDt;
         if (res.hitSolid) {
           const wasSkid = g.skidding;
           g.skidding = false;
@@ -1377,7 +1479,7 @@
           else if (g.kind === 'lotus_warden') fireWaterFan(g, 5);
         }
       } else if (g.aiState === 'stunned') {
-        g.stateTimer -= dt;
+        g.stateTimer -= gDt;
         if (g.stateTimer <= 0) g.aiState = 'chase';
       } else if (g.aiState === 'flee') {
         const awayX = g.x + (g.x - player.x);
@@ -1716,6 +1818,64 @@
         continue;
       }
 
+      if (prop.type === 'wormhole') {
+        if ((g.wormholeCd || 0) <= 0 && Math.hypot(g.x - prop.x, g.y - prop.y) < g.radius + prop.r + 4) {
+          const exitWh = CB.combat && CB.combat.findPairedWormhole ? CB.combat.findPairedWormhole(prop) : null;
+          if (exitWh) {
+            const curS = Math.hypot(g.knockVx, g.knockVy);
+            const boost = (CB.extraction && CB.extraction.hasCurio('lorentz_prism')) ? 1.42 : 1.18;
+            const outS = Math.min(1140, Math.max(540, curS * boost));
+            const ndx = curS > 1 ? g.knockVx / curS : 1;
+            const ndy = curS > 1 ? g.knockVy / curS : 0;
+            g.x = exitWh.x + ndx * (exitWh.r + g.radius + 4);
+            g.y = exitWh.y + ndy * (exitWh.r + g.radius + 4);
+            g.knockVx = ndx * outS;
+            g.knockVy = ndy * outS;
+            g.relGamma = CB.combat.getRelativisticGamma(outS);
+            g.wormholeCd = 0.42;
+            g.billiardTrail = [{ x: exitWh.x, y: exitWh.y, dew: false, rel: true }];
+            prop.pulse = 1;
+            exitWh.pulse = 1;
+            if (CB.audio && CB.audio.playWormholeWarp) CB.audio.playWormholeWarp();
+            if (CB.extraction && CB.extraction.addStuntBounty) CB.extraction.addStuntBounty(18);
+            if (CB.combat && CB.combat.grantOrbRefund) CB.combat.grantOrbRefund(1, exitWh.x, exitWh.y, '虫洞回珠');
+            CB.player.spawnDust(prop.x, prop.y - 10, prop.color, 10, 1.35);
+            CB.player.spawnDust(exitWh.x, exitWh.y - 10, exitWh.color, 12, 1.5);
+            CB.player.spawnPopup(exitWh.x, exitWh.y - g.radius - 26, '🌀 虫洞折跃喷射! +18💎', '#7c52e0');
+          }
+        }
+        continue;
+      }
+
+      if (prop.type === 'orrery' && prop.polarity > 0) {
+        const distO = Math.hypot(g.x - prop.x, g.y - prop.y);
+        const spdO = Math.hypot(g.knockVx, g.knockVy);
+        if ((g.orbitReleaseCd || 0) <= 0 && !g.orbitOrreryId && spdO > 230 && distO < 126 && distO > prop.r + g.radius + 6) {
+          const rdx = (g.x - prop.x) / distO;
+          const rdy = (g.y - prop.y) / distO;
+          const cross = rdx * g.knockVy - rdy * g.knockVx;
+          g.orbitOrreryId = prop.id;
+          g.orbitAngle = Math.atan2(g.y - prop.y, g.x - prop.x);
+          g.orbitRadius = Math.max(66, Math.min(100, distO));
+          g.orbitDir = cross >= 0 ? 1 : -1;
+          g.orbitSpeed = Math.max(460, spdO);
+          g.orbitTime = 0;
+          prop.pulse = 0.9;
+          if (CB.audio && CB.audio.playOrbitCapture) CB.audio.playOrbitCapture();
+          CB.player.spawnDust(g.x, g.y - 10, '#72e8ff', 10, 1.35);
+          CB.player.spawnPopup(prop.x, prop.y - 36, '🪐 轨道捕获 · 轻点星针切线甩射!', '#1f98c4');
+          return;
+        }
+      }
+
+      if (prop.type === 'singularity') {
+        if (Math.hypot(g.x - prop.x, g.y - prop.y) < g.radius + prop.r + 4 && (prop.activeTimer || 0) <= 0 && CB.combat && CB.combat.activateSingularity) {
+          CB.combat.activateSingularity(prop, false);
+        }
+        bounceCircle(prop.x, prop.y, prop.r, 0.8, false);
+        continue;
+      }
+
       if (prop.type === 'chime') {
         if (bounceCircle(prop.x, prop.y, prop.r, 0.8, false) && CB.combat.ringChime) {
           CB.combat.ringChime(prop);
@@ -1779,7 +1939,8 @@
       other.billiardHitCd = other.billiardHitCd || {};
       other.billiardHitCd[g.id] = 0.22;
 
-      const m1 = g.mass || 1.0;
+      const relG = g.relGamma || 1.0;
+      const m1 = (g.mass || 1.0) * relG;
       const m2 = other.mass || 1.0;
       const e = 0.92;
       const j = (-(1 + e) * Math.min(rvn, -gvn)) / (1 / m1 + 1 / m2);
@@ -1812,6 +1973,9 @@
       if (CB.extraction && CB.extraction.addStuntBounty) {
         CB.extraction.addStuntBounty(chainBounty);
       }
+      if (CB.combat && CB.combat.grantOrbRefund) {
+        CB.combat.grantOrbRefund(1, other.x, other.y, '连撞回珠');
+      }
 
       // 连环撞球母徽：直接刷新目标破防状态，顺带提升连撞伤害 +25%
       if (hasChainCue) {
@@ -1821,12 +1985,15 @@
 
       const impactSpd = Math.max(Math.abs(rvn), Math.abs(gvn));
       const cueDmgMult = hasChainCue ? 1.25 : 1.0;
-      const chainDmg = Math.round((24 + (impactSpd / 250) * 24) * (1 + Math.min(4, nextChain - 2) * 0.22) * cueDmgMult);
-      damageGuard(other, chainDmg, nx, ny, true, `🎱 怪物连撞 ×${nextChain}! +${chainBounty}💎`, true, {
+      const isRelChain = relG >= 1.55;
+      const chainDmg = Math.round((24 + (impactSpd / 250) * 24) * (1 + Math.min(4, nextChain - 2) * 0.22) * cueDmgMult * (isRelChain ? relG * 0.88 : 1.0));
+      damageGuard(other, chainDmg, nx, ny, true, isRelChain ? `⚡ 相对论撞击 ×${relG.toFixed(1)}! +${chainBounty}💎` : `🎱 怪物连撞 ×${nextChain}! +${chainBounty}💎`, true, {
         source: 'billiard',
         isChain: true,
         chainNum: nextChain,
+        relGamma: relG,
       });
+      if (isRelChain && CB.audio && CB.audio.playRelativisticBoom) CB.audio.playRelativisticBoom();
 
       if (!other.dead) {
         launchGuardBilliard(other, otherVx, otherVy, {
@@ -2058,16 +2225,56 @@
     const faceSign = Math.cos(g.facing) >= 0 ? 1 : -1;
     const r = g.radius;
 
-    // 台球弹飞态残影轨迹 + 露水高速滑行光环
+    // 台球弹飞态残影轨迹 + 相对论质增蓝移/红移拖尾
     if (g.billiardTrail && g.billiardTrail.length > 1) {
       ctx.save();
       for (let i = 0; i < g.billiardTrail.length - 1; i++) {
         const t = g.billiardTrail[i];
         const frac = (i + 1) / g.billiardTrail.length;
-        ctx.globalAlpha = frac * 0.34;
-        ctx.fillStyle = t.dew ? '#7ce8ff' : '#ffd86b';
+        ctx.globalAlpha = frac * (t.rel ? 0.52 : 0.34);
+        ctx.fillStyle = t.rel
+          ? (frac > 0.55 ? '#66ecff' : '#d67cff')
+          : (t.dew ? '#7ce8ff' : '#ffd86b');
         ctx.beginPath();
-        ctx.arc(t.x, t.y - 10, r * (0.45 + frac * 0.42), 0, Math.PI * 2);
+        ctx.arc(t.x, t.y - 10, r * (0.45 + frac * (t.rel ? 0.52 : 0.42)), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // 黑洞时间膨胀冻结光环 & 蓄积动量矢量箭头
+    const storedSpd = Math.hypot(g.dilatedStoredVx || 0, g.dilatedStoredVy || 0);
+    if (g.isTimeDilated || storedSpd > 25) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(156, 108, 245, 0.85)';
+      ctx.lineWidth = 2.4;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.arc(g.x, g.y - 10, r + 9, time * 0.6, time * 0.6 + Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      if (storedSpd > 25) {
+        const len = Math.min(82, 26 + storedSpd * 0.065);
+        const ang = Math.atan2(g.dilatedStoredVy, g.dilatedStoredVx);
+        const ax = g.x + Math.cos(ang) * len;
+        const ay = g.y - 10 + Math.sin(ang) * len;
+        ctx.strokeStyle = '#ffe052';
+        ctx.lineWidth = 3.4;
+        ctx.beginPath();
+        ctx.moveTo(g.x, g.y - 10);
+        ctx.lineTo(ax, ay);
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffe052';
+        ctx.translate(ax, ay);
+        ctx.rotate(ang);
+        ctx.beginPath();
+        ctx.moveTo(9, 0);
+        ctx.lineTo(-4, -5.5);
+        ctx.lineTo(-2, 0);
+        ctx.lineTo(-4, 5.5);
+        ctx.closePath();
         ctx.fill();
       }
       ctx.restore();

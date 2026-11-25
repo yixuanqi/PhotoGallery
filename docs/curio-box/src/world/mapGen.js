@@ -34,9 +34,9 @@
       ? `${x1},${y1}|${x2},${y2}`
       : `${x2},${y2}|${x1},${y1}`;
 
-  function generateMap(stageId = 1, inputSeed = undefined) {
+  function generateMap(stageOrSpec = 1, inputSeed = undefined) {
     const t0 = performance.now();
-    const stage = CB.stages.getStage(stageId);
+    const stage = CB.stages.getStage(stageOrSpec);
     const baseSeed = inputSeed ?? Math.floor(Math.random() * 899999 + 100000);
 
     for (let attempt = 0; attempt < 56; attempt++) {
@@ -357,29 +357,40 @@
       ancient_vine: 'stealth',
     };
 
-    if (stage.theme !== 'fusion') {
+    const themeToBiome = {
+      friction: 'lotus_pond',
+      gravity: 'sun_glasshouse',
+      stealth: 'ancient_vine',
+      relativity: 'sun_glasshouse',
+      thermal: 'lotus_pond',
+      optics: 'sun_glasshouse',
+      electro: 'lotus_pond',
+    };
+    const sectorAnomalies = Array.isArray(stage.anomalies) && stage.anomalies.length > 0
+      ? stage.anomalies
+      : (stage.theme === 'fusion' ? ['friction', 'gravity', 'stealth'] : [stage.theme]);
+
+    if (sectorAnomalies.length === 1) {
+      const onlyTheme = sectorAnomalies[0];
+      const onlyBiome = themeToBiome[onlyTheme] || stage.biome;
       for (const r of rooms) {
-        r.biome = stage.biome;
-        r.subTheme = stage.theme;
+        r.biome = onlyBiome;
+        r.subTheme = onlyTheme;
       }
     } else {
-      const order = FUSION_BIOMES.slice().sort(() => rng() - 0.5);
+      const order = sectorAnomalies.slice().sort(() => rng() - 0.5);
       let idx = 0;
       for (const r of rooms) {
-        if (r.role === 'atrium') {
-          r.biome = 'lotus_pond';
+        if (r.role === 'atrium' || r.role === 'vault' || r.role === 'spawn' || r.role === 'extract') {
+          const lead = order[0];
+          r.biome = themeToBiome[lead] || 'sun_glasshouse';
           r.subTheme = 'fusion';
-        } else if (r.role === 'vault') {
-          r.biome = 'sun_glasshouse';
-          r.subTheme = 'fusion';
-        } else if (r.role === 'spawn' || r.role === 'extract') {
-          r.biome = 'sun_glasshouse';
-          r.subTheme = 'fusion';
+          r.sectorAnomalies = sectorAnomalies;
         } else {
-          const b = order[idx % order.length];
+          const th = order[idx % order.length];
           idx++;
-          r.biome = b;
-          r.subTheme = biomeToTheme[b];
+          r.subTheme = th;
+          r.biome = themeToBiome[th] || 'sun_glasshouse';
         }
       }
     }

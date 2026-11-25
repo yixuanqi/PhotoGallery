@@ -44,12 +44,20 @@
     if (metaB) {
       p.maxHp = metaB.maxHp;
     }
+    p.maxOrbs = 3;
+    p.orbs = p.maxOrbs;
+    p.orbRechargeTimer = 0;
+    p.orbRechargeDuration = metaB ? metaB.orbRecharge : 4.2;
+    p.overclockOrb = false;
+    p.overclockTimer = 0;
+    p.orbEmptyFlash = 0;
+
     if (resetStats) {
       p.hp = p.maxHp;
       p.coins = metaB ? metaB.startCoins : 12;
       p.lootCount = 6;
     } else {
-      p.hp = Math.min(p.hp, p.maxHp);
+      p.hp = Math.min(p.maxHp, p.hp + 30);
     }
 
     p.scarfNodes = [];
@@ -74,6 +82,7 @@
     for (let i = 0; i < count; i++) {
       const ang = Math.random() * Math.PI * 2;
       const spd = (25 + Math.random() * 65) * speedScale;
+      if (game.particles.length >= 160) game.particles.shift();
       game.particles.push({
         x,
         y,
@@ -88,6 +97,7 @@
   }
 
   function spawnPopup(x, y, text, color = '#2b4a52') {
+    if (game.popups.length >= 24) game.popups.shift();
     game.popups.push({
       x,
       y,
@@ -144,7 +154,31 @@
       p.facing = Math.cos(p.aimAngle) >= 0 ? 1 : -1;
     }
 
-    // 2. 单一核心工具：左键轻点 = 静音点射 | 按住蓄力松手 = 物理重弹
+    const metaBonuses = CB.extraction && CB.extraction.getMetaBonuses ? CB.extraction.getMetaBonuses() : null;
+    const baseRechargeDur = metaBonuses ? metaBonuses.orbRecharge : 4.2;
+    p.orbRechargeDuration = baseRechargeDur;
+    p.orbSpinAngle = (p.orbSpinAngle || 0) + dt * (p.overclockOrb ? 3.2 : 1.9);
+    if (p.orbEmptyFlash > 0) p.orbEmptyFlash = Math.max(0, p.orbEmptyFlash - dt * 3.5);
+
+    if (p.overclockOrb) {
+      p.overclockTimer -= dt;
+      if (p.overclockTimer <= 0) {
+        p.overclockOrb = false;
+        p.overclockTimer = 0;
+      }
+    }
+    if (p.orbs < p.maxOrbs) {
+      p.orbRechargeTimer += dt;
+      if (p.orbRechargeTimer >= baseRechargeDur) {
+        p.orbRechargeTimer -= baseRechargeDur;
+        p.orbs = Math.min(p.maxOrbs, p.orbs + 1);
+        if (CB.audio && CB.audio.playOrbPickup) CB.audio.playOrbPickup();
+        spawnDust(p.x, p.y - 14, '#8ceeff', 5, 0.9);
+      }
+    } else {
+      p.orbRechargeTimer = 0;
+    }
+
     if (p.fireCooldown > 0) p.fireCooldown -= dt;
     p.recoil *= Math.exp(-20 * dt);
 
@@ -164,32 +198,44 @@
       }
       inp.firePressed = false;
 
-      const metaBonuses = CB.extraction && CB.extraction.getMetaBonuses ? CB.extraction.getMetaBonuses() : null;
+      const hasOrbForHeavy = p.orbs > 0 || p.overclockOrb;
       const effTap = cfgL.tapThreshold * (metaBonuses ? metaBonuses.tapMult : 1.0);
-      const effMax = Math.max(effTap + 0.18, cfgL.maxCharge * (metaBonuses ? metaBonuses.chargeMult : 1.0));
+      const rawMax = Math.max(effTap + 0.18, cfgL.maxCharge * (metaBonuses ? metaBonuses.chargeMult : 1.0));
+      const effMax = p.overclockOrb ? (effTap + (rawMax - effTap) * 0.52) : rawMax;
       p.effectiveMaxCharge = effMax;
       p.effectiveTapThreshold = effTap;
 
       if (p.charging && inp.fireHeld) {
-        p.chargeTime = Math.min(effMax, p.chargeTime + dt);
-        const raw = (p.chargeTime - effTap) / (effMax - effTap);
-        p.chargeRatio = Math.max(0, Math.min(1, raw));
+        if (hasOrbForHeavy) {
+          p.chargeTime = Math.min(effMax, p.chargeTime + dt);
+          const raw = (p.chargeTime - effTap) / (effMax - effTap);
+          p.chargeRatio = Math.max(0, Math.min(1, raw));
 
-        if (p.chargeTime >= effTap && p.chargeStageNotified === 0) {
-          p.chargeStageNotified = 1;
-          if (CB.audio && CB.audio.playChargeCue) CB.audio.playChargeCue(false);
-        } else if (p.chargeRatio >= 0.99 && p.chargeStageNotified < 2) {
-          p.chargeStageNotified = 2;
-          if (CB.audio && CB.audio.playChargeCue) CB.audio.playChargeCue(true);
-          spawnDust(p.x + Math.cos(p.aimAngle) * 24, p.y - 12 + Math.sin(p.aimAngle) * 18, '#fff08a', 5, 0.9);
+          if (p.chargeTime >= effTap && p.chargeStageNotified === 0) {
+            p.chargeStageNotified = 1;
+            if (CB.audio && CB.audio.playChargeCue) CB.audio.playChargeCue(false);
+          } else if (p.chargeRatio >= 0.99 && p.chargeStageNotified < 2) {
+            p.chargeStageNotified = 2;
+            if (CB.audio && CB.audio.playChargeCue) CB.audio.playChargeCue(true);
+            spawnDust(p.x + Math.cos(p.aimAngle) * 24, p.y - 12 + Math.sin(p.aimAngle) * 18, '#fff08a', 5, 0.9);
+          }
+        } else {
+          p.chargeTime = Math.min(effTap * 0.85, p.chargeTime + dt);
+          p.chargeRatio = 0;
+          if (p.chargeTime >= effTap * 0.82 && p.chargeStageNotified === 0) {
+            p.chargeStageNotified = -1;
+            p.orbEmptyFlash = 1;
+            if (CB.audio && CB.audio.playOrbEmpty) CB.audio.playOrbEmpty();
+            spawnPopup(p.x, p.y - 46, '✦ 星露珠凝结中 · 捡珠/冲撞木箱回充', '#3d8aa3');
+          }
         }
       }
 
       if (inp.fireReleased) {
         inp.fireReleased = false;
         if (p.charging) {
-          const isHeavy = p.chargeTime >= effTap;
-          const ratio = p.chargeRatio;
+          const isHeavy = p.chargeTime >= effTap && (p.orbs > 0 || p.overclockOrb);
+          const ratio = isHeavy ? p.chargeRatio : 0;
           p.charging = false;
           p.chargeTime = 0;
           p.chargeRatio = 0;
@@ -387,6 +433,7 @@
       if (p.stepAccum > 40) {
         p.stepAccum = 0;
         p.stepSide *= -1;
+        if (game.footprints.length >= 64) game.footprints.shift();
         game.footprints.push({
           x: p.x + p.stepSide * 6,
           y: p.y + 3,
@@ -442,7 +489,7 @@
     }
 
     for (const prop of map.props) {
-      if (prop.broken) continue;
+      if (prop.broken || prop.type === 'wormhole') continue;
       // 冲刺撞破花粉隐身花苞，顺手拉出掩护烟雾！
       if (prop.type === 'pollen_bud' && p.dashTimer > 0) {
         if (Math.hypot(p.x - prop.x, p.y - prop.y) < p.radius + prop.r + 4) {

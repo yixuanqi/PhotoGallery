@@ -2,12 +2,12 @@
   const CB = window.CB;
   const game = CB.game;
   const { detectMobileDevice, clearAllHeldInputs, initInput, initTouchControls, syncMouseWorld } = CB.input;
-  const { getStage, getNextStage } = CB.stages;
+  const { buildSectorSpec, createInitialVoyageNode } = CB.stages;
   const { generateMap } = CB.mapGen;
   const { placePlayerAtSpawn, updatePlayer, setVariant, spawnPopup } = CB.player;
   const { updateCombat } = CB.combat;
   const { populateGuardsForMap, updateGuards } = CB.guards;
-  const { resetRunState, updateExtractionLoop } = CB.extraction;
+  const { resetRunState, updateExtractionLoop, startNewVoyage, advanceVoyageToNode, bankVoyageAndFinish } = CB.extraction;
   const { initRenderer, refreshStageTheme, renderWorld } = CB.renderer;
   const { startIntro, skipIntro, isIntroActive, getProgress: getIntroProgress, updateIntro, renderIntro } = CB.intro;
   const {
@@ -20,6 +20,8 @@
     switchHubTab,
     updateTitleCard,
     updateTouchHud,
+    openChartModal,
+    closeChartModal,
   } = CB.ui;
 
   const canvas = document.getElementById('gameCanvas');
@@ -42,6 +44,7 @@
   const hudEls = {
     hpFill: document.getElementById('hpFill'),
     hpText: document.getElementById('hpText'),
+    orbTray: document.getElementById('orbTray'),
     coinEl: document.getElementById('coinCount'),
     stuntEl: document.getElementById('stuntValue'),
     haulEl: document.getElementById('haulValue'),
@@ -78,6 +81,7 @@
   let btnPauseFullscreenRef = null;
   let reopenPauseAfterHub = false;
   let lastTime = performance.now();
+  let lastMinimapTime = 0;
 
   function getViewportSize() {
     const vv = window.visualViewport;
@@ -193,18 +197,7 @@
       .catch(() => {});
   }
 
-  function syncStageUI() {
-    const cleared = game.meta.clearedStages || [];
-    stageButtons.forEach((btn) => {
-      const sid = Number(btn.dataset.stage);
-      const st = getStage(sid);
-      const isActive = sid === game.currentStageId;
-      const isCleared = cleared.includes(sid);
-      btn.classList.toggle('active', isActive);
-      btn.classList.toggle('cleared', isCleared);
-      btn.textContent = isCleared ? `✓ ${st.shortName}` : st.shortName;
-    });
-  }
+  function syncStageUI() {}
 
   function syncSkinUI() {
     const isUnlocked = (id) => (CB.extraction && CB.extraction.isSkinUnlocked ? CB.extraction.isSkinUnlocked(id) : true);
@@ -228,12 +221,12 @@
     document.body.classList.toggle('platform-pc', !isMobile);
     document.body.classList.toggle('platform-mobile', isMobile);
 
-    const showTouch = isMobile && !game.introActive && !game.titleOpen && !game.hubOpen && !game.paused && !game.portraitBlocked && game.run.phase === 'playing';
+    const showTouch = isMobile && !game.introActive && !game.titleOpen && !game.hubOpen && !game.paused && !game.chartOpen && !game.portraitBlocked && game.run.phase === 'playing';
     if (touchControlsEl) {
       touchControlsEl.classList.toggle('hidden', !showTouch);
     }
     if (pcHintBarEl) {
-      const showPcHint = !isMobile && !game.introActive && !game.titleOpen && !game.hubOpen && !game.paused && game.run.phase === 'playing';
+      const showPcHint = !isMobile && !game.introActive && !game.titleOpen && !game.hubOpen && !game.paused && !game.chartOpen && game.run.phase === 'playing';
       pcHintBarEl.classList.toggle('hud-hidden', !showPcHint);
     }
     if (btnTouchModeRef) {
@@ -302,7 +295,7 @@
   }
 
   function syncPauseUI() {
-    const st = getStage(game.currentStageId);
+    const st = (game.map && game.map.stage) || null;
     const stageEl = document.getElementById('pauseStageBadge');
     const hpEl = document.getElementById('pauseHp');
     const haulEl = document.getElementById('pauseHaul');
@@ -311,7 +304,7 @@
     const btnPAudio = document.getElementById('btnPauseAudio');
     const btnPLayout = document.getElementById('btnPauseLayout');
 
-    if (stageEl && st) stageEl.textContent = `第 ${st.id} 关 · ${st.name}`;
+    if (stageEl && st) stageEl.textContent = `第 ${st.leg || 1} 航段 · ${st.altitude || 1200}m`;
     if (hpEl) hpEl.textContent = `${Math.ceil(game.player.hp)}/${game.player.maxHp}`;
     if (haulEl && CB.extraction) haulEl.textContent = `${CB.extraction.getTotalHaulValue()}`;
     if (guardsEl) guardsEl.textContent = `${game.guards.length}`;
@@ -356,6 +349,7 @@
     clearAllHeldInputs();
     reopenPauseAfterHub = false;
     setGamePaused(false, true);
+    if (game.chartOpen) closeChartModal();
     if (game.hubOpen) closeHub();
     reopenPauseAfterHub = false;
     setGamePaused(false, true);
@@ -393,12 +387,12 @@
       btnOverviewRef.textContent = '🗺 全图';
     }
     if (relaunch || game.meta.loadoutCurioId) {
-      startStage(game.currentStageId, { keepCurios: false, stayOnTitle: false });
+      startStage(null, { keepCurios: false, stayOnTitle: false });
     } else {
       game.stageBannerTimer = 3.2;
       syncChromeVisibility();
-      const st = getStage(game.currentStageId);
-      spawnPopup(game.player.x, game.player.y - 46, `第 ${st.id} 关 · ${st.name}`, '#24808f');
+      const st = game.map && game.map.stage;
+      spawnPopup(game.player.x, game.player.y - 46, st ? `第 ${st.leg || 1} 航段 · 海拔 ${st.altitude || 1200}m` : '启航云海', '#24808f');
     }
   }
 
@@ -419,15 +413,26 @@
     syncChromeVisibility();
   }
 
-  function startStage(stageId = game.currentStageId, opts = {}) {
+  function startStage(nodeOrStage = null, opts = {}) {
     const keepCurios = !!opts.keepCurios;
     const customSeed = opts.customSeed ?? null;
     const stayOnTitle = !!opts.stayOnTitle;
 
-    game.currentStageId = stageId;
-    game.map = generateMap(stageId, customSeed ?? undefined);
+    let sectorNode = null;
+    if (nodeOrStage && typeof nodeOrStage === 'object' && nodeOrStage.anomalies) {
+      sectorNode = nodeOrStage;
+    } else if (!keepCurios) {
+      sectorNode = startNewVoyage(createInitialVoyageNode((game.meta.runs || 0) === 0));
+    } else {
+      sectorNode = (game.voyage && game.voyage.currentNode) || startNewVoyage(createInitialVoyageNode(false));
+    }
+
+    const sectorSpec = buildSectorSpec(sectorNode);
+    game.currentStageId = sectorSpec.id;
+    game.map = generateMap(sectorSpec, customSeed ?? undefined);
     refreshStageTheme(ctx, game.map.stage);
-    if (CB.audio && CB.audio.setAmbienceStage) CB.audio.setAmbienceStage(stageId);
+    if (CB.audio && CB.audio.setAmbienceStage) CB.audio.setAmbienceStage(sectorSpec.id);
+
     game.bullets = [];
     game.enemyBullets = [];
     game.ripples = [];
@@ -435,6 +440,11 @@
     game.pollenClouds = [];
     game.vortices = [];
     game.coinsList = [];
+    game.droppedOrbs = [];
+    game.orbReturnFlies = [];
+    game.focusSpots = [];
+    game.laserWebs = [];
+    game.lightningArcs = [];
     game.fallingGuards = [];
     game.fallingCrates = [];
     game.hitStop = 0;
@@ -444,7 +454,6 @@
       game.titleOpen = false;
     }
 
-    // 标题页预览切换关卡时不消耗补给舱奇物，真正启航时再部署！
     const savedLoadout = stayOnTitle ? game.meta.loadoutCurioId : null;
     if (stayOnTitle) game.meta.loadoutCurioId = null;
     resetRunState(keepCurios);
@@ -452,14 +461,17 @@
       game.meta.loadoutCurioId = savedLoadout;
     }
 
-    placePlayerAtSpawn(true);
+    placePlayerAtSpawn(!keepCurios);
     populateGuardsForMap(game.map);
     spawnButterflies(game.map);
+    reopenPauseAfterHub = false;
+    setGamePaused(false, true);
+    if (game.chartOpen) closeChartModal();
     if (game.hubOpen) closeHub();
     setDrawerOpen(false);
+    lastMinimapTime = 0;
     updateStatsBanner(statsEl);
     updateCombatHud(hudEls);
-    syncStageUI();
     syncSkinUI();
     syncChromeVisibility();
 
@@ -469,30 +481,41 @@
         spawnPopup(game.player.x, game.player.y - 72, `📦 补给舱装填 · ${dc.icon} ${dc.name}`, '#1f8a70');
       }
 
-      const st = getStage(stageId);
       spawnPopup(
         game.player.x,
         game.player.y - 46,
-        customSeed
-          ? `重返第 ${st.id} 关 · ${st.name}`
-          : keepCurios
-          ? `飞抵第 ${st.id} 关 · ${st.name}（保留奇物）`
-          : `第 ${st.id} 关 · ${st.name}`,
+        keepCurios
+          ? `飞抵第 ${sectorSpec.leg} 航段 · ${sectorSpec.altitude}m（续航 +30HP）`
+          : `第 ${sectorSpec.leg} 航段 · 海拔 ${sectorSpec.altitude}m · ${sectorSpec.omenIcons}`,
         '#24808f'
       );
     }
   }
 
+  function handleBankAndReturnToPort() {
+    const banked = bankVoyageAndFinish();
+    if (CB.audio && CB.audio.playUpgradeBuy) CB.audio.playUpgradeBuy();
+    startStage(null, { keepCurios: false, stayOnTitle: true });
+    openTitleScreen();
+    openHub('workshop');
+    if (banked > 0) {
+      spawnPopup(game.player.x, game.player.y - 46, `🏛 已安全入库 +${banked} 资产!`, '#248a72');
+    }
+  }
+
   function advanceAfterSummary() {
     if (game.run.phase === 'extracted') {
-      const next = getNextStage(game.currentStageId);
-      if (next) {
-        startStage(next.id, { keepCurios: true });
-      } else {
-        startStage(1, { keepCurios: false });
-      }
+      openChartModal(
+        (chosenNode) => {
+          advanceVoyageToNode(chosenNode);
+          startStage(chosenNode, { keepCurios: true, stayOnTitle: false });
+        },
+        () => {
+          handleBankAndReturnToPort();
+        }
+      );
     } else {
-      startStage(game.currentStageId, { keepCurios: false });
+      startStage(null, { keepCurios: false, stayOnTitle: false });
     }
   }
 
@@ -512,6 +535,7 @@
     const btnBackTitle = document.getElementById('btnBackTitle');
     const btnDismissPortrait = document.getElementById('btnDismissPortrait');
     const btnNextRun = document.getElementById('btnNextRun');
+    const btnBankReturn = document.getElementById('btnBankReturn');
     const btnRetrySeed = document.getElementById('btnRetrySeed');
     const btnOpenHub = document.getElementById('btnOpenHub');
     const btnOpenCodex = document.getElementById('btnOpenCodex');
@@ -524,7 +548,6 @@
     const btnPauseAudio = document.getElementById('btnPauseAudio');
     const btnPauseLayout = document.getElementById('btnPauseLayout');
     const btnPauseFullscreen = document.getElementById('btnPauseFullscreen');
-    const btnSummaryHub = document.getElementById('btnSummaryHub');
     const btnCloseHub = document.getElementById('btnCloseHub');
     const btnHubResume = document.getElementById('btnHubResume');
     const btnHubLaunch = document.getElementById('btnHubLaunch');
@@ -542,7 +565,6 @@
     const btnSetAutoIntro = document.getElementById('btnSetAutoIntro');
     const btnSetReplayIntro = document.getElementById('btnSetReplayIntro');
     const btnSetResetSave = document.getElementById('btnSetResetSave');
-    const titleStageBtns = document.querySelectorAll('[data-title-stage]');
     const hubModal = document.getElementById('hubModal');
     const hubTabs = document.querySelectorAll('[data-hub-tab]');
 
@@ -554,7 +576,7 @@
     btnTitleFullscreenRef = btnTitleFullscreen;
     btnPauseFullscreenRef = btnPauseFullscreen;
     variantButtons = Array.from(document.querySelectorAll('[data-variant]'));
-    stageButtons = Array.from(document.querySelectorAll('[data-stage]'));
+    stageButtons = [];
 
     const toggleOverview = () => {
       if (game.run.phase !== 'playing' || game.titleOpen) return;
@@ -608,7 +630,7 @@
       syncSkinUI();
     };
 
-    if (btnRegen) btnRegen.addEventListener('click', () => startStage(game.currentStageId, { keepCurios: false }));
+    if (btnRegen) btnRegen.addEventListener('click', () => startStage(null, { keepCurios: false }));
     if (btnOverview) btnOverview.addEventListener('click', toggleOverview);
     let resetConfirmTimer = null;
     let resetArmed = false;
@@ -637,7 +659,7 @@
         if (CB.extraction && CB.extraction.resetMeta) CB.extraction.resetMeta();
         if (CB.audio && CB.audio.playUiClick) CB.audio.playUiClick();
         setDrawerOpen(false);
-        startStage(1, { keepCurios: false, stayOnTitle: false });
+        startStage(null, { keepCurios: false, stayOnTitle: false });
         spawnPopup(game.player.x, game.player.y - 46, '已重置本地存档', '#c95c1e');
       });
     }
@@ -809,40 +831,23 @@
         if (CB.extraction && CB.extraction.resetMeta) CB.extraction.resetMeta();
         if (CB.audio && CB.audio.playUiClick) CB.audio.playUiClick();
         setSettingsOpen(false);
-        startStage(1, { keepCurios: false, stayOnTitle: true });
+        startStage(null, { keepCurios: false, stayOnTitle: true });
         updateTitleCard();
         syncSettingsUI();
       });
     }
-    titleStageBtns.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        if (CB.audio) {
-          CB.audio.unlock();
-          if (CB.audio.playUiClick) CB.audio.playUiClick();
-        }
-        startStage(Number(btn.dataset.titleStage), { keepCurios: false, stayOnTitle: true });
-      });
-    });
+
 
     if (btnNextRun) btnNextRun.addEventListener('click', advanceAfterSummary);
+    if (btnBankReturn) btnBankReturn.addEventListener('click', handleBankAndReturnToPort);
     if (btnRetrySeed) {
       btnRetrySeed.addEventListener('click', () => {
-        if (game.run.phase === 'extracted') {
-          startStage(game.currentStageId, { keepCurios: false });
-        } else {
-          startStage(game.currentStageId, { customSeed: game.map ? game.map.seed : null, keepCurios: false });
-        }
+        openHub('workshop');
       });
     }
 
     variantButtons.forEach((btn) => {
       btn.addEventListener('click', () => selectVariant(btn.dataset.variant));
-    });
-    stageButtons.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        if (CB.audio) CB.audio.unlock();
-        startStage(Number(btn.dataset.stage), { keepCurios: false });
-      });
     });
 
     if (btnOpenHub) btnOpenHub.addEventListener('click', () => { setDrawerOpen(false); openHub('workshop'); syncTouchControlsUI(); });
@@ -881,7 +886,7 @@
     if (btnPauseRestart) {
       btnPauseRestart.addEventListener('click', () => {
         setGamePaused(false, true);
-        startStage(game.currentStageId, { keepCurios: false });
+        startStage(null, { keepCurios: false });
       });
     }
     if (btnPauseTitle) {
@@ -889,13 +894,12 @@
         openTitleScreen();
       });
     }
-    if (btnSummaryHub) btnSummaryHub.addEventListener('click', () => openHub('workshop'));
     if (btnCloseHub) btnCloseHub.addEventListener('click', closeHub);
     if (btnHubResume) btnHubResume.addEventListener('click', closeHub);
     if (btnHubLaunch) {
       btnHubLaunch.addEventListener('click', () => {
         closeHub();
-        startStage(game.currentStageId, { keepCurios: false, stayOnTitle: false });
+        startStage(null, { keepCurios: false, stayOnTitle: false });
       });
     }
     if (hubModal) {
@@ -965,10 +969,7 @@
           enterGameFromTitle(false);
         } else if (code === 'KeyV') {
           toggleAudio();
-        } else if (code === 'Digit1') startStage(1, { keepCurios: false, stayOnTitle: true });
-        else if (code === 'Digit2') startStage(2, { keepCurios: false, stayOnTitle: true });
-        else if (code === 'Digit3') startStage(3, { keepCurios: false, stayOnTitle: true });
-        else if (code === 'Digit4') startStage(4, { keepCurios: false, stayOnTitle: true });
+        }
         return;
       }
 
@@ -976,17 +977,11 @@
         if (code === 'KeyV') toggleAudio();
         return;
       }
-      if (code === 'KeyR') startStage(game.currentStageId, { keepCurios: false });
-      if (code === 'KeyT' && game.run.phase === 'failed') {
-        startStage(game.currentStageId, { customSeed: game.map ? game.map.seed : null, keepCurios: false });
-      }
+      if (game.chartOpen) return;
+      if (code === 'KeyR') startStage(null, { keepCurios: false });
       if (code === 'Enter' && game.run.phase !== 'playing') advanceAfterSummary();
       if (code === 'KeyM') toggleOverview();
       if (code === 'KeyV') toggleAudio();
-      if (code === 'Digit1') startStage(1, { keepCurios: false });
-      if (code === 'Digit2') startStage(2, { keepCurios: false });
-      if (code === 'Digit3') startStage(3, { keepCurios: false });
-      if (code === 'Digit4') startStage(4, { keepCurios: false });
     }, () => {
       if (game.touchMode === 'auto') {
         syncOrientationGuide();
@@ -1168,7 +1163,7 @@
     });
   })();
 
-  // 启动：以实时漂浮的第 1 关「晨露荷塘」为背景进入手绘开场标题页
+  // 启动：以实时漂浮的未知云海首航段为背景进入手绘开场标题页
   resize();
   window.addEventListener('resize', resize);
   window.addEventListener('orientationchange', () => setTimeout(resize, 120));
@@ -1199,7 +1194,7 @@
   window.addEventListener('pageshow', handleAppShow);
   initRenderer(ctx);
   setupUI();
-  startStage(1, { keepCurios: false, stayOnTitle: true });
+  startStage(null, { keepCurios: false, stayOnTitle: true });
   if (game.map) {
     game.camera.x = game.map.bounds.cx;
     game.camera.y = game.map.bounds.cy;
@@ -1262,10 +1257,11 @@
       return;
     }
 
-    if (game.run.phase === 'playing' && !game.hubOpen && !game.titleOpen && !game.portraitBlocked) {
+    if (game.run.phase === 'playing' && !game.hubOpen && !game.titleOpen && !game.chartOpen && !game.portraitBlocked) {
       updatePlayer(rawDt);
       updateCombat(rawDt);
       updateGuards(rawDt);
+      if (CB.physicsLab && CB.physicsLab.updatePhysicsLab) CB.physicsLab.updatePhysicsLab(rawDt);
       updateExtractionLoop(rawDt);
     }
 
@@ -1275,18 +1271,21 @@
     if (!game.titleOpen) {
       updateCombatHud(hudEls);
       if (game.touchActive) {
-        const shouldShowTouch = !game.hubOpen && !game.portraitBlocked && game.run.phase === 'playing';
+        const shouldShowTouch = !game.hubOpen && !game.chartOpen && !game.paused && !game.portraitBlocked && game.run.phase === 'playing';
         if (touchControlsEl) touchControlsEl.classList.toggle('hidden', !shouldShowTouch);
         if (shouldShowTouch) updateTouchHud(touchEls);
       } else if (pcHintBarEl) {
-        const shouldShowPc = !game.hubOpen && game.run.phase === 'playing';
+        const shouldShowPc = !game.hubOpen && !game.chartOpen && !game.paused && game.run.phase === 'playing';
         pcHintBarEl.classList.toggle('hud-hidden', !shouldShowPc);
       }
       syncStageUI();
     }
 
     renderWorld(ctx);
-    if (!game.titleOpen) renderMinimap(mctx, miniCanvas);
+    if (!game.titleOpen && (now - lastMinimapTime >= 55 || game.mapOverview)) {
+      lastMinimapTime = now;
+      renderMinimap(mctx, miniCanvas);
+    }
 
     requestAnimationFrame(loop);
   }

@@ -245,6 +245,7 @@ def main():
     parser = argparse.ArgumentParser(description='Build Curio Box TapTap single-file bundle ZIP')
     parser.add_argument('--out', default=None, help='Output ZIP path')
     parser.add_argument('--folder', default='curio-box', help='Single top-level folder inside ZIP')
+    parser.add_argument('--verify', action='store_true', help='Run verify_release.py after building')
     args = parser.parse_args()
 
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -257,6 +258,10 @@ def main():
     print(f"  style.css      : {stats['bundle_css_bytes']} bytes")
     print(f"  index.html     : {stats['bundle_html_bytes']} bytes")
     print(f"  ZIP size       : {stats['zip_bytes']} bytes")
+    if args.verify:
+        import verify_release
+        verify_release.run_verification(project_root, bundle_zip=out_zip)
+        print('  Verification   : PASSED (100% clean)')
 
 
 if __name__ == '__main__':

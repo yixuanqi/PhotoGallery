@@ -2850,3 +2850,308 @@ body.platform-mobile .mini-tool-btn {
     font-size: 11.5px;
   }
 }
+
+/* ==================== v9.0 星露弹珠 HUD & 未知云海罗盘航图样式 ==================== */
+.orb-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 2px;
+}
+
+.orb-pip {
+  position: relative;
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1.8px solid #2b5a68;
+  background: rgba(215, 236, 240, 0.55);
+  overflow: hidden;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+}
+
+.orb-pip.filled {
+  background: radial-gradient(circle at 35% 32%, #ffffff, #74e6fa 45%, #2aa3c9 100%);
+  border-color: #1c657d;
+  box-shadow: 0 0 6px rgba(84, 218, 246, 0.72);
+}
+
+.orb-pip.recharging .orb-fill-inner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(92, 214, 242, 0.75);
+}
+
+.orb-pip.empty-flash {
+  border-color: #d94c3d;
+  transform: scale(0.88);
+}
+
+.orb-overclock-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  height: 16px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #fff5b8, #ffd23f);
+  border: 1.5px solid #b5740c;
+  color: #6b4005;
+  font-size: 10px;
+  font-weight: 900;
+  box-shadow: 0 0 8px rgba(255, 210, 63, 0.85);
+}
+
+.drawer-sector-box {
+  background: #edf8fa;
+  border: 1.6px solid #7aa8b3;
+  border-radius: 10px;
+  padding: 7px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.drawer-sector-box strong {
+  font-size: 12px;
+  color: #214a56;
+}
+
+.drawer-sector-box small {
+  font-size: 11px;
+  color: #4f7984;
+}
+
+.title-voyage-badge {
+  background: #edf8fa;
+  border: 1.8px dashed #7aa8b3;
+  border-radius: 13px;
+  padding: 6px 14px;
+  font-size: 11.8px;
+  font-weight: 700;
+  color: #366875;
+  width: 100%;
+}
+
+.chart-modal {
+  z-index: 44;
+}
+
+.chart-card {
+  width: min(740px, 95vw);
+  max-height: 92dvh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: linear-gradient(180deg, #fafef8 0%, #eff8fc 100%);
+  border: 3px solid #355e68;
+  border-radius: 24px;
+  padding: 20px 22px;
+  box-shadow: 0 12px 0 rgba(36, 74, 92, 0.28);
+  color: #24454d;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.chart-crest {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: #2b7b94;
+  margin-bottom: 3px;
+}
+
+.chart-title-block h2 {
+  font-size: 21px;
+  font-weight: 900;
+  margin-bottom: 3px;
+}
+
+.chart-title-block p {
+  font-size: 12px;
+  color: #4e7682;
+}
+
+.chart-voyage-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  background: rgba(255, 253, 248, 0.9);
+  border: 1.8px solid #75a3ae;
+  border-radius: 13px;
+  padding: 8px 13px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #3c6773;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-voyage-strip strong {
+  color: #1f7a68;
+}
+
+.chart-compass-horizon {
+  background: linear-gradient(180deg, rgba(168, 220, 242, 0.24), rgba(255, 253, 248, 0.55));
+  border: 2px dashed #7aa8b3;
+  border-radius: 18px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chart-fog-ribbon {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #548596;
+  letter-spacing: 0.4px;
+}
+
+.chart-nodes-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.chart-node-card {
+  position: relative;
+  border: 2.4px solid #487d8c;
+  background: rgba(255, 254, 250, 0.95);
+  border-radius: 16px;
+  padding: 14px 12px 12px;
+  text-align: center;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  color: #24454d;
+  box-shadow: 0 4px 0 rgba(46, 86, 102, 0.18);
+  transition: transform 0.1s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+.chart-node-card:hover {
+  transform: translateY(-3px);
+  border-color: #2492b5;
+  box-shadow: 0 7px 0 rgba(36, 146, 181, 0.22);
+}
+
+.chart-node-card:active {
+  transform: translateY(1px);
+}
+
+.chart-node-card.is-multi {
+  border-color: #c9861c;
+  background: linear-gradient(160deg, #fffdf4, #fff1cf);
+}
+
+.chart-node-card.is-apex {
+  border-color: #b84b3e;
+  background: linear-gradient(160deg, #fffaf4, #ffe4d6);
+}
+
+.chart-node-alt {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #4f7e8c;
+}
+
+.chart-node-icons {
+  font-size: 28px;
+  line-height: 1.15;
+  margin: 2px 0;
+}
+
+.chart-node-title {
+  font-size: 13.5px;
+  font-weight: 900;
+}
+
+.chart-node-cue {
+  font-size: 11px;
+  color: #547c87;
+  line-height: 1.38;
+  min-height: 30px;
+}
+
+.chart-node-badges {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.cn-badge {
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+
+.cn-danger {
+  background: #e6f5fa;
+  color: #24687d;
+  border: 1px solid #8fc0cf;
+}
+
+.chart-node-card.is-multi .cn-danger {
+  background: #fff0c4;
+  color: #965d08;
+  border-color: #d9a336;
+}
+
+.chart-node-card.is-apex .cn-danger {
+  background: #fde3de;
+  color: #a83326;
+  border-color: #d97a6e;
+}
+
+.cn-mult {
+  background: #e5f7ee;
+  color: #1f7354;
+  border: 1px solid #82c9ab;
+}
+
+.chart-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.chart-risk-note {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #a64a32;
+}
+
+.chart-footer-actions button {
+  border: 2px solid #9e6b18;
+  border-radius: 12px;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.codex-mystery-note {
+  grid-column: 1 / -1;
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #58828d;
+  padding: 6px;
+}
+
+@media (max-width: 680px) {
+  .chart-nodes-grid {
+    grid-template-columns: 1fr;
+  }
+}
