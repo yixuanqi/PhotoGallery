@@ -2139,6 +2139,8 @@ function init() {
     camera.fov = 54;
     camera.updateProjectionMatrix();
     flight = {
+      kind: 'arrival',
+      startedAt: arrivalData && arrivalData.version === 3 ? arrivalData.startedAt : null,
       from: camera.position.clone(),
       to: defaultPos.clone(),
       lookFrom: arrivalLookFrom,
@@ -2213,7 +2215,9 @@ function focus(i) {
   var r = planets[i].userData.radius;
   var dist = Math.max(9.0, r * 5.2 + 2.2);
   var end = target.clone().addScaledVector(heading, dist).add(new THREE.Vector3(0, r * 1.15, 0));
+  clearArrivalState();
   flight = {
+    kind: 'focus',
     from: camera.position.clone(),
     to: end,
     lookFrom: controls.target.clone(),
@@ -2231,7 +2235,9 @@ function reset() {
   hidePanels();
   labels.forEach(function (x) { x.classList.remove('selected'); });
   if (!started) return;
+  clearArrivalState();
   flight = {
+    kind: 'reset',
     from: camera.position.clone(),
     to: new THREE.Vector3(0, mobile ? 54 : 44, mobile ? 110 : 92),
     lookFrom: controls.target.clone(),
@@ -2334,18 +2340,109 @@ function updateLabels(dt) {
   });
 }
 
+// The handoff clock belongs to the arrival flight only, not to later navigation.
+function syncArrivalCurtainClock() {
+  if (!document.documentElement.classList.contains('cosmos-arrival-ready') &&
+      arrivalData && arrivalData.version === 3 && Number.isFinite(arrivalData.startedAt)) {
+    var elapsedMs = Math.min(arrivalData.durationMs, Math.max(0, Date.now() - arrivalData.startedAt));
+    arrivalData.elapsedMs = elapsedMs;
+    document.documentElement.style.setProperty('--cosmos-arrival-delay', (-elapsedMs) + 'ms');
+  }
+}
+
+function clearArrivalState() {
+  if (!arrivalData) return;
+  syncArrivalCurtainClock();
+  arrivalData = null;
+  window.__COSMOS_ARRIVAL__ = null;
+}
+
+function finiteVector(v) {
+  return !!v && Number.isFinite(v.x) && Number.isFinite(v.y) && Number.isFinite(v.z);
+}
+
+function finiteCameraState() {
+  return finiteVector(camera.position) && finiteVector(controls.target) &&
+    Number.isFinite(camera.fov) && camera.fov > 0 && camera.fov < 180 &&
+    finiteVector(camera.quaternion) && Number.isFinite(camera.quaternion.w);
+}
+
+function recoverCameraState(reason) {
+  console.warn('[Galaxy] Invalid camera flight; restoring overview:', reason);
+  clearArrivalState();
+  flight = null;
+  selected = -1;
+  el('card').classList.remove('show');
+  labels.forEach(function (label) { label.classList.remove('selected'); });
+  camera.position.set(0, mobile ? 54 : 44, mobile ? 110 : 92);
+  controls.target.set(0, 0, 0);
+  camera.fov = 50;
+  camera.updateProjectionMatrix();
+  camera.lookAt(controls.target);
+  controls.syncFromCamera();
+  controls.enabled = true;
+  controls.autoRotate = !reduced;
+}
+
+function updateCamera(dt, nowMs) {
+  if (!finiteCameraState()) {
+    recoverCameraState('non-finite camera or target');
+    return;
+  }
+  if (flight) {
+    var absoluteClock = flight.kind === 'arrival' && flight.startedAt != null;
+    if (!Number.isFinite(flight.t) ||
+        !finiteVector(flight.from) || !finiteVector(flight.to) ||
+        !finiteVector(flight.lookFrom) || !finiteVector(flight.lookTo) ||
+        (absoluteClock
+          ? !Number.isFinite(nowMs) || !Number.isFinite(flight.startedAt) ||
+            !Number.isFinite(flight.durationMs) || flight.durationMs <= 0
+          : !Number.isFinite(dt) || dt < 0 || !Number.isFinite(flight.rate) || flight.rate <= 0)) {
+      recoverCameraState('invalid flight data');
+      return;
+    }
+    var nextT = absoluteClock
+      ? Math.max(flight.t, (nowMs - flight.startedAt) / flight.durationMs)
+      : flight.t + dt * flight.rate;
+    if (!Number.isFinite(nextT)) {
+      recoverCameraState('non-finite flight progress');
+      return;
+    }
+    flight.t = Math.min(1, Math.max(0, nextT));
+    var t = flight.t;
+    var k = t * t * t * (t * (t * 6 - 15) + 10);
+    camera.position.copy(flight.from).lerp(flight.to, k);
+    controls.target.copy(flight.lookFrom).lerp(flight.lookTo, k);
+    if (Number.isFinite(flight.fromFov) && Number.isFinite(flight.toFov)) {
+      camera.fov = flight.fromFov + (flight.toFov - flight.fromFov) * k;
+      camera.updateProjectionMatrix();
+    }
+    if (!finiteCameraState()) {
+      recoverCameraState('invalid interpolated camera');
+      return;
+    }
+    if (t >= 1) {
+      if (flight.kind === 'arrival') clearArrivalState();
+      flight = null;
+      controls.syncFromCamera();
+      controls.enabled = true;
+      controls.autoRotate = selected < 0 && !reduced;
+    }
+  }
+  controls.update(dt);
+  if (!finiteCameraState()) recoverCameraState('invalid orbit camera');
+}
+
 function renderScene() {
   renderer.render(scene, camera);
   if (isArrival && !document.documentElement.classList.contains('cosmos-arrival-ready')) {
     // The Three.js boot can take time after the HTML bootstrap. Catch both the
     // aperture and camera up to the same absolute source clock before revealing.
-    if (arrivalData && arrivalData.version === 3 && Number.isFinite(arrivalData.startedAt)) {
-      var elapsedMs = Math.min(arrivalData.durationMs, Math.max(0, Date.now() - arrivalData.startedAt));
-      arrivalData.elapsedMs = elapsedMs;
-      document.documentElement.style.setProperty('--cosmos-arrival-delay', (-elapsedMs) + 'ms');
-    }
+    syncArrivalCurtainClock();
     document.documentElement.classList.add('cosmos-arrival-ready');
   }
+  // Reduced-motion or already completed/cancelled arrival has no active flight.
+  if (arrivalData && (!flight || flight.kind !== 'arrival')) clearArrivalState();
 }
 
 function animate(now) {
@@ -2391,28 +2488,7 @@ function animate(now) {
       ud.ringMat.uniforms.uOpacity.value += (targetRing - ud.ringMat.uniforms.uOpacity.value) * ease;
     });
 
-    if (flight) {
-      if (arrivalData && arrivalData.version === 3 && Number.isFinite(arrivalData.startedAt)) {
-        flight.t = Math.min(1, Math.max(flight.t, (Date.now() - arrivalData.startedAt) / flight.durationMs));
-      } else {
-        flight.t = Math.min(1, flight.t + dt * flight.rate);
-      }
-      var t = flight.t;
-      var k = t * t * t * (t * (t * 6 - 15) + 10);
-      camera.position.copy(flight.from).lerp(flight.to, k);
-      controls.target.copy(flight.lookFrom).lerp(flight.lookTo, k);
-      if (Number.isFinite(flight.fromFov) && Number.isFinite(flight.toFov)) {
-        camera.fov = flight.fromFov + (flight.toFov - flight.fromFov) * k;
-        camera.updateProjectionMatrix();
-      }
-      if (t >= 1) {
-        flight = null;
-        controls.syncFromCamera();
-        controls.enabled = true;
-        controls.autoRotate = selected < 0 && !reduced;
-      }
-    }
-    controls.update(dt);
+    updateCamera(dt, Date.now());
     updateLabels(dt);
     renderScene();
     updateAdaptiveQuality(now, frameMs);

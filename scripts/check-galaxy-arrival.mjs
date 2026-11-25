@@ -44,7 +44,7 @@ assert.match(html, /arrivalFovRad = THREE\.MathUtils\.degToRad\(54\)/, "arrival 
 assert.match(html, /camera\.fov = 54;/, "arrival camera must start at the source exit FOV");
 assert.match(html, /fromFov: 54,/, "camera FOV must settle from the shared source FOV");
 assert.match(html, /camera\.fov = flight\.fromFov \+ \(flight\.toFov - flight\.fromFov\) \* k/, "camera FOV must settle continuously during arrival");
-assert.match(html, /Date\.now\(\) - arrivalData\.startedAt/, "camera flight must follow the source's absolute transition clock");
+assert.match(html, /nowMs - flight\.startedAt/, "camera flight must follow the source's absolute transition clock");
 assert.match(html, /style\.setProperty\('--cosmos-arrival-delay', \(-elapsedMs\) \+ 'ms'\)/, "the portal reveal must catch up to the same clock after WebGL initialization");
 
 // Preserve the actual 3D scene, interaction and responsive rendering contract.
@@ -52,7 +52,7 @@ assert.match(html, /function createOrbitController\(cam, dom\)/, "damped orbit/p
 assert.match(html, /function buildOrganicPlanetCoords\(\)/, "organic planet constellation must exist");
 assert.match(html, /var totalStars = mobile \? 13000 : 28000;/, "desktop/mobile star budget must remain bounded");
 assert.match(html, /mobile \? planeDefs\.slice\(0, 2\) : planeDefs/, "mobile must use two nebula layers");
-assert.match(html, /window\.devicePixelRatio \|\| 1, mobile \? 1\.5 : 1\.85/, "DPR must remain capped by device class");
+assert.match(html, /window\.devicePixelRatio \|\| 1, mobile \? 1\.35 : 1\.5/, "DPR must remain capped by device class");
 assert.match(html, /for \(var iter = 0; iter < 4; iter\+\+\)/, "floating labels must retain collision avoidance");
 assert.match(html, /function updateShootingStars\(dt\)/, "subtle shooting-star layer must exist");
 assert.match(html, /prefers-reduced-motion: reduce/, "reduced-motion styling must be respected");
@@ -91,3 +91,86 @@ const journalOrders = projects.filter(project => project.galaxy.journal).map(pro
 assert.equal(new Set(journalIds).size, journalIds.length, "journal IDs must be unique");
 assert.equal(new Set(journalOrders).size, journalOrders.length, "journal order values must be unique");
 console.log("Galaxy arrival checks passed: shared portal clock, catalog-driven " + projectIds.length + " project planets, and " + journalIds.length + " project journal entries.");
+
+
+// Run actual camera functions with minimal vector and controller doubles.
+const cameraFunctions = ["syncArrivalCurtainClock","clearArrivalState","finiteVector",
+  "finiteCameraState","recoverCameraState","updateCamera","focus","reset","renderScene"].map(name=>{
+  const start=html.indexOf("function "+name+"("), end=html.indexOf("\n}",start);
+  assert.ok(start>=0 && end>start,name+" must exist");
+  return html.slice(start,end+2);
+}).join("\n");
+const makeHarness = new Function("payload","mobile","reduced", `
+  class V {
+    constructor(x=0,y=0,z=0){this.set(x,y,z)}
+    set(x,y,z){Object.assign(this,{x,y,z});return this}
+    copy(v){return this.set(v.x,v.y,v.z)}
+    clone(){return new V(this.x,this.y,this.z)}
+    lerp(v,k){return this.set(this.x+(v.x-this.x)*k,this.y+(v.y-this.y)*k,this.z+(v.z-this.z)*k)}
+    sub(v){return this.set(this.x-v.x,this.y-v.y,this.z-v.z)}
+    normalize(){const n=Math.hypot(this.x,this.y,this.z)||1;return this.set(this.x/n,this.y/n,this.z/n)}
+    addScaledVector(v,k){return this.set(this.x+v.x*k,this.y+v.y*k,this.z+v.z*k)}
+    add(v){return this.addScaledVector(v,1)}
+  }
+  const THREE={Vector3:V},ready=new Set();
+  const document={documentElement:{classList:{contains:k=>ready.has(k),add:k=>ready.add(k)},style:{setProperty(){}}}};
+  const window={__COSMOS_ARRIVAL__:payload};
+  let arrivalData=payload,isArrival=!!payload,flight=null,selected=-1,started=true;
+  const camera={position:new V(0,44,92),quaternion:{x:0,y:0,z:0,w:1},fov:50,updateProjectionMatrix(){},lookAt(){this.quaternion={x:0,y:0,z:0,w:1}}};
+  const controls={target:new V(),enabled:true,autoRotate:true,syncFromCamera(){},update(){}};
+  const labels=[],planets=[{position:new V(12,2,8),userData:{radius:2}}];
+  const el=()=>({classList:{remove(){}}}),hidePanels=()=>{},showCard=i=>{selected=i};
+  const renderer={render(){}},scene={};
+  const warnings=[],console={warn:(...args)=>warnings.push(args)};
+  `+cameraFunctions+`
+  return {camera,controls,warnings,focus,reset,updateCamera,renderScene,
+    get flight(){return flight},get arrivalData(){return arrivalData},window,
+    beginArrival(){controls.enabled=false;flight={kind:'arrival',startedAt:payload.version===3?payload.startedAt:null,
+      durationMs:2800,rate:1000/2800,t:0,from:new V(0,110,260),to:new V(0,44,92),
+      lookFrom:new V(0,10,0),lookTo:new V(),fromFov:54,toFov:50}},
+    finiteCameraState};
+`);
+const v3=()=>({version:3,startedAt:1000,durationMs:2800,elapsedMs:0});
+function finish(h,now=5000){
+  for(let i=0;i<240 && h.flight;i++){
+    h.updateCamera(1/60,now+i*1000/60);
+    assert.ok(h.finiteCameraState(),"camera must stay finite every frame");
+  }
+  assert.equal(h.flight,null,"flight must complete");
+  assert.equal(h.controls.enabled,true,"orbit input must resume");
+}
+for(const kind of ["direct","v2","v3","reduced","interrupt-focus","interrupt-reset"]){
+  const h=makeHarness(kind==="direct"?null:kind==="v2"?{version:2,durationMs:2800}:v3(),false,kind==="reduced");
+  if(kind!=="direct" && kind!=="reduced"){
+    h.beginArrival();h.updateCamera(.016,1500);
+    assert.ok(h.flight && h.finiteCameraState());
+    if(kind==="interrupt-focus") h.focus(0);
+    else if(kind==="interrupt-reset") h.reset();
+    finish(h);
+  }
+  h.renderScene();
+  assert.equal(h.arrivalData,null,kind+" must release arrival payload");
+  assert.equal(h.window.__COSMOS_ARRIVAL__,null);
+  for(let i=0;i<100;i++){h.focus(0);finish(h);h.reset();finish(h)}
+  assert.equal(h.warnings.length,0,kind+" must not require recovery");
+}
+for(const field of ["t","from","position","target","quaternion","rate","duration","orbit"]){
+  const h=makeHarness(v3(),true,false);h.beginArrival();
+  if(field==="duration") h.flight.durationMs=0;
+  else{
+    h.focus(0);
+    if(field==="t") h.flight.t=NaN;
+    if(field==="from") h.flight.from.x=Infinity;
+    if(field==="position") h.camera.position.x=NaN;
+    if(field==="target") h.controls.target.y=NaN;
+    if(field==="quaternion") h.camera.quaternion.w=NaN;
+    if(field==="rate") h.flight.rate=Infinity;
+    if(field==="orbit") h.controls.update=()=>{h.camera.position.z=NaN};
+  }
+  h.updateCamera(.016,2000);
+  assert.ok(h.finiteCameraState(),field+" must recover to finite camera");
+  assert.equal(h.flight,null);assert.equal(h.controls.enabled,true);
+  assert.equal(h.warnings.length,1);
+  assert.equal(h.camera.position.y,54);assert.equal(h.camera.position.z,110);
+}
+console.log("PASS Galaxy camera: 6 entry paths, 1200 focus/reset flights, 8 invalid-state recovery cases.");
