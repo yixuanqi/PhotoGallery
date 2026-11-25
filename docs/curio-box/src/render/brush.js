@@ -28,10 +28,20 @@
   }
 
   // 四大关卡专属手绘地砖纹理（384×384 大幅面无缝水彩砖，消除机械拼凑感）
+  function getClimateId(st) {
+    if (st && st.climateId) return st.climateId;
+    const th = st ? st.theme : 'friction';
+    if (th === 'gravity') return 'starry_night';
+    if (th === 'stealth') return 'twilight_vine';
+    if (th === 'fusion') return 'sunset_dome';
+    return 'day_lotus';
+  }
+
   function createPaperPattern(ctx, stage = null) {
     const st = stage || (CB.game && CB.game.map && CB.game.map.stage) || null;
     const pal = (st && st.palette) || getPal();
-    const theme = st ? st.theme : 'friction';
+    const cid = getClimateId(st);
+    const isGridTile = cid === 'starry_night' || cid === 'thunder_violet' || cid === 'horizon_void';
 
     const S = 384;
     const tile = document.createElement('canvas');
@@ -67,7 +77,7 @@
 
     // 2. 逐块 64×64 手绘水彩石砖微色差（自然融为一体，不靠突兀贴片）
     for (let row = 0; row < 6; row++) {
-      const offset = theme === 'gravity' ? 0 : (row % 2) * 32;
+      const offset = isGridTile ? 0 : (row % 2) * 32;
       for (let col = 0; col < 6; col++) {
         const h = hash2D(col * 17 + 3, row * 29 + 7);
         const bx = (col * 64 + offset) % S;
@@ -85,7 +95,7 @@
     }
 
     // 3. 纸张与砂岩肌理微粒（确定性分布更自然）
-    const dotCount = theme === 'friction' ? 980 : 540;
+    const dotCount = (cid === 'day_lotus' || cid === 'aurora_frost') ? 980 : 540;
     for (let i = 0; i < dotCount; i++) {
       const x = hash2D(i * 1.37, 11.7) * S;
       const y = hash2D(i * 2.91, 47.3) * S;
@@ -97,13 +107,13 @@
 
     // 4. 柔和砖缝与微高光边缘
     tctx.strokeStyle = pal.floorLine;
-    tctx.lineWidth = theme === 'gravity' ? 1.2 : 1.15;
+    tctx.lineWidth = isGridTile ? 1.2 : 1.15;
     tctx.beginPath();
     for (let row = 0; row < 6; row++) {
       const y = row * 64 + 0.5;
       tctx.moveTo(0, y);
       tctx.lineTo(S, y);
-      const offset = theme === 'gravity' ? 0 : (row % 2) * 32;
+      const offset = isGridTile ? 0 : (row % 2) * 32;
       for (let col = 0; col < 6; col++) {
         const x = (col * 64 + offset) % S + 0.5;
         tctx.moveTo(x, y);
@@ -123,7 +133,6 @@
     }
     tctx.stroke();
 
-    const cid = st ? st.climateId : '';
     if (cid === 'thunder_violet') {
       tctx.strokeStyle = 'rgba(116, 228, 255, 0.14)';
       tctx.lineWidth = 1.4;
@@ -156,8 +165,8 @@
       tctx.arc(192, 192, 136, 0, Math.PI * 2);
       tctx.arc(192, 192, 74, 0, Math.PI * 2);
       tctx.stroke();
-    } else if (theme === 'gravity') {
-      // 第 2 关星象天文台：精致暗金星盘刻度圆弧与闪烁微星
+    } else if (cid === 'starry_night') {
+      // 星夜天文台：精致暗金星盘刻度圆弧与闪烁微星
       tctx.strokeStyle = 'rgba(246, 208, 114, 0.14)';
       tctx.lineWidth = 1.3;
       tctx.beginPath();
@@ -170,8 +179,8 @@
         tctx.arc(sx, sy, 2.2, 0, Math.PI * 2);
         tctx.fill();
       });
-    } else if (theme === 'stealth') {
-      // 第 3 关暮光古藤廊：蜿蜒深苔藤蔓暗纹
+    } else if (cid === 'twilight_vine') {
+      // 暮光古藤廊：蜿蜒深苔藤蔓暗纹
       tctx.strokeStyle = 'rgba(46, 108, 76, 0.18)';
       tctx.lineWidth = 1.9;
       tctx.beginPath();
@@ -180,8 +189,8 @@
       tctx.moveTo(192, 0);
       tctx.bezierCurveTo(164, 126, 224, 256, 192, S);
       tctx.stroke();
-    } else if (theme === 'fusion') {
-      // 第 4 关落日鎏金穹：皇家金色菱形镶边拼花
+    } else if (cid === 'sunset_dome') {
+      // 落日鎏金穹：皇家金色菱形镶边拼花
       tctx.strokeStyle = 'rgba(232, 172, 72, 0.21)';
       tctx.lineWidth = 1.25;
       tctx.beginPath();
@@ -217,7 +226,7 @@
     const { x, y, w: ww, h: hh, height } = w;
     const pal = getPal();
     const st = CB.game && CB.game.map && CB.game.map.stage;
-    const theme = st ? st.theme : 'friction';
+    const cid = getClimateId(st);
     const ink = pal.ink || INK;
 
     ctx.save();
@@ -267,11 +276,11 @@
     ctx.lineTo(x + ww - 3, y - height + 3);
     ctx.stroke();
 
-    // 按主题绘制墙面细部：第 2 关为黄铜星轨铆钉，其余关为手绘常春藤与小花
+    // 按 8 套气候统一绘制墙面细部（暗色/星象/雷电/奇点用黄铜/青电铆钉；极光用霜晶；花房用藤蔓小花）
     const span = Math.max(ww, hh);
-    if (theme === 'gravity') {
+    if (pal.isDark || cid === 'starry_night' || cid === 'thunder_violet' || cid === 'horizon_void') {
       const rivets = Math.max(1, Math.floor(span / 80));
-      ctx.fillStyle = '#f5ca5c';
+      ctx.fillStyle = cid === 'thunder_violet' ? '#7ceeff' : (cid === 'horizon_void' ? '#ffd464' : '#f5ca5c');
       ctx.strokeStyle = ink;
       ctx.lineWidth = 1.2;
       for (let i = 0; i < rivets; i++) {
@@ -283,19 +292,42 @@
         ctx.fill();
         ctx.stroke();
       }
+    } else if (cid === 'aurora_frost') {
+      const frostCount = Math.max(1, Math.floor(span / 84));
+      for (let i = 0; i < frostCount; i++) {
+        const h1 = hash2D(x + i * 29, y + i * 19);
+        if (h1 < 0.28) continue;
+        const frac = (i + 0.5) / frostCount;
+        const fx = ww >= hh ? x + ww * frac : x + ww * 0.5;
+        const fy = ww >= hh ? y - height + hh * 0.55 : y - height + hh * frac;
+        ctx.fillStyle = h1 > 0.6 ? '#b8f7ff' : '#e6fcff';
+        ctx.strokeStyle = 'rgba(42, 118, 146, 0.55)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(fx, fy - 5.5);
+        ctx.lineTo(fx + 5, fy);
+        ctx.lineTo(fx, fy + 5.5);
+        ctx.lineTo(fx - 5, fy);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
     } else {
-      const vineCount = Math.max(1, Math.floor(span / (theme === 'stealth' ? 68 : 92)));
-      const flowerColors = theme === 'stealth'
+      const isStealthClimate = cid === 'twilight_vine';
+      const vineCount = Math.max(1, Math.floor(span / (isStealthClimate ? 68 : 92)));
+      const flowerColors = isStealthClimate
         ? ['#ffd866', '#c89cf2', '#ffad70']
+        : cid === 'crystal_prism'
+        ? ['#ffe270', '#96e4ff', '#ffb6cf', '#ffffff']
         : ['#ff9bb3', '#ffe066', '#88d4f5', '#fffaf0'];
       for (let i = 0; i < vineCount; i++) {
         const h1 = hash2D(x + i * 31, y + i * 17);
-        if (h1 < (theme === 'stealth' ? 0.14 : 0.3)) continue;
+        if (h1 < (isStealthClimate ? 0.14 : 0.3)) continue;
         const frac = (i + 0.5) / vineCount;
         const vx = ww >= hh ? x + ww * frac : x + ww * 0.5;
         const vyTop = ww >= hh ? y - height + hh * 0.65 : y - height + hh * frac;
 
-        ctx.fillStyle = theme === 'stealth' ? '#3d8a5c' : (h1 > 0.62 ? '#6ab87a' : '#52a16b');
+        ctx.fillStyle = isStealthClimate ? '#3d8a5c' : (h1 > 0.62 ? '#6ab87a' : '#52a16b');
         ctx.strokeStyle = 'rgba(32, 68, 52, 0.65)';
         ctx.lineWidth = 1.2;
         ctx.beginPath();
@@ -305,8 +337,8 @@
         ctx.stroke();
 
         if (ww >= hh) {
-          const dropLen = (theme === 'stealth' ? 12 : 8) + h1 * 12;
-          ctx.fillStyle = theme === 'stealth' ? '#357d52' : '#5aa86e';
+          const dropLen = (isStealthClimate ? 12 : 8) + h1 * 12;
+          ctx.fillStyle = isStealthClimate ? '#357d52' : '#5aa86e';
           ctx.beginPath();
           ctx.ellipse(vx, y + hh - height + dropLen * 0.55, 4.5, dropLen * 0.45, 0.15, 0, Math.PI * 2);
           ctx.fill();
@@ -2675,7 +2707,7 @@
     const { x, y, w, h, orient, outwardX, outwardY, kind, broken, seed } = edge;
     const pal = getPal();
     const st = CB.game && CB.game.map && CB.game.map.stage;
-    const theme = st ? st.theme : 'friction';
+    const cid = getClimateId(st);
     const ink = pal.ink || INK;
     const isH = orient === 'h';
 
@@ -2694,21 +2726,20 @@
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
 
-    // 1. 外侧柔和云雾飘散提示（随 4 关主题配色自动适配）
-    const mistCol = theme === 'gravity'
-      ? 'rgba(130, 178, 255, 0.34)'
-      : theme === 'stealth'
-      ? 'rgba(170, 224, 206, 0.36)'
-      : theme === 'fusion'
-      ? 'rgba(255, 232, 198, 0.45)'
-      : 'rgba(255, 255, 255, 0.62)';
-    const mistAccent = theme === 'gravity'
-      ? 'rgba(255, 226, 126, 0.42)'
-      : theme === 'stealth'
-      ? 'rgba(255, 224, 128, 0.34)'
-      : theme === 'fusion'
-      ? 'rgba(255, 196, 152, 0.36)'
-      : 'rgba(148, 228, 248, 0.42)';
+    // 1. 外侧柔和云雾飘散提示（严格按 8 套气候 climateId 配色，杜绝双法则串色）
+    const cliffMistByClimate = {
+      starry_night: ['rgba(130, 178, 255, 0.34)', 'rgba(255, 226, 126, 0.42)'],
+      twilight_vine: ['rgba(170, 224, 206, 0.36)', 'rgba(255, 224, 128, 0.34)'],
+      sunset_dome: ['rgba(255, 232, 198, 0.45)', 'rgba(255, 196, 152, 0.36)'],
+      thunder_violet: ['rgba(132, 114, 208, 0.38)', 'rgba(124, 238, 255, 0.42)'],
+      aurora_frost: ['rgba(218, 250, 255, 0.56)', 'rgba(120, 255, 214, 0.42)'],
+      crystal_prism: ['rgba(255, 255, 255, 0.68)', 'rgba(255, 228, 126, 0.44)'],
+      horizon_void: ['rgba(116, 86, 186, 0.36)', 'rgba(255, 212, 108, 0.42)'],
+      day_lotus: ['rgba(255, 255, 255, 0.62)', 'rgba(148, 228, 248, 0.42)'],
+    };
+    const mistPair = cliffMistByClimate[cid] || cliffMistByClimate.day_lotus;
+    const mistCol = mistPair[0];
+    const mistAccent = mistPair[1];
 
     const span = isH ? w : h;
     const puffCount = Math.max(4, Math.floor(span / 76));
@@ -2818,32 +2849,21 @@
     const { x, y, w, h, orient, outwardX, outwardY, height, hitFlash, wobble, hp, maxHp, seed } = edge;
     const pal = getPal();
     const st = CB.game && CB.game.map && CB.game.map.stage;
-    const theme = st ? st.theme : 'friction';
+    const cid = getClimateId(st);
     const ink = pal.ink || INK;
     const isH = orient === 'h';
 
-    const woodMain = theme === 'gravity'
-      ? '#6e7da8'
-      : theme === 'stealth'
-      ? '#8a7254'
-      : theme === 'fusion'
-      ? '#c98862'
-      : '#c9935a';
-    const woodLight = theme === 'gravity'
-      ? '#98aad6'
-      : theme === 'stealth'
-      ? '#ad926f'
-      : theme === 'fusion'
-      ? '#ebba8c'
-      : '#e8bd86';
-    const bloomCol = theme === 'gravity'
-      ? '#ffe066'
-      : theme === 'stealth'
-      ? '#ffbe55'
-      : theme === 'fusion'
-      ? '#ffd866'
-      : '#ff9eb5';
-    const leafCol = theme === 'gravity' ? '#6cb2d8' : '#64bd7a';
+    const railPalByClimate = {
+      starry_night: ['#6e7da8', '#98aad6', '#ffe066', '#6cb2d8'],
+      twilight_vine: ['#8a7254', '#ad926f', '#ffbe55', '#52a36e'],
+      sunset_dome: ['#c98862', '#ebba8c', '#ffd866', '#64bd7a'],
+      thunder_violet: ['#665b94', '#8e82bd', '#7ceeff', '#5ea6c9'],
+      aurora_frost: ['#7eaec2', '#b5dfed', '#78ffd6', '#5ec4b8'],
+      crystal_prism: ['#d4b483', '#f2dbb3', '#ffe270', '#6ec992'],
+      horizon_void: ['#5a4d7d', '#8675ad', '#ffd464', '#9e7ce0'],
+      day_lotus: ['#c9935a', '#e8bd86', '#ff9eb5', '#64bd7a'],
+    };
+    const [woodMain, woodLight, bloomCol, leafCol] = railPalByClimate[cid] || railPalByClimate.day_lotus;
 
     const shake = wobble > 0 ? Math.sin(time * 78) * wobble * 3.2 : 0;
     const railH = height || 22;

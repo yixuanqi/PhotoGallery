@@ -129,6 +129,10 @@
 
   function refreshStageTheme(ctx, stage) {
     paperPattern = CB.brush.createPaperPattern(ctx, stage);
+    cachedFogKey = '';
+    cachedSolidCells = [];
+    cachedSolidRooms = [];
+    cachedStaticPuffs = [];
     if (stage && stage.palette) {
       document.body.style.background = stage.palette.bodyBg || '#8fd0f0';
       const mini = document.getElementById('minimapCanvas');
@@ -1432,7 +1436,7 @@
 
   // ==================== 无缝融合的宫崎骏水彩云海遮罩（彻底告别方块格子与重复印章） ====================
   function getCloudFogPalette(stage) {
-    const cid = stage ? stage.climateId : '';
+    const cid = (stage && stage.climateId) || (stage && stage.theme === 'gravity' ? 'starry_night' : stage && stage.theme === 'stealth' ? 'twilight_vine' : stage && stage.theme === 'fusion' ? 'sunset_dome' : 'day_lotus');
     if (cid === 'thunder_violet') {
       return {
         shadow: '#1a1433',
@@ -1477,8 +1481,7 @@
         isNight: true,
       };
     }
-    const theme = stage ? stage.theme : 'friction';
-    if (theme === 'gravity') {
+    if (cid === 'starry_night') {
       return {
         shadow: '#0d1836',
         mid: '#1b2d5c',
@@ -1489,7 +1492,7 @@
         isNight: true,
       };
     }
-    if (theme === 'stealth') {
+    if (cid === 'twilight_vine') {
       return {
         shadow: '#214242',
         mid: '#386864',
@@ -1500,7 +1503,7 @@
         isNight: false,
       };
     }
-    if (theme === 'fusion') {
+    if (cid === 'sunset_dome') {
       return {
         shadow: '#c98d98',
         mid: '#e4b3b0',
@@ -1511,7 +1514,7 @@
         isNight: false,
       };
     }
-    // 第 1 关 晨露荷塘：纯净晴空奶白水彩云海
+    // day_lotus 晨露晴空奶白水彩云海
     return {
       shadow: '#b3daf0',
       mid: '#d8effa',
@@ -1650,7 +1653,7 @@
         fogCanvas.height = targetH;
       }
 
-      let fogKey = `${map.seed}:`;
+      let fogKey = `${map.seed}:${(map.stage && map.stage.climateId) || ''}:`;
       for (let i = 0; i < solidRooms.length; i++) fogKey += solidRooms[i].id + ',';
 
       if (fogKey !== cachedFogKey) {

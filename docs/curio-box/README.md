@@ -180,3 +180,8 @@
 ### 26. 紧急热修复（v9.6.1）
 - 修复进入 `🕳️ 深空视界奇点（horizon_void）` 气候（包括时空畸变、部分每日云海挑战与阶段霸主空域）时，`src/render/renderer.js` 中 `drawSkyBackdrop` 误写 `SKY_STARS` 导致 `Uncaught ReferenceError: SKY_STARS is not defined` 黑屏报错的问题，已更正为预生成的 `NIGHT_STARS`。
 - 在 `tools/verify_release.py` 中新增全模块未声明 `ALL_CAPS` 常量静态扫描，防止同类拼写错误再次漏检。
+
+### 27. 全 8 套气候视觉一致性与迷雾缓存修复（v9.6.2）
+- **迷雾色盘统一按 `climateId` 驱动（`src/render/renderer.js`）**：修正 `getCloudFogPalette()` 中经典 4 套气候回退依赖 `stage.theme` 导致双法则/每日挑战空域（如 `星夜棱镜观测穹`）误套用落日暖橙迷雾的问题；8 套气候均严格按 `climateId` 精确匹配云海色盘。
+- **迷雾缓存切换安全加固（`src/render/renderer.js`）**：在 `refreshStageTheme()` 中主动清空 `cachedFogKey` 与静态云团数组，并在 `fogKey` 中纳入 `climateId`，彻底杜绝同种子切换气候或重玩每日挑战时的缓存串用。
+- **地砖、墙饰、崖边云雾与花栏全 8 气候统一（`src/render/brush.js`）**：消除 `createPaperPattern`、`drawWallBlock`、`drawCliffEdge`、`drawRailing` 中残留的 `stage.theme` 视觉分支；暗色/奇点/雷电气候统一采用青电/暗金铆钉墙饰，极光气候墙头点缀霜晶，崖边云雾与木质花栏按全部 8 套 `climateId` 精准配色。
