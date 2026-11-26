@@ -1,7 +1,7 @@
-// English (en-US) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v45.8)
+// English (en-US) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v46.1)
 export const UI_EN = {
     // Document & Title
-    'doc.title': 'Ashen Bell Vow v45.8 (1.0 RC) — Dark Hand-Drawn Soulslike Metroidvania · 25 Interconnected Rooms',
+    'doc.title': 'Ashen Bell Vow v46.1 (1.0 RC) — Dark Hand-Drawn Soulslike Metroidvania · 25 Interconnected Rooms',
     'game.title': 'ASHEN BELL VOW',
     'game.subtitle': 'Dark Hand-Drawn Soulslike Metroidvania',
     'title.loading': 'Loading...',
@@ -15,7 +15,12 @@ export const UI_EN = {
     'slot.emptyDesc': 'No vow inscribed · Select slot to awaken',
     'slot.summary': '{0} · Explored {1}% · Bosses {2}/3',
     'slot.endTag': ' · Endings {0}/2',
-    'slot.cycleTag': ' · NG+{0}',
+    'world.variant1': 'Classic Cloister',
+    'world.variant2': 'Inverted Reflection',
+    'world.variant3': 'Skyward Span',
+    'world.variantNextHint2': 'Next cycle mirrors the entire world into “Inverted Reflection” with remixed elites & relics!',
+    'world.variantNextHint3': 'Next cycle unlocks the 26-room “Skyward Span” upper bridge linking east & west roofs!',
+    'slot.cycleTag': ' · NG+{0} ({1})',
     'slot.vowTag': ' · {0} Vows',
     'slot.bossTag': ' · Bosses {0}/3',
     'slot.erase': 'Erase',
@@ -287,9 +292,9 @@ export const UI_EN = {
     'altar.echoBestMeta': '{0} · Best {1}:{2} ({3} clears)',
     'altar.echoNoClear': '{0} · Unclaimed',
     'altar.echoGradeVows': '{0}·{1}V',
-    'altar.ngInfo': '<strong>Cycle of Vows · Currently NG+{0}</strong><span>Carry over unlocked Relics, Smith upgrades, Echoes & Endings; reset bosses & fog with tougher foes and +50% Echoes per cycle</span>',
-    'altar.ngBtn': 'Enter Cycle {0} (NG+)',
-    'altar.ngConfirm': 'Begin “Cycle of Vows · Cycle {0} (NG+)”?\n\n[KEPT] All unlocked Relics, Twin Slots, Bell-Smith upgrades, Echoes, Endings & Echo records, Vitality/Soul/Oil growth\n[RESET] All three Bosses, Map fog, Shortcuts, Secret Walls & Movement Arts (duplicate Relics & capped Oil convert into abundant Echoes)',
+    'altar.ngInfo': '<strong>Cycle of Vows · NG+{0} ({1})</strong><span>{2}</span>',
+    'altar.ngBtn': 'Enter Cycle {0} · {1}',
+    'altar.ngConfirm': 'Begin “Cycle of Vows · Cycle {0} ({1})”?\n{2}\n\n[KEPT] All unlocked Relics, Slots, Bell-Smith upgrades, Echoes, Endings & Echo records, Vitality/Soul/Oil growth\n[RESET] All Bosses, Map fog, Shortcuts, Secret Walls & Movement Arts (duplicate Relics & capped Oil convert into abundant Echoes)',
     'altar.litToast': '{0} Kindled · Respawn Set',
     'altar.continueToast': 'Vow Rekindled · {0}',
 
@@ -488,7 +493,7 @@ export const UI_EN = {
     'ending.toAltar': 'Return to Altar · Trial of Three Bells',
     'ending.keepRoam': 'Return to Heart & Explore',
     'ending.newRun': 'Erase & Fresh NG Run',
-    'ending.ngBtn': 'Enter Cycle of Vows · Cycle {0} (NG+)',
+    'ending.ngBtn': 'Enter Cycle {0} · {1}',
     'ending.epilogueDawn': 'Bell Silenced · True Ending Clear · Endings {0}/2',
     'ending.epilogueVow': 'Vow Renewed · Finale Clear · Endings {0}/2',
     'ending.epilogueStats': 'Ending Reached: {0} ({1}/2)\nDim Abyss Explored: {2}% · Relics: {3}/{4}\nTotal Playtime: {5} · Parries: {6} · Executions: {7}\n★ Unlocked Yuan Echo & Trial of Three Bells (Hui→Ji→Yuan) at any Altar!',
@@ -748,7 +753,7 @@ export const UI_EN = {
     'boss.echoJiQuote': '“Return to the Foundry · Break the sunken chorus”',
     'boss.echoYuanTitle': 'Vow Echo · Yuan, Relic of the First Bell',
     'boss.echoYuanQuote': '“Final Echo · Cross blades once more in the Heart”',
-    'ng.bannerTitle': 'Cycle of Vows · Cycle {0} (NG+)',
+    'ng.bannerTitle': 'Cycle of Vows · Cycle {0} — {1}',
     'ng.bannerQuote': '“Relics & tempering carried over · Foes empowered (HP ×{0} / Echoes ×{1})”',
 
     // Error / Loader / Bench UI labels

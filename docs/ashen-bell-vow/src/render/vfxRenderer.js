@@ -172,9 +172,10 @@ export function drawTalismans() {
 
 export function drawChapelTide() {
   if (!G.chapelTide) return;
-  const x0 = G.chapelTide.x0 !== undefined ? G.chapelTide.x0 : 2648;
-  const w = G.chapelTide.w !== undefined ? G.chapelTide.w : 1090;
-  const fy = G.chapelTide.floorY !== undefined ? G.chapelTide.floorY : FLOOR_Y;
+  const tideOwner = G.chapelTide.owner || G.boss;
+  const x0 = G.chapelTide.x0 !== undefined ? G.chapelTide.x0 : (tideOwner ? tideOwner.arenaMinX : 0);
+  const w = G.chapelTide.w !== undefined ? G.chapelTide.w : (tideOwner ? (tideOwner.arenaMaxX - tideOwner.arenaMinX) : 1090);
+  const fy = G.chapelTide.floorY !== undefined ? G.chapelTide.floorY : (tideOwner && tideOwner.arenaFloorY !== undefined ? tideOwner.arenaFloorY : FLOOR_Y);
   const isGold = G.chapelTide.theme === 'gold';
   G.ctx.save();
   if (G.chapelTide.phase === 'warn') {

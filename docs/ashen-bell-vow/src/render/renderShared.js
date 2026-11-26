@@ -6,8 +6,15 @@ import { getGroundSurfaceY } from '../physics.js';
 import { t, isEn } from '../i18n.js';
 import { drawCachedText } from './glyphAtlas.js';
 
-export const BACKDROP_LANCETS = [1080, 1460, 1840, 2220, 2790, 3610];
-export const BACKDROP_GRAVES = [460, 960, 1180, 1410, 2090, 2290, 2490];
+// v45.9 Room-Relative Architectural Props (automatically translate & mirror with host room bounds!)
+export const ROOM_BACKDROP_LANCETS = [
+  { roomId: 'r02_corridor', offsets: [140, 520, 900, 1280], yOff: 130 },
+  { roomId: 'r03_chapel',   offsets: [145, 965],            yOff: 130 }
+];
+export const ROOM_BACKDROP_GRAVES = [
+  { roomId: 'r01_sanctuary', offsets: [460],                             floorOff: 580 },
+  { roomId: 'r02_corridor',  offsets: [20, 240, 470, 1150, 1350, 1550],  floorOff: 580 }
+];
 
 export function isInView(x, y, w, h, pad = 100) {
   return x + w >= G.cam.x - pad && x <= G.cam.x + G.canvasW + pad &&

@@ -5,7 +5,7 @@ import {
   PENDULUMS, VOID_BARRIERS, WALL_INSCRIPTIONS, GRAPPLE_ANCHORS, WIND_ZONES, BOUNCE_PADS, WORLD_SWITCHES_DEF, WIND_VANES,
   BANNERS, CANDLE_CLUSTERS, BONE_CAIRNS, FLOOR_Y, WELL_BOTTOM_Y, DUMMY_MODES
 } from '../config.js';
-import { G, getAwakeBoss, getRelicStats, hasKeeperBlessing, getExplorationPercent, getActiveWeaponId, isWeaponUnlocked, isSkyBridgeOpen, isWorldSwitchOn, isSwitchUnlocked, isWindZoneActive, isBouncePadAwake, getEffectiveNpcPos } from '../state.js';
+import { G, getRoomById, getAwakeBoss, getRelicStats, hasKeeperBlessing, getExplorationPercent, getActiveWeaponId, isWeaponUnlocked, isSkyBridgeOpen, isWorldSwitchOn, isSwitchUnlocked, isWindZoneActive, isBouncePadAwake, getEffectiveNpcPos } from '../state.js';
 import { prof } from '../profiler.js';
 import { getControlLabels, getActionKeyLabel } from '../input.js';
 import {
@@ -1278,7 +1278,9 @@ export function drawGrappleThread() {
 }
 
 export function drawMistBarrier(activeBoss) {
-  const x = activeBoss ? activeBoss.arenaMinX - 2 : 2646;
+  if (!activeBoss) return;
+  const bossRm = getRoomById(activeBoss.roomId);
+  const x = (bossRm && bossRm.mirrored) ? (activeBoss.arenaMaxX + 2) : (activeBoss.arenaMinX - 2);
   const y0 = activeBoss ? activeBoss.arenaTopY : 0;
   const h = activeBoss ? (activeBoss.arenaFloorY - y0) : FLOOR_Y;
   G.ctx.save();

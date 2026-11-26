@@ -1,0 +1,814 @@
+{
+  "schemaVersion": 1,
+  "id": "r04_bell_well",
+  "zoneName": "沉渊钟井",
+  "name": "沉渊钟井",
+  "theme": "bell_well",
+  "bounds": {
+    "x": 5620,
+    "y": 0,
+    "w": 1780,
+    "h": 1520
+  },
+  "subZones": [
+    {
+      "name": "沉渊钟井 · 暗河深殿",
+      "x": 0,
+      "y": 1160,
+      "w": 1780,
+      "h": 360
+    },
+    {
+      "name": "沉渊钟井 · 井中悬坛",
+      "x": 1360,
+      "y": 760,
+      "w": 420,
+      "h": 400
+    },
+    {
+      "name": "沉渊钟井 · 钟摆石廊",
+      "x": 0,
+      "y": 760,
+      "w": 1360,
+      "h": 400
+    },
+    {
+      "name": "沉渊钟井 · 上层钟阁",
+      "x": 0,
+      "y": 0,
+      "w": 1780,
+      "h": 760
+    }
+  ],
+  "connections": [
+    "r03_chapel",
+    "r05_foundry",
+    "r06_crypt",
+    "r09_wind_spire",
+    "r20_bell_galleries",
+    "r22_cistern_nave"
+  ],
+  "solids": [
+    {
+      "x": 1420,
+      "y": 580,
+      "w": 360,
+      "h": 170,
+      "type": "ground"
+    },
+    {
+      "x": 680,
+      "y": 580,
+      "w": 240,
+      "h": 160,
+      "type": "ground"
+    },
+    {
+      "x": 0,
+      "y": 580,
+      "w": 540,
+      "h": 160,
+      "type": "ground"
+    },
+    {
+      "x": 1420,
+      "y": 1020,
+      "w": 360,
+      "h": 200,
+      "type": "ground"
+    },
+    {
+      "x": 1740,
+      "y": 1220,
+      "w": 40,
+      "h": 160,
+      "type": "pillar"
+    },
+    {
+      "x": 1420,
+      "y": 1380,
+      "w": 360,
+      "h": 180,
+      "type": "ground"
+    },
+    {
+      "x": 0,
+      "y": 1020,
+      "w": 920,
+      "h": 120,
+      "type": "ground"
+    },
+    {
+      "x": 420,
+      "y": 1380,
+      "w": 1000,
+      "h": 180,
+      "type": "ground"
+    },
+    {
+      "x": 0,
+      "y": 1380,
+      "w": 280,
+      "h": 180,
+      "type": "ground"
+    },
+    {
+      "x": 1190,
+      "y": 1315,
+      "w": 120,
+      "h": 20,
+      "type": "platform"
+    },
+    {
+      "x": 965,
+      "y": 1300,
+      "w": 115,
+      "h": 20,
+      "type": "platform"
+    },
+    {
+      "x": 645,
+      "y": 1305,
+      "w": 120,
+      "h": 20,
+      "type": "platform"
+    },
+    {
+      "x": 1200,
+      "y": 690,
+      "w": 150,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 965,
+      "y": 800,
+      "w": 155,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1205,
+      "y": 910,
+      "w": 155,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 950,
+      "y": 1020,
+      "w": 170,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1195,
+      "y": 1125,
+      "w": 155,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 970,
+      "y": 1230,
+      "w": 155,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": -20,
+      "y": 0,
+      "w": 40,
+      "h": 420,
+      "type": "pillar"
+    },
+    {
+      "x": -20,
+      "y": 580,
+      "w": 40,
+      "h": 660,
+      "type": "pillar"
+    }
+  ],
+  "crumblePlatforms": [
+    {
+      "id": "crumble_well_1",
+      "x": 730,
+      "y": 460,
+      "w": 110,
+      "h": 20
+    },
+    {
+      "id": "crumble_well_2",
+      "x": 340,
+      "y": 450,
+      "w": 110,
+      "h": 20
+    },
+    {
+      "id": "crumble_river_1",
+      "x": 810,
+      "y": 1302,
+      "w": 108,
+      "h": 20
+    }
+  ],
+  "altars": [
+    {
+      "id": "altar_well",
+      "x": 1615,
+      "y": 1020,
+      "name": "沉渊钟井 · 井中悬坛",
+      "shortName": "钟井 · 井中悬坛",
+      "defaultLit": false
+    },
+    {
+      "id": "altar_foundry_door",
+      "x": 90,
+      "y": 1380,
+      "name": "沉渊钟井 · 炉前残坛",
+      "shortName": "钟井 · 炉前残坛",
+      "defaultLit": false
+    }
+  ],
+  "loreTablets": [
+    {
+      "id": "lore_well",
+      "x": 195,
+      "y": 580,
+      "title": "铸钟匠遗碑",
+      "sub": "沉渊钟井 · 东侧钟阁",
+      "html": "“守钟铁卫手执青铜巨盾，寻常轻斩难伤其分毫。<br>唯有以<strong>居合一闪、三段重劈、幽鸣灵刃或完美弹反</strong>，方能震裂盾锋。<br><br>井底暗河深处封存着失落的<strong>「墨翼步」</strong>。习得之后，不妨借幽丝钩索登上古廊之上的<strong>「淋雨墓阶」</strong>——<br><strong>苍穹高台悬于雨雾之巅，古钟心核犹在彼处长鸣。</strong>”"
+    },
+    {
+      "id": "lore_void_barrier",
+      "x": 1535,
+      "y": 1380,
+      "title": "暗蚀结界手记",
+      "sub": "沉渊钟井 · 井底秘龛",
+      "html": "“暗蚀结界乃初钟崩裂时溢出的墨渊残幕，铁刃与魂火皆无法将其斩断。<br>唯有在<strong>残钟地窖</strong>习得<strong>「幽影穿身」</strong>，以自身化墨穿行，方能踏入结界之后的隐秘旧库。<br><br>手记末尾留有一行急促的刻痕：<br><strong>『莫忘沉渊铸钟殿深处——初钟之心仍在黑暗中等待最后的钟声。』</strong>”"
+    }
+  ],
+  "gates": [
+    {
+      "id": "gate_foundry_entry",
+      "role": "foundryEntry",
+      "x": -20,
+      "y": 1240,
+      "w": 40,
+      "h": 140
+    },
+    {
+      "id": "gate_wind_west",
+      "role": "switchGate",
+      "switchKey": "windWestOpen",
+      "orientation": "vertical",
+      "x": -20,
+      "y": 420,
+      "w": 40,
+      "h": 160
+    }
+  ],
+  "secretWalls": [
+    {
+      "id": "wall_well_mid",
+      "x": 216,
+      "y": 740,
+      "w": 34,
+      "h": 280,
+      "maxHp": 3
+    }
+  ],
+  "pickups": [
+    {
+      "id": "pickup_flask_core_well",
+      "kind": "flaskCore",
+      "x": 120,
+      "y": 1020,
+      "name": "深井灯油残芯",
+      "desc": "灯油上限再 +1！"
+    },
+    {
+      "id": "pickup_ink_wings",
+      "kind": "ability",
+      "abilityId": "doubleJump",
+      "x": 220,
+      "y": 1380,
+      "name": "绝技 · 墨翼步",
+      "desc": "习得二段跳！空中再按 Space 可振翼跃升，可登上淋雨墓阶高台寻觅古钟心核！"
+    },
+    {
+      "id": "pickup_relic_clapper",
+      "kind": "relic",
+      "relicId": "clapper",
+      "requiresPuzzle": "puzzle_well",
+      "bonusHp": 15,
+      "x": 100,
+      "y": 580,
+      "name": "共鸣秘宝 · 回响钟舌",
+      "desc": "解锁法术圣物「回响钟舌」且魂火上限永久 +20！"
+    },
+    {
+      "id": "pickup_flask_abyss",
+      "kind": "flaskCore",
+      "bonusHp": 15,
+      "echoAmount": 90,
+      "x": 1625,
+      "y": 1380,
+      "name": "沉渊秘龛 · 圣油残芯",
+      "desc": "灯油上限再 +1、生命 +15，并获 +90 残响！"
+    },
+    {
+      "id": "pickup_sunken_well",
+      "kind": "statCore",
+      "requiresSwitch": "riverDrained",
+      "bonusHp": 10,
+      "bonusSoul": 15,
+      "echoAmount": 60,
+      "x": 990,
+      "y": 1380,
+      "name": "河底遗核 · 退潮魂晶",
+      "desc": "暗河退潮后显露的沉渊魂晶（生命 +10 · 魂火 +15 · +60 残响）"
+    }
+  ],
+  "resonancePuzzles": [
+    {
+      "id": "puzzle_well",
+      "name": "沉渊钟阁 · 三钟共鸣",
+      "timeLimit": 8.0,
+      "cageX": 100,
+      "cageY": 580,
+      "bells": [
+        {
+          "id": "rb_w1",
+          "x": 785,
+          "y": 380,
+          "topY": 0,
+          "noteFreq": 440.0
+        },
+        {
+          "id": "rb_w2",
+          "x": 645,
+          "y": 295,
+          "topY": 0,
+          "noteFreq": 554.37
+        },
+        {
+          "id": "rb_w3",
+          "x": 395,
+          "y": 370,
+          "topY": 0,
+          "noteFreq": 659.25
+        }
+      ]
+    }
+  ],
+  "pendulums": [
+    {
+      "id": "pend_1",
+      "x": 1170,
+      "anchorY": 645,
+      "len": 180,
+      "amp": 0.72,
+      "speed": 1.65,
+      "phase": 0.2,
+      "r": 28
+    },
+    {
+      "id": "pend_2",
+      "x": 705,
+      "anchorY": 740,
+      "len": 222,
+      "amp": 0.54,
+      "speed": 1.8,
+      "phase": 0.0,
+      "r": 29
+    },
+    {
+      "id": "pend_3",
+      "x": 385,
+      "anchorY": 740,
+      "len": 222,
+      "amp": 0.54,
+      "speed": 1.8,
+      "phase": 3.14159265,
+      "r": 29
+    },
+    {
+      "id": "pend_4",
+      "x": 880,
+      "anchorY": 1140,
+      "len": 185,
+      "amp": 0.64,
+      "speed": 1.72,
+      "phase": 1.1,
+      "r": 28
+    }
+  ],
+  "rivers": [
+    {
+      "id": "river_well",
+      "x": 610,
+      "y": 1368,
+      "w": 740,
+      "drainable": true
+    }
+  ],
+  "grappleAnchors": [
+    {
+      "id": "anc_well_1",
+      "x": 1170,
+      "y": 420,
+      "topY": 0
+    },
+    {
+      "id": "anc_well_2",
+      "x": 1170,
+      "y": 745,
+      "topY": 0
+    },
+    {
+      "id": "anc_well_3",
+      "x": 1170,
+      "y": 1075,
+      "topY": 0
+    },
+    {
+      "id": "anc_well_east",
+      "x": 545,
+      "y": 815,
+      "topY": 740
+    },
+    {
+      "id": "anc_well_river",
+      "x": 610,
+      "y": 1210,
+      "topY": 1140
+    },
+    {
+      "x": 1545,
+      "y": 135,
+      "id": "anc_r04_bell_well_5"
+    }
+  ],
+  "lanterns": [
+    {
+      "id": "lan_6",
+      "x": 1170,
+      "anchorY": 455,
+      "len": 125,
+      "angle": -0.05
+    },
+    {
+      "id": "lan_7",
+      "x": 600,
+      "anchorY": 285,
+      "len": 145,
+      "angle": 0.05
+    },
+    {
+      "id": "lan_8",
+      "x": 880,
+      "anchorY": 1140,
+      "topY": 1140,
+      "len": 120,
+      "angle": -0.05
+    }
+  ],
+  "enemies": [
+    {
+      "id": "golem_1",
+      "kind": "golem",
+      "x": 454,
+      "y": 502,
+      "minX": 254,
+      "maxX": 774
+    },
+    {
+      "id": "golem_2",
+      "kind": "anchorite",
+      "x": 499,
+      "y": 942,
+      "minX": 274,
+      "maxX": 772
+    },
+    {
+      "id": "golem_3",
+      "kind": "golem",
+      "x": 399,
+      "y": 1302,
+      "minX": 244,
+      "maxX": 444
+    },
+    {
+      "id": "wraith_3",
+      "kind": "wraith",
+      "x": 1109,
+      "y": 835
+    },
+    {
+      "id": "wraith_4",
+      "kind": "wraith",
+      "x": 964,
+      "y": 1225
+    },
+    {
+      "id": "crawler_well_1",
+      "kind": "crawler",
+      "x": 610,
+      "y": 1338,
+      "minX": 430,
+      "maxX": 870
+    },
+    {
+      "id": "priest_well",
+      "kind": "priest",
+      "x": 279,
+      "y": 514
+    },
+    {
+      "id": "crawler_well_2",
+      "kind": "crawler",
+      "x": 610,
+      "y": 978,
+      "minX": 310,
+      "maxX": 810
+    }
+  ],
+  "bosses": [],
+  "inscriptions": [
+    {
+      "x": 1600,
+      "y": 492,
+      "text": "「沉渊钟井 · 循井壁与钩环深潜」"
+    },
+    {
+      "x": 700,
+      "y": 492,
+      "text": "「重盾铁卫 · 居合 / 灵刃 / 弹反可破盾」"
+    },
+    {
+      "x": 580,
+      "y": 920,
+      "text": "「青铜钟摆 · 可闪避、下劈或精准弹反」"
+    },
+    {
+      "x": 1230,
+      "y": 1245,
+      "text": "「墨蚀暗河 · 须借石台与悬灯渡越」"
+    },
+    {
+      "x": 380,
+      "y": 1295,
+      "text": "「井底暗河尽头 · 封存墨翼神龛」"
+    },
+    {
+      "x": 90,
+      "y": 1210,
+      "text": "「习得墨翼步 · 东侧铸钟殿封门自启」",
+      "hideWhenDoubleJump": true
+    },
+    {
+      "x": 1705,
+      "y": 925,
+      "text": "「西壁墨隙 · 疑通残钟地窖」"
+    },
+    {
+      "x": 1392,
+      "y": 1200,
+      "text": "「沉渊秘龛 · 需幽影穿身」",
+      "hideWhenShadeDash": true
+    },
+    {
+      "x": 160,
+      "y": 510,
+      "text": "「东壁风隙 · 疑通绝风断塔 →」"
+    },
+    {
+      "x": 545,
+      "y": 1295,
+      "text": "「暗河泄洪闸 · 启闸可排干全境墨渊暗河」",
+      "hideWhenSwitch": "riverDrained"
+    }
+  ],
+  "props": {
+    "puddles": [],
+    "banners": [
+      {
+        "x": 780,
+        "y": 120,
+        "len": 175,
+        "color": "#1a2736"
+      },
+      {
+        "x": 320,
+        "y": 120,
+        "len": 175,
+        "color": "#1a2736"
+      }
+    ],
+    "candles": [
+      {
+        "x": 1670,
+        "y": 1020,
+        "count": 4
+      },
+      {
+        "x": 1562,
+        "y": 1020,
+        "count": 3
+      },
+      {
+        "x": 230,
+        "y": 1380,
+        "count": 4
+      },
+      {
+        "x": 115,
+        "y": 1380,
+        "count": 4
+      },
+      {
+        "x": 1688,
+        "y": 1380,
+        "count": 3
+      },
+      {
+        "x": 1488,
+        "y": 1380,
+        "count": 3
+      }
+    ],
+    "boneCairns": [
+      800,
+      350
+    ],
+    "stamps": [
+      {
+        "type": "hanging_chains",
+        "x": 1260,
+        "y": 0,
+        "scale": 1.15,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.5,
+        "seed": 1
+      },
+      {
+        "type": "hanging_chains",
+        "x": 1035,
+        "y": 260,
+        "scale": 1.2,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.46,
+        "seed": 2
+      },
+      {
+        "type": "broken_arch",
+        "x": 680,
+        "y": 580,
+        "scale": 1.15,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.66,
+        "seed": 0
+      },
+      {
+        "type": "fallen_bell",
+        "x": 365,
+        "y": 580,
+        "scale": 0.9,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.8,
+        "seed": 1
+      },
+      {
+        "type": "glow_spores",
+        "x": 1694,
+        "y": 1020,
+        "scale": 0.85,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.88,
+        "seed": 0
+      },
+      {
+        "type": "glow_spores",
+        "x": 520,
+        "y": 1020,
+        "scale": 0.95,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.84,
+        "seed": 1
+      },
+      {
+        "type": "glow_spores",
+        "x": 1478,
+        "y": 1380,
+        "scale": 0.78,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.84,
+        "seed": 0
+      },
+      {
+        "type": "glow_spores",
+        "x": 505,
+        "y": 1380,
+        "scale": 1.0,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.86,
+        "seed": 2
+      },
+      {
+        "type": "stone_statue",
+        "x": 265,
+        "y": 1380,
+        "scale": 0.92,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.74,
+        "seed": 2
+      },
+      {
+        "type": "bronze_gear",
+        "x": 85,
+        "y": 1210,
+        "scale": 0.85,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.62,
+        "seed": 0
+      }
+    ]
+  },
+  "voidBarriers": [
+    {
+      "id": "vb_well",
+      "x": 1420,
+      "y": 1220,
+      "w": 22,
+      "h": 160
+    }
+  ],
+  "npcs": [
+    {
+      "id": "npc_chronicler",
+      "kind": "chronicler",
+      "name": "游方拾碑客 · 墨尘",
+      "x": 1488,
+      "y": 1020
+    }
+  ],
+  "breakableFloors": [
+    {
+      "id": "floor_well_shortcut",
+      "x": 540,
+      "y": 580,
+      "w": 140,
+      "h": 160,
+      "style": "stone"
+    },
+    {
+      "id": "floor_well_cistern",
+      "x": 280,
+      "y": 1380,
+      "w": 140,
+      "h": 140,
+      "style": "stone"
+    }
+  ],
+  "worldSwitches": [
+    {
+      "id": "switch_drain_river",
+      "switchKey": "riverDrained",
+      "kind": "sluice",
+      "x": 545,
+      "y": 1380,
+      "name": "暗河泄洪青铜闸"
+    }
+  ],
+  "slickWalls": [
+    {
+      "id": "slick_r04_west",
+      "x": 1420,
+      "y": 600,
+      "w": 20,
+      "h": 150,
+      "side": "left"
+    },
+    {
+      "id": "slick_r04_east",
+      "x": -20,
+      "y": 740,
+      "w": 40,
+      "h": 250,
+      "side": "right"
+    }
+  ],
+  "mirrored": true
+}

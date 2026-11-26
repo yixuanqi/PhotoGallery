@@ -12,6 +12,7 @@ export const WORLD_EN = {
     '晦渊': 'The Dim Abyss',
     '残钟地窖': 'Crypt of Shards',
     '绝风断塔': 'Gale-Shattered Spire',
+    '绝风苍穹': 'Gale Skyway',
     '枯墨古林': 'Withered Ink Woods',
     '霜骸圣脊': 'Frost-Bone Ridge',
     '沉钟水牢': 'Sunken Bell Cistern'
@@ -42,11 +43,13 @@ export const WORLD_EN = {
     r22_cistern_nave:   { zoneName: 'Sunken Bell Cistern',   name: 'Cistern · Drowned Bell Nave' },
     r23_cistern_lock:   { zoneName: 'Sunken Bell Cistern',   name: 'Cistern · Broken Sluice Lock' },
     r24_frost_seep:     { zoneName: 'Frost-Bone Ridge',      name: 'Frost-Seep River Source' },
-    r25_mirror_abyss:   { zoneName: 'Heart of the First Bell', name: 'Mirror Abyss · Sanctum of First Forging' }
+    r25_mirror_abyss:   { zoneName: 'Heart of the First Bell', name: 'Mirror Abyss · Sanctum of First Forging' },
+    r26_sky_span:       { zoneName: 'Gale Skyway', name: 'Skyward Broken Span' }
   },
 
   subZones: {
     '沉钟回廊 · 苍穹残钟阁': 'Sunken Bell Cloister · Skyward Bell Loft',
+    '绝风苍穹 · 苍穹断桥': 'Gale Skyway · Skyward Broken Span',
     '沉钟回廊 · 熄灯祭坛': 'Sunken Bell Cloister · Extinguished Altar',
     '沉钟回廊 · 枯骨长廊': 'Sunken Bell Cloister · Corridor of Withered Bones',
     '沉钟回廊 · 礼拜堂前': 'Sunken Bell Cloister · Chapel Forecourt',
@@ -309,6 +312,7 @@ export const WORLD_EN = {
     pickup_echo_rain_steps: { name: 'Rain-Step Echoes', desc: 'Recovered +75 Echoes beneath the outer cloister eaves.' },
     pickup_core_belfry: { name: 'Belfry Core · Severed Crystal', desc: 'Max Vitality +15 · Max Soulfire +10 · +55 Echoes.' },
     pickup_echo_galleries: { name: 'Bell-Gallery Echoes', desc: 'Recovered +85 Echoes among the suspended chains.' },
+    pickup_echo_sky_span:  { name: 'Sky-Span Echo Cache', desc: 'NG3 Skyward Span cache — gained +90 Echoes!' },
     pickup_flask_cistern: { name: 'Drowned Wick · Ebbed Oil Core', desc: 'Uncovered after draining the cistern (+1 Max Lantern Oil · +75 Echoes).' },
     pickup_echo_cistern_lock: { name: 'Sluice-Lock Echoes', desc: 'Recovered +110 Echoes atop the bronze lock beams.' },
     pickup_echo_frost_seep: { name: 'Frost-Seep Echoes', desc: 'Recovered +120 pure Echoes at the frozen river source.' },
@@ -372,6 +376,7 @@ export const WORLD_EN = {
     '「悬冰巨棱 · 击落可砸敌并冻成冰桥」': '“Hanging Icicle · strike down to crush foes & freeze a bridge”',
     '「集齐三境铭印且斩落初钟圣骸 · 镜渊金风将贯通天穹」': '“Gather all Three Realm Seals & fell Yuan—a golden gale will ascend to the Mirror Abyss”',
     '「西行可达断索钟楼外廊 · 绕回熄灯祭坛穹顶」': '“Head west to the Outer Belfry · loops back above the Extinguished Altar”',
+    '「苍穹断桥 · 纵越断钟礼拜堂之巅」': '“Skyward Broken Span · Soar High Above the Chapel of the Broken Bell”',
     '「击碎脚下封板 · 贯通回起点熄灯祭坛高阁」': '“Break the floor seal below · shortcut straight back to the Sanctuary loft”',
     '「东侧暗墙之后直通绝风断桥 · 无需绕行古炉」': '“Beyond the east secret wall lies the Thousand-Bell Wind Bridge”',
     '「沉钟水牢 · 昔日铸钟败品皆沉没于此渊底」': '“Sunken Bell Cistern · where failed bronze castings lie drowned”',

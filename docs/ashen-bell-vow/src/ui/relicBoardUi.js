@@ -16,6 +16,7 @@ import { t, isEn, locAltar, locRelic, locSynergy, locVow, locBoss } from '../i18
 import { SLOT_EMBLEMS, getRelicEmblemSvg, getWeaponEmblemSvg } from '../emblems.js';
 import { WEAPON_ORDER, WEAPONS, getWeaponForgeTraits, getWeaponUltimateDef } from '../weapons.js';
 import { recordSynergyDiscovered } from '../codex.js';
+import { getWorldVariantLabel, getWorldVariantKeyForCycle } from '../levelLoader.js';
 import { uiHooks } from './uiShared.js';
 
 let hoveredRelicId = null;
@@ -685,15 +686,19 @@ export function renderRelicChoices() {
       const nextCyc = curCyc + 1;
       const ngWrap = document.createElement('div');
       ngWrap.className = 'ngplus-bar';
+      const curLabel = getWorldVariantLabel(curCyc);
+      const nextLabel = getWorldVariantLabel(nextCyc);
+      const nextKey = getWorldVariantKeyForCycle(nextCyc);
+      const nextHint = nextKey === 2 ? t('world.variantNextHint2') : t('world.variantNextHint3');
       const ngInfo = document.createElement('div');
       ngInfo.className = 'ngplus-info';
-      ngInfo.innerHTML = t('altar.ngInfo', curCyc);
+      ngInfo.innerHTML = t('altar.ngInfo', curCyc, curLabel, nextHint);
       const ngBtn = document.createElement('button');
       ngBtn.type = 'button';
       ngBtn.className = 'ngplus-btn';
-      ngBtn.textContent = t('altar.ngBtn', nextCyc);
+      ngBtn.textContent = t('altar.ngBtn', nextCyc, nextLabel);
       ngBtn.addEventListener('click', () => {
-        if (window.confirm(t('altar.ngConfirm', nextCyc))) {
+        if (window.confirm(t('altar.ngConfirm', nextCyc, nextLabel, nextHint))) {
           uiHooks.startNewGamePlus();
         }
       });

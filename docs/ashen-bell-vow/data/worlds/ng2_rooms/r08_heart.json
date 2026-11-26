@@ -1,0 +1,257 @@
+{
+  "schemaVersion": 1,
+  "id": "r08_heart",
+  "zoneName": "初钟圣顶",
+  "name": "初钟圣心",
+  "theme": "heart",
+  "bounds": {
+    "x": 1500,
+    "y": 0,
+    "w": 1320,
+    "h": 720
+  },
+  "subZones": [
+    {
+      "name": "初钟圣顶 · 初钟圣心",
+      "x": 0,
+      "y": 0,
+      "w": 1320,
+      "h": 720
+    }
+  ],
+  "connections": [
+    "r07_ascent"
+  ],
+  "solids": [
+    {
+      "x": 0,
+      "y": 580,
+      "w": 1320,
+      "h": 180,
+      "type": "ground"
+    },
+    {
+      "x": -20,
+      "y": 0,
+      "w": 60,
+      "h": 720,
+      "type": "pillar"
+    },
+    {
+      "x": 990,
+      "y": 420,
+      "w": 155,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 215,
+      "y": 420,
+      "w": 155,
+      "h": 22,
+      "type": "platform"
+    }
+  ],
+  "crumblePlatforms": [],
+  "altars": [],
+  "npcs": [],
+  "loreTablets": [],
+  "gates": [],
+  "secretWalls": [],
+  "voidBarriers": [],
+  "pickups": [],
+  "resonancePuzzles": [],
+  "pendulums": [],
+  "rivers": [],
+  "grappleAnchors": [
+    {
+      "id": "anc_heart_l",
+      "x": 950,
+      "y": 245,
+      "topY": 0
+    },
+    {
+      "id": "anc_heart_c",
+      "x": 680,
+      "y": 190,
+      "topY": 0
+    },
+    {
+      "id": "anc_heart_r",
+      "x": 410,
+      "y": 245,
+      "topY": 0
+    }
+  ],
+  "lanterns": [
+    {
+      "id": "lan_heart_1",
+      "x": 1065,
+      "anchorY": 150,
+      "topY": 0,
+      "len": 155,
+      "angle": -0.05
+    },
+    {
+      "id": "lan_heart_2",
+      "x": 295,
+      "anchorY": 150,
+      "topY": 0,
+      "len": 155,
+      "angle": 0.05
+    }
+  ],
+  "enemies": [],
+  "bosses": [
+    {
+      "id": "boss_yuan",
+      "kind": "boss3",
+      "x": 398,
+      "y": 464,
+      "arenaMinX": 48,
+      "arenaMaxX": 1302,
+      "arenaFloorY": 580,
+      "arenaTopY": 0
+    }
+  ],
+  "inscriptions": [],
+  "props": {
+    "puddles": [
+      {
+        "x": 920,
+        "w": 180
+      },
+      {
+        "x": 280,
+        "w": 180
+      }
+    ],
+    "banners": [
+      {
+        "x": 1200,
+        "y": 75,
+        "len": 210,
+        "color": "#4f1523"
+      },
+      {
+        "x": 880,
+        "y": 65,
+        "len": 220,
+        "color": "#4f1523"
+      },
+      {
+        "x": 480,
+        "y": 65,
+        "len": 220,
+        "color": "#4f1523"
+      },
+      {
+        "x": 160,
+        "y": 75,
+        "len": 210,
+        "color": "#4f1523"
+      }
+    ],
+    "candles": [
+      {
+        "x": 1265,
+        "y": 580,
+        "count": 5
+      },
+      {
+        "x": 680,
+        "y": 580,
+        "count": 5
+      },
+      {
+        "x": 100,
+        "y": 580,
+        "count": 5
+      }
+    ],
+    "boneCairns": [],
+    "stamps": [
+      {
+        "type": "sword_mound",
+        "x": 1205,
+        "y": 580,
+        "scale": 1.02,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.82,
+        "seed": 0
+      },
+      {
+        "type": "tattered_pennant",
+        "x": 1095,
+        "y": 580,
+        "scale": 1.05,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.76,
+        "seed": 1
+      },
+      {
+        "type": "wind_pillar",
+        "x": 990,
+        "y": 580,
+        "scale": 0.82,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.58,
+        "seed": 0
+      },
+      {
+        "type": "sword_mound",
+        "x": 865,
+        "y": 580,
+        "scale": 0.74,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.7,
+        "seed": 2
+      },
+      {
+        "type": "sword_mound",
+        "x": 455,
+        "y": 580,
+        "scale": 0.78,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.7,
+        "seed": 1
+      },
+      {
+        "type": "wind_pillar",
+        "x": 330,
+        "y": 580,
+        "scale": 0.82,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.58,
+        "seed": 2
+      },
+      {
+        "type": "tattered_pennant",
+        "x": 225,
+        "y": 580,
+        "scale": 1.05,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.76,
+        "seed": 2
+      },
+      {
+        "type": "sword_mound",
+        "x": 115,
+        "y": 580,
+        "scale": 1.02,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.82,
+        "seed": 0
+      }
+    ]
+  },
+  "mirrored": true
+}

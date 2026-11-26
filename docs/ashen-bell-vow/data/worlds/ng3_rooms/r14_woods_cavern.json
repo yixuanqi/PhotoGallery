@@ -1,0 +1,429 @@
+{
+  "schemaVersion": 1,
+  "id": "r14_woods_cavern",
+  "zoneName": "枯墨古林",
+  "name": "枯墨古林 · 盘根溶洞",
+  "theme": "forest",
+  "bounds": {
+    "x": 1080,
+    "y": 1520,
+    "w": 1600,
+    "h": 740
+  },
+  "connections": [
+    "r10_ink_woods",
+    "r15_woods_heart",
+    "r21_cistern_west"
+  ],
+  "subZones": [
+    {
+      "name": "枯墨古林 · 盘根深窟",
+      "x": 0,
+      "y": 0,
+      "w": 880,
+      "h": 740
+    },
+    {
+      "name": "枯墨古林 · 暗河渗池",
+      "x": 880,
+      "y": 0,
+      "w": 720,
+      "h": 740
+    }
+  ],
+  "solids": [
+    {
+      "x": 1560,
+      "y": 0,
+      "w": 40,
+      "h": 420,
+      "type": "pillar"
+    },
+    {
+      "x": 1560,
+      "y": 600,
+      "w": 40,
+      "h": 140,
+      "type": "pillar"
+    },
+    {
+      "x": 900,
+      "y": 0,
+      "w": 700,
+      "h": 36,
+      "type": "pillar"
+    },
+    {
+      "x": 0,
+      "y": 600,
+      "w": 920,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 920,
+      "y": 670,
+      "w": 580,
+      "h": 70,
+      "type": "ground"
+    },
+    {
+      "x": 1480,
+      "y": 600,
+      "w": 120,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 325,
+      "y": 430,
+      "w": 135,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 325,
+      "y": 240,
+      "w": 135,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 325,
+      "y": 68,
+      "w": 125,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 540,
+      "y": 455,
+      "w": 190,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 790,
+      "y": 350,
+      "w": 180,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1020,
+      "y": 530,
+      "w": 145,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1255,
+      "y": 420,
+      "w": 220,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1350,
+      "y": 270,
+      "w": 190,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1360,
+      "y": 110,
+      "w": 200,
+      "h": 20,
+      "type": "pillar"
+    },
+    {
+      "x": 1360,
+      "y": 270,
+      "w": 200,
+      "h": 20,
+      "type": "pillar"
+    }
+  ],
+  "crumblePlatforms": [],
+  "altars": [],
+  "npcs": [],
+  "secretWalls": [],
+  "voidBarriers": [
+    {
+      "id": "vb_woods_deep",
+      "x": 1365,
+      "y": 130,
+      "w": 22,
+      "h": 140
+    }
+  ],
+  "gates": [
+    {
+      "id": "gate_cistern_west",
+      "role": "switchGate",
+      "switchKey": "cisternWestOpen",
+      "orientation": "vertical",
+      "x": 1560,
+      "y": 420,
+      "w": 40,
+      "h": 180
+    }
+  ],
+  "pickups": [
+    {
+      "id": "pickup_echo_woods_deep",
+      "kind": "echoCache",
+      "x": 1455,
+      "y": 270,
+      "echoAmount": 115,
+      "name": "渗池古铃残响",
+      "desc": "沉没于暗河渗水断桥上的古铃残响（+115 残响）"
+    },
+    {
+      "id": "pickup_sunken_woods",
+      "kind": "statCore",
+      "requiresSwitch": "riverDrained",
+      "bonusHp": 10,
+      "bonusSoul": 10,
+      "echoAmount": 60,
+      "x": 1200,
+      "y": 670,
+      "name": "渗池古核 · 干涸菌髓",
+      "desc": "暗河泄洪后显露于渗池底部的荧光古核（生命 +10 · 魂火 +10 · +60 残响）"
+    }
+  ],
+  "pendulums": [],
+  "windZones": [],
+  "bouncePads": [
+    {
+      "id": "bp_wc_up1",
+      "x": 390,
+      "y": 600,
+      "w": 84,
+      "h": 28,
+      "boostVy": -880
+    },
+    {
+      "id": "bp_wc_up2",
+      "x": 390,
+      "y": 240,
+      "w": 76,
+      "h": 24,
+      "boostVy": -900
+    },
+    {
+      "id": "bp_wc_pool",
+      "x": 1090,
+      "y": 530,
+      "w": 80,
+      "h": 26,
+      "boostVy": -820
+    },
+    {
+      "id": "bp_wc_up3",
+      "x": 388,
+      "y": 68,
+      "w": 78,
+      "h": 24,
+      "boostVy": -920
+    },
+    {
+      "id": "bp_wc_dormant",
+      "x": 730,
+      "y": 600,
+      "w": 88,
+      "h": 30,
+      "boostVy": -940,
+      "dormant": true
+    },
+    {
+      "id": "bp_wc_mid",
+      "x": 390,
+      "y": 430,
+      "w": 76,
+      "h": 24,
+      "boostVy": -880
+    }
+  ],
+  "grappleAnchors": [
+    {
+      "id": "anc_wc_1",
+      "x": 640,
+      "y": 245,
+      "topY": 0
+    },
+    {
+      "id": "anc_wc_2",
+      "x": 1155,
+      "y": 270,
+      "topY": 36
+    }
+  ],
+  "lanterns": [
+    {
+      "id": "lan_wc_1",
+      "x": 455,
+      "anchorY": 165,
+      "topY": 0,
+      "len": 135,
+      "angle": 0.05
+    },
+    {
+      "id": "lan_wc_2",
+      "x": 995,
+      "anchorY": 180,
+      "topY": 36,
+      "len": 145,
+      "angle": -0.06
+    }
+  ],
+  "enemies": [
+    {
+      "id": "fungus_wc_1",
+      "kind": "fungus",
+      "x": 580,
+      "y": 542,
+      "minX": 350,
+      "maxX": 850
+    },
+    {
+      "id": "fungus_wc_2",
+      "kind": "fungus",
+      "x": 1340,
+      "y": 362,
+      "minX": 1265,
+      "maxX": 1460
+    },
+    {
+      "id": "leech_wc_1",
+      "kind": "leech",
+      "x": 960,
+      "y": 42
+    },
+    {
+      "id": "weaver_wc_2",
+      "kind": "weaver",
+      "x": 1080,
+      "y": 634,
+      "minX": 940,
+      "maxX": 1420
+    },
+    {
+      "id": "weaver_wc_1",
+      "kind": "weaver",
+      "x": 860,
+      "y": 314,
+      "minX": 800,
+      "maxX": 925
+    }
+  ],
+  "bosses": [],
+  "props": {
+    "puddles": [],
+    "banners": [],
+    "candles": [
+      {
+        "x": 1315,
+        "y": 420
+      },
+      {
+        "x": 1410,
+        "y": 420
+      }
+    ],
+    "stamps": [
+      {
+        "type": "gnarled_tree",
+        "x": 160,
+        "y": 600,
+        "scale": 1.25,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.78,
+        "seed": 0
+      },
+      {
+        "type": "spore_cluster",
+        "x": 420,
+        "y": 600,
+        "scale": 1.12,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.85,
+        "seed": 1
+      },
+      {
+        "type": "gnarled_tree",
+        "x": 740,
+        "y": 600,
+        "scale": 1.32,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.78,
+        "seed": 2
+      },
+      {
+        "type": "fallen_bell",
+        "x": 1140,
+        "y": 620,
+        "scale": 0.92,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.76,
+        "seed": 1
+      },
+      {
+        "type": "spore_cluster",
+        "x": 1420,
+        "y": 420,
+        "scale": 0.96,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.84,
+        "seed": 2
+      },
+      {
+        "type": "gnarled_tree",
+        "x": 1495,
+        "y": 600,
+        "scale": 1.18,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.76,
+        "seed": 0
+      }
+    ],
+    "boneCairns": []
+  },
+  "loreTablets": [
+    {
+      "id": "lore_woods_seepage",
+      "x": 1360,
+      "y": 420,
+      "title": "逃兵菌刻碑",
+      "sub": "枯墨古林 · 暗河渗池断桥",
+      "html": "「礼拜堂钟声哑绝那夜，我等自残钟地窖凿洞西逃，却撞见暗河墨水自石缝奔涌而出，将整座地底树窟浸成幽绿荧光。<br>死者的骨灰顺水流进盘根，竟催生出巨型弹性孢伞与吞魂菌傀。<br><br>切莫再往西深入<strong>古钟树窟</strong>——<br><strong>那口自圣堂坠落的千斤古钟，已被千年巨树连根吞入腹中，化作守誓的盘根树精。</strong>」"
+    }
+  ],
+  "resonancePuzzles": [],
+  "rivers": [
+    {
+      "id": "river_woods_seep",
+      "x": 920,
+      "y": 622,
+      "w": 560,
+      "h": 48,
+      "safeX": 845,
+      "safeY": 542,
+      "drainable": true
+    }
+  ],
+  "inscriptions": [
+    {
+      "x": 110,
+      "y": 535,
+      "text": "西行步入「古钟树窟」— 破除盘根树铠后可由西侧孢伞直冲回廊"
+    }
+  ]
+}

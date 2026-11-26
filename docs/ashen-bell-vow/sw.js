@@ -1,5 +1,5 @@
-// Ashen Bell Vow v45.8 — Zero-Dependency Offline-First PWA Service Worker
-const CACHE_NAME = 'ashen-bell-vow-v45.8';
+// Ashen Bell Vow v46.1 — Zero-Dependency Offline-First PWA Service Worker
+const CACHE_NAME = 'ashen-bell-vow-v46.1';
 const CORE_PRECACHE = [
   './',
   './index.html',
@@ -7,7 +7,10 @@ const CORE_PRECACHE = [
   './manifest.webmanifest',
   './icon.svg',
   './icon-192.png',
-  './data/world.json'
+  './data/world.json',
+  './data/worlds/world_ng1.json',
+  './data/worlds/world_ng2.json',
+  './data/worlds/world_ng3.json'
 ];
 
 self.addEventListener('install', event => {

@@ -1,0 +1,422 @@
+{
+  "schemaVersion": 1,
+  "id": "r16_frost_tomb",
+  "zoneName": "霜骸圣脊",
+  "name": "霜骸圣脊 · 冻剑冢",
+  "theme": "mountain",
+  "bounds": {
+    "x": 0,
+    "y": -740,
+    "w": 1500,
+    "h": 2260
+  },
+  "connections": [
+    "r11_frost_ridge",
+    "r17_frost_summit"
+  ],
+  "subZones": [
+    {
+      "name": "霜骸圣脊 · 融雪瀑布底",
+      "x": 0,
+      "y": 1480,
+      "w": 1500,
+      "h": 780
+    },
+    {
+      "name": "霜骸圣脊 · 冻剑墓阶",
+      "x": 0,
+      "y": 740,
+      "w": 1500,
+      "h": 740
+    },
+    {
+      "name": "霜骸圣脊 · 绝巅雪门",
+      "x": 0,
+      "y": 0,
+      "w": 1500,
+      "h": 740
+    }
+  ],
+  "solids": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 40,
+      "h": 2260,
+      "type": "pillar"
+    },
+    {
+      "x": 1460,
+      "y": 740,
+      "w": 40,
+      "h": 760,
+      "type": "pillar"
+    },
+    {
+      "x": 0,
+      "y": 1900,
+      "w": 1500,
+      "h": 360,
+      "type": "ground"
+    },
+    {
+      "x": 1010,
+      "y": 620,
+      "w": 490,
+      "h": 120,
+      "type": "ground"
+    },
+    {
+      "x": 1120,
+      "y": 1765,
+      "w": 220,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 785,
+      "y": 1635,
+      "w": 230,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 415,
+      "y": 1515,
+      "w": 235,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 100,
+      "y": 1390,
+      "w": 250,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 840,
+      "y": 1200,
+      "w": 540,
+      "h": 30,
+      "type": "ground"
+    },
+    {
+      "x": 525,
+      "y": 1125,
+      "w": 215,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 795,
+      "y": 985,
+      "w": 215,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 430,
+      "y": 865,
+      "w": 225,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 120,
+      "y": 745,
+      "w": 240,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 440,
+      "y": 620,
+      "w": 220,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 750,
+      "y": 465,
+      "w": 210,
+      "h": 22,
+      "type": "platform"
+    }
+  ],
+  "crumblePlatforms": [
+    {
+      "id": "cp_ft_1",
+      "x": 660,
+      "y": 1255,
+      "w": 140,
+      "h": 20
+    },
+    {
+      "id": "cp_ft_2",
+      "x": 745,
+      "y": 620,
+      "w": 160,
+      "h": 20
+    }
+  ],
+  "altars": [
+    {
+      "id": "altar_frost_tomb",
+      "x": 1160,
+      "y": 620,
+      "name": "霜骸圣脊 · 绝巅雪坛",
+      "shortName": "霜脊 · 绝巅雪坛",
+      "defaultLit": false
+    }
+  ],
+  "npcs": [],
+  "secretWalls": [],
+  "voidBarriers": [],
+  "gates": [],
+  "pickups": [
+    {
+      "id": "pickup_echo_frost_tomb",
+      "kind": "echoCache",
+      "x": 955,
+      "y": 1200,
+      "echoAmount": 130,
+      "name": "冻剑冢古响",
+      "desc": "插满霜刃的守灯人墓阶间留存的精纯残响（+130 残响）"
+    }
+  ],
+  "pendulums": [],
+  "windZones": [
+    {
+      "id": "wz_ft_1",
+      "x": 175,
+      "y": 660,
+      "w": 175,
+      "h": 725,
+      "vx": 18,
+      "vy": -1560
+    }
+  ],
+  "bouncePads": [],
+  "grappleAnchors": [
+    {
+      "id": "anc_ft_1",
+      "x": 740,
+      "y": 1470,
+      "topY": 1200
+    },
+    {
+      "id": "anc_ft_2",
+      "x": 860,
+      "y": 875,
+      "topY": 620
+    },
+    {
+      "id": "anc_ft_3",
+      "x": 480,
+      "y": 560,
+      "topY": 0
+    },
+    {
+      "id": "anc_ft_4",
+      "x": 835,
+      "y": 365,
+      "topY": 0
+    }
+  ],
+  "lanterns": [
+    {
+      "id": "lan_ft_1",
+      "x": 960,
+      "anchorY": 1520,
+      "topY": 1200,
+      "len": 130,
+      "angle": -0.08
+    },
+    {
+      "id": "lan_ft_2",
+      "x": 530,
+      "anchorY": 720,
+      "topY": 0,
+      "len": 145,
+      "angle": 0.09
+    }
+  ],
+  "enemies": [
+    {
+      "id": "frostguard_ft_1",
+      "kind": "frostguard",
+      "x": 770,
+      "y": 1832,
+      "minX": 140,
+      "maxX": 1220
+    },
+    {
+      "id": "frostguard_ft_2",
+      "kind": "frostguard",
+      "x": 1040,
+      "y": 1132,
+      "minX": 840,
+      "maxX": 1300
+    },
+    {
+      "id": "falcon_ft_1",
+      "kind": "falcon",
+      "x": 491,
+      "y": 1320
+    },
+    {
+      "id": "falcon_ft_2",
+      "kind": "falcon",
+      "x": 711,
+      "y": 690
+    },
+    {
+      "id": "priest_ft_1",
+      "kind": "priest",
+      "x": 514,
+      "y": 799
+    },
+    {
+      "id": "duelist_ft_1",
+      "kind": "duelist",
+      "x": 221,
+      "y": 685,
+      "minX": 96,
+      "maxX": 316
+    }
+  ],
+  "bosses": [],
+  "props": {
+    "puddles": [],
+    "banners": [
+      {
+        "x": 1290,
+        "y": 860,
+        "len": 96,
+        "color": "#1a2b44"
+      },
+      {
+        "x": 1050,
+        "y": 240,
+        "len": 102,
+        "color": "#1a2b44"
+      }
+    ],
+    "candles": [
+      {
+        "x": 1230,
+        "y": 1200
+      },
+      {
+        "x": 1130,
+        "y": 1200
+      }
+    ],
+    "stamps": [
+      {
+        "type": "frost_spike",
+        "x": 1220,
+        "y": 1900,
+        "scale": 1.24,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.78,
+        "seed": 0
+      },
+      {
+        "type": "sword_mound",
+        "x": 920,
+        "y": 1900,
+        "scale": 1.05,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.8,
+        "seed": 1
+      },
+      {
+        "type": "frost_spike",
+        "x": 340,
+        "y": 1900,
+        "scale": 1.32,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.78,
+        "seed": 2
+      },
+      {
+        "type": "sword_mound",
+        "x": 1280,
+        "y": 1200,
+        "scale": 1.15,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.84,
+        "seed": 0
+      },
+      {
+        "type": "sword_mound",
+        "x": 1050,
+        "y": 1200,
+        "scale": 0.96,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.82,
+        "seed": 2
+      },
+      {
+        "type": "frost_spike",
+        "x": 1310,
+        "y": 620,
+        "scale": 1.18,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.78,
+        "seed": 1
+      },
+      {
+        "type": "tattered_pennant",
+        "x": 1085,
+        "y": 620,
+        "scale": 0.96,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.74,
+        "seed": 0
+      }
+    ],
+    "boneCairns": []
+  },
+  "loreTablets": [
+    {
+      "id": "lore_frost_snowmelt",
+      "x": 1180,
+      "y": 1200,
+      "title": "冻剑守灯铭",
+      "sub": "霜骸圣脊 · 冻剑墓阶",
+      "html": "「旧誓守灯人一族曾列阵于此雪巅，欲借极寒冻封初钟裂隙；然沉渊古炉之余热自西侧绝风断塔上涌，将圣脊万年积雪融作冰冷<strong>灰墨雨水</strong>。<br>雪水东落成瀑，西淋回廊，最终汇入沉渊暗河并渗入枯墨古林。<br><br>今众灯已熄，唯余断剑成冢；若敢再攀绝巅，<strong>断剑霜侯·凛</strong>仍立于西侧风雪之顶，且此顶与<strong>绝风断塔绝顶</strong>高空相通。」"
+    }
+  ],
+  "resonancePuzzles": [],
+  "rivers": [],
+  "inscriptions": [
+    {
+      "x": 1375,
+      "y": 555,
+      "text": "西登「绝脊霜台」迎战断剑霜侯·凛 — 越过霜台即可高空连通绝风断塔"
+    }
+  ],
+  "icePillars": [
+    {
+      "id": "ice_tomb_1",
+      "x": 755,
+      "topY": 0,
+      "len": 165,
+      "bridgeX": 655,
+      "bridgeY": 620,
+      "bridgeW": 195,
+      "bridgeH": 22
+    }
+  ],
+  "mirrored": true
+}

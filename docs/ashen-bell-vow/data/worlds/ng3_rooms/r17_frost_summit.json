@@ -1,0 +1,267 @@
+{
+  "schemaVersion": 1,
+  "id": "r17_frost_summit",
+  "zoneName": "霜骸圣脊",
+  "name": "霜骸圣脊 · 绝脊霜台",
+  "theme": "mountain",
+  "bounds": {
+    "x": 8260,
+    "y": -740,
+    "w": 1420,
+    "h": 740
+  },
+  "connections": [
+    "r16_frost_tomb",
+    "r13_wind_peak"
+  ],
+  "subZones": [
+    {
+      "name": "霜骸圣脊 · 绝脊孤峰",
+      "x": 0,
+      "y": 0,
+      "w": 1420,
+      "h": 740
+    }
+  ],
+  "solids": [
+    {
+      "x": 0,
+      "y": 620,
+      "w": 1420,
+      "h": 120,
+      "type": "ground"
+    },
+    {
+      "x": 185,
+      "y": 440,
+      "w": 190,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 605,
+      "y": 340,
+      "w": 210,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1045,
+      "y": 440,
+      "w": 190,
+      "h": 22,
+      "type": "platform"
+    }
+  ],
+  "crumblePlatforms": [],
+  "altars": [],
+  "npcs": [],
+  "secretWalls": [],
+  "voidBarriers": [],
+  "gates": [
+    {
+      "id": "gate_sky_bridge",
+      "role": "skyBridge",
+      "x": 0,
+      "y": 420,
+      "w": 36,
+      "h": 200
+    }
+  ],
+  "pickups": [
+    {
+      "id": "pickup_core_mountain",
+      "kind": "statCore",
+      "x": 710,
+      "y": 340,
+      "bonusHp": 10,
+      "bonusSoul": 15,
+      "name": "霜髓冰核",
+      "desc": "绝脊孤峰千年不融的寒髓魂核（生命上限 +10 · 魂火上限 +15）",
+      "requiresBoss": "warden_mountain_boss"
+    },
+    {
+      "id": "pickup_seal_mountain",
+      "kind": "realmSeal",
+      "sealId": "mountain",
+      "relicId": "frostcore",
+      "requiresBoss": "warden_mountain_boss",
+      "echoAmount": 80,
+      "x": 710,
+      "y": 620,
+      "name": "霜脊铭印 · 霜脊断魄",
+      "desc": "斩落断剑霜侯·凛解封！赐予「霜脊铭印」与圣物「霜脊断魄」"
+    }
+  ],
+  "pendulums": [],
+  "windZones": [
+    {
+      "id": "wz_fs_1",
+      "x": 420,
+      "y": 195,
+      "w": 135,
+      "h": 420,
+      "vx": -22,
+      "vy": -1440
+    },
+    {
+      "id": "wz_fs_2",
+      "x": 865,
+      "y": 195,
+      "w": 135,
+      "h": 420,
+      "vx": 22,
+      "vy": -1440
+    }
+  ],
+  "bouncePads": [],
+  "grappleAnchors": [
+    {
+      "id": "anc_fs_1",
+      "x": 485,
+      "y": 215,
+      "topY": 0
+    },
+    {
+      "id": "anc_fs_2",
+      "x": 710,
+      "y": 145,
+      "topY": 0
+    },
+    {
+      "id": "anc_fs_3",
+      "x": 935,
+      "y": 215,
+      "topY": 0
+    }
+  ],
+  "lanterns": [
+    {
+      "id": "lan_fs_1",
+      "x": 545,
+      "anchorY": 165,
+      "topY": 0,
+      "len": 140,
+      "angle": 0.12
+    },
+    {
+      "id": "lan_fs_2",
+      "x": 875,
+      "anchorY": 165,
+      "topY": 0,
+      "len": 140,
+      "angle": -0.12
+    }
+  ],
+  "enemies": [
+    {
+      "id": "warden_mountain_boss",
+      "kind": "warden_mountain",
+      "x": 710,
+      "y": 546,
+      "minX": 180,
+      "maxX": 1240
+    }
+  ],
+  "bosses": [],
+  "props": {
+    "puddles": [],
+    "banners": [
+      {
+        "x": 220,
+        "y": 140,
+        "len": 100,
+        "color": "#1c3350"
+      },
+      {
+        "x": 1200,
+        "y": 140,
+        "len": 100,
+        "color": "#1c3350"
+      }
+    ],
+    "candles": [
+      {
+        "x": 145,
+        "y": 620
+      },
+      {
+        "x": 1275,
+        "y": 620
+      }
+    ],
+    "stamps": [
+      {
+        "type": "frost_spike",
+        "x": 120,
+        "y": 620,
+        "scale": 1.32,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.78,
+        "seed": 2
+      },
+      {
+        "type": "sword_mound",
+        "x": 310,
+        "y": 620,
+        "scale": 1.05,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.8,
+        "seed": 0
+      },
+      {
+        "type": "sword_mound",
+        "x": 1110,
+        "y": 620,
+        "scale": 1.05,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.8,
+        "seed": 1
+      },
+      {
+        "type": "frost_spike",
+        "x": 1300,
+        "y": 620,
+        "scale": 1.32,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.78,
+        "seed": 0
+      },
+      {
+        "type": "tattered_pennant",
+        "x": 455,
+        "y": 620,
+        "scale": 0.94,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.72,
+        "seed": 1
+      },
+      {
+        "type": "tattered_pennant",
+        "x": 965,
+        "y": 620,
+        "scale": 0.94,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.72,
+        "seed": 2
+      }
+    ],
+    "boneCairns": []
+  },
+  "loreTablets": [],
+  "resonancePuzzles": [],
+  "rivers": [],
+  "inscriptions": [
+    {
+      "x": 125,
+      "y": 555,
+      "text": "西越冰风断桥即达「绝风断塔 · 断塔绝顶」"
+    }
+  ]
+}

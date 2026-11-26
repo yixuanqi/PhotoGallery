@@ -103,10 +103,11 @@ export function updateThemeAndWeather(dt) {
   }
 
   // Procedural Rain-on-Puddle & Drip-on-River Ripples (zero per-frame array allocation)
-  if (wType === 'rain' && Math.random() < dt * 8 && PUDDLES.length > 0 && G.cam.y < FLOOR_Y + 80) {
+  if (wType === 'rain' && Math.random() < dt * 8 && PUDDLES.length > 0) {
     const p = PUDDLES[Math.floor(Math.random() * PUDDLES.length)];
-    if (p.x + p.w > G.cam.x && p.x < G.cam.x + G.canvasW) {
-      spawnWeatherRipple(p.x + 8 + Math.random() * Math.max(8, p.w - 16), FLOOR_Y + 1, 14 + Math.random() * 14, 'rgba(186, 230, 253, 0.52)');
+    const py = p.y !== undefined ? p.y : FLOOR_Y;
+    if (p.x + p.w > G.cam.x && p.x < G.cam.x + G.canvasW && py >= G.cam.y - 40 && py <= G.cam.y + G.canvasH + 40) {
+      spawnWeatherRipple(p.x + 8 + Math.random() * Math.max(8, p.w - 16), py + 1, 14 + Math.random() * 14, 'rgba(186, 230, 253, 0.52)');
     }
   } else if (wType === 'mist' && Math.random() < dt * 6 && ABYSSAL_RIVERS.length > 0) {
     const rv = ABYSSAL_RIVERS[Math.floor(Math.random() * ABYSSAL_RIVERS.length)];

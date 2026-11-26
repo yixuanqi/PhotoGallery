@@ -1,0 +1,484 @@
+{
+  "schemaVersion": 1,
+  "id": "r06_crypt",
+  "zoneName": "沉钟回廊",
+  "name": "残钟地窖",
+  "theme": "crypt",
+  "bounds": {
+    "x": 7400,
+    "y": 740,
+    "w": 1800,
+    "h": 780
+  },
+  "subZones": [
+    {
+      "name": "残钟地窖 · 东侧暗道",
+      "x": 0,
+      "y": 0,
+      "w": 580,
+      "h": 780
+    },
+    {
+      "name": "残钟地窖 · 墨蛭渊渠",
+      "x": 580,
+      "y": 0,
+      "w": 460,
+      "h": 780
+    },
+    {
+      "name": "残钟地窖 · 铸匠秘库",
+      "x": 1040,
+      "y": 0,
+      "w": 760,
+      "h": 780
+    }
+  ],
+  "connections": [
+    "r04_bell_well",
+    "r02_corridor",
+    "r10_ink_woods",
+    "r21_cistern_west"
+  ],
+  "solids": [
+    {
+      "x": 440,
+      "y": 640,
+      "w": 1360,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 0,
+      "y": 640,
+      "w": 300,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 0,
+      "y": 280,
+      "w": 320,
+      "h": 110,
+      "type": "ground"
+    },
+    {
+      "x": 345,
+      "y": 405,
+      "w": 155,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 435,
+      "y": 530,
+      "w": 155,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 775,
+      "y": 525,
+      "w": 115,
+      "h": 20,
+      "type": "platform"
+    },
+    {
+      "x": 615,
+      "y": 500,
+      "w": 110,
+      "h": 20,
+      "type": "platform"
+    },
+    {
+      "x": 1430,
+      "y": 410,
+      "w": 240,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1285,
+      "y": 530,
+      "w": 130,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1285,
+      "y": 335,
+      "w": 130,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1285,
+      "y": 175,
+      "w": 130,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1618,
+      "y": 520,
+      "w": 182,
+      "h": 22,
+      "type": "pillar"
+    }
+  ],
+  "crumblePlatforms": [
+    {
+      "id": "crumble_crypt_1",
+      "x": 705,
+      "y": 395,
+      "w": 110,
+      "h": 20
+    }
+  ],
+  "altars": [],
+  "npcs": [],
+  "loreTablets": [
+    {
+      "id": "lore_crypt",
+      "x": 1705,
+      "y": 520,
+      "title": "铸匠秘录",
+      "sub": "残钟地窖 · 秘库石碑",
+      "html": "“当年我将未曾完工的青铜残响尽数封入地窖，又在礼拜堂前凿出单向暗梯，以备守誓者失智之日。<br>如今地窖已被<strong>敲钟祭司</strong>与<strong>断誓连刃武者</strong>盘踞。<br><br>顺着西侧暗井攀回地面，即可直抵<strong>断索祭坛</strong>；带上秘库残响回到起点铁砧，老朽为你再淬三寸寒锋！”"
+    }
+  ],
+  "gates": [],
+  "secretWalls": [
+    {
+      "id": "wall_crypt_east",
+      "x": 0,
+      "y": 10,
+      "w": 34,
+      "h": 270,
+      "maxHp": 3
+    }
+  ],
+  "pickups": [
+    {
+      "id": "pickup_echo_crypt",
+      "kind": "echoCache",
+      "echoAmount": 105,
+      "x": 1746,
+      "y": 640,
+      "name": "秘库古钟残响匣",
+      "desc": "获得 +105 残响，可回老铸钟匠处淬炼断刃或圣物！"
+    },
+    {
+      "id": "pickup_shade_dash",
+      "kind": "ability",
+      "abilityId": "shadeDash",
+      "x": 1605,
+      "y": 410,
+      "name": "绝技 · 幽影穿身",
+      "desc": "闪避进化！可穿透「暗蚀结界」与敌人身躯并触发「幽影残爆」！"
+    },
+    {
+      "id": "pickup_weapon_bell",
+      "kind": "weapon",
+      "weaponId": "bell",
+      "x": 160,
+      "y": 640,
+      "name": "兵刃 · 引魂摇铃",
+      "desc": "解锁中程法术兵刃「引魂摇铃」！挥铃发射穿透音环、长按三连追踪铃矢，按 [3] 或 [X] 随时切换！"
+    },
+    {
+      "id": "pickup_relic_shade",
+      "kind": "relic",
+      "relicId": "shadecurtain",
+      "x": 1682,
+      "y": 640,
+      "name": "暗室秘宝 · 幽影钟幕",
+      "desc": "解锁穿影圣物「幽影钟幕」，可在祭坛铭刻！"
+    }
+  ],
+  "resonancePuzzles": [],
+  "pendulums": [],
+  "rivers": [
+    {
+      "id": "river_crypt",
+      "x": 590,
+      "y": 628,
+      "w": 360,
+      "drainable": true
+    }
+  ],
+  "grappleAnchors": [
+    {
+      "id": "anc_crypt_e",
+      "x": 420,
+      "y": 165,
+      "topY": 0
+    },
+    {
+      "id": "anc_crypt_mid",
+      "x": 770,
+      "y": 240,
+      "topY": 0
+    },
+    {
+      "id": "anc_crypt_balcony",
+      "x": 1520,
+      "y": 240,
+      "topY": 0
+    },
+    {
+      "id": "anc_crypt_shaft",
+      "x": 1350,
+      "y": 90,
+      "topY": 0
+    }
+  ],
+  "lanterns": [
+    {
+      "id": "lan_crypt_1",
+      "x": 770,
+      "anchorY": 280,
+      "topY": 0,
+      "len": 130,
+      "angle": -0.05
+    },
+    {
+      "id": "lan_crypt_2",
+      "x": 1180,
+      "anchorY": 165,
+      "topY": 0,
+      "len": 160,
+      "angle": 0.05
+    }
+  ],
+  "enemies": [
+    {
+      "id": "leech_crypt_1",
+      "kind": "leech",
+      "x": 821,
+      "y": 8
+    },
+    {
+      "id": "leech_crypt_2",
+      "kind": "leech",
+      "x": 641,
+      "y": 8
+    },
+    {
+      "id": "crawler_crypt_2",
+      "kind": "crawler",
+      "x": 1510,
+      "y": 368,
+      "minX": 1430,
+      "maxX": 1605
+    },
+    {
+      "id": "crawler_crypt_1",
+      "kind": "crawler",
+      "x": 1170,
+      "y": 598,
+      "minX": 930,
+      "maxX": 1530
+    }
+  ],
+  "bosses": [],
+  "inscriptions": [
+    {
+      "x": 180,
+      "y": 215,
+      "text": "「残钟地窖 · 谨防穹顶倒挂墨蛭」"
+    },
+    {
+      "x": 1220,
+      "y": 530,
+      "text": "「先以幽丝钩断高台祭司 · 再与武者打铁决胜」"
+    },
+    {
+      "x": 1350,
+      "y": 115,
+      "text": "「暗梯直通礼拜堂前 · 断索祭坛 ↑」"
+    },
+    {
+      "x": 1585,
+      "y": 355,
+      "text": "「习得幽影穿身 · Shift 穿破下方暗蚀结界」",
+      "hideWhenShadeDash": true
+    },
+    {
+      "x": 1708,
+      "y": 595,
+      "text": "「← 西入幽林 · 枯墨古林根窟」"
+    },
+    {
+      "x": 1350,
+      "y": 115,
+      "text": "「启闸开启地窖活板 · 永久贯通回礼拜堂前祭坛」",
+      "hideWhenSwitch": "cryptHatchOpen"
+    }
+  ],
+  "props": {
+    "puddles": [],
+    "banners": [
+      {
+        "x": 1590,
+        "y": 40,
+        "len": 160,
+        "color": "#27183b"
+      },
+      {
+        "x": 1080,
+        "y": 40,
+        "len": 175,
+        "color": "#27183b"
+      },
+      {
+        "x": 240,
+        "y": 40,
+        "len": 145,
+        "color": "#27183b"
+      }
+    ],
+    "candles": [
+      {
+        "x": 1655,
+        "y": 410,
+        "count": 4
+      },
+      {
+        "x": 1460,
+        "y": 640,
+        "count": 3
+      },
+      {
+        "x": 255,
+        "y": 280,
+        "count": 4
+      }
+    ],
+    "boneCairns": [
+      1140,
+      305
+    ],
+    "stamps": [
+      {
+        "type": "glow_spores",
+        "x": 1545,
+        "y": 640,
+        "scale": 0.82,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.84,
+        "seed": 0
+      },
+      {
+        "type": "stone_statue",
+        "x": 1270,
+        "y": 640,
+        "scale": 1.0,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.72,
+        "seed": 1
+      },
+      {
+        "type": "hanging_chains",
+        "x": 1100,
+        "y": 0,
+        "scale": 1.1,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.48,
+        "seed": 0
+      },
+      {
+        "type": "glow_spores",
+        "x": 1010,
+        "y": 640,
+        "scale": 0.88,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.86,
+        "seed": 2
+      },
+      {
+        "type": "canopy_bough",
+        "x": 770,
+        "y": 0,
+        "scale": 0.95,
+        "flip": true,
+        "layer": "fg",
+        "alpha": 0.52,
+        "seed": 1
+      },
+      {
+        "type": "hanging_chains",
+        "x": 540,
+        "y": 0,
+        "scale": 1.0,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.46,
+        "seed": 2
+      },
+      {
+        "type": "glow_spores",
+        "x": 460,
+        "y": 640,
+        "scale": 0.92,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.86,
+        "seed": 1
+      },
+      {
+        "type": "fallen_bell",
+        "x": 340,
+        "y": 640,
+        "scale": 0.94,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.8,
+        "seed": 0
+      },
+      {
+        "type": "broken_arch",
+        "x": 185,
+        "y": 280,
+        "scale": 1.05,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.68,
+        "seed": 2
+      }
+    ]
+  },
+  "voidBarriers": [
+    {
+      "id": "vb_crypt",
+      "x": 1618,
+      "y": 542,
+      "w": 22,
+      "h": 98
+    }
+  ],
+  "breakableFloors": [
+    {
+      "id": "floor_crypt_cistern",
+      "x": 300,
+      "y": 640,
+      "w": 140,
+      "h": 140,
+      "style": "stone"
+    }
+  ],
+  "worldSwitches": [
+    {
+      "id": "switch_crypt_hatch",
+      "switchKey": "cryptHatchOpen",
+      "kind": "hatch",
+      "x": 1350,
+      "y": 175,
+      "name": "残钟地窖回廊活板闸"
+    }
+  ],
+  "mirrored": true
+}

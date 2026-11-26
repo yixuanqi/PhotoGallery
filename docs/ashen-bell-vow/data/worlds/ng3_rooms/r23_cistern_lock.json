@@ -1,0 +1,339 @@
+{
+  "id": "r23_cistern_lock",
+  "name": "沉钟水牢 · 断索水闸",
+  "theme": "cistern",
+  "bounds": {
+    "x": 6160,
+    "y": 1520,
+    "w": 1780,
+    "h": 740
+  },
+  "connections": [
+    "r22_cistern_nave",
+    "r07_ascent",
+    "r24_frost_seep"
+  ],
+  "solids": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 1590,
+      "h": 34,
+      "type": "pillar"
+    },
+    {
+      "x": 1730,
+      "y": 0,
+      "w": 50,
+      "h": 34,
+      "type": "pillar"
+    },
+    {
+      "x": 0,
+      "y": 600,
+      "w": 380,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 380,
+      "y": 664,
+      "w": 780,
+      "h": 76,
+      "type": "ground"
+    },
+    {
+      "x": 1160,
+      "y": 600,
+      "w": 620,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 460,
+      "y": 500,
+      "w": 195,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 775,
+      "y": 430,
+      "w": 215,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1495,
+      "y": 425,
+      "w": 215,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1530,
+      "y": 240,
+      "w": 195,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1515,
+      "y": 100,
+      "w": 115,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 520,
+      "y": 270,
+      "w": 215,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 530,
+      "y": 110,
+      "w": 205,
+      "h": 20,
+      "type": "pillar"
+    },
+    {
+      "x": 530,
+      "y": 270,
+      "w": 205,
+      "h": 20,
+      "type": "pillar"
+    },
+    {
+      "x": 715,
+      "y": 130,
+      "w": 20,
+      "h": 140,
+      "type": "pillar"
+    }
+  ],
+  "crumblePlatforms": [
+    {
+      "id": "cr_cl_1",
+      "x": 1030,
+      "y": 510,
+      "w": 120,
+      "h": 20
+    }
+  ],
+  "gates": [],
+  "secretWalls": [],
+  "voidBarriers": [
+    {
+      "id": "vb_cistern_lock",
+      "x": 535,
+      "y": 130,
+      "w": 22,
+      "h": 140
+    },
+    {
+      "id": "vb_lock_sweep",
+      "x": 1310,
+      "y": 455,
+      "w": 24,
+      "h": 145,
+      "sweeping": true,
+      "sweepMinX": 1190,
+      "sweepMaxX": 1610,
+      "sweepSpeed": 1.4,
+      "sweepPhase": 2.1
+    }
+  ],
+  "altars": [],
+  "npcs": [],
+  "loreTablets": [
+    {
+      "id": "lore_cistern_lock",
+      "x": 230,
+      "y": 600,
+      "title": "断索水闸碑",
+      "sub": "沉钟水牢 · 断索水闸",
+      "html": "“水闸以东即为<strong>霜渊冰窖</strong>，乃圣脊融雪渗入地底之源头。<br>凡携<strong>退潮沉钟印</strong>并共鸣<strong>回响钟舌</strong>者，哪怕立于干涸河床之上，亦可凭空唤出<strong>渊潮震鸣</strong>，双浪破尽重盾铁甲。”"
+    }
+  ],
+  "pickups": [
+    {
+      "id": "pickup_echo_cistern_lock",
+      "kind": "echoCache",
+      "echoAmount": 110,
+      "x": 625,
+      "y": 270,
+      "name": "断索水闸残响",
+      "desc": "悬挂于断索青铜闸梁之上的 +110 残响"
+    },
+    {
+      "id": "pickup_relic_tidebell",
+      "kind": "relic",
+      "relicId": "tidebell",
+      "requiresSwitch": "riverDrained",
+      "x": 780,
+      "y": 664,
+      "name": "隐藏圣物 · 退潮沉钟印",
+      "desc": "暗河泄洪后显露于水闸河底！法术范围 +18%，泄洪后常驻法伤 +16% 且耗魂 -4。"
+    }
+  ],
+  "resonancePuzzles": [],
+  "lanterns": [
+    {
+      "id": "lan_cl_1",
+      "x": 640,
+      "anchorY": 34,
+      "len": 165,
+      "topY": 34
+    },
+    {
+      "id": "lan_cl_2",
+      "x": 1330,
+      "anchorY": 34,
+      "len": 185,
+      "topY": 34
+    }
+  ],
+  "grappleAnchors": [
+    {
+      "x": 880,
+      "y": 330,
+      "id": "anc_r23_cistern_lock_0",
+      "topY": 34
+    },
+    {
+      "x": 1655,
+      "y": 175,
+      "id": "anc_r23_cistern_lock_1",
+      "topY": 34
+    }
+  ],
+  "pendulums": [
+    {
+      "x": 680,
+      "anchorY": 34,
+      "len": 350,
+      "amp": 0.5,
+      "speed": 1.55,
+      "phase": 0.2,
+      "r": 26
+    },
+    {
+      "x": 1080,
+      "anchorY": 34,
+      "len": 340,
+      "amp": 0.52,
+      "speed": 1.72,
+      "phase": 2.1,
+      "r": 26
+    }
+  ],
+  "rivers": [
+    {
+      "id": "river_cistern_lock",
+      "x": 380,
+      "y": 628,
+      "w": 780,
+      "drainable": true
+    }
+  ],
+  "enemies": [
+    {
+      "id": "dr_cl_1",
+      "kind": "drowned",
+      "x": 200,
+      "y": 540,
+      "minX": 65,
+      "maxX": 350
+    },
+    {
+      "id": "an_cl_1",
+      "kind": "anchorite",
+      "x": 1290,
+      "y": 522,
+      "minX": 1185,
+      "maxX": 1560
+    },
+    {
+      "id": "p_cl_1",
+      "kind": "priest",
+      "x": 840,
+      "y": 370,
+      "minX": 785,
+      "maxX": 960
+    }
+  ],
+  "bosses": [],
+  "inscriptions": [
+    {
+      "x": 1640,
+      "y": 540,
+      "text": "「东行步入霜渊冰窖 · 暗河融雪之源」"
+    }
+  ],
+  "props": {
+    "puddles": [
+      {
+        "x": 140,
+        "w": 160,
+        "y": 600
+      },
+      {
+        "x": 1280,
+        "w": 220,
+        "y": 600
+      }
+    ],
+    "banners": [
+      {
+        "x": 260,
+        "y": 34,
+        "len": 155,
+        "color": "#0e2938"
+      },
+      {
+        "x": 1450,
+        "y": 34,
+        "len": 165,
+        "color": "#0e2938"
+      }
+    ],
+    "candles": [
+      {
+        "x": 320,
+        "y": 600,
+        "count": 3
+      },
+      {
+        "x": 1210,
+        "y": 600,
+        "count": 3
+      }
+    ],
+    "boneCairns": [],
+    "stamps": [
+      {
+        "type": "sunken_bell_giant",
+        "x": 180,
+        "y": 600,
+        "scale": 0.95,
+        "layer": "bg"
+      },
+      {
+        "type": "iron_cage",
+        "x": 880,
+        "y": 34,
+        "scale": 1.0,
+        "layer": "bg"
+      },
+      {
+        "type": "tide_pillar",
+        "x": 1410,
+        "y": 600,
+        "scale": 1.1,
+        "layer": "bg"
+      }
+    ]
+  }
+}

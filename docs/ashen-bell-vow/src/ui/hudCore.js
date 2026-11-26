@@ -5,7 +5,7 @@ import {
   ABYSSAL_RIVERS, WIND_ZONES, BOUNCE_PADS, WORLD_MIN_X, WORLD_MIN_Y, WORLD_W, WORLD_H, WORLD_SPAN_W, WORLD_SPAN_H, FLOOR_Y, WELL_BOTTOM_Y,
   MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H, ECHO_GRADE_ORDER, SEVEN_BELLS_ORDER
 } from '../config.js';
-import { getRoomAt, getZoneLabelAt, getPreviewSpawnRoomId, getPreviewSpawnCoords, getRoomSpawnPoint } from '../levelLoader.js';
+import { getRoomAt, getZoneLabelAt, getPreviewSpawnRoomId, getPreviewSpawnCoords, getRoomSpawnPoint, ensureWorldForCycle, getWorldVariantLabel } from '../levelLoader.js';
 import {
   G, createFreshWorldState, getActiveAltar, getActiveSynergies, getRelicStats, getActiveVowStats, getCombatScaling, getEquippedRelicLabel, getActiveWeaponId, getActiveWeapon, isWeaponUnlocked, getUnlockedWeaponIds, unlockWeapon,
   isWeaponTraitUnlocked, getActiveWeaponTraitId, unlockWeaponTrait, setActiveWeaponTrait,
@@ -103,7 +103,7 @@ export function refreshTitleSaveUI() {
         const endCnt = Array.isArray(item.data.endingsUnlocked) ? item.data.endingsUnlocked.length : 0;
         const cyc = Math.max(1, Math.floor(Number(item.data.ngPlusCycle) || 1));
         const vCnt = Array.isArray(item.data.activeVows) ? item.data.activeVows.length : 0;
-        const cycTag = cyc >= 2 ? t('slot.cycleTag', cyc) : '';
+        const cycTag = cyc >= 2 ? t('slot.cycleTag', cyc, getWorldVariantLabel(cyc)) : '';
         const vowTag = vCnt > 0 ? t('slot.vowTag', vCnt) : '';
         meta.textContent = t('slot.summary', locAltar(altar, 'shortName'), pct, bossCnt) + (endCnt > 0 ? t('slot.endTag', endCnt) : '') + cycTag + vowTag;
       } else {
@@ -146,7 +146,7 @@ export function refreshTitleSaveUI() {
     const eCnt = Array.isArray(data.endingsUnlocked) ? data.endingsUnlocked.length : 0;
     const cyc = Math.max(1, Math.floor(Number(data.ngPlusCycle) || 1));
     const vCnt = Array.isArray(data.activeVows) ? data.activeVows.length : 0;
-    const bossTag = (cyc >= 2 ? t('slot.cycleTag', cyc) : '') + (vCnt > 0 ? t('slot.vowTag', vCnt) : '') + (bCnt > 0 ? t('slot.bossTag', bCnt) : '');
+    const bossTag = (cyc >= 2 ? t('slot.cycleTag', cyc, getWorldVariantLabel(cyc)) : '') + (vCnt > 0 ? t('slot.vowTag', vCnt) : '') + (bCnt > 0 ? t('slot.bossTag', bCnt) : '');
     const wingTag = (data.abilities && data.abilities.doubleJump ? ` · ${t('hud.abilityWings')}` : '') + (data.abilities && data.abilities.shadeDash ? ` · ${t('hud.abilityShade')}` : '') + (eCnt > 0 ? t('slot.endTag', eCnt) : '');
     HUD_DOM.titleSaveInfo.textContent = t('slot.selectedInfo', G.activeSaveSlot + 1, locAltar(altar, 'shortName'), pct, relicCount, RELICS.length, bossTag, wingTag);
     HUD_DOM.titleSaveInfo.style.display = 'block';
@@ -162,12 +162,20 @@ export function refreshTitleSaveUI() {
   }
 }
 
-export function continueSavedGame() {
-  if (!G.levelBundle) return;
+let _continueBusy = false;
+
+export async function continueSavedGame() {
+  if (!G.levelBundle || _continueBusy) return;
   const data = readSaveData();
   if (!data) {
-    uiHooks.startGame();
-    return;
+    return uiHooks.startGame();
+  }
+  const savedCycle = Math.max(1, Math.floor(Number(data.ngPlusCycle) || 1));
+  _continueBusy = true;
+  try {
+    await ensureWorldForCycle(savedCycle);
+  } finally {
+    _continueBusy = false;
   }
   clearOutcomeTimer();
   applySaveData(data);

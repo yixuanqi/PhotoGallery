@@ -1,0 +1,274 @@
+{
+  "schemaVersion": 1,
+  "id": "r13_wind_peak",
+  "zoneName": "绝风断塔",
+  "name": "绝风断塔 · 断塔绝顶",
+  "theme": "wind",
+  "bounds": {
+    "x": 6740,
+    "y": -740,
+    "w": 1520,
+    "h": 740
+  },
+  "connections": [
+    "r12_wind_bridge",
+    "r17_frost_summit",
+    "r25_mirror_abyss"
+  ],
+  "subZones": [
+    {
+      "name": "绝风断塔 · 云海风台",
+      "x": 0,
+      "y": 0,
+      "w": 1520,
+      "h": 740
+    }
+  ],
+  "solids": [
+    {
+      "x": 0,
+      "y": 620,
+      "w": 1520,
+      "h": 120,
+      "type": "ground"
+    },
+    {
+      "x": 200,
+      "y": 430,
+      "w": 185,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 655,
+      "y": 345,
+      "w": 210,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1135,
+      "y": 430,
+      "w": 185,
+      "h": 22,
+      "type": "platform"
+    }
+  ],
+  "crumblePlatforms": [],
+  "altars": [],
+  "npcs": [],
+  "secretWalls": [],
+  "voidBarriers": [],
+  "gates": [],
+  "pickups": [
+    {
+      "id": "pickup_core_wind",
+      "kind": "statCore",
+      "x": 1228,
+      "y": 430,
+      "bonusHp": 10,
+      "bonusSoul": 15,
+      "name": "风淬魂核",
+      "desc": "受罡风千年涤荡的魂火凝核（生命上限 +10 · 魂火上限 +15）",
+      "requiresBoss": "warden_wind_boss"
+    },
+    {
+      "id": "pickup_seal_wind",
+      "kind": "realmSeal",
+      "sealId": "wind",
+      "relicId": "galefather",
+      "requiresBoss": "warden_wind_boss",
+      "echoAmount": 60,
+      "x": 760,
+      "y": 620,
+      "name": "绝风铭印 · 朔风铃羽",
+      "desc": "斩落截风巡塔使·朔解封！赐予「绝风铭印」与圣物「朔风铃羽」"
+    }
+  ],
+  "pendulums": [],
+  "windZones": [
+    {
+      "id": "wz_wp_1",
+      "x": 395,
+      "y": 165,
+      "w": 145,
+      "h": 450,
+      "vx": 15,
+      "vy": -1460
+    },
+    {
+      "id": "wz_wp_2",
+      "x": 980,
+      "y": 165,
+      "w": 145,
+      "h": 450,
+      "vx": -15,
+      "vy": -1460
+    },
+    {
+      "id": "wz_mirror_ascent",
+      "x": 1220,
+      "y": -40,
+      "w": 160,
+      "h": 660,
+      "vx": 0,
+      "vy": -1720,
+      "requiresBoss4Unlocked": true
+    }
+  ],
+  "bouncePads": [],
+  "grappleAnchors": [
+    {
+      "id": "anc_wp_1",
+      "x": 465,
+      "y": 215,
+      "topY": 0
+    },
+    {
+      "id": "anc_wp_2",
+      "x": 760,
+      "y": 145,
+      "topY": 0
+    },
+    {
+      "id": "anc_wp_3",
+      "x": 1055,
+      "y": 215,
+      "topY": 0
+    }
+  ],
+  "lanterns": [
+    {
+      "id": "lan_wp_1",
+      "x": 585,
+      "anchorY": 160,
+      "topY": 0,
+      "len": 145,
+      "angle": 0.14
+    },
+    {
+      "id": "lan_wp_2",
+      "x": 935,
+      "anchorY": 160,
+      "topY": 0,
+      "len": 145,
+      "angle": -0.14
+    }
+  ],
+  "enemies": [
+    {
+      "id": "warden_wind_boss",
+      "kind": "warden_wind",
+      "x": 760,
+      "y": 548,
+      "minX": 180,
+      "maxX": 1340
+    }
+  ],
+  "bosses": [],
+  "props": {
+    "puddles": [],
+    "banners": [
+      {
+        "x": 240,
+        "y": 140,
+        "len": 102,
+        "color": "#162d42"
+      },
+      {
+        "x": 1280,
+        "y": 140,
+        "len": 102,
+        "color": "#162d42"
+      }
+    ],
+    "candles": [
+      {
+        "x": 155,
+        "y": 620
+      },
+      {
+        "x": 1365,
+        "y": 620
+      }
+    ],
+    "stamps": [
+      {
+        "type": "wind_pillar",
+        "x": 130,
+        "y": 620,
+        "scale": 1.3,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.72,
+        "seed": 1
+      },
+      {
+        "type": "tattered_pennant",
+        "x": 285,
+        "y": 620,
+        "scale": 1.05,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.76,
+        "seed": 0
+      },
+      {
+        "type": "sword_mound",
+        "x": 485,
+        "y": 620,
+        "scale": 0.84,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.72,
+        "seed": 2
+      },
+      {
+        "type": "sword_mound",
+        "x": 1035,
+        "y": 620,
+        "scale": 0.84,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.72,
+        "seed": 0
+      },
+      {
+        "type": "tattered_pennant",
+        "x": 1235,
+        "y": 620,
+        "scale": 1.05,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.76,
+        "seed": 2
+      },
+      {
+        "type": "wind_pillar",
+        "x": 1390,
+        "y": 620,
+        "scale": 1.3,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.72,
+        "seed": 2
+      }
+    ],
+    "boneCairns": []
+  },
+  "loreTablets": [],
+  "resonancePuzzles": [],
+  "rivers": [],
+  "inscriptions": [
+    {
+      "x": 1410,
+      "y": 555,
+      "text": "高空断桥直通「霜骸圣脊 · 绝脊霜台」"
+    },
+    {
+      "x": 1300,
+      "y": 545,
+      "text": "「集齐三境铭印且斩落初钟圣骸 · 镜渊金风将贯通天穹」"
+    }
+  ]
+}

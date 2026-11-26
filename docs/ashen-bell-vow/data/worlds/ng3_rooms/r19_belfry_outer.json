@@ -1,0 +1,228 @@
+{
+  "id": "r19_belfry_outer",
+  "name": "断索钟楼 · 外廊残钟",
+  "theme": "sanctuary",
+  "bounds": {
+    "x": 0,
+    "y": -740,
+    "w": 940,
+    "h": 740
+  },
+  "connections": [
+    "r18_rain_steps",
+    "r01_sanctuary"
+  ],
+  "solids": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 940,
+      "h": 34,
+      "type": "pillar"
+    },
+    {
+      "x": -40,
+      "y": 0,
+      "w": 60,
+      "h": 740,
+      "type": "pillar"
+    },
+    {
+      "x": 0,
+      "y": 600,
+      "w": 730,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 890,
+      "y": 600,
+      "w": 50,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 110,
+      "y": 420,
+      "w": 250,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 440,
+      "y": 316,
+      "w": 220,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 130,
+      "y": 215,
+      "w": 240,
+      "h": 22,
+      "type": "platform"
+    }
+  ],
+  "crumblePlatforms": [],
+  "gates": [
+    {
+      "id": "gate_belfry_hatch",
+      "role": "switchGate",
+      "switchKey": "belfryHatchOpen",
+      "orientation": "horizontal",
+      "x": 730,
+      "y": 600,
+      "w": 160,
+      "h": 26
+    }
+  ],
+  "secretWalls": [],
+  "voidBarriers": [],
+  "altars": [],
+  "npcs": [],
+  "loreTablets": [],
+  "pickups": [
+    {
+      "id": "pickup_core_belfry",
+      "kind": "statCore",
+      "bonusHp": 10,
+      "bonusSoul": 10,
+      "echoAmount": 55,
+      "x": 225,
+      "y": 215,
+      "name": "钟楼古核 · 断索灵晶",
+      "desc": "生命 +10 · 魂火 +10 · +55 残响"
+    },
+    {
+      "id": "pickup_relic_bell",
+      "kind": "relic",
+      "relicId": "bellthread",
+      "x": 550,
+      "y": 316,
+      "name": "隐藏圣物 · 幽丝断钟",
+      "desc": "已解锁并可在祭坛铭刻！"
+    }
+  ],
+  "resonancePuzzles": [],
+  "lanterns": [
+    {
+      "id": "lan_belfry_1",
+      "x": 540,
+      "anchorY": 34,
+      "len": 160,
+      "topY": 34
+    },
+    {
+      "id": "lan_belfry_2",
+      "x": 810,
+      "anchorY": 34,
+      "len": 210,
+      "topY": 34
+    }
+  ],
+  "grappleAnchors": [
+    {
+      "x": 395,
+      "y": 245,
+      "id": "anc_r19_belfry_outer_0",
+      "topY": 34
+    },
+    {
+      "x": 810,
+      "y": 540,
+      "id": "anc_r19_belfry_outer_1",
+      "topY": 34
+    }
+  ],
+  "pendulums": [],
+  "rivers": [],
+  "enemies": [
+    {
+      "id": "cantor_belfry_1",
+      "kind": "cantor",
+      "x": 380,
+      "y": 492
+    }
+  ],
+  "bosses": [],
+  "inscriptions": [
+    {
+      "x": 675,
+      "y": 532,
+      "text": "「启闸开启青铜活板 · 永久贯通回起点熄灯祭坛」",
+      "hideWhenSwitch": "belfryHatchOpen"
+    }
+  ],
+  "props": {
+    "puddles": [
+      {
+        "x": 220,
+        "w": 160,
+        "y": 600
+      }
+    ],
+    "banners": [
+      {
+        "x": 280,
+        "y": 34,
+        "len": 170,
+        "color": "#1a2030"
+      },
+      {
+        "x": 660,
+        "y": 34,
+        "len": 155,
+        "color": "#26161d"
+      }
+    ],
+    "candles": [
+      {
+        "x": 225,
+        "y": 215,
+        "count": 4
+      },
+      {
+        "x": 710,
+        "y": 600,
+        "count": 3
+      }
+    ],
+    "boneCairns": [],
+    "stamps": [
+      {
+        "type": "fallen_bell",
+        "x": 180,
+        "y": 600,
+        "scale": 1.1,
+        "layer": "bg"
+      },
+      {
+        "type": "broken_arch",
+        "x": 560,
+        "y": 600,
+        "scale": 1.0,
+        "layer": "bg"
+      }
+    ]
+  },
+  "slickWalls": [
+    {
+      "id": "slick_r19_west",
+      "x": 0,
+      "y": 140,
+      "w": 20,
+      "h": 420,
+      "side": "right"
+    }
+  ],
+  "worldSwitches": [
+    {
+      "id": "switch_belfry_hatch",
+      "switchKey": "belfryHatchOpen",
+      "kind": "hatch",
+      "x": 675,
+      "y": 600,
+      "name": "断索钟楼单向活板闸"
+    }
+  ]
+}

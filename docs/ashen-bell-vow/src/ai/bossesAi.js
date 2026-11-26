@@ -92,6 +92,9 @@ function consumeBossGreedTrigger(b, cd = 5.4) {
 
 export function updateBoss(b, dt) {
   if (!b || !b.alive) return;
+  const arenaFloorY = b.arenaFloorY !== undefined ? b.arenaFloorY : FLOOR_Y, arenaMinX = b.arenaMinX || 0;
+  const arenaMaxX = b.arenaMaxX !== undefined ? b.arenaMaxX : (arenaMinX + 1090), arenaW = Math.max(400, arenaMaxX - arenaMinX);
+  const waveMinX = arenaMinX - 28, waveMaxX = arenaMaxX + 22;
   if (b.hurtFlash > 0) b.hurtFlash -= dt;
   if (b.postureDecayDelay > 0) b.postureDecayDelay -= dt;
   else if (b.state !== 'stagger' && b.posture > 0) b.posture = Math.max(0, b.posture - 7.0 * dt);
@@ -119,8 +122,8 @@ export function updateBoss(b, dt) {
     triggerHaptic('bossPhase');
     triggerBossBanner(t('boss.hui.p2Title'), t('boss.hui.p2Quote'), COLORS.crimsonBright, 2.5);
     spawnFloatText(b.x + b.w / 2, b.y - 44, t('boss.hui.p2Title'), COLORS.crimsonBright, 24, 1.8);
-    G.groundWaves.push({ x: b.x + b.w / 2, y: FLOOR_Y, minX: 2620, maxX: 3760, vx: -420, w: 36, h: 48, life: 2.2, hit: false });
-    G.groundWaves.push({ x: b.x + b.w / 2, y: FLOOR_Y, minX: 2620, maxX: 3760, vx: 420, w: 36, h: 48, life: 2.2, hit: false });
+    G.groundWaves.push({ x: b.x + b.w / 2, y: arenaFloorY, minX: waveMinX, maxX: waveMaxX, vx: -420, w: 36, h: 48, life: 2.2, hit: false });
+    G.groundWaves.push({ x: b.x + b.w / 2, y: arenaFloorY, minX: waveMinX, maxX: waveMaxX, vx: 420, w: 36, h: 48, life: 2.2, hit: false });
   }
 
   const px = G.player.x + G.player.w / 2;
@@ -181,7 +184,8 @@ export function updateBoss(b, dt) {
       b.inkTideCd = 12.5;
       b.didHit = false;
       b.vx = 0;
-      G.chapelTide = { phase: 'warn', timer: 1.08, maxTimer: 1.08, hitCd: 0, x0: 2648, w: 1090, floorY: FLOOR_Y, owner: b, lanternIds: ['lan_4', 'lan_5'], theme: 'crimson' };
+      const arenaLanternIds = G.lanterns ? G.lanterns.filter(l => l.roomId === b.roomId).map(l => l.id) : [];
+        G.chapelTide = { phase: 'warn', timer: 1.08, maxTimer: 1.08, hitCd: 0, x0: arenaMinX, w: arenaW, floorY: arenaFloorY, owner: b, lanternIds: arenaLanternIds, theme: 'crimson' };
       audio.playDangerAlert();
       audio.playBellToll();
       addShake(9);
@@ -245,7 +249,7 @@ export function updateBoss(b, dt) {
       spawnParticles(b.x + b.w / 2 - b.facing * 8, b.y - 14, 1, { color: COLORS.goldBright, speed: 60, grav: -60, life: 0.24 });
     }
     if (b.moveKind === 'inkTide' && Math.random() < 0.65) {
-      spawnParticles(b.x + b.w / 2 + (Math.random() - 0.5) * 80, FLOOR_Y - 6, 1, { color: COLORS.crimsonBright, speed: 95, grav: -180, life: 0.34 });
+      spawnParticles(b.x + b.w / 2 + (Math.random() - 0.5) * 80, arenaFloorY - 6, 1, { color: COLORS.crimsonBright, speed: 95, grav: -180, life: 0.34 });
     }
     if (b.stateTimer <= 0) {
       b.state = 'strike';
@@ -264,7 +268,7 @@ export function updateBoss(b, dt) {
         audio.playTideRoar();
         addShake(14);
         G.screenFlash = { alpha: 0.26, color: COLORS.crimson };
-        spawnShockwave(bx, FLOOR_Y - 8, 220, COLORS.crimsonBright, 5, 0.42);
+        spawnShockwave(bx, arenaFloorY - 8, 220, COLORS.crimsonBright, 5, 0.42);
       } else if (b.moveKind === 'redLeap') {
         b.stateTimer = 1.15;
         b.leapAirborne = false;
@@ -352,7 +356,7 @@ export function updateBoss(b, dt) {
     if (strikeFinished) {
       if (b.moveKind === 'delaySlam' && b.phase === 2) {
         addShake(8);
-        G.groundWaves.push({ x: b.x + b.w / 2 + b.facing * 50, y: FLOOR_Y, minX: 2620, maxX: 3760, vx: b.facing * 420, w: 34, h: 44, life: 1.8, hit: false });
+        G.groundWaves.push({ x: b.x + b.w / 2 + b.facing * 50, y: arenaFloorY, minX: waveMinX, maxX: waveMaxX, vx: b.facing * 420, w: 34, h: 44, life: 1.8, hit: false });
       }
       if (b.moveKind === 'redLeap') {
         b.leapAirborne = false;
@@ -400,6 +404,9 @@ export function updateBoss(b, dt) {
 
 export function updateBoss2(b, dt) {
   if (!b || !b.alive) return;
+  const arenaFloorY = b.arenaFloorY !== undefined ? b.arenaFloorY : WELL_BOTTOM_Y, arenaMinX = b.arenaMinX || 0;
+  const arenaMaxX = b.arenaMaxX !== undefined ? b.arenaMaxX : (arenaMinX + 1112), arenaW = Math.max(400, arenaMaxX - arenaMinX);
+  const arenaMidX = (arenaMinX + arenaMaxX) * 0.5;
   if (b.hurtFlash > 0) b.hurtFlash -= dt;
   if (b.shieldBrokenTimer > 0) b.shieldBrokenTimer -= dt;
   if (b.postureDecayDelay > 0) b.postureDecayDelay -= dt;
@@ -409,7 +416,7 @@ export function updateBoss2(b, dt) {
   const floorTop = b.arenaFloorY - b.h;
 
   if (!b.awake) {
-    b.y = (WELL_BOTTOM_Y - 134) + Math.sin(G.globalTime * 2.1) * 9;
+    b.y = (arenaFloorY - 134) + Math.sin(G.globalTime * 2.1) * 9;
     updateCloak(b.cloak, b.x + b.w / 2 - b.facing * 10, b.y + 26, b.facing, 0, dt);
     return;
   }
@@ -430,8 +437,8 @@ export function updateBoss2(b, dt) {
     triggerHaptic('bossPhase');
     triggerBossBanner(t('boss.ji.p2Title'), t('boss.ji.p2Quote'), COLORS.goldBright, 2.5);
     spawnFloatText(b.x + b.w / 2, b.y - 46, t('boss.ji.p2Title'), COLORS.goldBright, 24, 1.85);
-    G.groundWaves.push({ x: b.x + b.w / 2, y: WELL_BOTTOM_Y, minX: 5584, maxX: 6716, vx: -420, w: 38, h: 50, life: 2.3, hit: false, gold: true });
-    G.groundWaves.push({ x: b.x + b.w / 2, y: WELL_BOTTOM_Y, minX: 5584, maxX: 6716, vx: 420, w: 38, h: 50, life: 2.3, hit: false, gold: true });
+    G.groundWaves.push({ x: b.x + b.w / 2, y: arenaFloorY, minX: arenaMinX, maxX: arenaMaxX, vx: -420, w: 38, h: 50, life: 2.3, hit: false, gold: true });
+    G.groundWaves.push({ x: b.x + b.w / 2, y: arenaFloorY, minX: arenaMinX, maxX: arenaMaxX, vx: 420, w: 38, h: 50, life: 2.3, hit: false, gold: true });
   }
 
   const px = G.player.x + G.player.w / 2;
@@ -446,8 +453,8 @@ export function updateBoss2(b, dt) {
   if (b.phase === 2 && b.novaCd > 0) b.novaCd -= dt * b2Aggro;
 
   if (b.state === 'phaseShift') {
-    b.x += (6140 - b.w / 2 - b.x) * Math.min(1, dt * 3.5);
-    b.y += (WELL_BOTTOM_Y - 210 - b.y) * Math.min(1, dt * 3.5);
+    b.x += (arenaMidX - b.w / 2 - b.x) * Math.min(1, dt * 3.5);
+    b.y += (arenaFloorY - 210 - b.y) * Math.min(1, dt * 3.5);
     if (Math.random() < 39.0 * dt) {
       spawnParticles(bx, b.y + 38, 2, { color: COLORS.goldBright, speed: 200, spark: true });
     }
@@ -472,7 +479,7 @@ export function updateBoss2(b, dt) {
     b.facing = dx >= 0 ? 1 : -1;
     // Lowered hover height (WELL_BOTTOM_Y - 128) keeps Boss 2 reachable by both melee up-slash & grapple
     const desiredX = Math.max(b.arenaMinX + 40, Math.min(b.arenaMaxX - b.w - 40, px - b.facing * 205));
-    const desiredY = WELL_BOTTOM_Y - 128 + Math.sin(G.globalTime * 2.8) * 18;
+    const desiredY = arenaFloorY - 128 + Math.sin(G.globalTime * 2.8) * 18;
     b.vx = (desiredX - b.x) * (b.phase === 2 ? 2.8 : 2.1);
     b.vy = (desiredY - b.y) * 2.8;
     b.x = Math.max(b.arenaMinX, Math.min(b.arenaMaxX - b.w, b.x + b.vx * dt));
@@ -505,7 +512,7 @@ export function updateBoss2(b, dt) {
         b.windupDuration = 1.12;
         b.novaCd = 13.0;
         b.didHit = false;
-        G.chapelTide = { phase: 'warn', timer: 1.25, maxTimer: 1.25, hitCd: 0, x0: 5584, w: 1132, floorY: WELL_BOTTOM_Y, owner: b, lanternIds: [], theme: 'gold' };
+        G.chapelTide = { phase: 'warn', timer: 1.25, maxTimer: 1.25, hitCd: 0, x0: arenaMinX, w: arenaW, floorY: arenaFloorY, owner: b, lanternIds: [], theme: 'gold' };
         b.stateTimer = 1.25; b.windupDuration = 1.25;
         audio.playDangerAlert(); audio.playBellToll(); addShake(9);
         spawnFloatText(bx, b.y - 54, t('boss.ji.novaWarnCrucible'), COLORS.goldBright, 21, 1.65);
@@ -535,7 +542,7 @@ export function updateBoss2(b, dt) {
         if (chosen === 'chainDropSlam') {
           b.stateTimer = b.phase === 2 ? 0.56 : 0.64;
           b.hoverTargetX = Math.max(b.arenaMinX + 40, Math.min(b.arenaMaxX - b.w - 40, px - b.w / 2));
-          b.hoverTargetY = WELL_BOTTOM_Y - 320;
+          b.hoverTargetY = arenaFloorY - 320;
           audio.playSlash(1.1);
         } else if (chosen === 'bellShieldCharge') {
           b.stateTimer = 0.58;
@@ -543,8 +550,8 @@ export function updateBoss2(b, dt) {
           audio.playBellToll();
         } else if (chosen === 'bellBarrage' || chosen === 'twinBellCross') {
           b.stateTimer = chosen === 'twinBellCross' ? 0.56 : 0.62;
-          b.hoverTargetX = Math.max(b.arenaMinX + 60, Math.min(b.arenaMaxX - b.w - 60, px > 6140 ? 5800 : 6440));
-          b.hoverTargetY = WELL_BOTTOM_Y - 210;
+          b.hoverTargetX = Math.max(arenaMinX + 60, Math.min(arenaMaxX - b.w - 60, px > arenaMidX ? (arenaMinX + arenaW * 0.20) : (arenaMaxX - arenaW * 0.24)));
+          b.hoverTargetY = arenaFloorY - 210;
           audio.playWraithShot();
         } else {
           b.stateTimer = 0.68;
@@ -563,10 +570,10 @@ export function updateBoss2(b, dt) {
       audio.playGlintCue(b.isDelayedHit);
     }
     if (b.moveKind === 'resonanceNova') {
-      b.x += (6140 - b.w / 2 - b.x) * Math.min(1, dt * 6);
-      b.y += (WELL_BOTTOM_Y - 260 - b.y) * Math.min(1, dt * 6);
+      b.x += (arenaMidX - b.w / 2 - b.x) * Math.min(1, dt * 6);
+      b.y += (arenaFloorY - 260 - b.y) * Math.min(1, dt * 6);
       if (Math.random() < 42.0 * dt) {
-        spawnParticles(bx + (Math.random() - 0.5) * 90, WELL_BOTTOM_Y - 8, 1, { color: COLORS.goldBright, speed: 110, grav: -200, life: 0.36 });
+        spawnParticles(bx + (Math.random() - 0.5) * 90, arenaFloorY - 8, 1, { color: COLORS.goldBright, speed: 110, grav: -200, life: 0.36 });
       }
     } else if (b.moveKind === 'chainDropSlam') {
       if (b.stateTimer > 0.22) {
@@ -597,7 +604,7 @@ export function updateBoss2(b, dt) {
         audio.playTideRoar();
         addShake(14);
         G.screenFlash = { alpha: 0.25, color: COLORS.goldBright };
-        spawnShockwave(bx, WELL_BOTTOM_Y - 10, 240, COLORS.goldBright, 5.2, 0.44);
+        spawnShockwave(bx, arenaFloorY - 10, 240, COLORS.goldBright, 5.2, 0.44);
       } else if (b.moveKind === 'chainDropSlam') {
         b.stateTimer = 0.65;
         b.vx = 0;
@@ -666,7 +673,7 @@ export function updateBoss2(b, dt) {
         b.y = floorTop;
         b.vx = b.facing * 260;
         audio.playSlash(0.62, true);
-        G.slashes.push({ x: bx + b.facing * 75, y: WELL_BOTTOM_Y - 26, facing: b.facing, type: 'bossRedSweep', life: 0.28, maxLife: 0.28 });
+        G.slashes.push({ x: bx + b.facing * 75, y: arenaFloorY - 26, facing: b.facing, type: 'bossRedSweep', life: 0.28, maxLife: 0.28 });
       }
     }
   } else if (b.state === 'strike') {
@@ -694,10 +701,10 @@ export function updateBoss2(b, dt) {
         b.vy = 0;
         addShake(12);
         audio.playHit(true);
-        spawnShockwave(b.x + b.w / 2, WELL_BOTTOM_Y - 6, 145, COLORS.goldBright, 4.4, 0.34);
-        spawnParticles(b.x + b.w / 2, WELL_BOTTOM_Y - 4, 24, { color: COLORS.goldBright, speed: 280, spark: true, life: 0.42 });
-        G.groundWaves.push({ x: b.x + b.w / 2 - 42, y: WELL_BOTTOM_Y, minX: 5584, maxX: 6716, vx: -400, w: 36, h: 46, life: 2.0, hit: false, gold: true });
-        G.groundWaves.push({ x: b.x + b.w / 2 + 42, y: WELL_BOTTOM_Y, minX: 5584, maxX: 6716, vx: 400, w: 36, h: 46, life: 2.0, hit: false, gold: true });
+        spawnShockwave(b.x + b.w / 2, arenaFloorY - 6, 145, COLORS.goldBright, 4.4, 0.34);
+        spawnParticles(b.x + b.w / 2, arenaFloorY - 4, 24, { color: COLORS.goldBright, speed: 280, spark: true, life: 0.42 });
+        G.groundWaves.push({ x: b.x + b.w / 2 - 42, y: arenaFloorY, minX: arenaMinX, maxX: arenaMaxX, vx: -400, w: 36, h: 46, life: 2.0, hit: false, gold: true });
+        G.groundWaves.push({ x: b.x + b.w / 2 + 42, y: arenaFloorY, minX: arenaMinX, maxX: arenaMaxX, vx: 400, w: 36, h: 46, life: 2.0, hit: false, gold: true });
         b.state = 'recover';
         b.stateTimer = b.phase === 2 ? 0.72 : 0.92;
       }
@@ -723,7 +730,7 @@ export function updateBoss2(b, dt) {
         const reach = 185;
         const sweepBox = {
           x: b.x + b.w / 2 + (b.facing > 0 ? -12 : -reach + 12),
-          y: WELL_BOTTOM_Y - 54,
+          y: arenaFloorY - 54,
           w: reach,
           h: 54
         };
@@ -758,6 +765,7 @@ export function updateBoss2(b, dt) {
 /* ---------- FINAL BOSS: 初钟圣骸 · 渊 (Tuned 3-Phase Parry Symphony) ---------- */
 export function updateBoss3(b, dt) {
   if (!b || !b.alive) return;
+  const arenaFloorY = b.arenaFloorY !== undefined ? b.arenaFloorY : FLOOR_Y;
   if (b.hurtFlash > 0) b.hurtFlash -= dt;
   if (b.postureDecayDelay > 0) b.postureDecayDelay -= dt;
   else if (b.state !== 'stagger' && b.posture > 0) b.posture = Math.max(0, b.posture - 6.2 * dt);
@@ -790,8 +798,8 @@ export function updateBoss3(b, dt) {
     G.screenFlash = { alpha: 0.30, color: COLORS.violetBright };
     spawnShockwave(bxCenter, b.y + 46, 280, COLORS.violetBright, 5.2, 0.52);
     triggerBossBanner(t('boss.yuan.p2Title'), t('boss.yuan.p2Quote'), COLORS.violetBright, 2.6);
-    G.groundWaves.push({ x: bxCenter - 42, y: FLOOR_Y, minX: b.arenaMinX, maxX: b.arenaMaxX, vx: -420, w: 36, h: 48, life: 2.3, hit: false });
-    G.groundWaves.push({ x: bxCenter + 42, y: FLOOR_Y, minX: b.arenaMinX, maxX: b.arenaMaxX, vx: 420, w: 36, h: 48, life: 2.3, hit: false });
+    G.groundWaves.push({ x: bxCenter - 42, y: arenaFloorY, minX: b.arenaMinX, maxX: b.arenaMaxX, vx: -420, w: 36, h: 48, life: 2.3, hit: false });
+    G.groundWaves.push({ x: bxCenter + 42, y: arenaFloorY, minX: b.arenaMinX, maxX: b.arenaMaxX, vx: 420, w: 36, h: 48, life: 2.3, hit: false });
   }
   // Phase 3 at <= 33% HP
   if (b.phase === 2 && b.hp <= b.maxHp * 0.33 && b.state !== 'stagger') {
@@ -807,8 +815,8 @@ export function updateBoss3(b, dt) {
     G.screenFlash = { alpha: 0.36, color: COLORS.goldBright };
     spawnShockwave(bxCenter, b.y + 46, 320, COLORS.goldBright, 5.8, 0.58);
     triggerBossBanner(t('boss.yuan.p3Title'), t('boss.yuan.p3Quote'), COLORS.goldBright, 2.8);
-    G.groundWaves.push({ x: bxCenter - 46, y: FLOOR_Y, minX: b.arenaMinX, maxX: b.arenaMaxX, vx: -450, w: 40, h: 52, life: 2.4, hit: false, gold: true });
-    G.groundWaves.push({ x: bxCenter + 46, y: FLOOR_Y, minX: b.arenaMinX, maxX: b.arenaMaxX, vx: 450, w: 40, h: 52, life: 2.4, hit: false, gold: true });
+    G.groundWaves.push({ x: bxCenter - 46, y: arenaFloorY, minX: b.arenaMinX, maxX: b.arenaMaxX, vx: -450, w: 40, h: 52, life: 2.4, hit: false, gold: true });
+    G.groundWaves.push({ x: bxCenter + 46, y: arenaFloorY, minX: b.arenaMinX, maxX: b.arenaMaxX, vx: 450, w: 40, h: 52, life: 2.4, hit: false, gold: true });
   }
 
   const b3Aggro = (b.state === 'recover' || b.state === 'stalk' || b.state === 'idle') ? getCombatScaling().aggroMult : 1;
@@ -959,7 +967,7 @@ export function updateBoss3(b, dt) {
       spawnParticles(bxCenter + b.facing * 16, b.y + 24, 1, { color: COLORS.goldBright, speed: 70, grav: -50, life: 0.22 });
     }
     if (b.moveKind === 'eclipseTide' && Math.random() < 0.7) {
-      spawnParticles(bxCenter + (Math.random() - 0.5) * 90, FLOOR_Y - 6, 1, { color: COLORS.goldBright, speed: 110, grav: -200, life: 0.35 });
+      spawnParticles(bxCenter + (Math.random() - 0.5) * 90, arenaFloorY - 6, 1, { color: COLORS.goldBright, speed: 110, grav: -200, life: 0.35 });
     }
     if (b.stateTimer <= 0) {
       b.state = 'strike';
@@ -1112,8 +1120,8 @@ export function updateBoss3(b, dt) {
         audio.playHit(true, 3);
         spawnShockwave(bxCenter, b.y + b.h - 6, 165, COLORS.goldBright, 4.8, 0.36);
         // Offset wave spawn (±48px) & clean speed (390) prevent unavoidable frame-1 clips after dodging the slam
-        G.groundWaves.push({ x: bxCenter - 48, y: FLOOR_Y, minX: b.arenaMinX, maxX: b.arenaMaxX, vx: -390, w: 38, h: 46, life: 2.2, hit: false, gold: true });
-        G.groundWaves.push({ x: bxCenter + 48, y: FLOOR_Y, minX: b.arenaMinX, maxX: b.arenaMaxX, vx: 390, w: 38, h: 46, life: 2.2, hit: false, gold: true });
+        G.groundWaves.push({ x: bxCenter - 48, y: arenaFloorY, minX: b.arenaMinX, maxX: b.arenaMaxX, vx: -390, w: 38, h: 46, life: 2.2, hit: false, gold: true });
+        G.groundWaves.push({ x: bxCenter + 48, y: arenaFloorY, minX: b.arenaMinX, maxX: b.arenaMaxX, vx: 390, w: 38, h: 46, life: 2.2, hit: false, gold: true });
       }
       b.comboIdx++;
       if (b.comboIdx < b.comboTotal) {

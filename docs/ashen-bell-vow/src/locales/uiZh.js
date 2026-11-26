@@ -1,7 +1,7 @@
-// Simplified Chinese (zh-CN) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v45.8)
+// Simplified Chinese (zh-CN) UI, HUD, Combat & Ending strings (split from src/locales/ui.js in v46.1)
 export const UI_ZH = {
     // Document & Title
-    'doc.title': '灰钟残誓 v45.8 (1.0 RC) — 暗黑手绘魂系类银河恶魔城 · 25房立体箱庭与三系兵刃',
+    'doc.title': '灰钟残誓 v46.1 (1.0 RC) — 暗黑手绘魂系类银河恶魔城 · 25房立体箱庭与三系兵刃',
     'game.title': '灰钟残誓',
     'game.subtitle': 'ASHEN BELL VOW · 暗黑手绘魂系类银河恶魔城',
     'title.loading': '载入中...',
@@ -15,7 +15,12 @@ export const UI_ZH = {
     'slot.emptyDesc': '尚未铭刻残誓 · 点击选中后唤醒人偶',
     'slot.summary': '{0} · 探索 {1}% · 首领 {2}/3',
     'slot.endTag': ' · 结局 {0}/2',
-    'slot.cycleTag': ' · 第{0}周目',
+    'world.variant1': '经典东征',
+    'world.variant2': '倒影逆钟',
+    'world.variant3': '苍穹长桥',
+    'world.variantNextHint2': '下周目将切换至全图水平镜像「倒影逆钟」，重排精英驻兵与圣物台！',
+    'world.variantNextHint3': '下周目将切换至 26 房高空连桥「苍穹长桥」，打通东西屋顶高速环线！',
+    'slot.cycleTag': ' · 第{0}周目({1})',
     'slot.vowTag': ' · {0}誓',
     'slot.bossTag': ' · 首领 {0}/3',
     'slot.erase': '抹除',
@@ -287,9 +292,9 @@ export const UI_ZH = {
     'altar.echoBestMeta': '{0} · 最快 {1}:{2} (通关 {3} 次)',
     'altar.echoNoClear': '{0} · 尚未留名',
     'altar.echoGradeVows': '{0}·{1}誓',
-    'altar.ngInfo': '<strong>残誓轮回 · 当前第 {0} 周目</strong><span>继承已解锁圣物、铁匠淬炼、残响与结局记录；重置首领与舆图，敌势强化且残响 +50%/周目</span>',
-    'altar.ngBtn': '踏入第 {0} 周目 (NG+)',
-    'altar.ngConfirm': '确定开启「残誓轮回 · 第 {0} 周目 (NG+)」吗？\n\n【保留】全部已解锁圣物、双印槽、老铸钟匠淬炼等级、残响、结局与回响纪录、血/魂/灯油成长\n【重置】三位首领、舆图迷雾、捷径暗墙与移动绝技（重复拾取圣物/满上限灯油将转为大量残响）',
+    'altar.ngInfo': '<strong>残誓轮回 · 第 {0} 周目 ({1})</strong><span>{2}</span>',
+    'altar.ngBtn': '踏入第 {0} 周目 · {1}',
+    'altar.ngConfirm': '确定开启「残誓轮回 · 第 {0} 周目 ({1})」吗？\n{2}\n\n【保留】全部已解锁圣物、三槽、铁匠淬炼、残响、结局与回响纪录、血/魂/灯油成长\n【重置】四位首领、舆图迷雾、捷径暗墙与移动绝技（重复圣物与满灯油转为大量残响）',
     'altar.litToast': '{0}已点燃 · 重生点更新',
     'altar.continueToast': '续燃残誓 · {0}',
 
@@ -488,7 +493,7 @@ export const UI_ZH = {
     'ending.toAltar': '返回祭坛 · 挑战三钟终试',
     'ending.keepRoam': '重返圣心继续探索',
     'ending.newRun': '清空重开一周目',
-    'ending.ngBtn': '踏入残誓轮回 · 第 {0} 周目 (NG+)',
+    'ending.ngBtn': '踏入第 {0} 周目 · {1}',
     'ending.epilogueDawn': '灰钟已熄 · 真结局通关 · 已解锁结局 {0}/2',
     'ending.epilogueVow': '残誓续鸣 · 终章通关 · 已解锁结局 {0}/2',
     'ending.epilogueStats': '达成结局：{0} ({1}/2)\n晦渊全境探索：{2}% · 圣物收集：{3}/{4}\n累计游玩：{5} · 精准弹反：{6} 次 · 处决：{7} 次\n★ 祭坛已解锁「初钟圣骸 · 渊」单挑回响与「三钟终试（晦→寂→渊）」！',
@@ -748,7 +753,7 @@ export const UI_ZH = {
     'boss.echoJiQuote': '「重临沉渊铸钟殿 · 破除万钟共振」',
     'boss.echoYuanTitle': '残誓回响 · 初钟圣骸 · 渊',
     'boss.echoYuanQuote': '「终极回响 · 于初钟圣心再决生死」',
-    'ng.bannerTitle': '残誓轮回 · 第 {0} 周目 (NG+)',
+    'ng.bannerTitle': '残誓轮回 · 第 {0} 周目 — {1}',
     'ng.bannerQuote': '「圣物与淬炼已承继 · 敌势强化（血×{0} / 残响×{1}）」',
 
     // Error / Loader / Bench UI labels

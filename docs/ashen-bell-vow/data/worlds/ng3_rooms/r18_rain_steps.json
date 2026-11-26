@@ -1,0 +1,314 @@
+{
+  "id": "r18_rain_steps",
+  "name": "淋雨墓阶 · 残钟外廊",
+  "theme": "corridor",
+  "bounds": {
+    "x": 940,
+    "y": -740,
+    "w": 1705,
+    "h": 740
+  },
+  "connections": [
+    "r02_corridor",
+    "r19_belfry_outer",
+    "r26_sky_span"
+  ],
+  "solids": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 1705,
+      "h": 34,
+      "type": "pillar"
+    },
+    {
+      "x": 1670,
+      "y": 0,
+      "w": 35,
+      "h": 420,
+      "type": "pillar"
+    },
+    {
+      "x": 1670,
+      "y": 600,
+      "w": 35,
+      "h": 140,
+      "type": "pillar"
+    },
+    {
+      "x": 0,
+      "y": 600,
+      "w": 240,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 420,
+      "y": 600,
+      "w": 780,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 1350,
+      "y": 600,
+      "w": 355,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 240,
+      "y": 600,
+      "w": 180,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1200,
+      "y": 600,
+      "w": 150,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 120,
+      "y": 430,
+      "w": 210,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 460,
+      "y": 445,
+      "w": 240,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 790,
+      "y": 355,
+      "w": 220,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1090,
+      "y": 440,
+      "w": 210,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1380,
+      "y": 320,
+      "w": 235,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 600,
+      "y": 215,
+      "w": 220,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1395,
+      "y": 160,
+      "w": 275,
+      "h": 20,
+      "type": "pillar"
+    },
+    {
+      "x": 1395,
+      "y": 320,
+      "w": 275,
+      "h": 20,
+      "type": "pillar"
+    }
+  ],
+  "crumblePlatforms": [
+    {
+      "id": "cr_rain_1",
+      "x": 1080,
+      "y": 245,
+      "w": 120,
+      "h": 20
+    }
+  ],
+  "gates": [],
+  "secretWalls": [],
+  "voidBarriers": [
+    {
+      "id": "vb_rain_steps",
+      "x": 1400,
+      "y": 180,
+      "w": 22,
+      "h": 140
+    }
+  ],
+  "altars": [],
+  "npcs": [],
+  "loreTablets": [],
+  "pickups": [
+    {
+      "id": "pickup_echo_rain_steps",
+      "kind": "echoCache",
+      "echoAmount": 75,
+      "x": 1495,
+      "y": 320,
+      "name": "雨阶残响",
+      "desc": "淋雨墓阶外廊残钟下遗落的 +75 残响"
+    },
+    {
+      "id": "pickup_relic_core",
+      "kind": "relic",
+      "relicId": "bellcore",
+      "x": 710,
+      "y": 215,
+      "name": "苍穹秘宝 · 古钟心核",
+      "desc": "墨印上限 +1，弹反回血，居合/断钟返增伤 25%！"
+    }
+  ],
+  "resonancePuzzles": [],
+  "lanterns": [
+    {
+      "id": "lan_rain_1",
+      "x": 330,
+      "anchorY": 34,
+      "len": 185,
+      "topY": 34
+    },
+    {
+      "id": "lan_rain_2",
+      "x": 910,
+      "anchorY": 34,
+      "len": 165,
+      "topY": 34
+    },
+    {
+      "id": "lan_rain_3",
+      "x": 1275,
+      "anchorY": 34,
+      "len": 195,
+      "topY": 34
+    }
+  ],
+  "grappleAnchors": [
+    {
+      "x": 330,
+      "y": 540,
+      "id": "anc_r18_rain_steps_0",
+      "topY": 34
+    },
+    {
+      "x": 1275,
+      "y": 530,
+      "id": "anc_r18_rain_steps_1",
+      "topY": 34
+    }
+  ],
+  "pendulums": [],
+  "rivers": [],
+  "enemies": [
+    {
+      "id": "s_rain_1",
+      "kind": "sentinel",
+      "x": 540,
+      "y": 538,
+      "minX": 435,
+      "maxX": 820
+    },
+    {
+      "id": "w_rain_1",
+      "kind": "wraith",
+      "x": 880,
+      "y": 280,
+      "minX": 620,
+      "maxX": 1150
+    },
+    {
+      "id": "s_rain_2",
+      "kind": "sentinel",
+      "x": 1450,
+      "y": 538,
+      "minX": 1365,
+      "maxX": 1620
+    }
+  ],
+  "bosses": [],
+  "inscriptions": [
+    {
+      "x": 145,
+      "y": 530,
+      "text": "「西行可达断索钟楼外廊 · 绕回熄灯祭坛穹顶」"
+    }
+  ],
+  "props": {
+    "puddles": [
+      {
+        "x": 480,
+        "w": 180,
+        "y": 600
+      },
+      {
+        "x": 920,
+        "w": 210,
+        "y": 600
+      }
+    ],
+    "banners": [
+      {
+        "x": 520,
+        "y": 34,
+        "len": 140,
+        "color": "#1a2030"
+      },
+      {
+        "x": 1180,
+        "y": 34,
+        "len": 150,
+        "color": "#26161d"
+      }
+    ],
+    "candles": [
+      {
+        "x": 450,
+        "y": 600,
+        "count": 3
+      },
+      {
+        "x": 1440,
+        "y": 320,
+        "count": 3
+      }
+    ],
+    "boneCairns": [],
+    "stamps": [
+      {
+        "type": "broken_arch",
+        "x": 620,
+        "y": 600,
+        "scale": 1.05,
+        "layer": "bg"
+      },
+      {
+        "type": "fallen_bell",
+        "x": 1510,
+        "y": 600,
+        "scale": 0.9,
+        "layer": "bg"
+      }
+    ]
+  },
+  "slickWalls": [
+    {
+      "id": "slick_r18_east",
+      "x": 1670,
+      "y": 340,
+      "w": 35,
+      "h": 80,
+      "side": "left"
+    }
+  ]
+}

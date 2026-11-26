@@ -1,0 +1,280 @@
+{
+  "schemaVersion": 1,
+  "id": "r05_foundry",
+  "zoneName": "沉渊钟井",
+  "name": "沉渊铸钟殿",
+  "theme": "foundry",
+  "bounds": {
+    "x": 5560,
+    "y": 780,
+    "w": 1180,
+    "h": 740
+  },
+  "subZones": [
+    {
+      "name": "沉渊钟井 · 沉渊铸钟殿",
+      "x": 0,
+      "y": 0,
+      "w": 1180,
+      "h": 740
+    }
+  ],
+  "connections": [
+    "r04_bell_well",
+    "r07_ascent",
+    "r09_wind_spire"
+  ],
+  "solids": [
+    {
+      "x": 1140,
+      "y": 0,
+      "w": 40,
+      "h": 460,
+      "type": "pillar"
+    },
+    {
+      "x": 0,
+      "y": 600,
+      "w": 1180,
+      "h": 180,
+      "type": "ground"
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 275,
+      "h": 40,
+      "type": "pillar"
+    },
+    {
+      "x": 430,
+      "y": 0,
+      "w": 750,
+      "h": 40,
+      "type": "pillar"
+    },
+    {
+      "x": 160,
+      "y": 425,
+      "w": 155,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 845,
+      "y": 425,
+      "w": 155,
+      "h": 22,
+      "type": "platform"
+    }
+  ],
+  "crumblePlatforms": [],
+  "altars": [],
+  "loreTablets": [],
+  "gates": [
+    {
+      "id": "gate_foundry_exit",
+      "role": "foundryExit",
+      "x": 1140,
+      "y": 460,
+      "w": 40,
+      "h": 140
+    },
+    {
+      "id": "gate_foundry_vent",
+      "role": "foundryValve",
+      "x": 275,
+      "y": 0,
+      "w": 155,
+      "h": 40
+    }
+  ],
+  "secretWalls": [],
+  "pickups": [
+    {
+      "id": "pickup_bell_dive",
+      "kind": "ability",
+      "abilityId": "bellDive",
+      "requiresBoss": "boss_ji",
+      "x": 580,
+      "y": 600,
+      "name": "绝技 · 镇岳下砸",
+      "desc": "空中按 [S+法术] 化身青铜巨钟无敌俯冲，可震碎发光裂石地板与脆冰！"
+    }
+  ],
+  "resonancePuzzles": [],
+  "pendulums": [],
+  "rivers": [],
+  "grappleAnchors": [
+    {
+      "id": "anc_ji_l",
+      "x": 340,
+      "y": 275,
+      "topY": 40
+    },
+    {
+      "id": "anc_ji_c",
+      "x": 580,
+      "y": 205,
+      "topY": 40
+    },
+    {
+      "id": "anc_ji_r",
+      "x": 820,
+      "y": 275,
+      "topY": 40
+    }
+  ],
+  "lanterns": [
+    {
+      "id": "lan_9",
+      "x": 400,
+      "anchorY": 160,
+      "topY": 40,
+      "len": 135,
+      "angle": 0.05
+    },
+    {
+      "id": "lan_10",
+      "x": 760,
+      "anchorY": 160,
+      "topY": 40,
+      "len": 135,
+      "angle": -0.05
+    }
+  ],
+  "enemies": [],
+  "bosses": [
+    {
+      "id": "boss_ji",
+      "kind": "boss2",
+      "x": 800,
+      "y": 458,
+      "arenaMinX": 24,
+      "arenaMaxX": 1136,
+      "arenaFloorY": 600,
+      "arenaTopY": 40
+    }
+  ],
+  "inscriptions": [
+    {
+      "x": 85,
+      "y": 510,
+      "text": "「沉渊铸钟殿 · 借墨翼与钩环迎战铸钟师」"
+    },
+    {
+      "x": 1030,
+      "y": 510,
+      "text": "「斩落铸钟师 · 东门直通初钟圣阶 →」",
+      "hideWhenBoss2Defeated": true
+    }
+  ],
+  "props": {
+    "puddles": [],
+    "banners": [],
+    "candles": [
+      {
+        "x": 65,
+        "y": 600,
+        "count": 4
+      },
+      {
+        "x": 580,
+        "y": 600,
+        "count": 5
+      },
+      {
+        "x": 1095,
+        "y": 600,
+        "count": 4
+      }
+    ],
+    "boneCairns": [],
+    "stamps": [
+      {
+        "type": "crucible_vat",
+        "x": 145,
+        "y": 40,
+        "scale": 1.05,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.85,
+        "seed": 0
+      },
+      {
+        "type": "bronze_gear",
+        "x": 205,
+        "y": 310,
+        "scale": 1.24,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.62,
+        "seed": 0
+      },
+      {
+        "type": "hanging_chains",
+        "x": 350,
+        "y": 40,
+        "scale": 1.08,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.5,
+        "seed": 1
+      },
+      {
+        "type": "hanging_chains",
+        "x": 830,
+        "y": 40,
+        "scale": 1.08,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.5,
+        "seed": 2
+      },
+      {
+        "type": "bronze_gear",
+        "x": 965,
+        "y": 320,
+        "scale": 1.22,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.62,
+        "seed": 1
+      },
+      {
+        "type": "crucible_vat",
+        "x": 1025,
+        "y": 40,
+        "scale": 1.05,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.85,
+        "seed": 2
+      }
+    ]
+  },
+  "voidBarriers": [],
+  "worldSwitches": [
+    {
+      "id": "switch_foundry_valve",
+      "switchKey": "foundryValveOpen",
+      "kind": "valve",
+      "requiresBoss": "boss_ji",
+      "x": 352,
+      "y": 600,
+      "name": "古炉泄压风阀"
+    }
+  ],
+  "windZones": [
+    {
+      "id": "wz_foundry_express",
+      "x": 275,
+      "y": -24,
+      "w": 155,
+      "h": 624,
+      "vx": 0,
+      "vy": -1680,
+      "requiresSwitch": "foundryValveOpen"
+    }
+  ]
+}

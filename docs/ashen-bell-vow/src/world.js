@@ -712,9 +712,9 @@ export function updateWorldEffects(dt) {
     G.chapelTide.timer -= dt;
     if (G.chapelTide.hitCd > 0) G.chapelTide.hitCd -= dt;
     const owner = G.chapelTide.owner || G.boss;
-    const x0 = G.chapelTide.x0 !== undefined ? G.chapelTide.x0 : 2648;
-    const aw = G.chapelTide.w !== undefined ? G.chapelTide.w : 1090;
-    const fy = G.chapelTide.floorY !== undefined ? G.chapelTide.floorY : FLOOR_Y;
+    const x0 = G.chapelTide.x0 !== undefined ? G.chapelTide.x0 : (owner ? owner.arenaMinX : WORLD_MIN_X);
+    const aw = G.chapelTide.w !== undefined ? G.chapelTide.w : (owner ? (owner.arenaMaxX - owner.arenaMinX) : 1090);
+    const fy = G.chapelTide.floorY !== undefined ? G.chapelTide.floorY : (owner && owner.arenaFloorY !== undefined ? owner.arenaFloorY : FLOOR_Y);
     const pCol = G.chapelTide.theme === 'gold' ? COLORS.goldBright : COLORS.crimsonBright;
     if (!owner || !owner.alive) {
       G.chapelTide = null;
@@ -741,8 +741,8 @@ export function updateWorldEffects(dt) {
   for (let i = G.groundWaves.length - 1; i >= 0; i--) {
     const gw = G.groundWaves[i];
     const fy = gw.y !== undefined ? gw.y : FLOOR_Y;
-    const minX = gw.minX !== undefined ? gw.minX : 2620;
-    const maxX = gw.maxX !== undefined ? gw.maxX : 3760;
+    const minX = gw.minX !== undefined ? gw.minX : WORLD_MIN_X;
+    const maxX = gw.maxX !== undefined ? gw.maxX : WORLD_W;
     gw.x += gw.vx * dt;
     gw.life -= dt;
     if (Math.random() < 32 * dt) {
@@ -1263,8 +1263,9 @@ export function updateWorldEffects(dt) {
         cr.vy = Math.min(1150, cr.vy + 1950 * dt); cr.y += cr.vy * dt;
         const b2 = G.boss2;
         const hitBoss2 = !!(b2 && b2.alive && Math.abs((b2.x + b2.w * 0.5) - cr.x) < 92 && Math.abs((b2.y + b2.h * 0.5) - cr.y) < 76);
-        if (hitBoss2 || cr.y >= WELL_BOTTOM_Y - 16) {
-          const ix = cr.x, iy = hitBoss2 ? (b2.y + b2.h * 0.45) : (WELL_BOTTOM_Y - 12);
+        const crFloorY = cr.floorY !== undefined ? cr.floorY : (b2 && b2.arenaFloorY !== undefined ? b2.arenaFloorY : WELL_BOTTOM_Y);
+        if (hitBoss2 || cr.y >= crFloorY - 16) {
+          const ix = cr.x, iy = hitBoss2 ? (b2.y + b2.h * 0.45) : (crFloorY - 12);
           cr.state = 'spent'; cr.respawnTimer = 14.0;
           audio.playAirSlam(); addShake(15); punchZoom(1.045);
           G.screenFlash = { alpha: 0.24, color: COLORS.goldBright };

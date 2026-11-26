@@ -1,0 +1,265 @@
+{
+  "id": "r24_frost_seep",
+  "name": "霜渊冰窖 · 暗河源洞",
+  "theme": "mountain",
+  "bounds": {
+    "x": 1500,
+    "y": 1520,
+    "w": 1740,
+    "h": 740
+  },
+  "connections": [
+    "r23_cistern_lock",
+    "r11_frost_ridge"
+  ],
+  "solids": [
+    {
+      "x": 1060,
+      "y": 0,
+      "w": 680,
+      "h": 34,
+      "type": "pillar"
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 920,
+      "h": 34,
+      "type": "pillar"
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 40,
+      "h": 740,
+      "type": "pillar"
+    },
+    {
+      "x": 0,
+      "y": 600,
+      "w": 1740,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 1290,
+      "y": 430,
+      "w": 230,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 880,
+      "y": 430,
+      "w": 225,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 900,
+      "y": 220,
+      "w": 175,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 470,
+      "y": 445,
+      "w": 240,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 120,
+      "y": 320,
+      "w": 260,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 40,
+      "y": 160,
+      "w": 310,
+      "h": 20,
+      "type": "pillar"
+    },
+    {
+      "x": 40,
+      "y": 320,
+      "w": 310,
+      "h": 20,
+      "type": "pillar"
+    }
+  ],
+  "crumblePlatforms": [],
+  "gates": [],
+  "secretWalls": [],
+  "voidBarriers": [
+    {
+      "id": "vb_frost_seep",
+      "x": 323,
+      "y": 180,
+      "w": 22,
+      "h": 140
+    }
+  ],
+  "altars": [],
+  "npcs": [],
+  "loreTablets": [],
+  "pickups": [
+    {
+      "id": "pickup_echo_frost_seep",
+      "kind": "echoCache",
+      "echoAmount": 120,
+      "x": 230,
+      "y": 320,
+      "name": "冰窖源洞残响",
+      "desc": "冻雪暗河源头封存的 +120 精纯残响"
+    }
+  ],
+  "resonancePuzzles": [],
+  "lanterns": [
+    {
+      "id": "lan_fs_1",
+      "x": 1380,
+      "anchorY": 34,
+      "len": 190,
+      "topY": 34
+    },
+    {
+      "id": "lan_fs_2",
+      "x": 580,
+      "anchorY": 34,
+      "len": 195,
+      "topY": 34
+    }
+  ],
+  "grappleAnchors": [
+    {
+      "x": 990,
+      "y": 120,
+      "id": "anc_r24_frost_seep_0",
+      "topY": 34
+    },
+    {
+      "x": 480,
+      "y": 350,
+      "id": "anc_r24_frost_seep_1",
+      "topY": 34
+    }
+  ],
+  "pendulums": [],
+  "windZones": [
+    {
+      "id": "wz_frost_seep_up",
+      "x": 910,
+      "y": -20,
+      "w": 160,
+      "h": 620,
+      "vx": 0,
+      "vy": -1640
+    }
+  ],
+  "icePillars": [
+    {
+      "id": "ice_seep_1",
+      "x": 595,
+      "topY": 34,
+      "len": 150,
+      "bridgeX": 370,
+      "bridgeY": 370,
+      "bridgeW": 115,
+      "bridgeH": 20
+    }
+  ],
+  "rivers": [],
+  "enemies": [
+    {
+      "id": "fr_fs_1",
+      "kind": "frostguard",
+      "x": 1280,
+      "y": 528,
+      "minX": 1040,
+      "maxX": 1560
+    },
+    {
+      "id": "fr_fs_2",
+      "kind": "frostguard",
+      "x": 480,
+      "y": 528,
+      "minX": 80,
+      "maxX": 740
+    },
+    {
+      "id": "f_fs_1",
+      "kind": "falcon",
+      "x": 616,
+      "y": 250,
+      "minX": 156,
+      "maxX": 856
+    }
+  ],
+  "bosses": [],
+  "inscriptions": [
+    {
+      "x": 990,
+      "y": 540,
+      "text": "「寒流风井直通霜骸圣脊 · 地下大环路至此闭环」"
+    }
+  ],
+  "props": {
+    "puddles": [
+      {
+        "x": 1240,
+        "w": 220,
+        "y": 600
+      }
+    ],
+    "banners": [
+      {
+        "x": 1200,
+        "y": 34,
+        "len": 160,
+        "color": "#1a2840"
+      },
+      {
+        "x": 300,
+        "y": 34,
+        "len": 165,
+        "color": "#1a2840"
+      }
+    ],
+    "candles": [
+      {
+        "x": 1580,
+        "y": 600,
+        "count": 3
+      },
+      {
+        "x": 260,
+        "y": 320,
+        "count": 3
+      }
+    ],
+    "boneCairns": [],
+    "stamps": [
+      {
+        "type": "tide_pillar",
+        "x": 1450,
+        "y": 600,
+        "scale": 1.05,
+        "layer": "bg",
+        "flip": true
+      },
+      {
+        "type": "sunken_bell_giant",
+        "x": 220,
+        "y": 600,
+        "scale": 1.0,
+        "layer": "bg",
+        "flip": true
+      }
+    ]
+  },
+  "mirrored": true
+}

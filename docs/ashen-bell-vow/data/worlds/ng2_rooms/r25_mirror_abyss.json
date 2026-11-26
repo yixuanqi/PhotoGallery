@@ -1,0 +1,218 @@
+{
+  "id": "r25_mirror_abyss",
+  "name": "初铸镜渊 · 终极隐藏殿堂",
+  "theme": "heart",
+  "bounds": {
+    "x": 2120,
+    "y": -1480,
+    "w": 1600,
+    "h": 740
+  },
+  "connections": [
+    "r13_wind_peak"
+  ],
+  "solids": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 1600,
+      "h": 34,
+      "type": "pillar"
+    },
+    {
+      "x": 1564,
+      "y": 0,
+      "w": 36,
+      "h": 740,
+      "type": "pillar"
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "w": 36,
+      "h": 740,
+      "type": "pillar"
+    },
+    {
+      "x": 1100,
+      "y": 600,
+      "w": 500,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 940,
+      "y": 600,
+      "w": 160,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 0,
+      "y": 600,
+      "w": 940,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 1140,
+      "y": 420,
+      "w": 180,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 280,
+      "y": 420,
+      "w": 180,
+      "h": 22,
+      "type": "platform"
+    }
+  ],
+  "crumblePlatforms": [],
+  "gates": [
+    {
+      "id": "gate_mirror_abyss",
+      "role": "mirrorAbyss",
+      "x": 940,
+      "y": 622,
+      "w": 160,
+      "h": 34
+    }
+  ],
+  "secretWalls": [],
+  "voidBarriers": [],
+  "altars": [
+    {
+      "id": "altar_mirror_abyss",
+      "x": 1455,
+      "y": 600,
+      "name": "初铸镜渊 · 镜前残坛",
+      "shortName": "初铸镜坛"
+    }
+  ],
+  "npcs": [],
+  "loreTablets": [],
+  "pickups": [
+    {
+      "id": "pickup_zhu_crown",
+      "kind": "statCore",
+      "requiresBoss": "boss_zhu",
+      "bonusHp": 15,
+      "bonusSoul": 25,
+      "echoAmount": 150,
+      "x": 640,
+      "y": 600,
+      "name": "初铸绝响 · 双面金冕",
+      "desc": "斩落初铸残影·铸后解封！生命 +15 · 魂火 +25 · +150 残响"
+    }
+  ],
+  "resonancePuzzles": [],
+  "lanterns": [
+    {
+      "id": "lan_ma_1",
+      "x": 1220,
+      "anchorY": 34,
+      "len": 230,
+      "topY": 34
+    },
+    {
+      "id": "lan_ma_2",
+      "x": 380,
+      "anchorY": 34,
+      "len": 230,
+      "topY": 34
+    }
+  ],
+  "grappleAnchors": [
+    {
+      "x": 1020,
+      "y": 520,
+      "id": "anc_r25_mirror_abyss_0",
+      "topY": 34
+    },
+    {
+      "x": 800,
+      "y": 310,
+      "id": "anc_r25_mirror_abyss_1",
+      "topY": 34
+    }
+  ],
+  "pendulums": [],
+  "rivers": [],
+  "enemies": [],
+  "bosses": [
+    {
+      "id": "boss_zhu",
+      "kind": "boss4",
+      "x": 284,
+      "y": 492,
+      "arenaMinX": 54,
+      "arenaMaxX": 1546,
+      "arenaFloorY": 600,
+      "arenaTopY": 34
+    }
+  ],
+  "inscriptions": [
+    {
+      "x": 1320,
+      "y": 540,
+      "text": "「黑曜镜水之上 · 初铸残影静候三刃真主」"
+    }
+  ],
+  "props": {
+    "puddles": [],
+    "banners": [
+      {
+        "x": 1380,
+        "y": 34,
+        "len": 190,
+        "color": "#2b1018"
+      },
+      {
+        "x": 800,
+        "y": 34,
+        "len": 210,
+        "color": "#2b1018"
+      },
+      {
+        "x": 220,
+        "y": 34,
+        "len": 190,
+        "color": "#2b1018"
+      }
+    ],
+    "candles": [
+      {
+        "x": 1410,
+        "y": 600,
+        "count": 5
+      },
+      {
+        "x": 180,
+        "y": 600,
+        "count": 5
+      }
+    ],
+    "boneCairns": [],
+    "stamps": [
+      {
+        "type": "broken_arch",
+        "x": 800,
+        "y": 600,
+        "scale": 1.35,
+        "layer": "bg",
+        "flip": true
+      },
+      {
+        "type": "fallen_bell",
+        "x": 190,
+        "y": 600,
+        "scale": 1.1,
+        "layer": "bg",
+        "flip": true
+      }
+    ]
+  },
+  "mirrored": true
+}

@@ -15,7 +15,8 @@ export function drawFoundryCrucibles() {
     if (cr.state === 'spent') continue;
     const cx = cr.x;
     const cy = cr.y;
-    if (!isInView(cx - 60, cr.anchorY - 10, 120, (WELL_BOTTOM_Y - cr.anchorY) + 40, 110)) continue;
+    const crFloorY = cr.floorY !== undefined ? cr.floorY : WELL_BOTTOM_Y;
+    if (!isInView(cx - 60, cr.anchorY - 10, 120, (crFloorY - cr.anchorY) + 40, 110)) continue;
 
     ctx.save();
     if (cr.state === 'hanging') {

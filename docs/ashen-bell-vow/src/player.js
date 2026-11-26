@@ -1109,7 +1109,7 @@ export function updatePlayer(dt) {
 
   const footMidX = G.player.x + G.player.w / 2;
   const footBotY = G.player.y + G.player.h;
-  const inPuddle = G.player.grounded && Math.abs(footBotY - FLOOR_Y) < 8 && PUDDLES.some(p => footMidX >= p.x && footMidX <= p.x + p.w);
+  const inPuddle = G.player.grounded ? PUDDLES.find(p => Math.abs(footBotY - (p.y !== undefined ? p.y : FLOOR_Y)) < 8 && footMidX >= p.x && footMidX <= p.x + p.w) : null;
 
   if (G.player.grounded && G.player.diveState === 'drop') {
     G.player.diveState = 'none'; G.player.diveHitIds = null; G.player.bellAirStalls = 0; G.player.airHoverStalls = 0; G.player.airComboStep = 0; G.player.pogoChain = 0;
@@ -1128,7 +1128,7 @@ export function updatePlayer(dt) {
     G.player.landCrouch = Math.min(1, Math.max(0.45, Math.abs(preCollideVy) / 680));
     audio.playLand();
     spawnParticles(footMidX, footBotY, 6, { color: inPuddle ? COLORS.cyanBright : COLORS.parchment, speed: 100, grav: 200, life: 0.24 });
-    if (inPuddle) spawnWeatherRipple(footMidX, FLOOR_Y + 1, 34, 'rgba(186, 230, 253, 0.72)');
+    if (inPuddle) spawnWeatherRipple(footMidX, (inPuddle.y !== undefined ? inPuddle.y : FLOOR_Y) + 1, 34, 'rgba(186, 230, 253, 0.72)');
   }
   if (G.player.landCrouch > 0) G.player.landCrouch = Math.max(0, G.player.landCrouch - dt * 5.2);
 
@@ -1174,8 +1174,9 @@ export function updatePlayer(dt) {
       G.player.stepSfxAccum -= Math.PI;
       audio.playFootstep();
       if (inPuddle) {
-        spawnWeatherRipple(footMidX, FLOOR_Y + 1, 22, 'rgba(186, 230, 253, 0.58)');
-        spawnParticles(footMidX, FLOOR_Y, 4, { color: COLORS.cyanBright, speed: 80, grav: 260, life: 0.22 });
+        const pyP = inPuddle.y !== undefined ? inPuddle.y : FLOOR_Y;
+        spawnWeatherRipple(footMidX, pyP + 1, 22, 'rgba(186, 230, 253, 0.58)');
+        spawnParticles(footMidX, pyP, 4, { color: COLORS.cyanBright, speed: 80, grav: 260, life: 0.22 });
       }
     }
   } else {

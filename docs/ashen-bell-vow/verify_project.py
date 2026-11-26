@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Zero-dependency static verifier for Ashen Bell Vow v45.8
+"""Zero-dependency static verifier for Ashen Bell Vow v46.1
 Checks:
 1. JS lexical & bracket syntax across all src/**/*.js
 2. ES Module import/export path existence, explicit .js suffix, exact case sensitivity & symbol verification
@@ -646,34 +646,41 @@ def check_v34_economy_relics_i18n(file_texts):
     if 'cycleOverlayTab' not in file_texts.get('src/uiNav.js', '') or 'scrollOverlay' not in file_texts.get('src/uiNav.js', ''):
         errors.append("v43.0: Missing full gamepad tab-cycling / scrolling in src/uiNav.js")
     if '__ABV_OFFLINE_WORLD__' not in file_texts.get('src/levelLoader.js', ''):
-        errors.append("v45.8: Missing offline pre-bundled world fast-path in src/levelLoader.js")
+        errors.append("v46.1: Missing offline pre-bundled world fast-path in src/levelLoader.js")
     if not os.path.isfile(os.path.join(BASE_DIR, 'tools', 'build_release.py')):
-        errors.append("v45.8: Missing tools/build_release.py offline release builder")
+        errors.append("v46.1: Missing tools/build_release.py offline release builder")
     for pwa_f in ('manifest.webmanifest', 'sw.js', 'icon.svg', 'icon-192.png', 'icon-512.png'):
         if not os.path.isfile(os.path.join(BASE_DIR, pwa_f)):
-            errors.append(f"v45.8: Missing PWA asset '{pwa_f}'")
+            errors.append(f"v46.1: Missing PWA asset '{pwa_f}'")
     if 'keepAliveResume' not in file_texts.get('src/audio.js', '') or 'mobileEcoMode' not in file_texts.get('src/state.js', ''):
-        errors.append("v45.8: Missing audio keepAliveResume or mobileEcoMode implementation")
+        errors.append("v46.1: Missing audio keepAliveResume or mobileEcoMode implementation")
     if 'auxBtn' in file_texts.get('src/main.js', '') or 'auxWrap' in file_texts.get('src/main.js', ''):
-        errors.append("v45.8: Stale undeclared reference to removed auxBtn/auxWrap in src/main.js")
+        errors.append("v46.1: Stale undeclared reference to removed auxBtn/auxWrap in src/main.js")
     if 'tickBossGreedPressure' not in file_texts.get('src/ai/bossesAi.js', '') or 'tickWardenGreedPressure' not in file_texts.get('src/ai/wardensAi.js', ''):
-        errors.append("v45.8: Missing anti-facetank greed punish in bossesAi.js / wardensAi.js")
+        errors.append("v46.1: Missing anti-facetank greed punish in bossesAi.js / wardensAi.js")
     if 'bulwarkCd' not in file_texts.get('src/combat/damageCombat.js', '') or 'cistern:' not in file_texts.get('src/locales/world.js', ''):
-        errors.append("v45.8: Missing iron_bulwark cooldown or cistern English biome ambience")
+        errors.append("v46.1: Missing iron_bulwark cooldown or cistern English biome ambience")
+    if 'ensureWorldForCycle' not in file_texts.get('src/levelLoader.js', '') or '__ABV_OFFLINE_WORLDS__' not in file_texts.get('src/levelLoader.js', ''):
+        errors.append("v46.1: Missing multi-cycle ensureWorldForCycle or __ABV_OFFLINE_WORLDS__ support in src/levelLoader.js")
+    if 'getRoomById' not in file_texts.get('src/state.js', '') or 'roomLocalX' not in file_texts.get('src/render/worldBackdropRenderer.js', ''):
+        errors.append("v46.1: Missing room-relative coordinate helpers in state.js / worldBackdropRenderer.js")
+    for bad_num in ('2648', '5584', '6140', '6440', '6716'):
+        if bad_num in file_texts.get('src/ai/bossesAi.js', ''):
+            errors.append(f"v46.1: Legacy hardcoded Boss arena X '{bad_num}' still present in src/ai/bossesAi.js")
     r01_d = json.load(open(os.path.join(BASE_DIR, 'data/rooms/r01_sanctuary.json'), encoding='utf-8'))
     if r01_d.get('grappleAnchors') or r01_d.get('secretWalls') or r01_d.get('voidBarriers') or len(r01_d.get('solids', [])) > 4:
-        errors.append("v45.8: r01_sanctuary must stay a clean flat practice room with no grappleAnchors/secretWalls/voidBarriers/aerial platforms")
+        errors.append("v46.1: r01_sanctuary must stay a clean flat practice room with no grappleAnchors/secretWalls/voidBarriers/aerial platforms")
     if 'evictTerrainChunks' not in file_texts.get('src/renderTerrain.js', '') or 'releaseBackdropCanvas' not in file_texts.get('src/render/backdropCache.js', '') or '-webkit-touch-callout' not in open(os.path.join(BASE_DIR, 'styles.css'), encoding='utf-8').read():
-        errors.append("v45.8: Missing iOS WebKit LRU VRAM eviction or -webkit-touch-callout hardening")
+        errors.append("v46.1: Missing iOS WebKit LRU VRAM eviction or -webkit-touch-callout hardening")
     if 'isRoomOccluded(enemy.roomId)' not in file_texts.get('src/main.js', '') or 'hasLineOfSight' not in file_texts.get('src/ai/exoticEnemiesAi.js', ''):
-        errors.append("v45.8: Missing room-occlusion enemy AI gate or Cantor line-of-sight guard")
+        errors.append("v46.1: Missing room-occlusion enemy AI gate or Cantor line-of-sight guard")
     if 'clashParryTimer' not in file_texts.get('src/combat/damageCombat.js', '') or 'renderAltarTabs' not in file_texts.get('src/ui/relicBoardUi.js', ''):
-        errors.append("v45.8: Missing mobile merged clash-parry or 4-tab altar UI")
+        errors.append("v46.1: Missing mobile merged clash-parry or 4-tab altar UI")
     if 'branch1' not in file_texts.get('src/weapons.js', '') or 'martialBeat' not in file_texts.get('src/render/playerRenderer.js', ''):
-        errors.append("v45.8: Missing dashAttack moveset or articulated playerRenderer attack poses")
+        errors.append("v46.1: Missing dashAttack moveset or articulated playerRenderer attack poses")
     for v451_mod in ('src/render/wardenRenderer.js', 'src/ai/biomeEnemiesAi.js', 'src/render/exoticEnemyRenderer.js', 'src/ai/exoticEnemiesAi.js'):
         if v451_mod not in file_texts:
-            errors.append(f"v45.8: Missing modular split file '{v451_mod}'")
+            errors.append(f"v46.1: Missing modular split file '{v451_mod}'")
 
     en_refined_count = len(re.findall(r"^\s+refinedEffect:\s*'", ent_loc, re.M))
     if en_refined_count != len(relic_ids):
@@ -794,65 +801,183 @@ def check_v34_economy_relics_i18n(file_texts):
 
 
 
-def check_world_topology_and_shafts():
+def _subtract_seg(segs, a, b):
+    out = []
+    for s0, s1 in segs:
+        if b <= s0 or a >= s1:
+            out.append((s0, s1))
+        else:
+            if a > s0:
+                out.append((s0, a))
+            if b < s1:
+                out.append((b, s1))
+    return out
+
+
+def audit_single_world(world_rel, label):
+    """
+    Runs 4 Hard Geometric Anti-Wall-Block Assertions + 5-Tier Capability BFS on a world manifest:
+      1) Zero room interior AABB overlap & 100% symmetric physical seam adjacency
+      2) Horizontal seam doorway clearance >= 84px + walkable foothold within 160px on both sides
+      3) Vertical shaft width >= 90px + bouncePad drop-lane clearance >= 90px
+      4) Global outer boundary sealing (no walk-off void gap > 100px) + prop integrity + 5-Tier BFS (0 softlocks, 0 post-Ji bypass)
+    """
     errors = []
-    world = json.load(open(os.path.join(BASE_DIR, 'data', 'world.json'), encoding='utf-8'))
+    wpath = os.path.join(BASE_DIR, world_rel)
+    if not os.path.isfile(wpath):
+        return f"{label}=MISSING", "", [f"{label}: Missing world manifest '{world_rel}'"]
+
+    world = json.load(open(wpath, encoding='utf-8'))
     rooms = {}
+    all_global_solids = []
     for entry in world.get('rooms', []):
         rpath = os.path.join(BASE_DIR, entry['file'].lstrip('./'))
-        if os.path.isfile(rpath):
-            rm = json.load(open(rpath, encoding='utf-8'))
-            rooms[rm['id']] = rm
+        if not os.path.isfile(rpath):
+            errors.append(f"{label}: Missing room JSON '{entry['file']}'")
+            continue
+        rm = json.load(open(rpath, encoding='utf-8'))
+        for k in ('id', 'bounds', 'connections', 'theme'):
+            if entry.get(k) is not None:
+                rm[k] = entry[k]
+        rooms[rm['id']] = rm
+        rb = rm['bounds']
+        for s in rm.get('solids', []):
+            if s.get('type') != 'platform':
+                all_global_solids.append((rb['x'] + s['x'], rb['y'] + s['y'], rb['x'] + s['x'] + s['w'], rb['y'] + s['y'] + s['h']))
 
-    # LAW 1: No horizontal secretWalls (w > h) — horizontal floor hatches must be switchGates or breakableFloors!
+    # LAW 0: Room prop & structure invariants
     for rid, rm in rooms.items():
+        oy_r = rm['bounds']['y']
         for sw in rm.get('secretWalls', []):
             if sw.get('w', 0) > sw.get('h', 0):
-                errors.append(f"Topology Law 1: {rid} has horizontal secretWall '{sw.get('id')}' ({sw['w']}x{sw['h']}) — convert to switchGate or breakableFloor!")
+                errors.append(f"{label} Law 0: {rid} has horizontal secretWall '{sw.get('id')}' ({sw['w']}x{sw['h']})")
+        for anc in rm.get('grappleAnchors', []):
+            if not anc.get('id') or (oy_r != 0 and 'topY' not in anc):
+                errors.append(f"{label} Law 0: {rid} grappleAnchor missing id/topY (oy={oy_r})")
+        for lan in rm.get('lanterns', []):
+            if oy_r != 0 and 'topY' not in lan:
+                errors.append(f"{label} Law 0: {rid} lantern '{lan.get('id')}' missing topY (oy={oy_r})")
+        for sk in rm.get('slickWalls', []):
+            sx0, sy0, sx1, sy1 = sk['x'], sk['y'], sk['x'] + sk['w'], sk['y'] + sk['h']
+            has_back = any(
+                s['type'] != 'platform' and s['x'] < sx1 + 4 and s['x'] + s['w'] > sx0 - 4 and s['y'] < sy1 + 4 and s['y'] + s['h'] > sy0 - 4
+                for s in rm.get('solids', [])
+            )
+            if not has_back:
+                errors.append(f"{label} Law 0: {rid} slickWall '{sk.get('id')}' lacks solid backing!")
+        for vb in rm.get('voidBarriers', []):
+            if vb.get('sweeping'):
+                continue
+            vx, vy, vw = vb['x'], vb['y'], vb.get('w', 22)
+            top_ok = any(
+                s['type'] != 'platform' and s['x'] <= vx + 6 and s['x'] + s['w'] >= vx + vw - 6 and abs((s['y'] + s['h']) - vy) <= 12
+                for s in rm.get('solids', [])
+            )
+            if not top_ok:
+                errors.append(f"{label} Law 0: {rid} static voidBarrier '{vb.get('id')}' is not top-sealed!")
 
-    # LAW 2: Vertical shaft drop clearance — bouncePads in top 200px of bottom room must leave >= 90px unobstructed drop lane!
-    def subtract_seg(segs, a, b):
-        out = []
-        for s0, s1 in segs:
-            if b <= s0 or a >= s1:
-                out.append((s0, s1))
+    # ASSERTION 1: Zero interior room overlaps & symmetric physical adjacency
+    rids = sorted(rooms.keys())
+    for i in range(len(rids)):
+        r1 = rooms[rids[i]]
+        b1 = r1['bounds']
+        for j in range(i + 1, len(rids)):
+            r2 = rooms[rids[j]]
+            b2 = r2['bounds']
+            ov_x = min(b1['x'] + b1['w'], b2['x'] + b2['w']) - max(b1['x'], b2['x'])
+            ov_y = min(b1['y'] + b1['h'], b2['y'] + b2['h']) - max(b1['y'], b2['y'])
+            if ov_x > 4 and ov_y > 4:
+                errors.append(f"{label} Geo-1 Overlap: {rids[i]} & {rids[j]} overlap by {ov_x}x{ov_y}px")
+
+    # ASSERTION 2 & 3: Horizontal Seam Doorway >= 84px (+ foothold) & Vertical Shaft >= 90px (+ bouncePad clearance)
+    seen_pairs = set()
+    for rid, r1 in rooms.items():
+        b1 = r1['bounds']
+        for cid in r1.get('connections', []):
+            if cid not in rooms:
+                errors.append(f"{label} Geo-1 MissingConn: {rid} -> {cid}")
+                continue
+            if rid not in rooms[cid].get('connections', []):
+                errors.append(f"{label} Geo-1 AsymConn: {rid} -> {cid} is one-way in connections[]")
+            pair = tuple(sorted((rid, cid)))
+            if pair in seen_pairs:
+                continue
+            seen_pairs.add(pair)
+            r2 = rooms[cid]
+            b2 = r2['bounds']
+
+            h_touch = abs((b1['x'] + b1['w']) - b2['x']) <= 12 or abs((b2['x'] + b2['w']) - b1['x']) <= 12
+            v_ov = min(b1['y'] + b1['h'], b2['y'] + b2['h']) - max(b1['y'], b2['y'])
+            v_touch = abs((b1['y'] + b1['h']) - b2['y']) <= 24 or abs((b2['y'] + b2['h']) - b1['y']) <= 24
+            h_ov = min(b1['x'] + b1['w'], b2['x'] + b2['w']) - max(b1['x'], b2['x'])
+
+            if h_touch and v_ov >= 80:
+                L, R = (r1, r2) if b1['x'] < b2['x'] else (r2, r1)
+                lb, rb = L['bounds'], R['bounds']
+                y0, y1 = max(lb['y'], rb['y']), min(lb['y'] + lb['h'], rb['y'] + rb['h'])
+                segs = [(y0, y1)]
+                for s in L.get('solids', []):
+                    if s['type'] != 'platform' and s['x'] + s['w'] >= lb['w'] - 44:
+                        segs = _subtract_seg(segs, lb['y'] + s['y'], lb['y'] + s['y'] + s['h'])
+                for s in R.get('solids', []):
+                    if s['type'] != 'platform' and s['x'] <= 44:
+                        segs = _subtract_seg(segs, rb['y'] + s['y'], rb['y'] + s['y'] + s['h'])
+                max_open_h = max((a1 - a0 for a0, a1 in segs), default=0)
+                if max_open_h < 84:
+                    errors.append(f"{label} Geo-2 BlockedDoor: {L['id']} <-> {R['id']} maxOpenH={max_open_h:.0f}px < 84px")
+                has_l_foot = any(s['x'] + s['w'] >= lb['w'] - 160 for s in L.get('solids', []) if s['type'] in ('ground', 'platform'))
+                has_r_foot = any(s['x'] <= 160 for s in R.get('solids', []) if s['type'] in ('ground', 'platform'))
+                if not (has_l_foot and has_r_foot):
+                    errors.append(f"{label} Geo-2 MissingFoothold: {L['id']} <-> {R['id']} (L={has_l_foot}, R={has_r_foot})")
+            elif v_touch and h_ov >= 60:
+                T, B = (r1, r2) if b1['y'] < b2['y'] else (r2, r1)
+                tb, bb = T['bounds'], B['bounds']
+                ov0, ov1 = max(tb['x'], bb['x']), min(tb['x'] + tb['w'], bb['x'] + bb['w'])
+                intervals = [(ov0, ov1)]
+                for s in T.get('solids', []):
+                    if s['type'] != 'platform' and s['y'] + s['h'] >= tb['h'] - 25:
+                        intervals = _subtract_seg(intervals, tb['x'] + s['x'], tb['x'] + s['x'] + s['w'])
+                for s in B.get('solids', []):
+                    if s['type'] != 'platform' and s['y'] <= 40:
+                        intervals = _subtract_seg(intervals, bb['x'] + s['x'], bb['x'] + s['x'] + s['w'])
+                max_shaft_w = max((x1 - x0 for x0, x1 in intervals), default=0)
+                if max_shaft_w < 90:
+                    errors.append(f"{label} Geo-3 BlockedShaft: {T['id']} ^ {B['id']} maxOpenW={max_shaft_w:.0f}px < 90px")
+                for a, b in intervals:
+                    if b - a < 60:
+                        continue
+                    free = [(a, b)]
+                    has_pad = False
+                    for bp in B.get('bouncePads', []):
+                        if bp['y'] < 200:
+                            bx0, bx1 = bb['x'] + bp['x'] - bp['w'] / 2, bb['x'] + bp['x'] + bp['w'] / 2
+                            if bx1 > a and bx0 < b:
+                                has_pad = True
+                                free = _subtract_seg(free, bx0, bx1)
+                    if has_pad:
+                        max_free = max((x1 - x0 for x0, x1 in free), default=0)
+                        if max_free < 90:
+                            errors.append(f"{label} Geo-3 BouncePadBlock: {T['id']}->{B['id']} maxFreeDrop={max_free:.0f}px < 90px")
             else:
-                if a > s0: out.append((s0, a))
-                if b < s1: out.append((b, s1))
-        return out
+                errors.append(f"{label} Geo-1 DisjointConn: {rid} <-> {cid} do not share an H/V seam!")
 
-    for rid, top_rm in rooms.items():
-        tb = top_rm['bounds']
-        for cid in top_rm.get('connections', []):
-            if cid not in rooms: continue
-            bot_rm = rooms[cid]
-            bb = bot_rm['bounds']
-            if abs((tb['y'] + tb['h']) - bb['y']) > 24: continue
-            ov0, ov1 = max(tb['x'], bb['x']), min(tb['x'] + tb['w'], bb['x'] + bb['w'])
-            if ov1 - ov0 < 40: continue
-            intervals = [(ov0, ov1)]
-            for s in top_rm.get('solids', []):
-                if s['type'] != 'platform' and s['y'] + s['h'] >= tb['h'] - 25:
-                    intervals = subtract_seg(intervals, tb['x'] + s['x'], tb['x'] + s['x'] + s['w'])
-            for s in bot_rm.get('solids', []):
-                if s['type'] != 'platform' and s['y'] <= 40:
-                    intervals = subtract_seg(intervals, bb['x'] + s['x'], bb['x'] + s['x'] + s['w'])
-            for a, b in intervals:
-                if b - a < 60: continue
-                free = [(a, b)]
-                has_pad = False
-                for bp in bot_rm.get('bouncePads', []):
-                    if bp['y'] < 200:
-                        bx0, bx1 = bb['x'] + bp['x'] - bp['w'] / 2, bb['x'] + bp['x'] + bp['w'] / 2
-                        if bx1 > a and bx0 < b:
-                            has_pad = True
-                            free = subtract_seg(free, bx0, bx1)
-                if has_pad:
-                    max_free = max((x1 - x0 for x0, x1 in free), default=0)
-                    if max_free < 90:
-                        errors.append(f"Topology Law 2: BouncePad blocks drop shaft {rid}->{cid} [{a}..{b}] (maxFreeDrop={max_free:.0f}px < 90px)")
+    # ASSERTION 4A: Outer Horizontal Boundary Seal (no walk-off void gap > 100px on unconnected W/E edges)
+    for rid, rm in rooms.items():
+        b = rm['bounds']
+        has_w_nb = any(cid in rooms and abs((rooms[cid]['bounds']['x'] + rooms[cid]['bounds']['w']) - b['x']) <= 12 for cid in rm.get('connections', []))
+        has_e_nb = any(cid in rooms and abs((b['x'] + b['w']) - rooms[cid]['bounds']['x']) <= 12 for cid in rm.get('connections', []))
+        for side_name, has_nb, edge_x in (('West', has_w_nb, b['x']), ('East', has_e_nb, b['x'] + b['w'])):
+            if has_nb:
+                continue
+            segs = [(b['y'] + 34, b['y'] + b['h'] - 140)]
+            for sx0, sy0, sx1, sy1 in all_global_solids:
+                if sx0 <= edge_x + 28 and sx1 >= edge_x - 28:
+                    segs = _subtract_seg(segs, sy0, sy1)
+            max_gap = max((a1 - a0 for a0, a1 in segs), default=0)
+            if max_gap > 100:
+                errors.append(f"{label} Geo-4 OpenOuterEdge: {rid} {side_name} boundary has {max_gap:.0f}px unsealed gap!")
 
-    # LAW 3, 4 & 5: 5-Tier Directed BFS Reachability, Strict Post-Ji Anti-Bypass & Strong Connectivity Anti-Softlock!
+    # ASSERTION 4B: 5-Tier Directed BFS Reachability, Strict Post-Ji Anti-Bypass & Strong Connectivity Anti-Softlock!
     switch_room = {}
     switch_req_boss = {}
     for rid, rm in rooms.items():
@@ -917,9 +1042,11 @@ def check_world_topology_and_shafts():
                         queue.append(v)
             new_sw = False
             for sk, srm in switch_room.items():
-                if sk in active_switches or srm not in visited: continue
+                if sk in active_switches or srm not in visited:
+                    continue
                 rb = switch_req_boss.get(sk)
-                if rb == 'boss_ji' and not caps['boss2']: continue
+                if rb == 'boss_ji' and not caps['boss2']:
+                    continue
                 active_switches.add(sk)
                 new_sw = True
             if not new_sw:
@@ -952,19 +1079,42 @@ def check_world_topology_and_shafts():
         vis, soft = solve_tier(caps)
         tier_summary.append(f"{tname}={len(vis)}")
         if soft:
-            errors.append(f"Topology Softlock ({tname}): Cannot return to Sanctuary from {soft}")
+            errors.append(f"{label} Topology Softlock ({tname}): Cannot return to Sanctuary from {soft}")
         if not caps['boss1']:
             if vis != {'r01_sanctuary', 'r02_corridor', 'r03_chapel'}:
-                errors.append(f"Topology Sequence-Break ({tname}): Reached outside T0 starter zone before defeating Boss 1 Hui: {sorted(vis)}")
+                errors.append(f"{label} Topology Sequence-Break ({tname}): Reached outside T0 starter zone before Boss 1 Hui: {sorted(vis)}")
         if not caps['boss2']:
             leaked = sorted(vis & post_ji_forbidden)
             if leaked:
-                errors.append(f"Topology Sequence-Break ({tname}): Reached post-Ji rooms before defeating Boss 2 Ji: {leaked}")
+                errors.append(f"{label} Topology Sequence-Break ({tname}): Reached post-Ji rooms before Boss 2 Ji: {leaked}")
         if tname == 'T4_Endgame' and len(vis) < len(rooms):
             missing = sorted(set(rooms.keys()) - vis)
-            errors.append(f"Topology Unreachable ({tname}): Rooms unreachable at Endgame: {missing}")
+            errors.append(f"{label} Topology Unreachable ({tname}): Rooms unreachable at Endgame: {missing}")
 
-    return ' | '.join(tier_summary), errors
+    return f"{label}({len(rooms)}rm: {'/'.join(s.split('=')[1] for s in tier_summary)})", ' | '.join(tier_summary), errors
+
+
+def check_world_topology_and_shafts():
+    all_errors = []
+    ng1_compact, ng1_tiers, e1 = audit_single_world('data/world.json', 'NG1')
+    all_errors.extend(e1)
+
+    w0 = json.load(open(os.path.join(BASE_DIR, 'data/world.json'), encoding='utf-8'))
+    w1_path = os.path.join(BASE_DIR, 'data/worlds/world_ng1.json')
+    if not os.path.isfile(w1_path):
+        all_errors.append("v46.1: Missing pre-baked data/worlds/world_ng1.json (run python3 tools/assemble_worlds.py)")
+    else:
+        w1 = json.load(open(w1_path, encoding='utf-8'))
+        if w1.get('rooms') != w0.get('rooms'):
+            all_errors.append("v46.1: data/worlds/world_ng1.json drifted from frozen baseline data/world.json!")
+
+    ng2_compact, _t2, e2 = audit_single_world('data/worlds/world_ng2.json', 'NG2')
+    ng3_compact, _t3, e3 = audit_single_world('data/worlds/world_ng3.json', 'NG3')
+    all_errors.extend(e2)
+    all_errors.extend(e3)
+
+    summary = f"{ng1_tiers} || Multi-World Geo+BFS: {ng1_compact} | {ng2_compact} | {ng3_compact}"
+    return summary, all_errors
 
 
 
@@ -1092,7 +1242,7 @@ def check_undefined_js_calls(file_texts):
                 seen_err.add(fn)
                 errors.append(f"{rel}: Undefined function call '{fn}()'")
 
-        # v45.8 Guard: verify every config.js exported constant referenced in a module is explicitly imported/declared
+        # v46.1 Guard: verify every config.js exported constant referenced in a module is explicitly imported/declared
         clean_no_reexp = re.sub(r'export\s*\{[^}]*\}\s*from\s*[^;\n]+', '', clean)
         for sym in sorted(cfg_consts):
             if sym in declared:
@@ -1112,7 +1262,7 @@ def main():
     all_errs = js_errs + rm_errs + lnch_errs + v34_errs + topo_errs + undef_errs
     all_warns = js_warns + rm_warns + v34_warns
 
-    print(f"[Ashen Bell Vow v45.8 Verifier] JS modules: {js_cnt} | Cycles: {cyc_cnt} | Rooms: {rm_cnt} | Stamps: {st_cnt}")
+    print(f"[Ashen Bell Vow v46.1 Verifier] JS modules: {js_cnt} | Cycles: {cyc_cnt} | Rooms: {rm_cnt} | Stamps: {st_cnt}")
     print(
         f"Economy (1x): {eco['total_1x']} echoes "
         f"[Foes({eco['reg_cnt']}): {eco['reg_echo']} | Wardens: {eco['warden_echo']} | Bosses: {eco['boss_echo']} | "

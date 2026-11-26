@@ -1,0 +1,240 @@
+{
+  "schemaVersion": 1,
+  "id": "r15_woods_heart",
+  "zoneName": "枯墨古林",
+  "name": "枯墨古林 · 古钟树窟",
+  "theme": "forest",
+  "bounds": {
+    "x": 10100,
+    "y": 1520,
+    "w": 1080,
+    "h": 740
+  },
+  "connections": [
+    "r14_woods_cavern",
+    "r10_ink_woods"
+  ],
+  "subZones": [
+    {
+      "name": "枯墨古林 · 千年古钟树窟",
+      "x": 0,
+      "y": 0,
+      "w": 1080,
+      "h": 740
+    }
+  ],
+  "solids": [
+    {
+      "x": 1050,
+      "y": 0,
+      "w": 30,
+      "h": 740,
+      "type": "pillar"
+    },
+    {
+      "x": 0,
+      "y": 600,
+      "w": 1080,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 830,
+      "y": 410,
+      "w": 180,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 760,
+      "y": 315,
+      "w": 120,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 760,
+      "y": 125,
+      "w": 120,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 115,
+      "y": 430,
+      "w": 185,
+      "h": 22,
+      "type": "platform"
+    }
+  ],
+  "crumblePlatforms": [],
+  "altars": [],
+  "npcs": [],
+  "secretWalls": [],
+  "voidBarriers": [],
+  "gates": [],
+  "pickups": [
+    {
+      "id": "pickup_core_forest",
+      "kind": "statCore",
+      "x": 930,
+      "y": 410,
+      "bonusHp": 10,
+      "bonusSoul": 15,
+      "name": "古根生息核",
+      "desc": "枯木树窟深处凝结的生机魂核（生命上限 +10 · 魂火上限 +15）",
+      "requiresBoss": "warden_forest_boss"
+    },
+    {
+      "id": "pickup_seal_forest",
+      "kind": "realmSeal",
+      "sealId": "forest",
+      "relicId": "sporeseal",
+      "requiresBoss": "warden_forest_boss",
+      "echoAmount": 70,
+      "x": 440,
+      "y": 600,
+      "name": "枯林铭印 · 枯根菌印",
+      "desc": "斩落盘根古钟精·枯解封！赐予「枯林铭印」与圣物「枯根菌印」"
+    }
+  ],
+  "pendulums": [],
+  "windZones": [],
+  "bouncePads": [
+    {
+      "id": "bp_wh_exit",
+      "x": 820,
+      "y": 600,
+      "w": 86,
+      "h": 28,
+      "boostVy": -1020
+    },
+    {
+      "id": "bp_wh_mid",
+      "x": 820,
+      "y": 315,
+      "w": 78,
+      "h": 24,
+      "boostVy": -890
+    },
+    {
+      "id": "bp_wh_east",
+      "x": 215,
+      "y": 600,
+      "w": 78,
+      "h": 26,
+      "boostVy": -800
+    },
+    {
+      "id": "bp_wh_top",
+      "x": 820,
+      "y": 125,
+      "w": 78,
+      "h": 24,
+      "boostVy": -970
+    }
+  ],
+  "grappleAnchors": [
+    {
+      "id": "anc_wh_1",
+      "x": 540,
+      "y": 235,
+      "topY": 0
+    },
+    {
+      "id": "anc_wh_2",
+      "x": 255,
+      "y": 245,
+      "topY": 0
+    }
+  ],
+  "lanterns": [
+    {
+      "id": "lan_wh_1",
+      "x": 440,
+      "anchorY": 165,
+      "topY": 0,
+      "len": 145,
+      "angle": -0.04
+    }
+  ],
+  "enemies": [
+    {
+      "id": "warden_forest_boss",
+      "kind": "warden_forest",
+      "x": 376,
+      "y": 502,
+      "minX": 56,
+      "maxX": 796
+    }
+  ],
+  "bosses": [],
+  "props": {
+    "puddles": [],
+    "banners": [],
+    "candles": [
+      {
+        "x": 970,
+        "y": 410
+      },
+      {
+        "x": 885,
+        "y": 410
+      }
+    ],
+    "stamps": [
+      {
+        "type": "gnarled_tree",
+        "x": 940,
+        "y": 600,
+        "scale": 1.42,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.8,
+        "seed": 1
+      },
+      {
+        "type": "spore_cluster",
+        "x": 815,
+        "y": 600,
+        "scale": 1.15,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.85,
+        "seed": 0
+      },
+      {
+        "type": "spore_cluster",
+        "x": 195,
+        "y": 600,
+        "scale": 1.15,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.85,
+        "seed": 2
+      },
+      {
+        "type": "gnarled_tree",
+        "x": 115,
+        "y": 600,
+        "scale": 1.38,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.8,
+        "seed": 0
+      }
+    ],
+    "boneCairns": []
+  },
+  "loreTablets": [],
+  "resonancePuzzles": [],
+  "rivers": [],
+  "inscriptions": [
+    {
+      "x": 720,
+      "y": 540,
+      "text": "踏荧光巨孢伞连跃而上，可直返上层古林与起点圣所捷径"
+    }
+  ],
+  "mirrored": true
+}

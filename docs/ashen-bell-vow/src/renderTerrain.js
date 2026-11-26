@@ -827,16 +827,25 @@ export function drawWorldArchitecture() {
 
   ctx.save();
 
-  // 2. Live Animated Swaying Grass Blades (upper FLOOR_Y slabs — 1 batched stroke)
-  if (camY <= FLOOR_Y + 40 && camY + camH >= FLOOR_Y - 40) {
+  // 2. Live Animated Swaying Grass Blades (room-anchored upper surface ground slabs — 1 batched stroke)
+  {
     ctx.strokeStyle = 'rgba(130, 154, 140, 0.44)';
     ctx.lineWidth = 1.3;
     ctx.beginPath();
     let anyGrass = false;
     for (let i = 0; i < SOLIDS.length; i++) {
       const s = SOLIDS[i];
-      if (s.type !== 'ground' || s.y !== FLOOR_Y) continue;
-      if (s.x + s.w < camX - 40 || s.x > camX + camW + 40) continue;
+      if (s.type !== 'ground') continue;
+      if (s.x + s.w < camX - 40 || s.x > camX + camW + 40 || s.y < camY - 40 || s.y > camY + camH + 40) continue;
+      if (s.y !== FLOOR_Y) {
+        let hostY = null;
+        if (s.roomId) {
+          for (let ri = 0; ri < ROOMS.length; ri++) {
+            if (ROOMS[ri].id === s.roomId) { hostY = ROOMS[ri].bounds.y + 580; break; }
+          }
+        }
+        if (hostY === null || s.y !== hostY) continue;
+      }
       const startX = Math.max(s.x, Math.floor(camX / 64) * 64 - 64);
       const endX = Math.min(s.x + s.w, camX + camW + 64);
       for (let bx = startX; bx < endX; bx += 64) {
@@ -874,21 +883,20 @@ export function drawWorldArchitecture() {
   }
   if (anyVine) ctx.stroke();
 
-  // 4. Moonlit Puddles (upper corridor floor)
-  if (camY <= FLOOR_Y + 30 && camY + camH >= FLOOR_Y - 30) {
-    for (let i = 0; i < PUDDLES.length; i++) {
-      const p = PUDDLES[i];
-      if (p.x + p.w < camX - 40 || p.x > camX + camW + 40) continue;
-      ctx.fillStyle = 'rgba(125, 211, 252, 0.22)';
-      ctx.fillRect(p.x + 8, FLOOR_Y - 1, Math.max(8, p.w - 16), 4);
-      ctx.strokeStyle = 'rgba(224, 242, 254, 0.35)';
-      ctx.lineWidth = 1;
-      const rip = Math.sin(t * 3 + p.x) * 6;
-      ctx.beginPath();
-      ctx.moveTo(p.x + p.w * 0.25 + rip, FLOOR_Y + 1);
-      ctx.lineTo(p.x + p.w * 0.55 + rip, FLOOR_Y + 1);
-      ctx.stroke();
-    }
+  // 4. Moonlit Puddles (room-relative floor Y across all wet biomes!)
+  for (let i = 0; i < PUDDLES.length; i++) {
+    const p = PUDDLES[i];
+    const py = p.y !== undefined ? p.y : FLOOR_Y;
+    if (p.x + p.w < camX - 40 || p.x > camX + camW + 40 || py < camY - 30 || py > camY + camH + 30) continue;
+    ctx.fillStyle = 'rgba(125, 211, 252, 0.22)';
+    ctx.fillRect(p.x + 8, py - 1, Math.max(8, p.w - 16), 4);
+    ctx.strokeStyle = 'rgba(224, 242, 254, 0.35)';
+    ctx.lineWidth = 1;
+    const rip = Math.sin(t * 3 + p.x) * 6;
+    ctx.beginPath();
+    ctx.moveTo(p.x + p.w * 0.25 + rip, py + 1);
+    ctx.lineTo(p.x + p.w * 0.55 + rip, py + 1);
+    ctx.stroke();
   }
 
   const drainA = (G.worldState && G.worldState.riverDrainAnim) ? G.worldState.riverDrainAnim : 0;
@@ -927,13 +935,23 @@ export function drawWorldArchitecture() {
     }
   }
 
-  // 6. Low Creeping Theme-Tinted Ink Mist (2 fast flat alpha bands)
-  const mw = Math.min(camW + 40, Math.max(0, 4140 - (camX - 20)));
-  if (mw > 0 && G.themeBlend) {
-    ctx.fillStyle = rgbStr(G.themeBlend.mist, 0.22);
-    ctx.fillRect(camX - 20, FLOOR_Y - 46, mw, 26);
-    ctx.fillStyle = rgbStr(G.themeBlend.mist, 0.48);
-    ctx.fillRect(camX - 20, FLOOR_Y - 20, mw, 26);
+  // 6. Low Creeping Theme-Tinted Ink Mist (anchored dynamically to sanctuary/corridor/chapel upper ground!)
+  if (G.themeBlend && ROOMS.length > 0) {
+    for (let ri = 0; ri < ROOMS.length; ri++) {
+      const rm = ROOMS[ri];
+      if (rm.theme !== 'sanctuary' && rm.theme !== 'corridor' && rm.theme !== 'chapel') continue;
+      if (rm.id === 'r18_rain_steps' || rm.id === 'r19_belfry_outer') continue;
+      const b = rm.bounds;
+      const my = b.y + 580;
+      if (b.x + b.w < camX - 20 || b.x > camX + camW + 20 || my < camY - 60 || my > camY + camH + 40) continue;
+      const x0 = Math.max(b.x, camX - 20);
+      const x1 = Math.min(b.x + b.w, camX + camW + 20);
+      if (x1 <= x0) continue;
+      ctx.fillStyle = rgbStr(G.themeBlend.mist, 0.22);
+      ctx.fillRect(x0, my - 46, x1 - x0, 26);
+      ctx.fillStyle = rgbStr(G.themeBlend.mist, 0.48);
+      ctx.fillRect(x0, my - 20, x1 - x0, 26);
+    }
   }
 
   ctx.restore();

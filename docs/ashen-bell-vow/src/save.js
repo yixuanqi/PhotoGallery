@@ -157,6 +157,7 @@ export function saveProgress(showToast = false) {
     },
     slot: G.activeSaveSlot,
     ngPlusCycle: Math.max(1, Math.floor(Number(G.worldState.ngPlusCycle) || 1)),
+    worldVariant: G.currentWorldVariant || 'ng1_classic',
     activeVows: G.worldState.activeVows ? [...G.worldState.activeVows] : [],
     codex: {
       readTablets: Array.isArray(rawCodex.readTablets) ? [...new Set(rawCodex.readTablets)] : [],
@@ -382,9 +383,14 @@ export function applySaveData(data) {
       return false;
     };
     if (oldR === MAP_ROWS && oldC === MAP_COLS && data.v >= 41) {
+      // Legacy pre-v46.1 NG2 saves stored unmirrored fog; mirror columns cleanly onto NG2 layout!
+      const savedVar = data.worldVariant || 'ng1_classic';
+      const curVar = G.currentWorldVariant || 'ng1_classic';
+      const flipLegacyFog = (savedVar !== 'ng2_mirror' && curVar === 'ng2_mirror');
       for (let r = 0; r < MAP_ROWS; r++) {
         for (let c = 0; c < MAP_COLS; c++) {
-          G.worldState.explored[r][c] = rows[r][c] === '1';
+          const dstC = flipLegacyFog ? (MAP_COLS - 1 - c) : c;
+          G.worldState.explored[r][dstC] = rows[r][c] === '1';
         }
       }
     } else if (oldR > 0 && oldC > 0) {

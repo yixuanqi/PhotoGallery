@@ -1,3 +1,39 @@
+## v46.1 多周目拓扑重构 · 阶段 3（运行时三周目无缝切图 + 离线三世界打包 + 旧存档兼容）
+- **运行时多周目无缝切图与缓存（`src/levelLoader.js` / `src/state.js` / `src/main.js`）**：
+  * 新增 `ensureWorldForCycle(cycle)`、`getWorldVariantKeyForCycle(cycle)` 与 `getWorldVariantLabel(cycle)`：一周目加载 **NG1（经典东征 · 25房）**、二周目无缝切入 **NG2（倒影逆钟 · 25房全图镜像）**、三周目及以后切入 **NG3（苍穹长桥 · 26房高空连桥）**，并缓存已载入世界防止重复拉取。
+  * 标题页启动与读档继续（`continueSavedGame`）、开新档（`startGame`）、祭坛/结局踏入下周目（`startNewGamePlus`）均按目标周目自动完成世界水合，且在镜像周目（NG2）起点出生/复活时自动朝左面向枯骨长廊出口，同步刷新 `createFoundryCrucibles()`。
+- **离线单包全三周目内联（`tools/build_release.py` / `sw.js`）**：
+  * `tools/build_release.py` 将 NG1 / NG2 / NG3 三套世界同时内联为 `window.__ABV_OFFLINE_WORLDS__`（保留 `window.__ABV_OFFLINE_WORLD__` 向后兼容），TapTap / 4399 离线 H5 包无需联网即可畅玩三周目异构地图；PWA `sw.js` 同步预缓存三套世界清单。
+- **存档完全兼容 + 双语周目世界标识（`src/save.js` / `src/ui/hudCore.js` / `src/ui/relicBoardUi.js` / `src/ui/mapUi.js` / `src/ui/progressionUi.js`）**：
+  * 存档新增 `worldVariant` 标记：旧版一周目存档零改动直读，旧版二周目存档自动切入 NG2 并水平翻转已探索迷雾格子以精准对齐镜像房间；
+  * 标题页存档槽、祭坛轮回预览条/确认框、结局下周目按钮、周目开场大横幅与大地图副标题全面展示当前/即将进入的世界拓扑名（`经典东征 / 倒影逆钟 / 苍穹长桥`）。
+
+---
+
+## v46.0 多周目拓扑重构 · 阶段 2（离线多周目拼装管线 + 4 项几何防堵墙断言 + NG2/NG3 预烘焙）
+- **新增零依赖离线拼装管线 `tools/assemble_worlds.py`（自动接入 `tools/build_release.py` 构建前序步骤）**：
+  * 确立 **7 大不可拆分复合生态组块**（`A_Prologue` / `B_BellWell` / `C_WoodsCrypt` / `D_WindSpire` / `E_AscentHeart` / `F_FrostRidge` / `G_Cistern`），将内部环路、隐藏房与单向活板闸绑定于宿主组块内，从根源杜绝改乱或堵死。
+  * **NG1 (`data/worlds/world_ng1.json`)**：冻结 25 房基准经典东征箱庭（零差异校验锁定）。
+  * **NG2 (`data/worlds/world_ng2.json` + `data/worlds/ng2_rooms/*.json` · 倒影逆钟)**：全图 25 房精确 X 轴水平镜像（覆盖全部 31 类地形/实体/滑墙/风场/贴图/巡逻区间与 Boss 场地边界），并重配 4 处中前期精英化驻兵与 2 对同层级圣物台（保持防软锁能力链零变动）。
+  * **NG3 (`data/worlds/world_ng3.json` + `data/worlds/ng3_rooms/*.json` · 苍穹长桥)**：新增第 26 号高空模块 **`r26_sky_span`（绝风苍穹 · 苍穹断桥，`1135×740`）** 填平 `r18_rain_steps ↔ r20_bell_galleries` 断层并雕刻双端 `180px` 净空门洞（附带风场、钩环、风隼/金钟执灯侍、苍穹残响匣与完整双语本地化），形成贯穿东西的屋顶高速环线，同时不破坏 Boss 1 / Boss 2 防绕过法则。
+- **升级 `verify_project.py` 为多周目 4 项硬性几何防堵墙校验 + 5-Tier 全通 BFS（同时覆盖 NG1 / NG2 / NG3）**：
+  1. **Geo-1**：零房间内部重叠、100% 双向对称邻接与物理接缝接触；
+  2. **Geo-2**：所有横向共享接缝净空门高 **`≥ 84px`** 且双侧 `160px` 内必有可站立落脚点；
+  3. **Geo-3**：所有纵向竖井净宽 **`≥ 90px`** 且底部弹垫不阻塞下落通道；
+  4. **Geo-4**：全局外边界密封检测（无 `> 100px` 踏空漏风缺口）、全道具完整性 + 三套世界 5-Tier BFS 全部 0 软锁、0 越序绕过。
+- **同步补强 `src/render/worldRenderer.js`**：Boss 战雾墙 `drawMistBarrier()` 原生适配 `room.mirrored`，镜像周目下自动贴合东侧入口。
+
+---
+
+## v45.9 多周目拓扑重构 · 阶段 1（全引擎硬编码世界坐标彻底解耦）
+- **核心架构解耦（零一周目玩法/视觉回归，为阶段 2 多周目组块拼装与水平镜像打底）**：
+  * **统一房间相对坐标基元（`src/state.js` / `src/levelLoader.js`）**：新增 `getRoomById`、`roomLocalX`（原生支持 `room.mirrored` 水平镜像）与 `roomLocalY`；`hydrateWorldBundle()` 动态水合 `FIRST_BELL_CORE_POS`、各房间 `PUDDLES` 真实地面 Y（同步修复雨阶/钟楼/水牢水洼与踩水波纹）及 `BONE_CAIRNS` 自动贴地 Y（修复地窖/古林/霜脊骨堆浮空）；`createFoundryCrucibles()` 改为相对 `r05_foundry` 房间边界动态生成。
+  * **世界背景地标 100% 绑定宿主房间（`src/render/worldBackdropRenderer.js` / `src/render/renderShared.js`）**：熄灯祭坛石拱、哥特长窗、坍塌雨夜礼拜堂、熔金铸造坑齿轮与铜瀑、星渊天台、炉心镜渊圣环（同步点亮 `r25_mirror_abyss` 本体圣环背景）、绝风热气栅、霜脊雪融瀑布、古林渗水渠与千年钟树洞、墓碑群全部改为相对 `room.bounds` 绘制并支持镜像翻转。
+  * **全 Boss AI 与残誓回响出生点去硬编码（`src/ai/bossesAi.js` / `src/ui/progressionUi.js` / `src/world.js` / `src/render/vfxRenderer.js` / `src/render/worldRenderer.js` / `src/render/cinematicRenderer.js`）**：Boss 1/2/3/4 所有冲击波、全屏墨潮、悬停换位与吊灯联动（动态查询本房悬灯）全面改读 `b.arenaMinX / arenaMaxX / arenaFloorY`；7 场残誓回响（四主 Boss + 三境镇守）自动按 `BOSSES_DEF` / `ENEMIES_DEF` 推导对侧落点与朝向。
+  * **动态地表与环境水洼解耦（`src/renderTerrain.js` / `src/player.js` / `src/worldCamera.js`）**：草叶、水洼、低空墨雾（移除 `x < 4140` 写死）与雨滴涟漪全部改为按所属房间坐标实时计算。
+
+---
+
 ## v45.8 新手起点练习房净化与全图未解锁钩点视觉降噪
 - **全图未获得钩锁前的钩点视觉降噪（`src/render/worldRenderer.js`）**：
   * 未拾取「幽丝钩索」前（含击败 Boss 1 但尚未拾取技能的情形），全图所有钩点均渲染为**无光效、无脉冲、无金点的暗淡普通铁环**，避免误导新手以为漏按了某个按键；

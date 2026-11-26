@@ -5,7 +5,7 @@ import {
   ABYSSAL_RIVERS, WIND_ZONES, BOUNCE_PADS, WORLD_MIN_X, WORLD_MIN_Y, WORLD_W, WORLD_H, WORLD_SPAN_W, WORLD_SPAN_H, FLOOR_Y, WELL_BOTTOM_Y,
   MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H, ECHO_GRADE_ORDER, SEVEN_BELLS_ORDER
 } from '../config.js';
-import { getRoomAt, getZoneLabelAt, getPreviewSpawnRoomId, getPreviewSpawnCoords, getRoomSpawnPoint } from '../levelLoader.js';
+import { getRoomAt, getZoneLabelAt, getPreviewSpawnRoomId, getPreviewSpawnCoords, getRoomSpawnPoint, getWorldVariantLabel } from '../levelLoader.js';
 import {
   G, createFreshWorldState, getActiveAltar, getActiveSynergies, getRelicStats, getActiveVowStats, getCombatScaling, getEquippedRelicLabel, getActiveWeaponId, getActiveWeapon, isWeaponUnlocked, getUnlockedWeaponIds, unlockWeapon,
   isWeaponTraitUnlocked, getActiveWeaponTraitId, unlockWeaponTrait, setActiveWeaponTrait,
@@ -534,6 +534,8 @@ export function renderParchmentMap(targetCanvas, detailed = false, omitPlayer = 
     mctx.strokeRect(padX, padTop, mapW, mapH);
     const litCount = G.worldState.litAltars.size;
     const secretCount = G.worldState.pickups.filter(p => p.collected).length;
+    const cycMap = (G.worldState && G.worldState.ngPlusCycle) ? G.worldState.ngPlusCycle : 1;
+    const varBadge = cycMap >= 2 ? ` · ${t('hud.cycleShort', cycMap)}·${getWorldVariantLabel(cycMap)}` : '';
     document.getElementById('map-modal-sub').textContent = t(
       'map.sub',
       getExplorationPercent(),
@@ -543,7 +545,7 @@ export function renderParchmentMap(targetCanvas, detailed = false, omitPlayer = 
       PICKUPS_DEF.length,
       G.worldState.abilities.doubleJump ? ` · ${t('hud.abilityWings')}` : '',
       G.worldState.abilities.shadeDash ? ` · ${t('hud.abilityShade')}` : '',
-      G.worldState.bossDefeated ? t('map.subWellOpen') : ''
+      (G.worldState.bossDefeated ? t('map.subWellOpen') : '') + varBadge
     );
     renderMapRoomDetail(focusRoomId);
   }

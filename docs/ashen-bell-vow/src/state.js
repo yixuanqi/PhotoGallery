@@ -23,6 +23,8 @@ export const G = {
 
   // Loaded Room JSON bundle & current room state
   levelBundle: null,
+  loadedWorldVariant: 0,
+  currentWorldVariant: 'ng1_classic',
   isEditorPreview: false,
   currentRoomId: null,
   roomOcclusion: {},
@@ -782,10 +784,32 @@ export function triggerBossBanner(title, quote = '', color = '#fde047', duration
   G.bossBanner = { title, quote, color, life: duration, maxLife: duration };
 }
 
+export function getRoomById(roomId) {
+  if (!roomId || !ROOMS || ROOMS.length === 0) return null;
+  for (let i = 0; i < ROOMS.length; i++) {
+    if (ROOMS[i].id === roomId) return ROOMS[i];
+  }
+  return null;
+}
+
+export function roomLocalX(rm, lx, w = 0) {
+  if (!rm || !rm.bounds) return lx;
+  return rm.mirrored ? (rm.bounds.x + rm.bounds.w - lx - w) : (rm.bounds.x + lx);
+}
+
+export function roomLocalY(rm, ly) {
+  if (!rm || !rm.bounds) return ly;
+  return rm.bounds.y + ly;
+}
+
 export function createFoundryCrucibles() {
+  const rm = getRoomById('r05_foundry') || { bounds: { x: 5560, y: 780, w: 1180, h: 740 }, mirrored: false };
+  const baseY = roomLocalY(rm, 225);
+  const anchorY = roomLocalY(rm, 40);
+  const floorY = roomLocalY(rm, 600);
   return [
-    { id: 'crucible_west', x: 5880, y: 1005, baseY: 1005, anchorY: 820, vy: 0, state: 'hanging', respawnTimer: 0, roomId: 'r05_foundry' },
-    { id: 'crucible_east', x: 6420, y: 1005, baseY: 1005, anchorY: 820, vy: 0, state: 'hanging', respawnTimer: 0, roomId: 'r05_foundry' }
+    { id: 'crucible_west', x: roomLocalX(rm, 320), y: baseY, baseY, anchorY, floorY, vy: 0, state: 'hanging', respawnTimer: 0, roomId: 'r05_foundry' },
+    { id: 'crucible_east', x: roomLocalX(rm, 860), y: baseY, baseY, anchorY, floorY, vy: 0, state: 'hanging', respawnTimer: 0, roomId: 'r05_foundry' }
   ];
 }
 

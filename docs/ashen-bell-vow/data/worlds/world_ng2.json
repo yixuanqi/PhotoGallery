@@ -1,0 +1,527 @@
+{
+  "schemaVersion": 1,
+  "title": "灰钟残誓 · 晦渊全境",
+  "floorY": 580,
+  "wellBottomY": 1380,
+  "startAltarId": "altar_start",
+  "rooms": [
+    {
+      "id": "r01_sanctuary",
+      "file": "./data/worlds/ng2_rooms/r01_sanctuary.json",
+      "zoneName": "沉钟回廊",
+      "name": "熄灯祭坛",
+      "theme": "sanctuary",
+      "mirrored": true,
+      "bounds": {
+        "x": 10240,
+        "y": 0,
+        "w": 940,
+        "h": 720
+      },
+      "connections": [
+        "r02_corridor",
+        "r10_ink_woods",
+        "r19_belfry_outer"
+      ]
+    },
+    {
+      "id": "r02_corridor",
+      "file": "./data/worlds/ng2_rooms/r02_corridor.json",
+      "zoneName": "沉钟回廊",
+      "name": "枯骨长廊",
+      "theme": "corridor",
+      "mirrored": true,
+      "bounds": {
+        "x": 8535,
+        "y": 0,
+        "w": 1705,
+        "h": 720
+      },
+      "connections": [
+        "r01_sanctuary",
+        "r03_chapel",
+        "r06_crypt",
+        "r18_rain_steps"
+      ]
+    },
+    {
+      "id": "r03_chapel",
+      "file": "./data/worlds/ng2_rooms/r03_chapel.json",
+      "zoneName": "沉钟回廊",
+      "name": "断钟礼拜堂",
+      "theme": "chapel",
+      "mirrored": true,
+      "bounds": {
+        "x": 7400,
+        "y": 0,
+        "w": 1135,
+        "h": 720
+      },
+      "connections": [
+        "r02_corridor",
+        "r04_bell_well"
+      ]
+    },
+    {
+      "id": "r04_bell_well",
+      "file": "./data/worlds/ng2_rooms/r04_bell_well.json",
+      "zoneName": "沉渊钟井",
+      "name": "沉渊钟井",
+      "theme": "bell_well",
+      "mirrored": true,
+      "bounds": {
+        "x": 5620,
+        "y": 0,
+        "w": 1780,
+        "h": 1520
+      },
+      "connections": [
+        "r03_chapel",
+        "r05_foundry",
+        "r06_crypt",
+        "r09_wind_spire",
+        "r20_bell_galleries",
+        "r22_cistern_nave"
+      ]
+    },
+    {
+      "id": "r05_foundry",
+      "file": "./data/worlds/ng2_rooms/r05_foundry.json",
+      "zoneName": "沉渊钟井",
+      "name": "沉渊铸钟殿",
+      "theme": "foundry",
+      "mirrored": true,
+      "bounds": {
+        "x": 4440,
+        "y": 780,
+        "w": 1180,
+        "h": 740
+      },
+      "connections": [
+        "r04_bell_well",
+        "r07_ascent",
+        "r09_wind_spire"
+      ]
+    },
+    {
+      "id": "r06_crypt",
+      "file": "./data/worlds/ng2_rooms/r06_crypt.json",
+      "zoneName": "沉钟回廊",
+      "name": "残钟地窖",
+      "theme": "crypt",
+      "mirrored": true,
+      "bounds": {
+        "x": 7400,
+        "y": 740,
+        "w": 1800,
+        "h": 780
+      },
+      "connections": [
+        "r04_bell_well",
+        "r02_corridor",
+        "r10_ink_woods",
+        "r21_cistern_west"
+      ]
+    },
+    {
+      "id": "r07_ascent",
+      "file": "./data/worlds/ng2_rooms/r07_ascent.json",
+      "zoneName": "初钟圣顶",
+      "name": "初钟圣阶",
+      "theme": "ascent",
+      "mirrored": true,
+      "bounds": {
+        "x": 2820,
+        "y": 0,
+        "w": 1620,
+        "h": 1520
+      },
+      "connections": [
+        "r05_foundry",
+        "r08_heart",
+        "r09_wind_spire",
+        "r11_frost_ridge",
+        "r23_cistern_lock"
+      ]
+    },
+    {
+      "id": "r08_heart",
+      "file": "./data/worlds/ng2_rooms/r08_heart.json",
+      "zoneName": "初钟圣顶",
+      "name": "初钟圣心",
+      "theme": "heart",
+      "mirrored": true,
+      "bounds": {
+        "x": 1500,
+        "y": 0,
+        "w": 1320,
+        "h": 720
+      },
+      "connections": [
+        "r07_ascent"
+      ]
+    },
+    {
+      "id": "r09_wind_spire",
+      "file": "./data/worlds/ng2_rooms/r09_wind_spire.json",
+      "zoneName": "绝风断塔",
+      "name": "绝风断塔 · 风井下口",
+      "theme": "wind",
+      "mirrored": true,
+      "bounds": {
+        "x": 4440,
+        "y": 0,
+        "w": 1180,
+        "h": 780
+      },
+      "connections": [
+        "r04_bell_well",
+        "r07_ascent",
+        "r12_wind_bridge",
+        "r05_foundry"
+      ]
+    },
+    {
+      "id": "r10_ink_woods",
+      "file": "./data/worlds/ng2_rooms/r10_ink_woods.json",
+      "zoneName": "枯墨古林",
+      "name": "枯墨古林 · 渗水菌廊",
+      "theme": "forest",
+      "mirrored": true,
+      "bounds": {
+        "x": 9200,
+        "y": 740,
+        "w": 1980,
+        "h": 780
+      },
+      "connections": [
+        "r06_crypt",
+        "r01_sanctuary",
+        "r14_woods_cavern",
+        "r15_woods_heart"
+      ]
+    },
+    {
+      "id": "r11_frost_ridge",
+      "file": "./data/worlds/ng2_rooms/r11_frost_ridge.json",
+      "zoneName": "霜骸圣脊",
+      "name": "霜骸圣脊 · 融雪谷口",
+      "theme": "mountain",
+      "mirrored": true,
+      "bounds": {
+        "x": 1500,
+        "y": 740,
+        "w": 1320,
+        "h": 780
+      },
+      "connections": [
+        "r07_ascent",
+        "r16_frost_tomb",
+        "r24_frost_seep"
+      ]
+    },
+    {
+      "id": "r12_wind_bridge",
+      "file": "./data/worlds/ng2_rooms/r12_wind_bridge.json",
+      "zoneName": "绝风断塔",
+      "name": "绝风断塔 · 千铃悬桥",
+      "theme": "wind",
+      "mirrored": true,
+      "bounds": {
+        "x": 4440,
+        "y": -740,
+        "w": 1180,
+        "h": 740
+      },
+      "connections": [
+        "r09_wind_spire",
+        "r13_wind_peak",
+        "r20_bell_galleries"
+      ]
+    },
+    {
+      "id": "r13_wind_peak",
+      "file": "./data/worlds/ng2_rooms/r13_wind_peak.json",
+      "zoneName": "绝风断塔",
+      "name": "绝风断塔 · 断塔绝顶",
+      "theme": "wind",
+      "mirrored": true,
+      "bounds": {
+        "x": 2920,
+        "y": -740,
+        "w": 1520,
+        "h": 740
+      },
+      "connections": [
+        "r12_wind_bridge",
+        "r17_frost_summit",
+        "r25_mirror_abyss"
+      ]
+    },
+    {
+      "id": "r14_woods_cavern",
+      "file": "./data/worlds/ng2_rooms/r14_woods_cavern.json",
+      "zoneName": "枯墨古林",
+      "name": "枯墨古林 · 盘根溶洞",
+      "theme": "forest",
+      "mirrored": true,
+      "bounds": {
+        "x": 8500,
+        "y": 1520,
+        "w": 1600,
+        "h": 740
+      },
+      "connections": [
+        "r10_ink_woods",
+        "r15_woods_heart",
+        "r21_cistern_west"
+      ]
+    },
+    {
+      "id": "r15_woods_heart",
+      "file": "./data/worlds/ng2_rooms/r15_woods_heart.json",
+      "zoneName": "枯墨古林",
+      "name": "枯墨古林 · 古钟树窟",
+      "theme": "forest",
+      "mirrored": true,
+      "bounds": {
+        "x": 10100,
+        "y": 1520,
+        "w": 1080,
+        "h": 740
+      },
+      "connections": [
+        "r14_woods_cavern",
+        "r10_ink_woods"
+      ]
+    },
+    {
+      "id": "r16_frost_tomb",
+      "file": "./data/worlds/ng2_rooms/r16_frost_tomb.json",
+      "zoneName": "霜骸圣脊",
+      "name": "霜骸圣脊 · 冻剑冢",
+      "theme": "mountain",
+      "mirrored": true,
+      "bounds": {
+        "x": 0,
+        "y": -740,
+        "w": 1500,
+        "h": 2260
+      },
+      "connections": [
+        "r11_frost_ridge",
+        "r17_frost_summit"
+      ]
+    },
+    {
+      "id": "r17_frost_summit",
+      "file": "./data/worlds/ng2_rooms/r17_frost_summit.json",
+      "zoneName": "霜骸圣脊",
+      "name": "霜骸圣脊 · 绝脊霜台",
+      "theme": "mountain",
+      "mirrored": true,
+      "bounds": {
+        "x": 1500,
+        "y": -740,
+        "w": 1420,
+        "h": 740
+      },
+      "connections": [
+        "r16_frost_tomb",
+        "r13_wind_peak"
+      ]
+    },
+    {
+      "id": "r18_rain_steps",
+      "file": "./data/worlds/ng2_rooms/r18_rain_steps.json",
+      "zoneName": "晦渊",
+      "name": "淋雨墓阶 · 残钟外廊",
+      "theme": "corridor",
+      "mirrored": true,
+      "bounds": {
+        "x": 8535,
+        "y": -740,
+        "w": 1705,
+        "h": 740
+      },
+      "connections": [
+        "r02_corridor",
+        "r19_belfry_outer"
+      ]
+    },
+    {
+      "id": "r19_belfry_outer",
+      "file": "./data/worlds/ng2_rooms/r19_belfry_outer.json",
+      "zoneName": "晦渊",
+      "name": "断索钟楼 · 外廊残钟",
+      "theme": "sanctuary",
+      "mirrored": true,
+      "bounds": {
+        "x": 10240,
+        "y": -740,
+        "w": 940,
+        "h": 740
+      },
+      "connections": [
+        "r18_rain_steps",
+        "r01_sanctuary"
+      ]
+    },
+    {
+      "id": "r20_bell_galleries",
+      "file": "./data/worlds/ng2_rooms/r20_bell_galleries.json",
+      "zoneName": "晦渊",
+      "name": "悬索钟阁 · 风桥前廊",
+      "theme": "wind",
+      "mirrored": true,
+      "bounds": {
+        "x": 5620,
+        "y": -740,
+        "w": 1780,
+        "h": 740
+      },
+      "connections": [
+        "r04_bell_well",
+        "r12_wind_bridge"
+      ]
+    },
+    {
+      "id": "r21_cistern_west",
+      "file": "./data/worlds/ng2_rooms/r21_cistern_west.json",
+      "zoneName": "晦渊",
+      "name": "沉钟水牢 · 渗水囚廊",
+      "theme": "cistern",
+      "mirrored": true,
+      "bounds": {
+        "x": 6900,
+        "y": 1520,
+        "w": 1600,
+        "h": 740
+      },
+      "connections": [
+        "r14_woods_cavern",
+        "r06_crypt",
+        "r22_cistern_nave"
+      ]
+    },
+    {
+      "id": "r22_cistern_nave",
+      "file": "./data/worlds/ng2_rooms/r22_cistern_nave.json",
+      "zoneName": "晦渊",
+      "name": "沉钟水牢 · 淹钟巨厅",
+      "theme": "cistern",
+      "mirrored": true,
+      "bounds": {
+        "x": 5020,
+        "y": 1520,
+        "w": 1880,
+        "h": 740
+      },
+      "connections": [
+        "r21_cistern_west",
+        "r04_bell_well",
+        "r23_cistern_lock"
+      ]
+    },
+    {
+      "id": "r23_cistern_lock",
+      "file": "./data/worlds/ng2_rooms/r23_cistern_lock.json",
+      "zoneName": "晦渊",
+      "name": "沉钟水牢 · 断索水闸",
+      "theme": "cistern",
+      "mirrored": true,
+      "bounds": {
+        "x": 3240,
+        "y": 1520,
+        "w": 1780,
+        "h": 740
+      },
+      "connections": [
+        "r22_cistern_nave",
+        "r07_ascent",
+        "r24_frost_seep"
+      ]
+    },
+    {
+      "id": "r24_frost_seep",
+      "file": "./data/worlds/ng2_rooms/r24_frost_seep.json",
+      "zoneName": "晦渊",
+      "name": "霜渊冰窖 · 暗河源洞",
+      "theme": "mountain",
+      "mirrored": true,
+      "bounds": {
+        "x": 1500,
+        "y": 1520,
+        "w": 1740,
+        "h": 740
+      },
+      "connections": [
+        "r23_cistern_lock",
+        "r11_frost_ridge"
+      ]
+    },
+    {
+      "id": "r25_mirror_abyss",
+      "file": "./data/worlds/ng2_rooms/r25_mirror_abyss.json",
+      "zoneName": "晦渊",
+      "name": "初铸镜渊 · 终极隐藏殿堂",
+      "theme": "heart",
+      "mirrored": true,
+      "bounds": {
+        "x": 2120,
+        "y": -1480,
+        "w": 1600,
+        "h": 740
+      },
+      "connections": [
+        "r13_wind_peak"
+      ]
+    }
+  ],
+  "cycle": 2,
+  "variantId": "ng2_mirror",
+  "variantName": "二周目 · 倒影逆钟",
+  "variantNameEn": "NG2 · Inverted Reflection",
+  "mirrored": true,
+  "compositeBlocks": {
+    "A_Prologue": [
+      "r01_sanctuary",
+      "r02_corridor",
+      "r03_chapel",
+      "r18_rain_steps",
+      "r19_belfry_outer"
+    ],
+    "B_BellWell": [
+      "r04_bell_well",
+      "r05_foundry",
+      "r20_bell_galleries"
+    ],
+    "C_WoodsCrypt": [
+      "r06_crypt",
+      "r10_ink_woods",
+      "r14_woods_cavern",
+      "r15_woods_heart"
+    ],
+    "D_WindSpire": [
+      "r09_wind_spire",
+      "r12_wind_bridge",
+      "r13_wind_peak",
+      "r25_mirror_abyss"
+    ],
+    "E_AscentHeart": [
+      "r07_ascent",
+      "r08_heart"
+    ],
+    "F_FrostRidge": [
+      "r11_frost_ridge",
+      "r16_frost_tomb",
+      "r17_frost_summit"
+    ],
+    "G_Cistern": [
+      "r21_cistern_west",
+      "r22_cistern_nave",
+      "r23_cistern_lock",
+      "r24_frost_seep"
+    ]
+  }
+}

@@ -1,0 +1,540 @@
+{
+  "schemaVersion": 1,
+  "id": "r10_ink_woods",
+  "zoneName": "枯墨古林",
+  "name": "枯墨古林 · 渗水菌廊",
+  "theme": "forest",
+  "bounds": {
+    "x": 0,
+    "y": 740,
+    "w": 1980,
+    "h": 780
+  },
+  "subZones": [
+    {
+      "name": "枯墨古林 · 归坛古根井",
+      "x": 0,
+      "y": 0,
+      "w": 460,
+      "h": 780
+    },
+    {
+      "name": "枯墨古林 · 荧光孢伞林",
+      "x": 460,
+      "y": 0,
+      "w": 800,
+      "h": 780
+    },
+    {
+      "name": "枯墨古林 · 暗河渗水廊",
+      "x": 1260,
+      "y": 0,
+      "w": 720,
+      "h": 780
+    }
+  ],
+  "connections": [
+    "r06_crypt",
+    "r01_sanctuary",
+    "r14_woods_cavern",
+    "r15_woods_heart"
+  ],
+  "solids": [
+    {
+      "x": 0,
+      "y": 640,
+      "w": 260,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 260,
+      "y": 640,
+      "w": 200,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 460,
+      "y": 640,
+      "w": 800,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 1460,
+      "y": 640,
+      "w": 520,
+      "h": 140,
+      "type": "ground"
+    },
+    {
+      "x": 20,
+      "y": 470,
+      "w": 230,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 145,
+      "y": 310,
+      "w": 180,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 255,
+      "y": 135,
+      "w": 135,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 470,
+      "y": 510,
+      "w": 185,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 740,
+      "y": 420,
+      "w": 200,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1030,
+      "y": 320,
+      "w": 210,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1350,
+      "y": 475,
+      "w": 195,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 1580,
+      "y": 360,
+      "w": 225,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 720,
+      "y": 195,
+      "w": 250,
+      "h": 22,
+      "type": "platform"
+    },
+    {
+      "x": 20,
+      "y": 510,
+      "w": 220,
+      "h": 22,
+      "type": "pillar"
+    }
+  ],
+  "crumblePlatforms": [
+    {
+      "id": "crumble_forest_1",
+      "x": 1150,
+      "y": 515,
+      "w": 115,
+      "h": 20
+    }
+  ],
+  "windZones": [],
+  "bouncePads": [
+    {
+      "id": "bp_forest_1",
+      "x": 1650,
+      "y": 640,
+      "w": 78,
+      "h": 26,
+      "boostVy": -790
+    },
+    {
+      "id": "bp_forest_2",
+      "x": 965,
+      "y": 640,
+      "w": 82,
+      "h": 28,
+      "boostVy": -840
+    },
+    {
+      "id": "bp_forest_3",
+      "x": 635,
+      "y": 640,
+      "w": 78,
+      "h": 26,
+      "boostVy": -780
+    },
+    {
+      "id": "bp_forest_dormant",
+      "x": 1195,
+      "y": 640,
+      "w": 88,
+      "h": 30,
+      "boostVy": -960,
+      "dormant": true
+    }
+  ],
+  "altars": [
+    {
+      "id": "altar_forest",
+      "x": 1125,
+      "y": 320,
+      "name": "枯墨古林 · 根窟祭坛",
+      "shortName": "古林 · 根窟坛",
+      "defaultLit": false
+    }
+  ],
+  "npcs": [],
+  "loreTablets": [
+    {
+      "id": "lore_forest",
+      "x": 540,
+      "y": 510,
+      "title": "古林根录",
+      "sub": "枯墨古林 · 巨木残碑",
+      "html": "“圣城筑于千丈古林之上。地脉浸染墨蚀后，枯木仍以荧光孢伞吐纳微薄灵气，托举迷途旅人。<br><br>顺着最西侧盘根暗井破开树根封壁，便可径直攀回<strong>起点熄灯祭坛</strong>——老铸钟匠的铁砧就在咫尺之上。”"
+    }
+  ],
+  "gates": [
+    {
+      "id": "gate_forest_hatch",
+      "role": "switchGate",
+      "switchKey": "forestHatchOpen",
+      "orientation": "horizontal",
+      "x": 150,
+      "y": 0,
+      "w": 105,
+      "h": 34
+    }
+  ],
+  "secretWalls": [],
+  "pickups": [
+    {
+      "id": "pickup_echo_woods_canopy",
+      "kind": "echoCache",
+      "x": 845,
+      "y": 195,
+      "echoAmount": 95,
+      "name": "树冠荧光残响",
+      "desc": "荧光孢伞林梢凝结的残响（+95 残响）"
+    },
+    {
+      "id": "pickup_echo_forest",
+      "kind": "echoCache",
+      "x": 92,
+      "y": 640,
+      "echoAmount": 85,
+      "name": "枯根古印",
+      "desc": "藏于古林暗影屏障之后的残响（+85 残响）"
+    }
+  ],
+  "resonancePuzzles": [
+    {
+      "id": "puzzle_forest",
+      "name": "枯墨古林 · 三钟共鸣",
+      "timeLimit": 7.5,
+      "cageX": 845,
+      "cageY": 195,
+      "bells": [
+        {
+          "id": "rb_f1",
+          "x": 620,
+          "y": 290,
+          "topY": 0,
+          "noteFreq": 329.63
+        },
+        {
+          "id": "rb_f2",
+          "x": 845,
+          "y": 335,
+          "topY": 0,
+          "noteFreq": 440.0
+        },
+        {
+          "id": "rb_f3",
+          "x": 1065,
+          "y": 215,
+          "topY": 0,
+          "noteFreq": 523.25
+        }
+      ]
+    }
+  ],
+  "pendulums": [],
+  "rivers": [],
+  "grappleAnchors": [
+    {
+      "id": "anc_forest_1",
+      "x": 1445,
+      "y": 240,
+      "topY": 0
+    },
+    {
+      "id": "anc_forest_2",
+      "x": 850,
+      "y": 90,
+      "topY": 0
+    },
+    {
+      "id": "anc_forest_3",
+      "x": 205,
+      "y": 85,
+      "topY": 0
+    }
+  ],
+  "lanterns": [
+    {
+      "id": "lan_forest_1",
+      "x": 1335,
+      "anchorY": 165,
+      "topY": 0,
+      "len": 165,
+      "angle": 0.06
+    },
+    {
+      "id": "lan_forest_2",
+      "x": 455,
+      "anchorY": 140,
+      "topY": 0,
+      "len": 150,
+      "angle": -0.06
+    }
+  ],
+  "enemies": [
+    {
+      "id": "weaver_forest_2",
+      "kind": "weaver",
+      "x": 1430,
+      "y": 439,
+      "minX": 1360,
+      "maxX": 1500
+    },
+    {
+      "id": "leech_forest_2",
+      "kind": "leech",
+      "x": 1295,
+      "y": 8
+    },
+    {
+      "id": "fungus_forest_1",
+      "kind": "fungus",
+      "x": 1750,
+      "y": 582,
+      "minX": 1510,
+      "maxX": 1930
+    },
+    {
+      "id": "weaver_forest_1",
+      "kind": "weaver",
+      "x": 1680,
+      "y": 324,
+      "minX": 1590,
+      "maxX": 1760
+    },
+    {
+      "id": "fungus_forest_2",
+      "kind": "fungus",
+      "x": 780,
+      "y": 582,
+      "minX": 520,
+      "maxX": 1180
+    }
+  ],
+  "bosses": [],
+  "inscriptions": [
+    {
+      "x": 1825,
+      "y": 555,
+      "text": "「枯墨古林 · 踩踏荧光孢伞可借势腾跃」"
+    },
+    {
+      "x": 845,
+      "y": 385,
+      "text": "「限时齐鸣三口青铜悬钟 · 可用 W+法 镇魂钟鸣」",
+      "dynamicKey": "bellPuzzle",
+      "hideWhenPuzzleSolved": "puzzle_forest"
+    },
+    {
+      "x": 205,
+      "y": 92,
+      "text": "「斩断上方枯根封壁 · 直返起点熄灯祭坛 ↑」"
+    },
+    {
+      "x": 1355,
+      "y": 575,
+      "text": "东侧深根裂隙通往「盘根溶洞」— 沉渊暗河之水由此西渗滋养古林"
+    },
+    {
+      "x": 1195,
+      "y": 562,
+      "text": "「休眠巨孢 · 以「镇魂钟鸣」或引魂摇铃唤醒」"
+    },
+    {
+      "x": 318,
+      "y": 78,
+      "text": "「启闸开启古根活板 · 直通起点熄灯祭坛」",
+      "hideWhenSwitch": "forestHatchOpen"
+    }
+  ],
+  "props": {
+    "puddles": [],
+    "banners": [],
+    "candles": [
+      {
+        "x": 1095,
+        "y": 320,
+        "count": 4
+      },
+      {
+        "x": 510,
+        "y": 510,
+        "count": 3
+      }
+    ],
+    "boneCairns": [
+      420,
+      1520
+    ],
+    "stamps": [
+      {
+        "type": "ink_tree",
+        "x": 290,
+        "y": 640,
+        "scale": 1.15,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.82,
+        "seed": 0
+      },
+      {
+        "type": "canopy_bough",
+        "x": 440,
+        "y": 0,
+        "scale": 1.1,
+        "flip": false,
+        "layer": "fg",
+        "alpha": 0.56,
+        "seed": 1
+      },
+      {
+        "type": "glow_spores",
+        "x": 520,
+        "y": 640,
+        "scale": 0.92,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.9,
+        "seed": 0
+      },
+      {
+        "type": "ink_tree",
+        "x": 760,
+        "y": 640,
+        "scale": 1.24,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.8,
+        "seed": 2
+      },
+      {
+        "type": "glow_spores",
+        "x": 860,
+        "y": 640,
+        "scale": 1.05,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.92,
+        "seed": 1
+      },
+      {
+        "type": "canopy_bough",
+        "x": 1010,
+        "y": 0,
+        "scale": 1.15,
+        "flip": true,
+        "layer": "fg",
+        "alpha": 0.54,
+        "seed": 2
+      },
+      {
+        "type": "ink_tree",
+        "x": 1180,
+        "y": 640,
+        "scale": 1.18,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.78,
+        "seed": 1
+      },
+      {
+        "type": "glow_spores",
+        "x": 1495,
+        "y": 640,
+        "scale": 0.96,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.9,
+        "seed": 2
+      },
+      {
+        "type": "ink_tree",
+        "x": 1740,
+        "y": 640,
+        "scale": 1.12,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.8,
+        "seed": 0
+      },
+      {
+        "type": "canopy_bough",
+        "x": 1680,
+        "y": 0,
+        "scale": 1.05,
+        "flip": false,
+        "layer": "fg",
+        "alpha": 0.54,
+        "seed": 0
+      },
+      {
+        "type": "fallen_bell",
+        "x": 105,
+        "y": 640,
+        "scale": 0.88,
+        "flip": false,
+        "layer": "bg",
+        "alpha": 0.78,
+        "seed": 2
+      }
+    ]
+  },
+  "voidBarriers": [
+    {
+      "id": "vb_forest",
+      "x": 215,
+      "y": 532,
+      "w": 22,
+      "h": 108
+    }
+  ],
+  "worldSwitches": [
+    {
+      "id": "switch_forest_hatch",
+      "switchKey": "forestHatchOpen",
+      "kind": "hatch",
+      "x": 318,
+      "y": 135,
+      "name": "古林归坛活板闸"
+    }
+  ]
+}

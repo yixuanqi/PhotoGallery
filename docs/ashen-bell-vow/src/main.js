@@ -984,8 +984,9 @@ async function bootstrapGame() {
   applyMobileTouchPrefs();
   loadSavedLocale();
   buildGlowSprites();
-  await loadWorldData();
   const bootSave = readSaveData();
+  const bootCycle = (bootSave && Number(bootSave.ngPlusCycle) >= 2) ? Math.floor(Number(bootSave.ngPlusCycle)) : 1;
+  await loadWorldData(bootCycle);
   if (bootSave && (bootSave.controlMode === 'kbmouse' || bootSave.controlMode === 'keyboard')) {
     G.controlMode = bootSave.controlMode;
   }

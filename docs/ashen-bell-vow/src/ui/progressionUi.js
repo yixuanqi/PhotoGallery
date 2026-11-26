@@ -5,7 +5,7 @@ import {
   ABYSSAL_RIVERS, WIND_ZONES, BOUNCE_PADS, WORLD_MIN_X, WORLD_MIN_Y, WORLD_W, WORLD_H, WORLD_SPAN_W, WORLD_SPAN_H, FLOOR_Y, WELL_BOTTOM_Y,
   MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H, ECHO_GRADE_ORDER, SEVEN_BELLS_ORDER
 } from '../config.js';
-import { getRoomAt, getZoneLabelAt, getPreviewSpawnRoomId, getPreviewSpawnCoords, getRoomSpawnPoint } from '../levelLoader.js';
+import { getRoomAt, getZoneLabelAt, getPreviewSpawnRoomId, getPreviewSpawnCoords, getRoomSpawnPoint, ensureWorldForCycle, getWorldVariantLabel } from '../levelLoader.js';
 import {
   G, createFreshWorldState, getActiveAltar, getActiveSynergies, getRelicStats, getActiveVowStats, getCombatScaling, getEquippedRelicLabel, getActiveWeaponId, getActiveWeapon, isWeaponUnlocked, getUnlockedWeaponIds, unlockWeapon,
   isWeaponTraitUnlocked, getActiveWeaponTraitId, unlockWeaponTrait, setActiveWeaponTrait,
@@ -102,11 +102,40 @@ export function setupEchoArena(stageBoss) {
   G.invertTimer = 0;
   G.screenFlash = { alpha: 0.18, color: COLORS.goldBright };
 
+  // Helper: derive player spawn point on the opposite side of the arena from the boss/warden (works even when translated or mirrored!)
+  const getBossPlayerSpawn = (bossObj, margin = 120) => {
+    const midX = (bossObj.arenaMinX + bossObj.arenaMaxX) * 0.5;
+    const bossOnRight = (bossObj.x + bossObj.w * 0.5) >= midX;
+    const px = bossOnRight ? (bossObj.arenaMinX + margin) : (bossObj.arenaMaxX - margin - 28);
+    const py = bossObj.arenaFloorY - 54;
+    return { x: px, y: py, facing: bossOnRight ? 1 : -1 };
+  };
+  const spawnEchoWarden = (kind, makerFn, fallback) => {
+    const def = ENEMIES_DEF.find(e => e.kind === kind);
+    const id = def ? def.id : fallback.id;
+    const wx = def ? def.x : fallback.x;
+    const wy = def ? def.y : fallback.y;
+    const minX = (def && def.minX !== undefined) ? def.minX : fallback.minX;
+    const maxX = (def && def.maxX !== undefined) ? def.maxX : fallback.maxX;
+    const w = makerFn(id, wx, wy, minX, maxX);
+    w.roomId = def ? def.roomId : fallback.roomId;
+    w.awake = true;
+    w.state = 'stalk';
+    w.stateTimer = 0.5;
+    const midX = (minX + maxX) * 0.5;
+    const wardenOnRight = (wx + w.w * 0.5) >= midX;
+    const px = wardenOnRight ? (minX + fallback.playerOff) : (maxX - fallback.playerOff - 28);
+    const py = wy + w.h - 54;
+    return { w, px, py, facing: wardenOnRight ? 1 : -1 };
+  };
+
   if (stageBoss === 'hui') {
     G.boss.awake = true;
     G.boss2.alive = false;
     G.boss3.alive = false;
-    G.player = createPlayer(2780, FLOOR_Y - 54);
+    const sp = getBossPlayerSpawn(G.boss, 132);
+    G.player = createPlayer(sp.x, sp.y);
+    G.player.facing = sp.facing;
     snapCameraToPlayer(8);
     triggerBossBanner(t('boss.echoHuiTitle'), t('boss.echoHuiQuote'), COLORS.parchment, 2.3);
   } else if (stageBoss === 'ji') {
@@ -117,7 +146,9 @@ export function setupEchoArena(stageBoss) {
     const isCarry = !!(G.echoSession && (G.echoSession.mode === 'rush' || G.echoSession.mode === 'seven_bells') && G.player);
     const keepFlasks = isCarry ? Math.min(getPlayerMaxFlasks(), G.player.flasks + 1) : getPlayerMaxFlasks();
     const keepHp = isCarry ? Math.min(G.player.maxHp, Math.max(60, G.player.hp + 45)) : getPlayerMaxHp();
-    G.player = createPlayer(5710, WELL_BOTTOM_Y - 54);
+    const sp = getBossPlayerSpawn(G.boss2, 126);
+    G.player = createPlayer(sp.x, sp.y);
+    G.player.facing = sp.facing;
     G.player.flasks = keepFlasks;
     G.player.hp = keepHp;
     snapCameraToPlayer(8);
@@ -130,14 +161,10 @@ export function setupEchoArena(stageBoss) {
     const isSeven = !!(G.echoSession && G.echoSession.mode === 'seven_bells' && G.player);
     const keepFlasks = isSeven ? Math.min(getPlayerMaxFlasks(), G.player.flasks + 1) : getPlayerMaxFlasks();
     const keepHp = isSeven ? Math.min(G.player.maxHp, Math.max(60, G.player.hp + 45)) : getPlayerMaxHp();
-    const w = makeWardenWind('warden_wind_boss', 7500, -192, 6920, 8080);
-    w.roomId = 'r13_wind_peak';
-    w.awake = true;
-    w.state = 'stalk';
-    w.stateTimer = 0.5;
-    G.enemies = [w];
-    G.player = createPlayer(7020, -174);
-    G.player.facing = 1;
+    const ew = spawnEchoWarden('warden_wind', makeWardenWind, { id: 'warden_wind_boss', x: 7500, y: -192, minX: 6920, maxX: 8080, roomId: 'r13_wind_peak', playerOff: 100 });
+    G.enemies = [ew.w];
+    G.player = createPlayer(ew.px, ew.py);
+    G.player.facing = ew.facing;
     G.player.flasks = keepFlasks;
     G.player.hp = keepHp;
     snapCameraToPlayer(8);
@@ -150,14 +177,11 @@ export function setupEchoArena(stageBoss) {
     const isCarry = !!(G.echoSession && (G.echoSession.mode === 'warden_rush' || G.echoSession.mode === 'seven_bells') && G.player);
     const keepFlasks = isCarry ? Math.min(getPlayerMaxFlasks(), G.player.flasks + 1) : getPlayerMaxFlasks();
     const keepHp = isCarry ? Math.min(G.player.maxHp, Math.max(60, G.player.hp + 45)) : getPlayerMaxHp();
-    const w = makeWardenForest('warden_forest_boss', 640, 2022, 220, 960);
-    w.roomId = 'r15_woods_heart';
-    w.awake = true;
-    w.state = 'stalk';
-    w.stateTimer = 0.55;
-    G.enemies = [w];
-    G.player = createPlayer(240, 2066);
-    G.player.facing = 1;
+    const ew = spawnEchoWarden('warden_forest', makeWardenForest, { id: 'warden_forest_boss', x: 640, y: 2022, minX: 220, maxX: 960, roomId: 'r15_woods_heart', playerOff: 20 });
+    ew.w.stateTimer = 0.55;
+    G.enemies = [ew.w];
+    G.player = createPlayer(ew.px, ew.py);
+    G.player.facing = ew.facing;
     G.player.flasks = keepFlasks;
     G.player.hp = keepHp;
     snapCameraToPlayer(8);
@@ -170,14 +194,10 @@ export function setupEchoArena(stageBoss) {
     const isCarry = !!(G.echoSession && (G.echoSession.mode === 'warden_rush' || G.echoSession.mode === 'seven_bells') && G.player);
     const keepFlasks = isCarry ? Math.min(getPlayerMaxFlasks(), G.player.flasks + 1) : getPlayerMaxFlasks();
     const keepHp = isCarry ? Math.min(G.player.maxHp, Math.max(60, G.player.hp + 50)) : getPlayerMaxHp();
-    const w = makeWardenMountain('warden_mountain_boss', 8970, -194, 8440, 9500);
-    w.roomId = 'r17_frost_summit';
-    w.awake = true;
-    w.state = 'stalk';
-    w.stateTimer = 0.5;
-    G.enemies = [w];
-    G.player = createPlayer(8500, -174);
-    G.player.facing = 1;
+    const ew = spawnEchoWarden('warden_mountain', makeWardenMountain, { id: 'warden_mountain_boss', x: 8970, y: -194, minX: 8440, maxX: 9500, roomId: 'r17_frost_summit', playerOff: 60 });
+    G.enemies = [ew.w];
+    G.player = createPlayer(ew.px, ew.py);
+    G.player.facing = ew.facing;
     G.player.flasks = keepFlasks;
     G.player.hp = keepHp;
     snapCameraToPlayer(8);
@@ -188,7 +208,9 @@ export function setupEchoArena(stageBoss) {
     const isSeven = !!(G.echoSession && G.echoSession.mode === 'seven_bells' && G.player);
     const keepFlasks = isSeven ? Math.min(getPlayerMaxFlasks(), G.player.flasks + 2) : getPlayerMaxFlasks();
     const keepHp = isSeven ? Math.min(G.player.maxHp, Math.max(90, G.player.hp + 85)) : getPlayerMaxHp();
-    G.player = createPlayer(8480, FLOOR_Y - 54);
+    const sp = getBossPlayerSpawn(G.boss4, 102);
+    G.player = createPlayer(sp.x, sp.y);
+    G.player.facing = sp.facing;
     G.player.flasks = keepFlasks;
     G.player.hp = keepHp;
     if (isSeven) G.player.seals = Math.min(G.player.maxSeals, (G.player.seals || 0) + 1);
@@ -203,7 +225,9 @@ export function setupEchoArena(stageBoss) {
     const isSeven = !!(G.echoSession && G.echoSession.mode === 'seven_bells' && G.player);
     const keepFlasks = isSeven ? Math.min(getPlayerMaxFlasks(), G.player.flasks + 2) : isRush ? Math.min(getPlayerMaxFlasks(), G.player.flasks + 1) : getPlayerMaxFlasks();
     const keepHp = isSeven ? Math.min(G.player.maxHp, Math.max(75, G.player.hp + 65)) : isRush ? Math.min(G.player.maxHp, Math.max(65, G.player.hp + 55)) : getPlayerMaxHp();
-    G.player = createPlayer(8480, FLOOR_Y - 54);
+    const sp = getBossPlayerSpawn(G.boss3, 102);
+    G.player = createPlayer(sp.x, sp.y);
+    G.player.facing = sp.facing;
     G.player.flasks = keepFlasks;
     G.player.hp = keepHp;
     snapCameraToPlayer(10);
@@ -351,6 +375,8 @@ export function respawnAtActiveAltar() {
   G.echoSession = null;
   const altar = getActiveAltar();
   G.player = createPlayer(altar.x - 14, altar.y - 54);
+  const altarRoom = getRoomAt(altar.x, altar.y - 20);
+  if (altarRoom && altarRoom.mirrored) G.player.facing = -1;
   G.enemies = createSentinels();
   G.boss = createBoss();
   G.boss2 = createBoss2();
@@ -518,8 +544,16 @@ export function showVictory(bossId = 'boss_hui') {
   if (vm) vm.classList.remove('hidden');
 }
 
-export function startGame() {
-  if (!G.levelBundle) return;
+let _worldSwitchBusy = false;
+
+export async function startGame() {
+  if (!G.levelBundle || _worldSwitchBusy) return;
+  _worldSwitchBusy = true;
+  try {
+    if (!G.isEditorPreview) await ensureWorldForCycle(1);
+  } finally {
+    _worldSwitchBusy = false;
+  }
   clearOutcomeTimer();
   hideAllOverlays();
   G.worldState = createFreshWorldState();
@@ -534,6 +568,8 @@ export function startGame() {
         ? getRoomSpawnPoint(previewRoomId)
         : (ALTARS[0] ? { x: ALTARS[0].x - 14, y: ALTARS[0].y - 54 } : { x: 316, y: FLOOR_Y - 54 }));
   G.player = createPlayer(spawnPt.x, spawnPt.y);
+  const startRm = getRoomAt(spawnPt.x + 14, spawnPt.y + 27);
+  if (startRm && startRm.mirrored) G.player.facing = -1;
   markMapExplored(spawnPt.x + 14, spawnPt.y + 14);
   G.echoSession = null;
   G.enemies = createSentinels();
@@ -585,20 +621,25 @@ export function startGame() {
   uiHooks.syncHUD(true);
 }
 
-export function startNewGamePlus() {
-  if (!G.levelBundle) return;
+export async function startNewGamePlus() {
+  if (!G.levelBundle || _worldSwitchBusy) return;
   if (!G.worldState) {
-    startGame();
-    return;
+    return startGame();
   }
-  clearOutcomeTimer();
-  hideAllOverlays();
-
   const prev = G.worldState;
   const nextCycle = Math.max(1, Math.floor(Number(prev.ngPlusCycle) || 1)) + 1;
   const keepEquipped = Array.isArray(G.equippedRelics) && G.equippedRelics.length >= 2
     ? [G.equippedRelics[0] || RELICS[0], G.equippedRelics[1] || null, G.equippedRelics[2] || null]
     : [G.currentRelic || RELICS[0], null, null];
+
+  _worldSwitchBusy = true;
+  try {
+    await ensureWorldForCycle(nextCycle);
+  } finally {
+    _worldSwitchBusy = false;
+  }
+  clearOutcomeTimer();
+  hideAllOverlays();
 
   const fresh = createFreshWorldState();
   fresh.ngPlusCycle = nextCycle;
@@ -637,6 +678,8 @@ export function startNewGamePlus() {
 
   const spawnPt = ALTARS[0] ? { x: ALTARS[0].x - 14, y: ALTARS[0].y - 54 } : { x: 316, y: FLOOR_Y - 54 };
   G.player = createPlayer(spawnPt.x, spawnPt.y);
+  const ngStartRm = getRoomAt(spawnPt.x + 14, spawnPt.y + 27);
+  if (ngStartRm && ngStartRm.mirrored) G.player.facing = -1;
   markMapExplored(spawnPt.x + 14, spawnPt.y + 14);
   G.echoSession = null;
   G.enemies = createSentinels();
@@ -644,6 +687,8 @@ export function startNewGamePlus() {
   G.boss2 = createBoss2();
   G.boss3 = createBoss3();
   G.boss4 = createBoss4();
+  G.foundryCrucibles = createFoundryCrucibles();
+  G.lastZoneName = '';
   G.endingState = null;
   G.lanterns = createLanterns();
   G.resonancePuzzles = createResonancePuzzles();
@@ -677,10 +722,10 @@ export function startNewGamePlus() {
   audio.playBellToll();
   const sc = getCombatScaling(false);
   triggerBossBanner(
-    t('ng.bannerTitle', nextCycle),
+    t('ng.bannerTitle', nextCycle, getWorldVariantLabel(nextCycle)),
     t('ng.bannerQuote', sc.hpMult.toFixed(2), sc.echoMult.toFixed(2)),
     COLORS.goldBright,
-    3.2
+    3.4
   );
   checkAchievements({ ngPlus: true });
   saveProgress(true);
@@ -775,7 +820,7 @@ function renderEndingEpilogueUI() {
   const ngBtn = document.getElementById('btn-ending-ngplus');
   if (ngBtn) {
     const nextCyc = ((G.worldState && G.worldState.ngPlusCycle) ? G.worldState.ngPlusCycle : 1) + 1;
-    ngBtn.textContent = t('ending.ngBtn', nextCyc);
+    ngBtn.textContent = t('ending.ngBtn', nextCyc, getWorldVariantLabel(nextCyc));
   }
 }
 

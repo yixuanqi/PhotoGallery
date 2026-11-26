@@ -1,7 +1,7 @@
 // Asynchronous Room-Based JSON Data Stream loader & runtime hydrator
 import {
   ROOMS, SOLIDS, ALTARS, NPCS, ALTAR_POS, LORE_TABLETS,
-  SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, SKY_BRIDGE_GATE_DEF, FOUNDRY_VENT_GATE_DEF, MIRROR_ABYSS_GATE_DEF,
+  SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_ENTRY_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, SKY_BRIDGE_GATE_DEF, FOUNDRY_VENT_GATE_DEF, MIRROR_ABYSS_GATE_DEF, FIRST_BELL_CORE_POS,
   SECRET_WALLS_DEF, VOID_BARRIERS, PICKUPS_DEF, RESONANCE_PUZZLES_DEF, CRUMBLE_PLATFORMS_DEF,
   PENDULUMS, ABYSSAL_RIVERS, ABYSSAL_RIVER, WALL_INSCRIPTIONS, GRAPPLE_ANCHORS,
   LANTERNS_DEF, ENEMIES_DEF, BOSSES_DEF, PUDDLES, BANNERS, CANDLE_CLUSTERS, BONE_CAIRNS, STAMPS, WIND_ZONES, BOUNCE_PADS,
@@ -13,8 +13,27 @@ import { t, locZoneName, locRoomName, locSubZone } from './i18n.js';
 import { invalidateTerrainCache } from './renderTerrain.js';
 import { invalidateBackdropCache } from './render/backdropCache.js';
 
+const _cycleBundleCache = new Map();
+
 function resetArray(arr) {
   arr.length = 0;
+}
+
+export function getWorldVariantKeyForCycle(cycle = 1) {
+  const c = Math.max(1, Math.floor(Number(cycle) || 1));
+  if (c === 2) return 2;
+  if (c >= 3) return 3;
+  return 1;
+}
+
+export function getWorldVariantIdForCycle(cycle = 1) {
+  const k = getWorldVariantKeyForCycle(cycle);
+  return k === 2 ? 'ng2_mirror' : k === 3 ? 'ng3_skyway' : 'ng1_classic';
+}
+
+export function getWorldVariantLabel(cycle = 1) {
+  const k = getWorldVariantKeyForCycle(cycle);
+  return t(k === 2 ? 'world.variant2' : k === 3 ? 'world.variant3' : 'world.variant1');
 }
 
 export function isPreviewMode() {
@@ -123,6 +142,7 @@ export function hydrateWorldBundle(bundle) {
       zoneName: room.zoneName || '晦渊',
       name: room.name || room.id,
       theme: room.theme || 'corridor',
+      mirrored: !!room.mirrored,
       terrainMod: room.terrainMod ? { ...room.terrainMod } : null,
       bounds: { x: ox, y: oy, w: rw, h: rh },
       connections: Array.isArray(room.connections) ? [...room.connections] : [],
@@ -384,7 +404,8 @@ export function hydrateWorldBundle(bundle) {
 
     const props = room.props || {};
     for (const p of (props.puddles || [])) {
-      PUDDLES.push({ x: ox + p.x, w: p.w, roomId: room.id });
+      const py = oy + (p.y !== undefined ? Number(p.y) : 580);
+      PUDDLES.push({ x: ox + p.x, y: py, w: p.w, roomId: room.id });
     }
     for (const bn of (props.banners || [])) {
       BANNERS.push({ ...bn, x: ox + bn.x, y: oy + bn.y, roomId: room.id });
@@ -392,8 +413,19 @@ export function hydrateWorldBundle(bundle) {
     for (const cl of (props.candles || [])) {
       CANDLE_CLUSTERS.push({ ...cl, x: ox + cl.x, y: oy + cl.y, roomId: room.id });
     }
-    for (const bx of (props.boneCairns || [])) {
-      BONE_CAIRNS.push(ox + bx);
+    for (const rawBc of (props.boneCairns || [])) {
+      const localX = typeof rawBc === 'object' ? (Number(rawBc.x) || 0) : Number(rawBc);
+      let localY = (typeof rawBc === 'object' && rawBc.y !== undefined) ? Number(rawBc.y) : null;
+      if (localY === null) {
+        // Snap bone cairn onto the ground slab directly beneath localX inside this room (fallback 580)
+        for (const s of (room.solids || [])) {
+          if (s.type === 'ground' && localX >= s.x - 6 && localX <= s.x + s.w + 6) {
+            if (localY === null || s.y < localY) localY = s.y;
+          }
+        }
+        if (localY === null) localY = 580;
+      }
+      BONE_CAIRNS.push({ x: ox + localX, y: oy + localY, roomId: room.id });
     }
     for (const st of (props.stamps || [])) {
       STAMPS.push({
@@ -427,17 +459,120 @@ export function hydrateWorldBundle(bundle) {
   if (ABYSSAL_RIVERS.length > 0) {
     Object.assign(ABYSSAL_RIVER, ABYSSAL_RIVERS[0]);
   }
+  const heartRoom = ROOMS.find(r => r.id === 'r08_heart');
+  if (heartRoom) {
+    const hb = heartRoom.bounds;
+    FIRST_BELL_CORE_POS.x = heartRoom.mirrored ? (hb.x + hb.w - 640) : (hb.x + 640);
+    FIRST_BELL_CORE_POS.y = BOSSES_DEF.boss_yuan ? BOSSES_DEF.boss_yuan.arenaFloorY : (hb.y + 580);
+  }
 
   setWorldMetrics(maxW, maxH, world.floorY || 580, world.wellBottomY || 1380, minX, minY);
   invalidateTerrainCache();
   invalidateBackdropCache();
+  const hydratedKey = getWorldVariantKeyForCycle(world.cycle || 1);
+  G.loadedWorldVariant = hydratedKey;
+  G.currentWorldVariant = world.variantId || getWorldVariantIdForCycle(hydratedKey);
   G.levelBundle = bundle;
   G.exploreDirty = true;
   G.minimapDirty = true;
   return bundle;
 }
 
-export async function loadWorldData() {
+async function fetchJsonWithRetry(url, retries = 2) {
+  let lastErr = null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const resp = await fetch(url, { cache: 'no-cache' });
+      if (!resp.ok) throw new Error(t('err.fetchFail', url, resp.status));
+      return await resp.json();
+    } catch (err) {
+      lastErr = err;
+      if (attempt < retries) await new Promise(r => setTimeout(r, 450 * (attempt + 1)));
+    }
+  }
+  throw lastErr;
+}
+
+async function fetchCycleBundle(variantKey) {
+  const manifestUrl = variantKey === 2
+    ? './data/worlds/world_ng2.json'
+    : variantKey === 3
+      ? './data/worlds/world_ng3.json'
+      : './data/worlds/world_ng1.json';
+  let world = null;
+  try {
+    world = await fetchJsonWithRetry(manifestUrl, 2);
+  } catch (err) {
+    if (variantKey === 1) {
+      world = await fetchJsonWithRetry('./data/world.json', 2);
+    } else {
+      throw err;
+    }
+  }
+  if (!world || !Array.isArray(world.rooms) || world.rooms.length === 0) {
+    throw new Error(t('err.noRooms'));
+  }
+
+  const rooms = await Promise.all(
+    world.rooms.map(async entry => {
+      const data = await fetchJsonWithRetry(entry.file, 2);
+      return {
+        ...data,
+        id: entry.id || data.id,
+        zoneName: entry.zoneName || data.zoneName,
+        name: entry.name || data.name,
+        theme: entry.theme || data.theme,
+        mirrored: entry.mirrored !== undefined ? !!entry.mirrored : !!data.mirrored,
+        bounds: entry.bounds || data.bounds,
+        connections: entry.connections || data.connections || []
+      };
+    })
+  );
+  return { world, rooms };
+}
+
+export async function ensureWorldForCycle(cycle = 1) {
+  if (G.isEditorPreview && G.levelBundle) return G.levelBundle;
+  const variantKey = getWorldVariantKeyForCycle(cycle);
+  if (G.levelBundle && G.loadedWorldVariant === variantKey) {
+    return G.levelBundle;
+  }
+
+  if (_cycleBundleCache.has(variantKey)) {
+    G.isEditorPreview = false;
+    return hydrateWorldBundle(_cycleBundleCache.get(variantKey));
+  }
+
+  // Offline Pre-Bundled Multi-Cycle Worlds (TapTap / 4399 / file:// zero-fetch release)
+  if (typeof window !== 'undefined') {
+    const offlineMulti = window.__ABV_OFFLINE_WORLDS__;
+    const picked = (offlineMulti && (offlineMulti[variantKey] || offlineMulti[String(variantKey)]))
+      || (variantKey === 1 ? window.__ABV_OFFLINE_WORLD__ : null);
+    if (picked) {
+      _cycleBundleCache.set(variantKey, picked);
+      G.isEditorPreview = false;
+      return hydrateWorldBundle(picked);
+    }
+  }
+
+  // Web / Modular fetch mode: load requested cycle manifest & rooms, with safe fallback to NG1 if missing
+  try {
+    const bundle = await fetchCycleBundle(variantKey);
+    _cycleBundleCache.set(variantKey, bundle);
+    G.isEditorPreview = false;
+    return hydrateWorldBundle(bundle);
+  } catch (err) {
+    if (variantKey !== 1) {
+      const fallback = _cycleBundleCache.get(1) || await fetchCycleBundle(1);
+      _cycleBundleCache.set(1, fallback);
+      G.isEditorPreview = false;
+      return hydrateWorldBundle(fallback);
+    }
+    throw err;
+  }
+}
+
+export async function loadWorldData(cycle = 1) {
   // 1. Live Preview Mode from editor.html (?preview=1)
   if (isPreviewMode()) {
     try {
@@ -453,52 +588,7 @@ export async function loadWorldData() {
       // Fall back to static JSON files
     }
   }
-
-  // 1.5 Offline Pre-Bundled World Data (TapTap / 4399 / file:// zero-fetch release)
-  if (typeof window !== 'undefined' && window.__ABV_OFFLINE_WORLD__) {
-    G.isEditorPreview = false;
-    return hydrateWorldBundle(window.__ABV_OFFLINE_WORLD__);
-  }
-
-  const fetchJsonWithRetry = async (url, retries = 2) => {
-    let lastErr = null;
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      try {
-        const resp = await fetch(url, { cache: 'no-cache' });
-        if (!resp.ok) throw new Error(t('err.fetchFail', url, resp.status));
-        return await resp.json();
-      } catch (err) {
-        lastErr = err;
-        if (attempt < retries) await new Promise(r => setTimeout(r, 450 * (attempt + 1)));
-      }
-    }
-    throw lastErr;
-  };
-
-  // 2. Fetch data/world.json and all room JSON files concurrently with mobile retry
-  const world = await fetchJsonWithRetry('./data/world.json', 2);
-  if (!world || !Array.isArray(world.rooms) || world.rooms.length === 0) {
-    throw new Error(t('err.noRooms'));
-  }
-
-  const rooms = await Promise.all(
-    world.rooms.map(async entry => {
-      const data = await fetchJsonWithRetry(entry.file, 2);
-      // Keep world.json manifest bounds authoritative if edited in world overview
-      return {
-        ...data,
-        id: entry.id || data.id,
-        zoneName: entry.zoneName || data.zoneName,
-        name: entry.name || data.name,
-        theme: entry.theme || data.theme,
-        bounds: entry.bounds || data.bounds,
-        connections: entry.connections || data.connections || []
-      };
-    })
-  );
-
-  G.isEditorPreview = false;
-  return hydrateWorldBundle({ world, rooms });
+  return ensureWorldForCycle(cycle);
 }
 
 export function getRoomAt(x, y) {
