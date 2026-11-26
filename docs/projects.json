@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": 13,
+  "catalogVersion": 14,
   "repository": "yixuanqi/PhotoGallery",
   "baseUrl": "https://yixuanqi.github.io/PhotoGallery/",
   "updatedAt": "2026-11-26",
@@ -843,7 +843,7 @@
       "kind": "interactive-web",
       "category": "game",
       "status": "development",
-      "summary": "月亮越来越近，驾驶挂灯小船在月海乘浪，打捞人类推月实验的残骸，组装推进、浮空、共振与灯火挂件，探索潮汐光柱与终章。",
+      "summary": "在三百六十度环形月海中航行，打捞碎片升级灯火、共振、推进与浮空挂件，点亮灯塔、古钟、推月塔和观月台，唤醒潮汐光柱。",
       "tags": [
         "Canvas 2D",
         "海洋探索",
@@ -863,8 +863,8 @@
       "galaxy": {
         "icon": "🌙",
         "category": "online",
-        "description": "月亮越来越近，驾驶挂灯小船在月海乘浪，打捞人类推月实验的残骸，组装推进、浮空、共振与灯火挂件，探索潮汐光柱与终章。",
-        "note": "V1 原型，支持键鼠与触屏，建议开启声音。",
+        "description": "在三百六十度环形月海中航行，打捞碎片升级灯火、共振、推进与浮空挂件，点亮灯塔、古钟、推月塔和观月台，唤醒潮汐光柱。",
+        "note": "Phase 2：环形迷雾海图、四座古迹、自动掠拾碎片、抛钩摆荡、声波共鸣与完美跃浪。支持键鼠与触屏。",
         "linkText": "↗ 解缆出海",
         "sourceUrl": null,
         "palette": [
