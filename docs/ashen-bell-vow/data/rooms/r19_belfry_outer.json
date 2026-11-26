@@ -92,6 +92,15 @@
       "y": 215,
       "name": "钟楼古核 · 断索灵晶",
       "desc": "生命 +10 · 魂火 +10 · +55 残响"
+    },
+    {
+      "id": "pickup_relic_bell",
+      "kind": "relic",
+      "relicId": "bellthread",
+      "x": 550,
+      "y": 316,
+      "name": "隐藏圣物 · 幽丝断钟",
+      "desc": "已解锁并可在祭坛铭刻！"
     }
   ],
   "resonancePuzzles": [],

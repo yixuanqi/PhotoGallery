@@ -151,6 +151,15 @@
       "y": 320,
       "name": "雨阶残响",
       "desc": "淋雨墓阶外廊残钟下遗落的 +75 残响"
+    },
+    {
+      "id": "pickup_relic_core",
+      "kind": "relic",
+      "relicId": "bellcore",
+      "x": 710,
+      "y": 215,
+      "name": "苍穹秘宝 · 古钟心核",
+      "desc": "墨印上限 +1，弹反回血，居合/断钟返增伤 25%！"
     }
   ],
   "resonancePuzzles": [],

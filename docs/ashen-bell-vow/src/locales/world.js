@@ -121,7 +121,7 @@ export const WORLD_EN = {
     lore_well: {
       title: "Bell-Smith's Legacy Stele",
       sub: 'Abyssal Bell Well · Eastern Belfry',
-      html: '“The Bell-Guard Ironclad bears a bronze tower shield that turns aside ordinary strikes.<br>Only an <strong>Iai Flash, heavy third cleave, Resonant Blade, or Perfect Parry</strong> can crack its guard.<br><br>Deep along the sunless river at the well’s floor lies the lost art of <strong>Ink-Wing Stride</strong>. Once mastered, warp back to the starting cloister—<br><strong>the Skyward Bell Loft hangs high above the first lantern, where the Ancient Bell Core still hums.</strong>”'
+      html: '“The Bell-Guard Ironclad bears a bronze tower shield that turns aside ordinary strikes.<br>Only an <strong>Iai Flash, heavy third cleave, Resonant Blade, or Perfect Parry</strong> can crack its guard.<br><br>Deep along the sunless river at the well’s floor lies the lost art of <strong>Ink-Wing Stride</strong>. Once mastered, ascend via Grapple to the <strong>Rain-Washed Steps</strong> above the corridor—<br><strong>its high sky platform hangs amid the rain mist, where the Ancient Bell Core still hums.</strong>”'
     },
     lore_void_barrier: {
       title: 'Notes on the Ink-Blight Barrier',
@@ -216,7 +216,7 @@ export const WORLD_EN = {
     },
     pickup_ink_wings: {
       name: 'Art · Ink-Wing Stride',
-      desc: 'Double jump unlocked! Press Space mid-air to soar and reach the Skyward Bell Loft.'
+      desc: 'Double jump unlocked! Press Space mid-air to soar and reach the high sky platform of the Rain-Washed Steps.'
     },
     pickup_relic_ironheart: {
       name: 'Well Relic · Sundered Ironheart',

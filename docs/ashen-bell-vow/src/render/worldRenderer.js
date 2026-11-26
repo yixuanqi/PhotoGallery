@@ -86,6 +86,7 @@ export function drawWallInscriptions() {
   for (let i = 0; i < WALL_INSCRIPTIONS.length; i++) {
     const ins = WALL_INSCRIPTIONS[i];
     if (isRoomOccluded(ins.roomId)) continue;
+    if (ins.dynamicKey === 'grapple' && (!G.worldState || !G.worldState.abilities || !G.worldState.abilities.grappleHook)) continue;
     if (ins.hideWhenShortcutOpen && G.worldState && G.worldState.shortcutOpen) continue;
     if (ins.hideWhenDoubleJump && G.worldState && G.worldState.abilities.doubleJump) continue;
     if (ins.hideWhenShadeDash && G.worldState && G.worldState.abilities.shadeDash) continue;
@@ -1174,24 +1175,33 @@ export function drawGrappleAnchors() {
     const minY = Math.min(topY0, a.y - 24);
     const maxY = Math.max(topY0, a.y + 24);
     if (!isInView(a.x - 40, minY, 80, maxY - minY, 100)) continue;
+    const hasGrapple = !!(G.worldState && G.worldState.abilities && G.worldState.abilities.grappleHook);
     G.ctx.save();
-    G.ctx.strokeStyle = 'rgba(216, 207, 184, 0.30)';
+    G.ctx.strokeStyle = hasGrapple ? 'rgba(216, 207, 184, 0.30)' : 'rgba(130, 138, 152, 0.22)';
     G.ctx.lineWidth = 1.5;
     const topY = topY0;
     if (a.y - 12 > topY) boilLine(G.ctx, a.x, topY, a.x, a.y - 12, 2300 + idx * 17, 1.1, 4);
 
-    const hasGrapple = !!(G.worldState && G.worldState.abilities && G.worldState.abilities.grappleHook);
-    const aid = a.id || '';
-    const isTideBeacon = hasGrapple && G.chapelTide && (aid.startsWith('anc_boss') || aid.startsWith('anc_ji') || aid.startsWith('anc_heart'));
-    const pulse = 0.65 + Math.sin(G.globalTime * (isTideBeacon ? 12 : 3.8) + idx) * 0.35;
-    drawGlowSprite(isTideBeacon ? 'gold' : (hasGrapple ? 'cyan' : 'gold'), a.x, a.y, isTideBeacon ? 52 : (hasGrapple ? 32 : 20), (isTideBeacon ? 0.56 : (hasGrapple ? 0.30 : 0.14)) * pulse);
+    if (hasGrapple) {
+      const aid = a.id || '';
+      const isTideBeacon = G.chapelTide && (aid.startsWith('anc_boss') || aid.startsWith('anc_ji') || aid.startsWith('anc_heart'));
+      const pulse = 0.65 + Math.sin(G.globalTime * (isTideBeacon ? 12 : 3.8) + idx) * 0.35;
+      drawGlowSprite(isTideBeacon ? 'gold' : 'cyan', a.x, a.y, isTideBeacon ? 52 : 32, (isTideBeacon ? 0.56 : 0.30) * pulse);
 
-    G.ctx.strokeStyle = hasGrapple ? COLORS.cyanBright : 'rgba(216, 207, 184, 0.45)';
-    G.ctx.lineWidth = 2.2;
-    boilCircle(G.ctx, a.x, a.y, 10, 2350 + idx * 13, 0.8, 12);
-    G.ctx.stroke();
-    G.ctx.fillStyle = COLORS.goldBright;
-    G.ctx.beginPath(); G.ctx.arc(a.x, a.y, 3.2, 0, Math.PI * 2); G.ctx.fill();
+      G.ctx.strokeStyle = COLORS.cyanBright;
+      G.ctx.lineWidth = 2.2;
+      boilCircle(G.ctx, a.x, a.y, 10, 2350 + idx * 13, 0.8, 12);
+      G.ctx.stroke();
+      G.ctx.fillStyle = COLORS.goldBright;
+      G.ctx.beginPath(); G.ctx.arc(a.x, a.y, 3.2, 0, Math.PI * 2); G.ctx.fill();
+    } else {
+      // v45.8 Before Grapple Hook is picked up: render ALL anchors as quiet, unlit weathered iron rings (no glow/pulse!)
+      G.ctx.strokeStyle = 'rgba(128, 136, 148, 0.42)';
+      G.ctx.lineWidth = 2.0;
+      G.ctx.beginPath(); G.ctx.arc(a.x, a.y, 9.5, 0, Math.PI * 2); G.ctx.stroke();
+      G.ctx.fillStyle = 'rgba(28, 34, 44, 0.82)';
+      G.ctx.beginPath(); G.ctx.arc(a.x, a.y, 3.0, 0, Math.PI * 2); G.ctx.fill();
+    }
     G.ctx.restore();
   }
 }

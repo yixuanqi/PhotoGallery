@@ -12,13 +12,6 @@
   },
   "subZones": [
     {
-      "name": "沉钟回廊 · 苍穹残钟阁",
-      "x": 680,
-      "y": 0,
-      "w": 260,
-      "h": 210
-    },
-    {
       "name": "沉钟回廊 · 熄灯祭坛",
       "x": 0,
       "y": 0,
@@ -66,55 +59,6 @@
       "w": 685,
       "h": 160,
       "type": "ground"
-    },
-    {
-      "x": 45,
-      "y": 135,
-      "w": 217,
-      "h": 20,
-      "type": "pillar"
-    },
-    {
-      "x": 45,
-      "y": 280,
-      "w": 295,
-      "h": 22,
-      "type": "platform"
-    },
-    {
-      "x": 355,
-      "y": 365,
-      "w": 115,
-      "h": 22,
-      "type": "platform"
-    },
-    {
-      "x": 640,
-      "y": 475,
-      "w": 155,
-      "h": 22,
-      "type": "platform"
-    },
-    {
-      "x": 700,
-      "y": 170,
-      "w": 220,
-      "h": 22,
-      "type": "platform"
-    },
-    {
-      "x": 20,
-      "y": 420,
-      "w": 114,
-      "h": 20,
-      "type": "pillar"
-    },
-    {
-      "x": 916,
-      "y": 192,
-      "w": 24,
-      "h": 228,
-      "type": "pillar"
     }
   ],
   "crumblePlatforms": [],
@@ -130,64 +74,13 @@
   ],
   "loreTablets": [],
   "gates": [],
-  "secretWalls": [
-    {
-      "id": "wall_sanctuary",
-      "x": 230,
-      "y": 155,
-      "w": 32,
-      "h": 125,
-      "maxHp": 3
-    }
-  ],
-  "pickups": [
-    {
-      "id": "pickup_relic_bell",
-      "kind": "relic",
-      "relicId": "bellthread",
-      "x": 125,
-      "y": 280,
-      "name": "隐藏圣物 · 幽丝断钟",
-      "desc": "已解锁并可在祭坛铭刻！"
-    },
-    {
-      "id": "pickup_relic_core",
-      "kind": "relic",
-      "relicId": "bellcore",
-      "x": 810,
-      "y": 170,
-      "name": "苍穹秘宝 · 古钟心核",
-      "desc": "墨印上限 +1，弹反回血，居合/断钟返增伤 25%！"
-    },
-    {
-      "id": "pickup_relic_shade",
-      "kind": "relic",
-      "relicId": "shadecurtain",
-      "x": 64,
-      "y": 580,
-      "name": "暗室秘宝 · 幽影钟幕",
-      "desc": "解锁穿影圣物「幽影钟幕」，可在祭坛铭刻！"
-    }
-  ],
+  "secretWalls": [],
+  "pickups": [],
   "resonancePuzzles": [],
   "pendulums": [],
   "rivers": [],
-  "grappleAnchors": [
-    {
-      "id": "anc_1",
-      "x": 520,
-      "y": 280
-    }
-  ],
-  "lanterns": [
-    {
-      "id": "lan_0",
-      "x": 880,
-      "anchorY": 250,
-      "len": 135,
-      "angle": 0.08
-    }
-  ],
+  "grappleAnchors": [],
+  "lanterns": [],
   "enemies": [
     {
       "id": "dummy_sanctuary",
@@ -199,30 +92,7 @@
     }
   ],
   "bosses": [],
-  "inscriptions": [
-    {
-      "x": 520,
-      "y": 345,
-      "dynamicKey": "grapple"
-    },
-    {
-      "x": 810,
-      "y": 315,
-      "text": "「苍穹残钟阁 · 非墨翼不可及」",
-      "hideWhenDoubleJump": true
-    },
-    {
-      "x": 880,
-      "y": 385,
-      "dynamicKey": "pogoSpell"
-    },
-    {
-      "x": 145,
-      "y": 398,
-      "text": "「暗蚀结界 · 非幽影穿身不可渡」",
-      "hideWhenShadeDash": true
-    }
-  ],
+  "inscriptions": [],
   "props": {
     "puddles": [
       {
@@ -265,16 +135,6 @@
       840
     ],
     "stamps": [
-      {
-        "type": "stone_statue",
-        "x": 155,
-        "y": 280,
-        "scale": 0.72,
-        "flip": false,
-        "layer": "bg",
-        "alpha": 0.68,
-        "seed": 2
-      },
       {
         "type": "hanging_chains",
         "x": 455,
@@ -326,23 +186,6 @@
       "y": 580
     }
   ],
-  "voidBarriers": [
-    {
-      "id": "vb_sanctuary",
-      "x": 112,
-      "y": 440,
-      "w": 22,
-      "h": 140
-    }
-  ],
-  "slickWalls": [
-    {
-      "id": "slick_r01_east",
-      "x": 916,
-      "y": 192,
-      "w": 24,
-      "h": 228,
-      "side": "left"
-    }
-  ]
+  "voidBarriers": [],
+  "slickWalls": []
 }

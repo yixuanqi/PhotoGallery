@@ -162,7 +162,7 @@
       "id": "pickup_echo_crypt",
       "kind": "echoCache",
       "echoAmount": 105,
-      "x": 78,
+      "x": 54,
       "y": 640,
       "name": "秘库古钟残响匣",
       "desc": "获得 +105 残响，可回老铸钟匠处淬炼断刃或圣物！"
@@ -184,6 +184,15 @@
       "y": 640,
       "name": "兵刃 · 引魂摇铃",
       "desc": "解锁中程法术兵刃「引魂摇铃」！挥铃发射穿透音环、长按三连追踪铃矢，按 [3] 或 [X] 随时切换！"
+    },
+    {
+      "id": "pickup_relic_shade",
+      "kind": "relic",
+      "relicId": "shadecurtain",
+      "x": 118,
+      "y": 640,
+      "name": "暗室秘宝 · 幽影钟幕",
+      "desc": "解锁穿影圣物「幽影钟幕」，可在祭坛铭刻！"
     }
   ],
   "resonancePuzzles": [],
