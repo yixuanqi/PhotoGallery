@@ -17,7 +17,7 @@
 
 ## 在线体验
 
-https://yixuanqi.github.io/PhotoGallery/jin-shang-dunhuang/
+https://yixuanqi.github.io/PhotoGallery/jin-shang-dunhuang/?rev=3229eb4
 
 ## 项目目录
 
