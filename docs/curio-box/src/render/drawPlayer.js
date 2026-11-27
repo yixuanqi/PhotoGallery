@@ -54,6 +54,12 @@
       drawOrbitingOrbs(ctx, p, px, py, liftY, time);
     }
     if (needAlphaWrap) ctx.restore();
+    if ((p.shieldCharges || 0) > 0 && (p.shieldTimer || 0) > 0) {
+      drawPlayerShield(ctx, px, py - liftY, p, time);
+    }
+    if ((p.goldenBodyTimer || 0) > 0 || (p.homingTimer || 0) > 0 || (p.chronoWatchTimer || 0) > 0) {
+      drawPlayerActiveSkillAura(ctx, px, py - liftY, p, time);
+    }
     if (stealthFade) {
       ctx.save();
       ctx.strokeStyle = 'rgba(245, 198, 42, 0.85)';
@@ -872,6 +878,158 @@
       ctx.fill();
 
       drawMiniStar(ctx, gx, gy, 6.2 * pulse, '#ffe052');
+    }
+
+    ctx.restore();
+  }
+
+
+  function drawPlayerShield(ctx, px, py, p, time) {
+    const charges = Math.max(0, p.shieldCharges || 0);
+    const maxDur = p.shieldMaxDuration || 18;
+    const frac = Math.max(0, Math.min(1, (p.shieldTimer || 0) / maxDur));
+    const expiring = (p.shieldTimer || 0) <= 3.0;
+    const blink = expiring ? (0.45 + 0.55 * Math.abs(Math.sin(time * 14))) : 1.0;
+    const flash = p.shieldHitFlash || 0;
+    const cy = py - 18;
+    const R = 30 + Math.sin(time * 4.5) * 1.3 + flash * 3.5;
+
+    ctx.save();
+    ctx.globalAlpha = blink;
+
+    // 1. 半透明水彩青蓝泡泡护膜
+    const grad = ctx.createRadialGradient(px - 6, cy - 8, 5, px, cy, R);
+    grad.addColorStop(0, 'rgba(255, 255, 255, 0.06)');
+    grad.addColorStop(0.68, flash > 0.1 ? 'rgba(255, 246, 178, 0.28)' : 'rgba(96, 224, 255, 0.16)');
+    grad.addColorStop(1, charges >= 2 ? 'rgba(72, 208, 252, 0.42)' : 'rgba(104, 218, 246, 0.30)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(px, cy, R, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. 护膜描边（双层时亮青双环，单层时轻盈单环）
+    ctx.strokeStyle = flash > 0.1 ? '#fff29c' : (charges >= 2 ? 'rgba(84, 224, 255, 0.88)' : 'rgba(116, 218, 242, 0.68)');
+    ctx.lineWidth = charges >= 2 ? 2.4 : 1.7;
+    ctx.beginPath();
+    ctx.arc(px, cy, R, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 3. 18 秒剩余时长细弧（顶部顺时针收缩，不用盯 HUD 也能感知余时）
+    ctx.strokeStyle = expiring ? '#ffd452' : '#ffffff';
+    ctx.lineWidth = 2.6;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(px, cy, R + 3.2, -Math.PI * 0.5, -Math.PI * 0.5 + Math.PI * 2 * frac);
+    ctx.stroke();
+
+    // 4. 泡泡左上高光月牙
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.72)';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.arc(px, cy, R - 4.5, Math.PI * 1.12, Math.PI * 1.48);
+    ctx.stroke();
+
+    // 5. 1～2 颗环绕护膜星珠（直观显示当前剩余 2 层 / 1 层！）
+    for (let i = 0; i < charges; i++) {
+      const a = -time * 2.4 + i * Math.PI;
+      const sx = px + Math.cos(a) * (R + 1);
+      const sy = cy + Math.sin(a) * (R + 1);
+      ctx.fillStyle = '#e8fdff';
+      ctx.strokeStyle = '#1b8eb8';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 4.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+
+  function drawPlayerActiveSkillAura(ctx, px, py, p, time) {
+    const cy = py - 18;
+    ctx.save();
+
+    // 1. ✨ 鎏金撞球金身：璀璨金辉护体 + 旋转冲撞环 + 余时细弧
+    if ((p.goldenBodyTimer || 0) > 0) {
+      const frac = Math.max(0, Math.min(1, p.goldenBodyTimer / (p.goldenBodyMaxDuration || 5.5)));
+      const exp = p.goldenBodyTimer <= 1.8;
+      const a = exp ? (0.45 + 0.55 * Math.abs(Math.sin(time * 16))) : 1.0;
+      const R = 33 + Math.sin(time * 9) * 1.8;
+
+      ctx.save();
+      ctx.globalAlpha = a;
+      const g = ctx.createRadialGradient(px, cy, 4, px, cy, R + 6);
+      g.addColorStop(0, 'rgba(255, 250, 200, 0.22)');
+      g.addColorStop(0.65, 'rgba(255, 212, 66, 0.34)');
+      g.addColorStop(1, 'rgba(255, 190, 40, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(px, cy, R + 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = '#ffd64a';
+      ctx.lineWidth = 3.2;
+      ctx.beginPath();
+      ctx.arc(px, cy, R, -Math.PI * 0.5, -Math.PI * 0.5 + Math.PI * 2 * frac);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(255, 248, 198, 0.85)';
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash([7, 7]);
+      ctx.beginPath();
+      ctx.arc(px, cy, R - 4, time * 5.2, time * 5.2 + Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
+    // 2. 🎯 折光自导：紫晶锁定准星环 + 4 个旋转瞄准角括
+    if ((p.homingTimer || 0) > 0) {
+      const frac = Math.max(0, Math.min(1, p.homingTimer / (p.homingMaxDuration || 9.0)));
+      const exp = p.homingTimer <= 2.2;
+      const a = exp ? (0.45 + 0.55 * Math.abs(Math.sin(time * 14))) : 0.92;
+      const R = 35;
+
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.strokeStyle = '#c87aff';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.arc(px, cy, R, -Math.PI * 0.5, -Math.PI * 0.5 + Math.PI * 2 * frac);
+      ctx.stroke();
+
+      for (let k = 0; k < 4; k++) {
+        const ang = time * 1.9 + (k * Math.PI) / 2;
+        ctx.strokeStyle = '#f0c4ff';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.arc(px, cy, R + 4.5, ang - 0.16, ang + 0.16);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // 3. ⏳ 时停怀表：靛蓝星盘刻度环 + 旋转表针
+    if ((p.chronoWatchTimer || 0) > 0) {
+      const frac = Math.max(0, Math.min(1, p.chronoWatchTimer / (p.chronoWatchMaxDuration || 4.0)));
+      const R = 38;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(128, 152, 255, 0.86)';
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.arc(px, cy, R, -Math.PI * 0.5, -Math.PI * 0.5 + Math.PI * 2 * frac);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(255, 224, 118, 0.72)';
+      ctx.lineWidth = 1.6;
+      ctx.setLineDash([2, 8]);
+      ctx.beginPath();
+      ctx.arc(px, cy, R - 4, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
     }
 
     ctx.restore();

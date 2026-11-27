@@ -26,6 +26,8 @@
     drawCurioDrop,
     drawDormantOrb,
     drawOrbReturnFly,
+    drawSkillPack,
+    drawGaleWave,
     drawInteractPrompt,
   } = CB.brush;
   const { drawMochiPlayer } = CB.drawPlayer;
@@ -162,6 +164,8 @@
       curioDrops,
       droppedOrbs,
       orbReturnFlies,
+      skillPacks,
+      galeWaves,
       guards,
       fallingGuards,
       fallingCrates,
@@ -377,6 +381,12 @@
         if (ptVisible(orb.x, orb.y, 34)) pushDrawItem(9, orb.y + 1, orb);
       }
     }
+    if (skillPacks) {
+      for (let i = 0; i < skillPacks.length; i++) {
+        const pk = skillPacks[i];
+        if (ptVisible(pk.x, pk.y, 44)) pushDrawItem(13, pk.y + 2, pk);
+      }
+    }
     for (let i = 0; i < guards.length; i++) {
       const g = guards[i];
       if (!g.dead && ptVisible(g.x, g.y, g.radius + 76)) pushDrawItem(10, g.y + 3, g);
@@ -406,6 +416,7 @@
         case 10: drawGuardBody(ctx, item.ref, time); break;
         case 11: drawMochiPlayer(ctx, item.ref, time, game.variant, 0, 0); break;
         case 12: drawExtractBalloon(ctx, item.ax, item.ay, time); break;
+        case 13: drawSkillPack(ctx, item.ref, time); break;
       }
     }
 
@@ -427,6 +438,11 @@
     }
     if (CB.physicsLab && CB.physicsLab.renderPhysicsOverlay) {
       CB.physicsLab.renderPhysicsOverlay(ctx, time);
+    }
+    if (galeWaves && galeWaves.length > 0) {
+      for (let i = 0; i < galeWaves.length; i++) {
+        drawGaleWave(ctx, galeWaves[i]);
+      }
     }
 
     // 5.5. 弹射子弹、棱镜光束、守卫弹丸与打击火花粒子
@@ -487,6 +503,15 @@
     // 8. 屏幕空间柔和日光浮尘 + 关卡开场水彩横幅 + 警报晕边 + 边缘罗盘方向指针
     drawSunbeamAndPollen(ctx, viewW, viewH, time);
     if (game.run.phase === 'playing' && !game.titleOpen) {
+      if (player && (player.chronoWatchTimer || 0) > 0) {
+        ctx.save();
+        const cvg = ctx.createRadialGradient(viewW * 0.5, viewH * 0.5, Math.min(viewW, viewH) * 0.34, viewW * 0.5, viewH * 0.5, Math.max(viewW, viewH) * 0.68);
+        cvg.addColorStop(0, 'rgba(60, 82, 180, 0)');
+        cvg.addColorStop(1, 'rgba(42, 54, 148, 0.28)');
+        ctx.fillStyle = cvg;
+        ctx.fillRect(0, 0, viewW, viewH);
+        ctx.restore();
+      }
       drawAlarmVignette(ctx, viewW, viewH, time);
       if (!game.mapOverview) {
         drawOffscreenCompass(ctx, viewW, viewH, time);

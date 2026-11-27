@@ -3269,6 +3269,275 @@
     ctx.restore();
   }
 
+
+  // ==================== v9.8 碎箱技能包手绘水彩渲染（含稀有星环 & 传说金色光柱） ====================
+  function drawSkillPack(ctx, pack, time) {
+    const hover = Math.sin(time * 4.8 + (pack.phase || 0)) * 3.6;
+    const drawY = pack.y - (pack.z || 0) - 11 + hover;
+    const fade = pack.life < 3.0 ? Math.max(0.28, Math.abs(Math.sin(time * 14))) : 1;
+    const rarity = pack.rarity || 'common';
+    const isLeg = rarity === 'legendary';
+    const isRare = rarity === 'rare';
+
+    drawSoftShadow(ctx, pack.x, pack.y + 3, isLeg ? 15 : 12.5, isLeg ? 7.2 : 6.2, 0.24 * fade);
+
+    ctx.save();
+    ctx.globalAlpha = fade;
+
+    // 传说级出货仪式感：垂直柔和金色光柱（再混乱的战局也能一眼锁定！）
+    if (isLeg) {
+      const beamH = 74 + Math.sin(time * 6 + (pack.phase || 0)) * 8;
+      const beamGrad = ctx.createLinearGradient(pack.x, pack.y + 4, pack.x, pack.y - beamH);
+      const isChrono = pack.id === 'chrono_watch';
+      beamGrad.addColorStop(0, isChrono ? 'rgba(130, 154, 255, 0.52)' : 'rgba(255, 224, 96, 0.56)');
+      beamGrad.addColorStop(0.55, isChrono ? 'rgba(196, 210, 255, 0.22)' : 'rgba(255, 240, 156, 0.24)');
+      beamGrad.addColorStop(1, 'rgba(255, 240, 156, 0)');
+      ctx.fillStyle = beamGrad;
+      ctx.beginPath();
+      ctx.moveTo(pack.x - 13, pack.y + 4);
+      ctx.lineTo(pack.x + 13, pack.y + 4);
+      ctx.lineTo(pack.x + 6, pack.y - beamH);
+      ctx.lineTo(pack.x - 6, pack.y - beamH);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    ctx.translate(pack.x, drawY);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    const pulse = 1 + Math.sin(time * (isLeg ? 7.0 : 5.5) + (pack.phase || 0)) * 0.12;
+    const glowR = isLeg ? 30 : isRare ? 26 : 23;
+    const g = ctx.createRadialGradient(0, 0, 2, 0, 0, glowR * pulse);
+    g.addColorStop(0, pack.glow || 'rgba(110, 232, 168, 0.72)');
+    g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, glowR * pulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 旋转品质光环（绿蓝单虚环 / 稀有紫双星芒 / 传说金双反向轮环）
+    ctx.strokeStyle = isLeg ? 'rgba(255, 224, 92, 0.92)' : isRare ? 'rgba(186, 118, 255, 0.85)' : (pack.id === 'shield' ? 'rgba(116, 232, 255, 0.72)' : 'rgba(98, 224, 152, 0.72)');
+    ctx.lineWidth = isLeg ? 2.2 : 1.7;
+    ctx.setLineDash(isLeg ? [6, 4] : [4, 4]);
+    ctx.beginPath();
+    ctx.arc(0, 0, isLeg ? 17.5 : 15, time * 2.1, time * 2.1 + Math.PI * 2);
+    ctx.stroke();
+    if (isLeg) {
+      ctx.strokeStyle = 'rgba(255, 250, 210, 0.8)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(0, 0, 13.5, -time * 2.6, -time * 2.6 + Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+
+    if (pack.id === 'shield') {
+      ctx.fillStyle = '#dcf9ff';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.moveTo(0, -11.5);
+      ctx.lineTo(10, -6.2);
+      ctx.lineTo(8.8, 4.5);
+      ctx.lineTo(0, 11.5);
+      ctx.lineTo(-8.8, 4.5);
+      ctx.lineTo(-10, -6.2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#4ecdf5';
+      ctx.beginPath();
+      ctx.moveTo(0, -8.2);
+      ctx.lineTo(6.8, -4.4);
+      ctx.lineTo(5.8, 3.0);
+      ctx.lineTo(0, 8.0);
+      ctx.lineTo(-5.8, 3.0);
+      ctx.lineTo(-6.8, -4.4);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(-2.5, -2.5, 2.2, 0, Math.PI * 2);
+      ctx.arc(2.8, 1.5, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (pack.id === 'homing') {
+      // 🎯 折光自导：紫晶准星棱镜镜片
+      ctx.fillStyle = '#f2e0ff';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.arc(0, 0, 10.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.strokeStyle = '#9c42e8';
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.arc(0, 0, 6.0, 0, Math.PI * 2);
+      ctx.moveTo(-12.5, 0); ctx.lineTo(-4.5, 0);
+      ctx.moveTo(4.5, 0); ctx.lineTo(12.5, 0);
+      ctx.moveTo(0, -12.5); ctx.lineTo(0, -4.5);
+      ctx.moveTo(0, 4.5); ctx.lineTo(0, 12.5);
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffe26a';
+      ctx.beginPath();
+      ctx.arc(0, 0, 2.6, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (pack.id === 'gust_bottle') {
+      // 🌬️ 顺风狂澜瓶：青蓝玻璃旋风瓶 + 瓶内风涡
+      ctx.fillStyle = '#e0faff';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.roundRect(-9, -6, 18, 16, 7);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#d4a36a';
+      ctx.beginPath();
+      ctx.roundRect(-4.5, -11.5, 9, 5.5, 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.strokeStyle = '#1d9ac4';
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.moveTo(-5, 0); ctx.quadraticCurveTo(0, -4, 5, 0);
+      ctx.moveTo(-4, 5); ctx.quadraticCurveTo(1, 2, 5, 5);
+      ctx.stroke();
+    } else if (pack.id === 'golden_body') {
+      // ✨ 鎏金金身：璀璨八芒太阳金徽
+      ctx.fillStyle = '#ffd54a';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.1;
+      ctx.beginPath();
+      for (let s = 0; s < 16; s++) {
+        const rad = s % 2 === 0 ? 12.5 : 6.4;
+        const a = (s * Math.PI) / 8 + time * 0.7;
+        const sx = Math.cos(a) * rad;
+        const sy = Math.sin(a) * rad;
+        if (s === 0) ctx.moveTo(sx, sy);
+        else ctx.lineTo(sx, sy);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#fff9d6';
+      ctx.beginPath();
+      ctx.arc(0, 0, 4.4, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (pack.id === 'chrono_watch') {
+      // ⏳ 时停怀表：古铜表壳 + 深蓝星盘表盘 + 金针
+      ctx.fillStyle = '#f2c45a';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.arc(0, 1, 11.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // 顶部挂环
+      ctx.beginPath();
+      ctx.arc(0, -12, 3.2, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.fillStyle = '#26346e';
+      ctx.beginPath();
+      ctx.arc(0, 1, 8.0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = '#ffe478';
+      ctx.lineWidth = 1.9;
+      ctx.beginPath();
+      ctx.moveTo(0, 1);
+      ctx.lineTo(0, -4.5);
+      ctx.moveTo(0, 1);
+      ctx.lineTo(4.5, 2.5);
+      ctx.stroke();
+    } else {
+      // 💚 急救花蜜瓶
+      ctx.fillStyle = '#e8fff2';
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.arc(0, 2.2, 9.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#46c97e';
+      ctx.beginPath();
+      ctx.arc(0, 2.8, 7.2, 0.15, Math.PI - 0.15);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#d4a36a';
+      ctx.beginPath();
+      ctx.roundRect(-4.2, -10.5, 8.4, 5.2, 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(-3.4, 2.4); ctx.lineTo(3.4, 2.4);
+      ctx.moveTo(0, -1.0); ctx.lineTo(0, 5.8);
+      ctx.stroke();
+    }
+
+    // 底部小标签（稀有紫/传说金带醒目色标）
+    ctx.font = '800 10px "PingFang SC", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.strokeStyle = 'rgba(255, 253, 246, 0.94)';
+    ctx.lineWidth = 3.2;
+    const tag = pack.shortLabel || pack.name;
+    ctx.strokeText(tag, 0, isLeg ? 16 : 14);
+    ctx.fillStyle = isLeg ? '#b86e06' : isRare ? '#7a30c4' : (pack.id === 'shield' ? '#187ca3' : '#1b8554');
+    ctx.fillText(tag, 0, isLeg ? 16 : 14);
+
+    ctx.restore();
+  }
+
+  // 顺风狂澜瓶释放的扇形疾风弧纹演出
+  function drawGaleWave(ctx, wave) {
+    const progress = 1 - Math.max(0, wave.life / (wave.maxLife || 0.48));
+    const fade = Math.max(0, 1 - progress);
+    const maxR = (wave.range || 390) * (0.28 + progress * 0.85);
+
+    ctx.save();
+    ctx.translate(wave.x, wave.y - 12);
+    ctx.rotate(wave.angle);
+    ctx.globalAlpha = fade * 0.85;
+    ctx.lineCap = 'round';
+
+    const grad = ctx.createRadialGradient(0, 0, 16, 0, 0, maxR);
+    grad.addColorStop(0, 'rgba(184, 248, 255, 0.05)');
+    grad.addColorStop(0.65, 'rgba(116, 230, 250, 0.28)');
+    grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, maxR, -0.58, 0.58);
+    ctx.closePath();
+    ctx.fill();
+
+    for (let k = 0; k < 3; k++) {
+      const r = maxR * (0.58 + k * 0.19);
+      ctx.strokeStyle = k === 1 ? '#ffffff' : '#7ae8fa';
+      ctx.lineWidth = 3.4 - k * 0.7;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, -0.52 + k * 0.06, 0.52 - k * 0.06);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
   CB.brush = {
     createPaperPattern,
     drawSoftShadow,
@@ -3296,6 +3565,8 @@
     drawCurioDrop,
     drawDormantOrb,
     drawOrbReturnFly,
+    drawSkillPack,
+    drawGaleWave,
     drawInteractPrompt,
   };
 })();

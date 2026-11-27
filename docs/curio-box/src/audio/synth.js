@@ -1027,6 +1027,70 @@
     playTone('sine', 987.77, 1318.51, 0.2, 0.1, 0.06);
   }
 
+
+  // ==================== v9.7 箱子技能包与星露护膜音效 ====================
+  function playSkillPackDrop(rarity = 'common') {
+    if (rarity === 'legendary') {
+      [587.33, 783.99, 987.77, 1318.51, 1567.98].forEach((f, idx) => {
+        playTone('triangle', f, f * 1.01, 0.34, 0.12, idx * 0.045);
+      });
+    } else if (rarity === 'rare') {
+      [523.25, 659.25, 987.77].forEach((f, idx) => {
+        playTone('sine', f, f * 1.02, 0.24, 0.1, idx * 0.045);
+      });
+    } else {
+      playTone('sine', 659.25, 880, 0.16, 0.095, 0);
+      playTone('triangle', 987.77, 1174.66, 0.18, 0.08, 0.055);
+    }
+  }
+
+  function playSkillHeal() {
+    [440, 554.37, 659.25, 880].forEach((f, idx) => {
+      playTone('sine', f, f * 1.008, 0.26, 0.095, idx * 0.05);
+    });
+  }
+
+  function playSkillShield() {
+    [523.25, 783.99, 1046.5, 1318.51].forEach((f, idx) => {
+      playTone('triangle', f, f * 1.015, 0.28, 0.085, idx * 0.04);
+      playTone('sine', f * 1.5, f * 1.52, 0.22, 0.04, idx * 0.04);
+    });
+  }
+
+  function playShieldAbsorb(broken = false) {
+    if (broken) {
+      playNoise(0.18, 2800, 'bandpass', 0.18, 0, 2.0);
+      playTone('triangle', 1046.5, 523.25, 0.22, 0.13, 0);
+      playTone('sine', 1567.98, 783.99, 0.18, 0.09, 0.04);
+    } else {
+      playTone('sine', 880, 1480, 0.16, 0.12, 0);
+      playTone('triangle', 1318.51, 1760, 0.14, 0.08, 0.03);
+    }
+  }
+
+
+  // ==================== v9.8 稀有/传说主动技能释放音效 ====================
+  function playActiveSkillCast(skillId) {
+    if (skillId === 'golden_body') {
+      [440, 554.37, 659.25, 880, 1108.73, 1318.51].forEach((f, idx) => {
+        playTone('triangle', f, f * 1.015, 0.36, 0.11, idx * 0.038);
+      });
+      playNoise(0.24, 1600, 'bandpass', 0.14, 0, 1.3);
+    } else if (skillId === 'chrono_watch') {
+      playTone('sine', 1046.5, 220, 0.48, 0.16, 0);
+      playTone('triangle', 783.99, 196, 0.42, 0.11, 0.04);
+      playTone('sine', 1567.98, 1567.98, 0.12, 0.08, 0.02);
+      playTone('sine', 1318.51, 1318.51, 0.12, 0.08, 0.18);
+    } else if (skillId === 'gust_bottle') {
+      playNoise(0.42, 920, 'bandpass', 0.28, 0, 0.9);
+      playTone('sine', 280, 740, 0.32, 0.12, 0);
+    } else {
+      [659.25, 987.77, 1318.51, 1567.98].forEach((f, idx) => {
+        playTone('sine', f, f * 1.02, 0.2, 0.095, idx * 0.042);
+      });
+    }
+  }
+
   CB.audio = {
     unlock,
     isAudioUnlocked,
@@ -1104,5 +1168,10 @@
     playCoulombPop,
     playTrialWin,
     playMarketBuy,
+    playSkillPackDrop,
+    playSkillHeal,
+    playSkillShield,
+    playShieldAbsorb,
+    playActiveSkillCast,
   };
 })();

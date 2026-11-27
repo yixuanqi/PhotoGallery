@@ -99,7 +99,11 @@
   }
 
   function getTimeScaleAt(x, y) {
-    return getActiveSingularityAt(x, y) ? 0.15 : 1.0;
+    let sc = getActiveSingularityAt(x, y) ? 0.15 : 1.0;
+    if (game.player && (game.player.chronoWatchTimer || 0) > 0) {
+      sc = Math.min(sc, 0.2);
+    }
+    return sc;
   }
 
   function activateSingularity(sing, isHeavy = false) {
@@ -281,6 +285,344 @@
   }
 
   // ==================== 低摩擦露水滑道查询 ====================
+
+  // ==================== v9.8 碎箱随机技能包（非必掉 · 绿蓝75% / 稀紫17% / 传说金8%） ====================
+  const SKILL_PACK_DEFS = [
+    {
+      id: 'heal',
+      name: '急救花蜜',
+      shortLabel: '回血',
+      icon: '💚',
+      rarity: 'common',
+      kind: 'instant',
+      duration: 0,
+      weight: 42,
+      color: '#46c97e',
+      accent: '#c8ffe0',
+      glow: 'rgba(84, 232, 146, 0.72)',
+    },
+    {
+      id: 'shield',
+      name: '星露护膜',
+      shortLabel: '双层盾',
+      icon: '🛡️',
+      rarity: 'common',
+      kind: 'instant',
+      duration: 18,
+      weight: 33,
+      color: '#4ecdf5',
+      accent: '#dcf9ff',
+      glow: 'rgba(104, 224, 255, 0.78)',
+    },
+    {
+      id: 'homing',
+      name: '折光自导',
+      shortLabel: '自导',
+      icon: '🎯',
+      rarity: 'rare',
+      kind: 'active',
+      duration: 9.0,
+      weight: 11,
+      color: '#b46cff',
+      accent: '#f2e0ff',
+      glow: 'rgba(186, 114, 255, 0.82)',
+    },
+    {
+      id: 'gust_bottle',
+      name: '顺风狂澜瓶',
+      shortLabel: '狂风瓶',
+      icon: '🌬️',
+      rarity: 'rare',
+      kind: 'active',
+      duration: 0,
+      weight: 6,
+      color: '#3ec7db',
+      accent: '#defaff',
+      glow: 'rgba(92, 224, 240, 0.82)',
+    },
+    {
+      id: 'golden_body',
+      name: '鎏金金身',
+      shortLabel: '金身',
+      icon: '✨',
+      rarity: 'legendary',
+      kind: 'active',
+      duration: 5.5,
+      weight: 5,
+      color: '#ffca3a',
+      accent: '#fff7cc',
+      glow: 'rgba(255, 214, 72, 0.92)',
+    },
+    {
+      id: 'chrono_watch',
+      name: '时停怀表',
+      shortLabel: '时停',
+      icon: '⏳',
+      rarity: 'legendary',
+      kind: 'active',
+      duration: 4.0,
+      weight: 3,
+      color: '#6e84ff',
+      accent: '#e6ebff',
+      glow: 'rgba(136, 158, 255, 0.90)',
+    },
+  ];
+
+  function spawnSkillPack(skillId, x, y, pushVx = 0, pushVy = 0) {
+    const def = SKILL_PACK_DEFS.find((d) => d.id === skillId) || SKILL_PACK_DEFS[0];
+    if (!def) return null;
+    if (!game.skillPacks) game.skillPacks = [];
+    if (game.skillPacks.length >= 12) game.skillPacks.shift();
+
+    const ang = Math.random() * Math.PI * 2;
+    const spd = 48 + Math.random() * 44;
+    const pack = {
+      id: def.id,
+      name: def.name,
+      shortLabel: def.shortLabel,
+      icon: def.icon,
+      rarity: def.rarity,
+      kind: def.kind,
+      duration: def.duration || 0,
+      color: def.color,
+      accent: def.accent,
+      glow: def.glow,
+      x,
+      y,
+      z: 10,
+      vx: Math.cos(ang) * spd + pushVx,
+      vy: Math.sin(ang) * spd + pushVy,
+      vz: 145 + Math.random() * 45,
+      pickupDelay: 0.24,
+      life: 26.0,
+      phase: Math.random() * Math.PI * 2,
+    };
+    game.skillPacks.push(pack);
+
+    if (CB.audio && CB.audio.playSkillPackDrop) CB.audio.playSkillPackDrop(def.rarity);
+    CB.player.spawnDust(x, y - 10, def.color, 10, 1.35);
+    const popCol = def.rarity === 'legendary' ? '#c98212' : def.rarity === 'rare' ? '#823cc9' : (def.id === 'heal' ? '#1e9962' : '#1b8eb8');
+    const tierTag = def.rarity === 'legendary' ? '🌟 传说出金!' : def.rarity === 'rare' ? '✦ 稀有技能!' : '✨ 掉落';
+    CB.player.spawnPopup(x, y - 36, `${tierTag} ${def.icon}${def.name}`, popCol);
+    return pack;
+  }
+
+  function rollSkillPackDrop(x, y, isPhysicsBreak = false, pushVx = 0, pushVy = 0) {
+    const run = game.run;
+    const drought = run ? (run.crateSkillDrought || 0) : 0;
+    const baseRate = isPhysicsBreak ? 0.32 : 0.18;
+    const pityBonus = drought >= 6 ? Math.min(0.25, (drought - 5) * 0.05) : 0;
+    const chance = Math.min(0.68, baseRate + pityBonus);
+
+    if (Math.random() >= chance) {
+      if (run) run.crateSkillDrought = drought + 1;
+      return null;
+    }
+
+    if (run) run.crateSkillDrought = 0;
+    let totalW = 0;
+    for (let i = 0; i < SKILL_PACK_DEFS.length; i++) totalW += SKILL_PACK_DEFS[i].weight;
+    let r = Math.random() * totalW;
+    let picked = SKILL_PACK_DEFS[0];
+    for (let i = 0; i < SKILL_PACK_DEFS.length; i++) {
+      r -= SKILL_PACK_DEFS[i].weight;
+      if (r <= 0) {
+        picked = SKILL_PACK_DEFS[i];
+        break;
+      }
+    }
+    return spawnSkillPack(picked.id, x, y, pushVx, pushVy);
+  }
+
+  function updateSkillPacks(dt) {
+    const packs = game.skillPacks;
+    if (!packs || packs.length === 0) return;
+    const map = game.map;
+    const player = game.player;
+    const pullR = (CB.extraction && CB.extraction.getMetaBonuses) ? Math.max(76, CB.extraction.getMetaBonuses().orbPickupR) : 84;
+
+    for (let i = packs.length - 1; i >= 0; i--) {
+      const pk = packs[i];
+      pk.life -= dt;
+      if (pk.life <= 0) {
+        packs.splice(i, 1);
+        continue;
+      }
+      if (pk.pickupDelay > 0) pk.pickupDelay = Math.max(0, pk.pickupDelay - dt);
+
+      pk.x += pk.vx * dt;
+      pk.y += pk.vy * dt;
+      pk.vx *= Math.exp(-5.4 * dt);
+      pk.vy *= Math.exp(-5.4 * dt);
+
+      if (pk.z > 0 || pk.vz > 0) {
+        pk.vz -= 520 * dt;
+        pk.z += pk.vz * dt;
+        if (pk.z <= 0) {
+          pk.z = 0;
+          if (Math.abs(pk.vz) > 45) pk.vz = -pk.vz * 0.38;
+          else pk.vz = 0;
+        }
+      }
+
+      if (map) {
+        for (const w of map.walls) {
+          const cx = Math.max(w.x, Math.min(pk.x, w.x + w.w));
+          const cy = Math.max(w.y, Math.min(pk.y, w.y + w.h));
+          const d = Math.hypot(pk.x - cx, pk.y - cy);
+          if (d < 12 && d > 0.01) {
+            pk.x += ((pk.x - cx) / d) * (12 - d);
+            pk.y += ((pk.y - cy) / d) * (12 - d);
+            pk.vx *= -0.45;
+            pk.vy *= -0.45;
+          }
+        }
+        if (map.cliffEdges) {
+          for (const edge of map.cliffEdges) {
+            const cx = Math.max(edge.x, Math.min(pk.x, edge.x + edge.w));
+            const cy = Math.max(edge.y, Math.min(pk.y, edge.y + edge.h));
+            const d = Math.hypot(pk.x - cx, pk.y - cy);
+            if (d < 16) {
+              pk.x -= edge.outwardX * (18 - d);
+              pk.y -= edge.outwardY * (18 - d);
+              const vn = pk.vx * edge.outwardX + pk.vy * edge.outwardY;
+              if (vn > 0) {
+                pk.vx -= edge.outwardX * vn * 1.4;
+                pk.vy -= edge.outwardY * vn * 1.4;
+              }
+            }
+          }
+        }
+      }
+
+      if (pk.pickupDelay <= 0) {
+        const dist = Math.hypot(player.x - pk.x, player.y - pk.y);
+        if (dist < pullR) {
+          const pull = (1 - dist / pullR) * 310 + 125;
+          pk.x += ((player.x - pk.x) / (dist || 1)) * pull * dt;
+          pk.y += ((player.y - pk.y) / (dist || 1)) * pull * dt;
+        }
+        if (dist < player.radius + 13) {
+          if (pk.kind === 'active') {
+            if (player.heldSkill && player.heldSkill.id === pk.id) {
+              continue;
+            }
+            const prevSkill = player.heldSkill;
+            player.heldSkill = {
+              id: pk.id,
+              name: pk.name,
+              shortLabel: pk.shortLabel,
+              icon: pk.icon,
+              rarity: pk.rarity,
+              color: pk.color,
+              duration: pk.duration || 0,
+            };
+            if (CB.audio && CB.audio.playSkillPackDrop) CB.audio.playSkillPackDrop(pk.rarity);
+            CB.player.spawnDust(pk.x, pk.y - 10, pk.color, 12, 1.4);
+            const keyTip = game.touchActive ? '点技能钮' : '按 Q';
+            CB.player.spawnPopup(
+              player.x,
+              player.y - 52,
+              `🎒 装填 ${pk.icon}${pk.name}（${keyTip}释放）`,
+              pk.rarity === 'legendary' ? '#c98212' : '#823cc9'
+            );
+            if (game.run) game.run.skillPacksPicked = (game.run.skillPacksPicked || 0) + 1;
+            packs.splice(i, 1);
+            if (prevSkill) {
+              const dropAng = Math.atan2(player.y - pk.y, player.x - pk.x) + Math.PI;
+              const swapped = spawnSkillPack(prevSkill.id, player.x + Math.cos(dropAng) * 26, player.y + Math.sin(dropAng) * 26, Math.cos(dropAng) * 75, Math.sin(dropAng) * 75);
+              if (swapped) swapped.pickupDelay = 0.95;
+            }
+          } else {
+            if (pk.id === 'heal' && CB.player && CB.player.applySkillHeal) {
+              CB.player.applySkillHeal(30);
+            } else if (pk.id === 'shield' && CB.player && CB.player.grantSkillShield) {
+              CB.player.grantSkillShield(2, 18, false);
+            }
+            if (game.run) game.run.skillPacksPicked = (game.run.skillPacksPicked || 0) + 1;
+            packs.splice(i, 1);
+          }
+        }
+      }
+    }
+  }
+
+
+  function triggerGustBottle(x, y, angle) {
+    const dirX = Math.cos(angle);
+    const dirY = Math.sin(angle);
+    const range = 390;
+    const coneCos = Math.cos(0.62);
+
+    if (!game.galeWaves) game.galeWaves = [];
+    if (game.galeWaves.length >= 6) game.galeWaves.shift();
+    game.galeWaves.push({ x, y, angle, range, life: 0.48, maxLife: 0.48 });
+
+    game.camera.shake = Math.max(game.camera.shake, 7.2);
+    emitSoundRipple(x, y, 280, 'dash', '#46d2e8');
+    CB.player.spawnDust(x + dirX * 26, y - 10 + dirY * 26, '#b8f7ff', 16, 1.8);
+
+    let hitCnt = 0;
+    for (const g of game.guards) {
+      if (g.dead) continue;
+      const dx = g.x - x;
+      const dy = g.y - y;
+      const d = Math.hypot(dx, dy);
+      if (d > range || d < 1) continue;
+      const dot = (dx / d) * dirX + (dy / d) * dirY;
+      if (dot >= coneCos || d < 65) {
+        hitCnt++;
+        if (CB.guards && CB.guards.damageGuard) {
+          CB.guards.damageGuard(g, 24, dirX, dirY, true, '🌬️ 狂澜掀飞!', true, {
+            source: 'billiard',
+            isHeavy: true,
+            launchSpeed: 740,
+            relGamma: 1.58,
+          });
+        }
+      }
+    }
+
+    const map = game.map;
+    if (map && map.props) {
+      for (const prop of map.props) {
+        if (prop.broken || prop.type !== 'crate') continue;
+        const cx = prop.x + prop.w * 0.5;
+        const cy = prop.y + prop.h * 0.5;
+        const dx = cx - x;
+        const dy = cy - y;
+        const d = Math.hypot(dx, dy);
+        if (d <= range && d > 1) {
+          const dot = (dx / d) * dirX + (dy / d) * dirY;
+          if (dot >= coneCos || d < 72) {
+            pushCrate(prop, dirX * 840, dirY * 840, true);
+          }
+        }
+      }
+    }
+
+    for (let i = game.enemyBullets.length - 1; i >= 0; i--) {
+      const eb = game.enemyBullets[i];
+      const dx = eb.x - x;
+      const dy = eb.y - y;
+      const d = Math.hypot(dx, dy);
+      if (d <= range && d > 1 && ((dx / d) * dirX + (dy / d) * dirY >= coneCos || d < 70)) {
+        CB.player.spawnDust(eb.x, eb.y - 6, '#aef4ff', 3, 1.0);
+        game.enemyBullets.splice(i, 1);
+      }
+    }
+
+    CB.player.spawnPopup(x, y - 52, hitCnt > 0 ? `🌬️ 顺风狂澜掀飞 ×${hitCnt}!` : '🌬️ 顺风狂澜冲击!', '#1d94b8');
+  }
+
+  function updateGaleWaves(dt) {
+    if (!game.galeWaves || game.galeWaves.length === 0) return;
+    for (let i = game.galeWaves.length - 1; i >= 0; i--) {
+      game.galeWaves[i].life -= dt;
+      if (game.galeWaves[i].life <= 0) game.galeWaves.splice(i, 1);
+    }
+  }
+
   function getDewSlideAt(x, y) {
     const map = game.map;
     if (!map || !map.dewSlides) return null;
@@ -1406,6 +1748,7 @@
                 game.coinsList[ci].vx += -edge.outwardX * 75;
                 game.coinsList[ci].vy += -edge.outwardY * 75;
               }
+              rollSkillPackDrop(safeX, safeY, true, -edge.outwardX * 85, -edge.outwardY * 85);
               game.fallingCrates.push({
                 x: cx,
                 y: cy,
@@ -2111,7 +2454,9 @@
       CB.player.spawnDust(cx, cy - 8, '#6ec27e', 6, 1.3);
       emitSoundRipple(cx, cy, 235, 'break');
       spawnCoins(cx, cy, 3 + Math.floor(Math.random() * 3));
-      CB.player.spawnPopup(cx, cy - 26, '藤箱碎裂!', '#9c6c2d');
+      const isPhysCrateBreak = !!(prop.sliding || Math.hypot(prop.vx || 0, prop.vy || 0) > 120);
+      const droppedPack = rollSkillPackDrop(cx, cy, isPhysCrateBreak);
+      if (!droppedPack) CB.player.spawnPopup(cx, cy - 26, '藤箱碎裂!', '#9c6c2d');
     } else if (prop.type === 'inkwell') {
       if (CB.audio) CB.audio.playBreak('inkwell');
       game.camera.shake = Math.max(game.camera.shake, 4.5);
@@ -2372,6 +2717,38 @@
         subIter++;
         const subDt = Math.min(remainDt, SIM_STEP_DT);
         remainDt -= subDt;
+
+        if (player && (player.homingTimer || 0) > 0 && game.guards.length > 0) {
+          let bestG = null;
+          let bestD = 340;
+          const bDirX = b.vx / (b.speed || 1);
+          const bDirY = b.vy / (b.speed || 1);
+          for (let gi = 0; gi < game.guards.length; gi++) {
+            const g = game.guards[gi];
+            if (g.dead) continue;
+            const gdx = g.x - b.x;
+            const gdy = g.y - b.y;
+            const gd = Math.hypot(gdx, gdy);
+            if (gd < 8 || gd > bestD) continue;
+            const forward = (gdx / gd) * bDirX + (gdy / gd) * bDirY;
+            if (forward > 0.15) {
+              bestD = gd;
+              bestG = g;
+            }
+          }
+          if (bestG) {
+            const curAng = Math.atan2(b.vy, b.vx);
+            const targetAng = Math.atan2(bestG.y - b.y, bestG.x - b.x);
+            let diff = targetAng - curAng;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            const maxTurn = (b.bounceCount > 0 ? 7.8 : 4.6) * subDt;
+            const nextAng = curAng + Math.max(-maxTurn, Math.min(maxTurn, diff));
+            b.vx = Math.cos(nextAng) * b.speed;
+            b.vy = Math.sin(nextAng) * b.speed;
+            b.color = '#d988ff';
+          }
+        }
 
         const grav = computeGravityAccel(b.x, b.y, b.curveAccum, { applyLensHoming: true });
         if (grav.maxU > 0.005) {
@@ -2814,8 +3191,33 @@
               if (CB.audio) CB.audio.playSplitBounce();
               CB.player.spawnDust(hit.x, hit.y - 10, '#88e4ff', 8, 1.35);
             } else {
-              b.vx = rx * b.speed;
-              b.vy = ry * b.speed;
+              let outX = rx;
+              let outY = ry;
+              if (player && (player.homingTimer || 0) > 0 && game.guards.length > 0) {
+                let snapG = null;
+                let snapD = 380;
+                for (let gi = 0; gi < game.guards.length; gi++) {
+                  const g = game.guards[gi];
+                  if (g.dead) continue;
+                  const gdx = g.x - b.x;
+                  const gdy = g.y - b.y;
+                  const gd = Math.hypot(gdx, gdy);
+                  if (gd > 10 && gd < snapD && (gdx * hit.nx + gdy * hit.ny) > -10) {
+                    snapD = gd;
+                    snapG = g;
+                  }
+                }
+                if (snapG) {
+                  const sd = Math.hypot(snapG.x - b.x, snapG.y - b.y) || 1;
+                  outX = (snapG.x - b.x) / sd;
+                  outY = (snapG.y - b.y) / sd;
+                  b.isPrismBeam = true;
+                  b.color = '#e08eff';
+                  CB.player.spawnDust(b.x, b.y - 8, '#d988ff', 6, 1.2);
+                }
+              }
+              b.vx = outX * b.speed;
+              b.vy = outY * b.speed;
               b.trail.push({ x: b.x, y: b.y });
               if (CB.audio) CB.audio.playRicochet(b.bounceCount, isSuper);
             }
@@ -3015,10 +3417,17 @@
         }
       }
     }
+
+    updateSkillPacks(dt);
+    updateGaleWaves(dt);
   }
 
   CB.combat = {
     LAUNCHER,
+    SKILL_PACK_DEFS,
+    spawnSkillPack,
+    rollSkillPackDrop,
+    triggerGustBottle,
     getDewSlideAt,
     pushCrate,
     raycastScene,

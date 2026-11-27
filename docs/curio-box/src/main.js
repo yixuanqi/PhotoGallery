@@ -50,6 +50,10 @@
   const hudEls = {
     hpFill: document.getElementById('hpFill'),
     hpText: document.getElementById('hpText'),
+    shieldPill: document.getElementById('shieldPill'),
+    shieldText: document.getElementById('shieldText'),
+    activeSkillPill: document.getElementById('activeSkillPill'),
+    activeSkillText: document.getElementById('activeSkillText'),
     orbTray: document.getElementById('orbTray'),
     coinEl: document.getElementById('coinCount'),
     stuntEl: document.getElementById('stuntValue'),
@@ -71,6 +75,9 @@
     aimLabel: document.getElementById('touchAimLabel'),
     cancelZone: document.getElementById('touchCancelZone'),
     dashBtn: document.getElementById('touchDashBtn'),
+    skillBtn: document.getElementById('touchSkillBtn'),
+    skillIcon: document.getElementById('touchSkillIcon'),
+    skillLabel: document.getElementById('touchSkillLabel'),
     interactBtn: document.getElementById('touchInteractBtn'),
     interactIcon: document.getElementById('touchInteractIcon'),
     interactLabel: document.getElementById('touchInteractLabel'),
@@ -493,6 +500,8 @@
     game.coinsList = [];
     game.droppedOrbs = [];
     game.orbReturnFlies = [];
+    game.skillPacks = [];
+    game.galeWaves = [];
     game.focusSpots = [];
     game.laserWebs = [];
     game.lightningArcs = [];
@@ -601,6 +610,13 @@
 
   function setupUI() {
     const btnRegen = document.getElementById('btnRegen');
+    if (hudEls.activeSkillPill) {
+      hudEls.activeSkillPill.addEventListener('click', () => {
+        if (game.run.phase === 'playing' && CB.player && CB.player.activateHeldSkill) {
+          CB.player.activateHeldSkill();
+        }
+      });
+    }
     const btnOverview = document.getElementById('btnOverview');
     const btnAudio = document.getElementById('btnAudio');
     const btnResetSave = document.getElementById('btnResetSave');

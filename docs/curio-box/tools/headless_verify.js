@@ -331,7 +331,57 @@ function runSuite() {
   assert(CB.extraction.buyMarketRest(35).ok, 'Market rest failed');
   const dailySpec = CB.extraction.getDailyChallengeSpec();
   assert(dailySpec && dailySpec.bounties.length === 3 && dailySpec.seed >= 100000, 'Invalid Daily Challenge spec');
-  console.log('✓ [4/6] Orb Economy, High-Tier Upgrades, Black Market & Offline Daily Challenge: PASSED!');
+  // v9.7 Crate Skill Packs: Heal (+30HP / overflow shield) & 18s 2-Layer Shield absorption + expiration
+  game.skillPacks = [];
+  const pkH = CB.combat.spawnSkillPack('heal', game.player.x, game.player.y);
+  const pkS = CB.combat.spawnSkillPack('shield', game.player.x + 28, game.player.y);
+  assert(pkH && pkS && game.skillPacks.length === 2, 'Failed to spawn v9.7 heal & shield skill packs');
+  CB.renderer.renderWorld(mockCtx);
+  game.player.hp = 60;
+  CB.player.applySkillHeal(30);
+  assert(game.player.hp === 90, `Expected 90 HP after heal, got ${game.player.hp}`);
+  CB.player.grantSkillShield(2, 18, false);
+  assert(game.player.shieldCharges === 2 && game.player.shieldTimer === 18, '2-layer 18s shield failed to grant');
+  CB.renderer.renderWorld(mockCtx);
+  CB.player.damagePlayer(25, 1, 0);
+  assert(game.player.hp === 90 && game.player.shieldCharges === 1, 'Shield layer 1 should absorb damage without HP loss');
+  game.player.invulnTimer = 0;
+  CB.player.damagePlayer(25, 1, 0);
+  assert(game.player.hp === 90 && game.player.shieldCharges === 0 && game.player.shieldTimer === 0, 'Shield layer 2 should absorb damage and expire cleanly');
+  CB.player.grantSkillShield(2, 18, false);
+  for (let t = 0; t < 20; t++) CB.player.updatePlayer(1.0);
+  assert(game.player.shieldCharges === 0 && game.player.shieldTimer === 0, '18s shield should expire after 18s');
+  // v9.8 Rare & Legendary Active Skills (homing / gust_bottle / golden_body / chrono_watch) + Active Slot Swap
+  assert(CB.combat.SKILL_PACK_DEFS.length >= 6, 'Expected >= 6 skills in SKILL_PACK_DEFS');
+  for (const skId of ['homing', 'gust_bottle', 'golden_body', 'chrono_watch']) {
+    const pkA = CB.combat.spawnSkillPack(skId, game.player.x + 20, game.player.y);
+    assert(pkA && pkA.kind === 'active', `Failed to spawn active skill pack ${skId}`);
+  }
+  CB.renderer.renderWorld(mockCtx);
+
+  game.player.heldSkill = { id: 'homing', name: '折光自导', shortLabel: '自导', icon: '🎯', rarity: 'rare', duration: 9.0 };
+  assert(CB.player.activateHeldSkill() === true && game.player.homingTimer === 9.0 && game.player.heldSkill === null, 'homing cast failed');
+  CB.renderer.renderWorld(mockCtx);
+
+  game.player.heldSkill = { id: 'golden_body', name: '鎏金金身', shortLabel: '金身', icon: '✨', rarity: 'legendary', duration: 5.5 };
+  assert(CB.player.activateHeldSkill() === true && game.player.goldenBodyTimer === 5.5, 'golden_body cast failed');
+  const hpBeforeGolden = game.player.hp;
+  CB.player.damagePlayer(40, 1, 0);
+  assert(game.player.hp === hpBeforeGolden, 'golden_body must grant full invulnerability!');
+  CB.renderer.renderWorld(mockCtx);
+
+  game.player.heldSkill = { id: 'chrono_watch', name: '时停怀表', shortLabel: '时停', icon: '⏳', rarity: 'legendary', duration: 4.0 };
+  assert(CB.player.activateHeldSkill() === true && game.player.chronoWatchTimer === 4.0, 'chrono_watch cast failed');
+  assert(CB.combat.getTimeScaleAt(game.player.x, game.player.y) <= 0.2, 'chrono_watch must trigger 0.2x global bullet-time!');
+  CB.renderer.renderWorld(mockCtx);
+
+  game.player.heldSkill = { id: 'gust_bottle', name: '顺风狂澜瓶', shortLabel: '狂风瓶', icon: '🌬️', rarity: 'rare', duration: 0 };
+  assert(CB.player.activateHeldSkill() === true && game.galeWaves.length >= 1, 'gust_bottle cast failed');
+  CB.renderer.renderWorld(mockCtx);
+  game.player.homingTimer = 0;
+  game.player.goldenBodyTimer = 0;
+  game.player.chronoWatchTimer = 0;
+  console.log('✓ [4/6] Orb Economy, Upgrades, Market, Daily & v9.8 Full 6-Skill Pack Suite: PASSED!');
 
   // ==================== [5/6] Cross-Disciplinary Physics & 4 Discipline Synergies ====================
   const slide = game.map.dewSlides && game.map.dewSlides[0];

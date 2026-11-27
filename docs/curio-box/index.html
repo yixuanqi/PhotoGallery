@@ -20,6 +20,8 @@
         <span class="hp-bar"><span id="hpFill" class="hp-fill"></span></span>
         <strong id="hpText">100</strong>
       </span>
+      <span id="shieldPill" class="shield-pill hidden" title="星露护膜（18 秒限时双层盾，抵挡伤害并弹开周围敌弹）">🛡️ <strong id="shieldText">×2 18s</strong></span>
+      <button id="activeSkillPill" class="active-skill-pill hidden" title="点击或按 Q 释放稀有/传说主动技能"><span id="activeSkillText">🎯 折光自导 [Q]</span></button>
       <span class="divider"></span>
       <span class="orb-wrap" id="orbTray" title="星露弹珠（蓄力重弹消耗 1 颗；物理连撞/崖杀/破防瞬回，打空可捡回）">
         <span class="orb-pip filled"></span>
@@ -103,6 +105,8 @@
     <i>·</i>
     <span><kbd>E</kbd> 交互</span>
     <i>·</i>
+    <span><kbd>Q</kbd> 技能</span>
+    <i>·</i>
     <span><kbd>H</kbd> 母港</span>
     <i>·</i>
     <span><kbd>B</kbd> 图鉴</span>
@@ -130,6 +134,10 @@
       <button id="touchInteractBtn" class="touch-action-btn touch-interact-btn" aria-label="交互">
         <span class="ta-icon" id="touchInteractIcon">E</span>
         <small id="touchInteractLabel">交互</small>
+      </button>
+      <button id="touchSkillBtn" class="touch-action-btn touch-skill-btn hidden" aria-label="释放技能包">
+        <span class="ta-icon" id="touchSkillIcon">🎯</span>
+        <small id="touchSkillLabel">技能</small>
       </button>
       <button id="touchDashBtn" class="touch-action-btn touch-dash-btn" aria-label="冲刺">
         <span class="ta-icon">💨</span>

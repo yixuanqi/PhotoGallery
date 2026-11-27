@@ -3732,3 +3732,93 @@ body.platform-mobile .mini-tool-btn {
     flex-direction: column;
   }
 }
+
+/* ==================== v9.7 18 秒限时双层星露护膜 HUD 胶囊 ==================== */
+.shield-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #dff9ff, #aeeeff);
+  border: 1.8px solid #299bc7;
+  color: #135f7d;
+  font-size: 11.5px;
+  font-weight: 900;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(34, 156, 204, 0.24);
+}
+
+.shield-pill.expiring {
+  background: linear-gradient(135deg, #fff6cc, #ffe078);
+  border-color: #c98614;
+  color: #7d4a04;
+  animation: cbShieldBlink 0.65s ease-in-out infinite;
+}
+
+@keyframes cbShieldBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+/* ==================== v9.8 稀有/传说主动技 HUD 胶囊 & 移动端动态技能浮钮 ==================== */
+.active-skill-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 900;
+  white-space: nowrap;
+  cursor: pointer;
+  border: 1.8px solid #8a44d6;
+  background: linear-gradient(135deg, #f4e6ff, #dfc2ff);
+  color: #4f1d8c;
+  box-shadow: 0 2px 8px rgba(138, 68, 214, 0.28);
+  transition: transform 0.08s ease;
+}
+
+.active-skill-pill:hover {
+  transform: translateY(-1px);
+}
+
+.active-skill-pill.is-legendary {
+  border-color: #c98614;
+  background: linear-gradient(135deg, #fff8d4, #ffd864);
+  color: #6e4000;
+  box-shadow: 0 2px 10px rgba(235, 178, 36, 0.45);
+}
+
+.active-skill-pill.is-running {
+  cursor: default;
+  border-color: #248eb8;
+  background: linear-gradient(135deg, #e4f8ff, #bfefff);
+  color: #125875;
+}
+
+.active-skill-pill.is-running.is-legendary {
+  border-color: #d99416;
+  background: linear-gradient(135deg, #fff5c2, #ffcf4d);
+  color: #6b3c00;
+}
+
+.active-skill-pill.expiring {
+  animation: cbShieldBlink 0.6s ease-in-out infinite;
+}
+
+.touch-skill-btn {
+  left: 16px;
+  bottom: 92px;
+  border-color: #7c38c9;
+  background: linear-gradient(135deg, #f6ebff, #dfc4ff);
+  color: #4b1a85;
+  box-shadow: 0 0 16px rgba(164, 96, 245, 0.65), 0 4px 0 rgba(92, 36, 158, 0.34);
+}
+
+.touch-skill-btn.is-legendary {
+  border-color: #c48010;
+  background: linear-gradient(135deg, #fff8d4, #ffd659);
+  color: #6b3c00;
+  box-shadow: 0 0 20px rgba(255, 208, 64, 0.82), 0 4px 0 rgba(168, 108, 12, 0.36);
+}

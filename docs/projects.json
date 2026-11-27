@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": 14,
+  "catalogVersion": 15,
   "repository": "yixuanqi/PhotoGallery",
   "baseUrl": "https://yixuanqi.github.io/PhotoGallery/",
-  "updatedAt": "2026-11-26",
+  "updatedAt": "2026-11-27",
   "projects": [
     {
       "id": "galaxy",
@@ -817,7 +817,7 @@
         "icon": "🧭",
         "category": "online",
         "description": "手绘云海浮岛物理弹射冒险。探索未知航线，利用力、热、光、电与时空物理连锁，构筑学科共鸣，挑战阶段霸主、浮空黑市与每日离线悬赏。支持 PC 和移动端。",
-        "note": "V9.6.3：修复断木花栏未定义变量，增强全气候、全守卫回归验证与 no-undef 静态检查。",
+        "note": "V9.8：碎箱随机技能包、急救与限时护膜，新增稀有和传说主动技能，支持键鼠与移动触控。",
         "linkText": "↗ 进入游戏",
         "sourceUrl": null,
         "palette": [

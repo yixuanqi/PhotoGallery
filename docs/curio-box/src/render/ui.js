@@ -35,6 +35,8 @@
   };
 
   let lastCurioKey = '';
+  let lastShieldKey = '';
+  let lastActiveSkillKey = '';
   let lastStuntVal = 0;
   let stuntPopTimer = null;
 
@@ -266,6 +268,60 @@
 
     if (els.hpFill) els.hpFill.style.width = `${Math.max(0, Math.min(100, (p.hp / p.maxHp) * 100))}%`;
     if (els.hpText) els.hpText.textContent = `${Math.ceil(p.hp)}`;
+
+    if (els.shieldPill && els.shieldText) {
+      const shC = p.shieldCharges || 0;
+      const shT = Math.ceil(Math.max(0, p.shieldTimer || 0));
+      const shExp = shC > 0 && (p.shieldTimer || 0) <= 3.0 ? 1 : 0;
+      const shKey = `${shC}|${shT}|${shExp}`;
+      if (shKey !== lastShieldKey) {
+        lastShieldKey = shKey;
+        els.shieldPill.classList.toggle('hidden', shC <= 0 || shT <= 0);
+        els.shieldPill.classList.toggle('expiring', shExp === 1);
+        if (shC > 0 && shT > 0) {
+          els.shieldText.textContent = `×${shC} ${shT}s`;
+        }
+      }
+    }
+
+    if (els.activeSkillPill && els.activeSkillText) {
+      const held = p.heldSkill;
+      let mode = 'none';
+      let label = '';
+      let isLeg = false;
+      let exp = false;
+
+      if ((p.goldenBodyTimer || 0) > 0) {
+        mode = 'running';
+        isLeg = true;
+        exp = p.goldenBodyTimer <= 1.8;
+        label = `✨ 鎏金金身 ${Math.ceil(p.goldenBodyTimer)}s`;
+      } else if ((p.chronoWatchTimer || 0) > 0) {
+        mode = 'running';
+        isLeg = true;
+        exp = p.chronoWatchTimer <= 1.5;
+        label = `⏳ 时停怀表 ${Math.ceil(p.chronoWatchTimer)}s`;
+      } else if ((p.homingTimer || 0) > 0) {
+        mode = 'running';
+        isLeg = false;
+        exp = p.homingTimer <= 2.2;
+        label = `🎯 折光自导 ${Math.ceil(p.homingTimer)}s`;
+      } else if (held) {
+        mode = 'ready';
+        isLeg = held.rarity === 'legendary';
+        label = `${held.icon} ${held.shortLabel} [Q]`;
+      }
+
+      const skKey = `${mode}|${label}|${isLeg ? 1 : 0}|${exp ? 1 : 0}`;
+      if (skKey !== lastActiveSkillKey) {
+        lastActiveSkillKey = skKey;
+        els.activeSkillPill.classList.toggle('hidden', mode === 'none');
+        els.activeSkillPill.classList.toggle('is-running', mode === 'running');
+        els.activeSkillPill.classList.toggle('is-legendary', isLeg);
+        els.activeSkillPill.classList.toggle('expiring', exp);
+        if (label) els.activeSkillText.textContent = label;
+      }
+    }
 
     if (els.orbTray) {
       const maxOrbs = p.maxOrbs || 3;
@@ -1331,6 +1387,16 @@
         els.interactLabel.textContent = hasHint
           ? (hint.text.includes('热气球') ? '升空' : hint.text.includes('神匣') || hint.text.includes('花匣') ? '开匣' : '机关')
           : '交互';
+      }
+    }
+
+    if (els.skillBtn) {
+      const held = p.heldSkill;
+      els.skillBtn.classList.toggle('hidden', !held);
+      if (held) {
+        els.skillBtn.classList.toggle('is-legendary', held.rarity === 'legendary');
+        if (els.skillIcon) els.skillIcon.textContent = held.icon || '🎯';
+        if (els.skillLabel) els.skillLabel.textContent = held.shortLabel || '技能';
       }
     }
   }

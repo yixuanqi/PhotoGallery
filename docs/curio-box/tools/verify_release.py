@@ -959,6 +959,9 @@ def run_verification(project_root: str, bundle_zip: str = None) -> dict:
     assert 'game.footprints.length >= 64' in pl_src, "player.js missing footprint pool cap!"
     assert 'game.popups.length >= 24' in pl_src, "player.js missing popup pool cap!"
     assert 'chargedBodiesPool' in ph_src and 'game.lightningArcs.length >= 24' in ph_src, "physicsLab.js missing GC pool hygiene!"
+    cb_src = raw_by_file['src/systems/combat.js']
+    assert 'game.skillPacks.length >= 12' in cb_src, "combat.js missing skillPacks pool cap!"
+    assert 'game.galeWaves.length >= 6' in cb_src, "combat.js missing galeWaves pool cap!"
 
     # 8. Optional TapTap Bundle ZIP Verification
     bundle_info = None
@@ -1009,7 +1012,7 @@ def main():
 
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     res = run_verification(project_root, bundle_zip=args.bundle)
-    print("✓ Curio Box v9.6.3 Automated Release Verification PASSED!")
+    print("✓ Curio Box v9.8 Automated Release Verification PASSED!")
     print(f"  - JS Modules verified     : {res['scripts']} (syntax / IIFE / full no-undef / zero-ESM)")
     print(f"  - CB.* Namespaces checked : {res['modules']} (load order & symbols 100%)")
     print(f"  - DOM IDs matched         : {res['dom_ids']}/{res['dom_ids']}")

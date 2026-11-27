@@ -845,6 +845,8 @@
       cliffDrops: 0,
       stuntBounty: 0,
       cratesBroken: 0,
+      crateSkillDrought: 0,
+      skillPacksPicked: 0,
       prismsUsed: 0,
       gatesOpened: 0,
       extraction: {

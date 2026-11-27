@@ -54,6 +54,20 @@
     p.overclockTimer = p.overclockOrb ? 12.0 : 0;
     if (game.voyage && game.voyage.nextStartOverclock) game.voyage.nextStartOverclock = false;
     p.orbEmptyFlash = 0;
+    p.shieldCharges = 0;
+    p.shieldMaxCharges = 2;
+    p.shieldTimer = 0;
+    p.shieldMaxDuration = 18;
+    p.shieldHitFlash = 0;
+    if (resetStats) {
+      p.heldSkill = null;
+    }
+    p.homingTimer = 0;
+    p.homingMaxDuration = 9.0;
+    p.goldenBodyTimer = 0;
+    p.goldenBodyMaxDuration = 5.5;
+    p.chronoWatchTimer = 0;
+    p.chronoWatchMaxDuration = 4.0;
 
     if (resetStats) {
       p.hp = p.maxHp;
@@ -111,9 +125,116 @@
     });
   }
 
+  function grantSkillShield(charges = 2, duration = 18, additive = false) {
+    const p = game.player;
+    const maxC = p.shieldMaxCharges || 2;
+    if (additive) {
+      p.shieldCharges = Math.min(maxC, (p.shieldCharges || 0) + charges);
+    } else {
+      p.shieldCharges = Math.min(maxC, Math.max(p.shieldCharges || 0, charges));
+    }
+    p.shieldMaxDuration = duration;
+    p.shieldTimer = duration;
+    p.shieldHitFlash = 0.85;
+    if (CB.audio && CB.audio.playSkillShield) CB.audio.playSkillShield();
+    spawnDust(p.x, p.y - 12, '#7ceeff', 12, 1.35);
+    spawnPopup(p.x, p.y - 46, `🛡️ 星露护膜 ×${p.shieldCharges}（${Math.round(duration)}s）`, '#1e96c9');
+  }
+
+  function applySkillHeal(amount = 30) {
+    const p = game.player;
+    const missing = Math.max(0, p.maxHp - p.hp);
+    const healed = Math.min(missing, amount);
+    const overflow = Math.max(0, amount - healed);
+    p.hp = Math.min(p.maxHp, p.hp + healed);
+    if (CB.audio && CB.audio.playSkillHeal) CB.audio.playSkillHeal();
+    spawnDust(p.x, p.y - 12, '#62e098', 12, 1.35);
+
+    if (overflow >= 15) {
+      const maxC = p.shieldMaxCharges || 2;
+      if ((p.shieldCharges || 0) < maxC || (p.shieldTimer || 0) < 12) {
+        p.shieldCharges = Math.min(maxC, (p.shieldCharges || 0) + 1);
+        p.shieldMaxDuration = 18;
+        p.shieldTimer = Math.max(p.shieldTimer || 0, 18);
+        p.shieldHitFlash = 0.75;
+        spawnPopup(p.x, p.y - 48, healed > 0 ? `💚 +${Math.round(healed)}HP · 溢出护膜+1` : '💚 满血溢出 → 🛡️ 护膜+1!', '#1f9e66');
+        return;
+      }
+    }
+    spawnPopup(p.x, p.y - 46, `💚 急救花蜜 +${Math.round(healed)} HP!`, '#1f9e66');
+  }
+
+  function activateHeldSkill() {
+    const p = game.player;
+    if (!p || !p.heldSkill || game.run.phase !== 'playing') return false;
+    const sk = p.heldSkill;
+    p.heldSkill = null;
+
+    if (CB.audio && CB.audio.playActiveSkillCast) CB.audio.playActiveSkillCast(sk.id);
+
+    if (sk.id === 'homing') {
+      p.homingMaxDuration = sk.duration || 9.0;
+      p.homingTimer = p.homingMaxDuration;
+      spawnDust(p.x, p.y - 12, '#d88cff', 14, 1.45);
+      spawnPopup(p.x, p.y - 52, '🎯 折光自导开启（9s）!', '#9b44d6');
+    } else if (sk.id === 'golden_body') {
+      p.goldenBodyMaxDuration = sk.duration || 5.5;
+      p.goldenBodyTimer = p.goldenBodyMaxDuration;
+      p.squash = -0.3;
+      p.squashVel = -3.0;
+      game.camera.shake = Math.max(game.camera.shake, 7.0);
+      spawnDust(p.x, p.y - 12, '#ffd859', 20, 1.75);
+      spawnDust(p.x, p.y - 12, '#fff6c2', 12, 1.5);
+      spawnPopup(p.x, p.y - 54, '✨ 鎏金撞球金身（5.5s 无敌撞飞）!', '#c98212');
+    } else if (sk.id === 'chrono_watch') {
+      p.chronoWatchMaxDuration = sk.duration || 4.0;
+      p.chronoWatchTimer = p.chronoWatchMaxDuration;
+      game.camera.shake = Math.max(game.camera.shake, 5.5);
+      spawnDust(p.x, p.y - 12, '#8cb8ff', 18, 1.55);
+      spawnDust(p.x, p.y - 12, '#ffe07d', 10, 1.3);
+      spawnPopup(p.x, p.y - 54, '⏳ 时停怀表开启（4s 全场慢放）!', '#4c5ed4');
+    } else if (sk.id === 'gust_bottle') {
+      if (CB.combat && CB.combat.triggerGustBottle) {
+        CB.combat.triggerGustBottle(p.x, p.y, p.aimAngle);
+      }
+    }
+    return true;
+  }
+
   function damagePlayer(amount, pushX = 0, pushY = 0) {
     const p = game.player;
-    if (p.invulnTimer > 0 || p.dashTimer > 0) return;
+    if (p.invulnTimer > 0 || p.dashTimer > 0 || (p.goldenBodyTimer || 0) > 0) return;
+
+    // v9.7 18 秒限时双层星露护膜：抵挡单次任意伤害并震开周围敌弹！
+    if ((p.shieldCharges || 0) > 0 && (p.shieldTimer || 0) > 0) {
+      p.shieldCharges = Math.max(0, p.shieldCharges - 1);
+      const broke = p.shieldCharges <= 0;
+      if (broke) p.shieldTimer = 0;
+      p.invulnTimer = 0.65;
+      p.shieldHitFlash = 1.0;
+      p.vx += pushX * 145;
+      p.vy += pushY * 145;
+      p.squash = -0.22;
+      p.squashVel = -2.4;
+      game.camera.shake = Math.max(game.camera.shake, 5.2);
+      game.hitStop = Math.max(game.hitStop, 0.032);
+
+      // 护膜震荡波：弹开周围 138px 内的敌弹
+      for (const eb of game.enemyBullets) {
+        const dx = eb.x - p.x;
+        const dy = eb.y - p.y;
+        const d = Math.hypot(dx, dy);
+        if (d < 138 && d > 1) {
+          eb.vx = (dx / d) * (eb.speed || 260) * 1.25;
+          eb.vy = (dy / d) * (eb.speed || 260) * 1.25;
+        }
+      }
+      if (CB.audio && CB.audio.playShieldAbsorb) CB.audio.playShieldAbsorb(broke);
+      spawnDust(p.x, p.y - 12, '#7ceeff', broke ? 16 : 10, broke ? 1.6 : 1.3);
+      spawnDust(p.x, p.y - 12, '#ffe475', 6, 1.2);
+      spawnPopup(p.x, p.y - 46, broke ? '🛡️ 护膜碎裂抵伤!' : `🛡️ 护膜抵挡! 剩余 ${p.shieldCharges} 层`, '#1a8eb8');
+      return;
+    }
 
     p.hp = Math.max(0, p.hp - amount);
     p.invulnTimer = 0.85;
@@ -146,6 +267,56 @@
 
     if (p.invulnTimer > 0) p.invulnTimer = Math.max(0, p.invulnTimer - dt);
     if (p.hitFlash > 0) p.hitFlash = Math.max(0, p.hitFlash - dt * 6);
+    if ((p.shieldHitFlash || 0) > 0) p.shieldHitFlash = Math.max(0, p.shieldHitFlash - dt * 4.5);
+    if ((p.shieldCharges || 0) > 0 && (p.shieldTimer || 0) > 0) {
+      p.shieldTimer -= dt;
+      if (p.shieldTimer <= 0) {
+        p.shieldTimer = 0;
+        p.shieldCharges = 0;
+        spawnDust(p.x, p.y - 12, '#9cecff', 8, 1.0);
+        spawnPopup(p.x, p.y - 44, '🛡️ 护膜时效已过', '#4d8a9c');
+      }
+    }
+
+    if (inp.skillPressed) {
+      inp.skillPressed = false;
+      if (p.heldSkill) {
+        activateHeldSkill();
+      }
+    }
+
+    if ((p.homingTimer || 0) > 0) {
+      p.homingTimer = Math.max(0, p.homingTimer - dt);
+      if (p.homingTimer <= 0) {
+        spawnPopup(p.x, p.y - 44, '🎯 折光自导结束', '#7c5aa8');
+      }
+    }
+    if ((p.goldenBodyTimer || 0) > 0) {
+      p.goldenBodyTimer = Math.max(0, p.goldenBodyTimer - dt);
+      if (Math.random() < dt * 14) {
+        spawnDust(p.x + (Math.random() - 0.5) * 18, p.y - 8, '#ffe066', 1, 0.9);
+      }
+      for (let ei = game.enemyBullets.length - 1; ei >= 0; ei--) {
+        const eb = game.enemyBullets[ei];
+        const edx = eb.x - p.x;
+        const edy = eb.y - p.y;
+        const ed = Math.hypot(edx, edy);
+        if (ed < 46 && ed > 0.5) {
+          eb.vx = (edx / ed) * (eb.speed || 260) * 1.4;
+          eb.vy = (edy / ed) * (eb.speed || 260) * 1.4;
+          spawnDust(eb.x, eb.y - 6, '#ffe475', 4, 1.0);
+        }
+      }
+      if (p.goldenBodyTimer <= 0) {
+        spawnPopup(p.x, p.y - 44, '✨ 鎏金金身消散', '#b8821c');
+      }
+    }
+    if ((p.chronoWatchTimer || 0) > 0) {
+      p.chronoWatchTimer = Math.max(0, p.chronoWatchTimer - dt);
+      if (p.chronoWatchTimer <= 0) {
+        spawnPopup(p.x, p.y - 44, '⏳ 时间流速复原', '#5262a8');
+      }
+    }
 
     // 1. 鼠标 / 触控右摇杆瞄准与朝向（以枪口高度 y - 10 对齐世界目标，保证预判线精准）
     if (inp.useTouchAim) {
@@ -261,7 +432,8 @@
 
     const inkPuddle = CB.combat ? CB.combat.getInkAt(p.x, p.y) : null;
     p.inInkColor = inkPuddle ? inkPuddle.color : null;
-    const inkSlow = inkPuddle ? 0.56 : 1.0;
+    const isGoldenBody = (p.goldenBodyTimer || 0) > 0;
+    const inkSlow = (inkPuddle && !isGoldenBody) ? 0.56 : 1.0;
     const wasInPollen = p.inPollen;
     p.inPollen = CB.combat ? CB.combat.isInPollen(p.x, p.y) : false;
     if (p.inPollen && !wasInPollen) {
@@ -288,7 +460,8 @@
     const grandDrag = game.run.hasGrandCurio ? 0.94 : 1.0;
     const weightFactor = Math.max(0.84, 1 - p.lootCount * 0.007) * grandDrag;
     const chargeSlow = (p.charging && p.chargeTime >= 0.16) ? 0.82 : 1.0;
-    const maxSpeed = 335 * weightFactor * inkSlow * featherBoost * slideSpeedMult * chargeSlow;
+    const goldenSpdMult = isGoldenBody ? 1.26 : 1.0;
+    const maxSpeed = 335 * weightFactor * inkSlow * featherBoost * slideSpeedMult * chargeSlow * goldenSpdMult;
 
     // 4. 冲刺触发（冲刺附带短暂闪避无敌与轻度声波涟漪）
     if (p.dashCooldown > 0) p.dashCooldown -= dt;
@@ -379,6 +552,49 @@
       p.x += (p.vx * dt) / steps;
       p.y += (p.vy * dt) / steps;
       if (map) resolveMapCollisions(p, map);
+    }
+
+    // 6.5. 鎏金金身撞球冲击：化身重型金球把碰到的守卫与木箱统统撞飞下崖！
+    if (isGoldenBody) {
+      for (const g of game.guards) {
+        if (g.dead) continue;
+        if ((g.goldenRamCd || 0) > 0) {
+          g.goldenRamCd = Math.max(0, g.goldenRamCd - dt);
+          continue;
+        }
+        const gdx = g.x - p.x;
+        const gdy = g.y - p.y;
+        const gd = Math.hypot(gdx, gdy);
+        if (gd < p.radius + g.radius + 10) {
+          g.goldenRamCd = 0.45;
+          const rnx = gd > 0.5 ? gdx / gd : Math.cos(p.aimAngle);
+          const rny = gd > 0.5 ? gdy / gd : Math.sin(p.aimAngle);
+          if (CB.guards && CB.guards.damageGuard) {
+            CB.guards.damageGuard(g, 34, rnx, rny, true, '✨ 鎏金撞飞!', true, {
+              source: 'billiard',
+              isHeavy: true,
+              launchSpeed: 760,
+              relGamma: 1.65,
+            });
+          }
+          game.hitStop = Math.max(game.hitStop, 0.036);
+          game.camera.shake = Math.max(game.camera.shake, 7.0);
+          spawnDust(g.x, g.y - 10, '#ffe066', 12, 1.5);
+        }
+      }
+      if (map && map.props && CB.combat && CB.combat.pushCrate) {
+        for (const prop of map.props) {
+          if (prop.broken || prop.type !== 'crate') continue;
+          const pcx = prop.x + prop.w * 0.5;
+          const pcy = prop.y + prop.h * 0.5;
+          const cdx = pcx - p.x;
+          const cdy = pcy - p.y;
+          const cd = Math.hypot(cdx, cdy);
+          if (cd < p.radius + 32 && cd > 0.5) {
+            CB.combat.pushCrate(prop, (cdx / cd) * 760, (cdy / cd) * 760, true);
+          }
+        }
+      }
     }
 
     // 7. 房间探索与羊皮纸迷雾揭开
@@ -727,5 +943,5 @@
     }
   }
 
-  CB.player = { placePlayerAtSpawn, updatePlayer, setVariant, spawnDust, spawnPopup, damagePlayer };
+  CB.player = { placePlayerAtSpawn, updatePlayer, setVariant, spawnDust, spawnPopup, damagePlayer, grantSkillShield, applySkillHeal, activateHeldSkill };
 })();

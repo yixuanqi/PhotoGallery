@@ -35,6 +35,7 @@
     keys.firePressed = false;
     keys.fireReleased = false;
     keys.interactHeld = false;
+    keys.skillPressed = false;
     game.player.charging = false;
     game.player.chargeTime = 0;
     game.player.chargeRatio = 0;
@@ -77,6 +78,10 @@
         if (code === 'Space') {
           e.preventDefault();
           if (game.run.phase === 'playing') keys.dashPressed = true;
+        }
+        if (code === 'KeyQ') {
+          e.preventDefault();
+          if (game.run.phase === 'playing') keys.skillPressed = true;
         }
       }
       if (onQuickKey) onQuickKey(code);
@@ -332,6 +337,22 @@
       els.dashBtn.addEventListener('pointerup', releaseDash);
       els.dashBtn.addEventListener('pointercancel', releaseDash);
       els.dashBtn.addEventListener('pointerleave', releaseDash);
+    }
+
+    // 3.5. 移动端动态主动技能浮钮（仅拾取稀有/传说主动技时浮现）
+    if (els.skillBtn) {
+      els.skillBtn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        unlockAudio();
+        if (game.run.phase !== 'playing' || game.introGateOpen || game.introActive || game.hubOpen || game.titleOpen || game.paused || game.chartOpen || game.marketOpen || game.dailyOpen || game.portraitBlocked) return;
+        keys.skillPressed = true;
+        els.skillBtn.classList.add('pressed');
+      });
+      const releaseSkill = () => els.skillBtn.classList.remove('pressed');
+      els.skillBtn.addEventListener('pointerup', releaseSkill);
+      els.skillBtn.addEventListener('pointercancel', releaseSkill);
+      els.skillBtn.addEventListener('pointerleave', releaseSkill);
     }
 
     // 4. 大图标智能交互按钮（短按翻转星轨/棱镜/点火，长按启封宝箱）
