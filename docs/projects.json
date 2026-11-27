@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": 15,
+  "catalogVersion": 16,
   "repository": "yixuanqi/PhotoGallery",
   "baseUrl": "https://yixuanqi.github.io/PhotoGallery/",
   "updatedAt": "2026-11-27",
@@ -881,6 +881,53 @@
           35
         ],
         "radius": 2.1
+      }
+    },
+    {
+      "id": "jin-shang-dunhuang",
+      "name": "锦上敦煌 · 纹样穿搭",
+      "kind": "interactive-web",
+      "category": "game",
+      "status": "published",
+      "summary": "以敦煌飞天为画布，选择衣饰部位搭配传统纹样，调整图案大小、方向和颜色，并生成自己的作品。",
+      "tags": [
+        "敦煌纹样",
+        "互动搭配",
+        "作品生成",
+        "手机横屏"
+      ],
+      "techStack": [
+        "HTML",
+        "CSS",
+        "JavaScript",
+        "SVG"
+      ],
+      "primaryUrl": "https://yixuanqi.github.io/PhotoGallery/jin-shang-dunhuang/",
+      "primaryAction": "开始搭配",
+      "repositoryUrl": "https://github.com/yixuanqi/PhotoGallery",
+      "sourcePath": "docs/jin-shang-dunhuang/index.html",
+      "sortOrder": 17,
+      "galaxy": {
+        "icon": "🪷",
+        "category": "online",
+        "description": "以敦煌飞天为画布，搭配传统纹样，创作自己的飞天衣饰作品。",
+        "note": "支持电脑和手机横屏；可选择部位与纹样，调整大小、旋转和颜色，并生成作品。",
+        "linkText": "↗ 开始搭配",
+        "sourceUrl": null,
+        "palette": [
+          "#513622",
+          "#F7E3C6",
+          "#A4482E"
+        ],
+        "atmo": "#B9956B",
+        "ring": "#A4482E",
+        "style": "banded",
+        "position": [
+          46,
+          1.8,
+          16
+        ],
+        "radius": 1.45
       }
     }
   ]
