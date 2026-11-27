@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>花神启境 · 十二花神数字艺术展演</title>
+  <link rel="stylesheet" href="css/stage.css" />
+</head>
+<body class="stage-idle" data-state="idle">
+  <main id="exhibition-stage" aria-label="花神启境数字艺术展演">
+    <canvas id="bg-canvas"></canvas>
+    <section id="video-stage" aria-hidden="true">
+      <div class="video-aura"></div>
+      <div class="video-frame-shell">
+        <video id="flower-video" playsinline preload="auto"></video>
+        <canvas id="lastframe-canvas"></canvas>
+        <canvas id="procedural-film-canvas"></canvas>
+      </div>
+    </section>
+    <canvas id="fg-canvas"></canvas>
+    <div id="vignette-layer" aria-hidden="true"></div>
+    <section id="typography-layer" aria-live="polite">
+      <div id="idle-cue" class="typo-panel">
+        <div class="idle-rule"></div>
+        <div class="idle-vertical-title">花神启境</div>
+        <div class="idle-prompt">请取一签</div>
+      </div>
+      <div id="reveal-title" class="typo-panel">
+        <div class="seal-mark" id="reveal-month"></div>
+        <h1 class="reveal-flower" id="reveal-flower"></h1>
+        <p class="reveal-scene" id="reveal-scene"></p>
+      </div>
+      <div id="playing-caption" class="typo-panel">
+        <span id="playing-month"></span>
+        <span class="caption-dot">·</span>
+        <span id="playing-flower"></span>
+        <span class="caption-sep"></span>
+        <span id="playing-scene"></span>
+      </div>
+      <article id="blessing-card" class="typo-panel">
+        <div class="blessing-header">
+          <span class="seal-mark" id="blessing-month"></span>
+          <div class="blessing-meta">
+            <h2 class="blessing-flower" id="blessing-flower"></h2>
+            <p class="blessing-sub" id="blessing-sub"></p>
+          </div>
+        </div>
+        <blockquote class="blessing-poem" id="blessing-poem"></blockquote>
+        <div class="blessing-divider"></div>
+        <p class="blessing-text" id="blessing-text"></p>
+      </article>
+    </section>
+  </main>
+
+  <!-- 运维控制条（按 H 可彻底隐藏进入纯净展演视图） -->
+  <aside id="preview-dock" aria-label="展演控制条">
+    <div class="dock-row">
+      <div class="dock-left">
+        <button class="dock-btn primary" id="dock-random">随机抽签 (Space)</button>
+        <button class="dock-btn" id="dock-reset">归境复位 (R)</button>
+        <button class="dock-btn" id="dock-fs">全屏 (F)</button>
+        <button class="dock-btn" id="dock-mute">声音开 (M)</button>
+        <button class="dock-btn" id="dock-fit" title="切换视频完整显示或铺满全屏 (C)">画面：完整 (C)</button>
+        <span class="dock-status" id="dock-status">待机 · 四时浮岚</span>
+      </div>
+      <div class="dock-right">
+        <button class="dock-btn" id="dock-hide">隐藏控制条 (H)</button>
+      </div>
+    </div>
+    <div class="dock-flowers" id="dock-flowers"></div>
+  </aside>
+  <button id="dock-restore-pill">显示控制条 (H)</button>
+
+  <script src="js/flowers_data.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/botanical.js"></script>
+  <script src="js/transitions.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/fallback_film.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

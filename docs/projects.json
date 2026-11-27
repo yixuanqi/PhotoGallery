@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": 16,
+  "catalogVersion": 17,
   "repository": "yixuanqi/PhotoGallery",
   "baseUrl": "https://yixuanqi.github.io/PhotoGallery/",
   "updatedAt": "2026-11-27",
@@ -902,7 +902,7 @@
         "JavaScript",
         "SVG"
       ],
-      "primaryUrl": "https://yixuanqi.github.io/PhotoGallery/jin-shang-dunhuang/?rev=3229eb4",
+      "primaryUrl": "https://yixuanqi.github.io/PhotoGallery/jin-shang-dunhuang/",
       "primaryAction": "开始搭配",
       "repositoryUrl": "https://github.com/yixuanqi/PhotoGallery",
       "sourcePath": "docs/jin-shang-dunhuang/index.html",
@@ -928,6 +928,53 @@
           16
         ],
         "radius": 1.45
+      }
+    },
+    {
+      "id": "flower-god-realm",
+      "name": "花神启境 · 十二花神",
+      "nameEn": "Flower God Realm",
+      "kind": "interactive-web",
+      "category": "creative-3d",
+      "status": "published",
+      "summary": "十二花神主题的沉浸式数字艺术展演。抽取花签，欣赏四季水墨绘卷、花卉唤醒动效、雅乐与诗意签文。",
+      "tags": [
+        "十二花神",
+        "数字艺术",
+        "水墨动画",
+        "互动抽签"
+      ],
+      "techStack": [
+        "HTML5 Canvas",
+        "JavaScript",
+        "Web Audio"
+      ],
+      "primaryUrl": "https://yixuanqi.github.io/PhotoGallery/flower-god-realm/",
+      "primaryAction": "进入花神启境",
+      "repositoryUrl": "https://github.com/yixuanqi/PhotoGallery",
+      "sourcePath": "docs/flower-god-realm/index.html",
+      "sortOrder": 18,
+      "galaxy": {
+        "icon": "🌸",
+        "category": "online",
+        "description": "十二花神主题的沉浸式数字艺术展演。抽取花签，欣赏四季水墨绘卷、花卉唤醒动效、雅乐与诗意签文。",
+        "note": "V1.1 网页展演版。支持点击随机抽签、选择十二花神、归境复位与声音开关；未附视频，自动使用程序化水墨绘卷。",
+        "linkText": "↗ 进入花神启境",
+        "sourceUrl": null,
+        "palette": [
+          "#8C5968",
+          "#E9D8C2",
+          "#426A57"
+        ],
+        "atmo": "#E8B7B3",
+        "ring": "#D4C6A4",
+        "style": "banded",
+        "position": [
+          9,
+          3.2,
+          44
+        ],
+        "radius": 1.85
       }
     }
   ]
