@@ -10,16 +10,16 @@
 <meta name="theme-color" content="#080b11" />
 <meta name="screen-orientation" content="landscape" />
 <meta name="x5-orientation" content="landscape" />
-<title>灰钟残誓 v47.8 — PWA 离线全屏壳、切后台音频保活与手机稳帧省电模式 · 暗黑手绘魂系类银河恶魔城</title>
+<title>灰钟残誓 v50.0 — PWA 离线全屏壳、切后台音频保活与手机稳帧省电模式 · 暗黑手绘魂系类银河恶魔城</title>
 <link rel="manifest" href="./manifest.webmanifest" />
 <link rel="icon" type="image/svg+xml" href="./icon.svg" />
 <link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png" />
-<link rel="stylesheet" href="./styles.css?v=47.8.0" />
+<link rel="stylesheet" href="./styles.css?v=50.0.0" />
 </head>
 <body>
 <div id="game-root">
   <canvas id="gameCanvas"></canvas>
-  <!-- v47.8 Mobile Portrait Rotate Guard (Elegant Dark-Ink Landscape Prompt) -->
+  <!-- v50.0 Mobile Portrait Rotate Guard (Elegant Dark-Ink Landscape Prompt) -->
   <div id="mobile-rotate-guard" class="mobile-rotate-guard" aria-live="polite">
     <div class="rotate-guard-card">
       <div class="rotate-phone-anim" aria-hidden="true">
@@ -148,12 +148,22 @@
     A/D 移 · Space 跳 · 左键/J 三连·长按居合 · 右键/K 弹反 · F/中键/I 钩索 · R/U 灵刃 · Shift 闪 · C/L 墨印 · Q/H 回血 · E 交互 · M 舆图 · 支持手柄
   </div>
 
-  <!-- Title Overlay (v47.8 Full-Viewport Atmospheric Dark Hand-Drawn Title Stage) -->
+  <!-- Title Overlay (v50.0 Full-Viewport Atmospheric Dark Hand-Drawn Title Stage) -->
   <div id="title-screen" class="overlay-screen title-stage">
     <div class="title-backdrop-scrim" aria-hidden="true"></div>
 
     <div class="title-topbar">
-      <div class="title-ver-badge">ASHEN BELL VOW · v47.8</div>
+      <div class="title-left-badges">
+        <div class="title-ver-badge">ASHEN BELL VOW · v50.0</div>
+        <button id="btn-cadpa-badge" type="button" class="cadpa-badge-btn" title="CADPA 12+ 适龄提示" aria-label="CADPA 12+">
+          <svg class="cadpa-svg" viewBox="0 0 36 44" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="1.5" y="1.5" width="33" height="41" rx="2" fill="#0d1612" stroke="#4ade80" stroke-width="2"/>
+            <rect x="1.5" y="1.5" width="33" height="27" rx="1.5" fill="#14532d"/>
+            <text x="18" y="21" text-anchor="middle" fill="#f0fdf4" font-size="14.5" font-weight="800" font-family="sans-serif">12+</text>
+            <text x="18" y="38.5" text-anchor="middle" fill="#86efac" font-size="8.2" font-weight="700" font-family="sans-serif">CADPA</text>
+          </svg>
+        </button>
+      </div>
       <div class="title-top-actions">
         <button id="btn-title-fullscreen" type="button" class="title-lang-btn mobile-only-btn title-fs-btn" ><svg class="ui-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg><span data-i18n="title.fullscreen">全屏</span></button>
         <button id="btn-pwa-install" type="button" class="title-lang-btn title-install-btn hidden" data-i18n="title.installPwa">⬇ 安装到桌面</button>
@@ -224,14 +234,35 @@
             <button id="btn-close-slots-drawer" type="button" class="title-slots-close">✕</button>
           </div>
           <div id="save-slots-grid" class="save-slots-grid"></div>
+          <div class="slot-backup-bar">
+            <span id="slot-cloud-status" class="cloud-status-pill" data-state="local" data-i18n="cloud.localOnly">本地存储 · 自动双备</span>
+            <div class="slot-backup-btns">
+              <button id="btn-slot-cloud-sync" type="button" class="seg-btn hidden" data-i18n="cloud.syncNow">云同步</button>
+              <button id="btn-slot-export" type="button" class="seg-btn" data-i18n="backup.exportShort">导出存档码</button>
+              <button id="btn-slot-import" type="button" class="seg-btn" data-i18n="backup.importShort">导入存档码</button>
+            </div>
+          </div>
         </div>
         </div>
       </div>
     </div>
 
-    <div class="title-footer">
-      <span data-i18n="title.footerLeft">手绘水墨 · 三系兵刃 · 25房立体箱庭</span>
-      <span data-i18n="title.footerRight">键鼠 / Xbox &amp; PS 手柄即插即用 · [Enter / A] 启程</span>
+    <div class="title-footer title-footer-compliance">
+      <div class="title-footer-row">
+        <span data-i18n="title.footerLeft">手绘水墨 · 三系兵刃 · 25房立体箱庭</span>
+        <div class="title-legal-links">
+          <button id="btn-footer-cadpa" type="button" class="legal-link-btn" data-i18n="legal.linkCadpa">适龄提示 12+</button>
+          <span class="legal-sep">·</span>
+          <button id="btn-footer-privacy" type="button" class="legal-link-btn" data-i18n="legal.linkPrivacy">隐私与协议</button>
+          <span class="legal-sep">·</span>
+          <button id="btn-footer-credits" type="button" class="legal-link-btn" data-i18n="legal.linkCredits">制作名单</button>
+        </div>
+        <span data-i18n="title.footerRight">键鼠 / Xbox &amp; PS 手柄即插即用 · [Enter / A] 启程</span>
+      </div>
+      <div class="health-advisory-bar">
+        <span class="health-advisory-text" data-i18n="legal.healthAdvisory">抵制不良游戏，拒绝盗版游戏。注意自我保护，谨防受骗上当。适度游戏益脑，沉迷游戏伤身。合理安排时间，享受健康生活。</span>
+        <span id="title-filing-line" class="title-filing-line"></span>
+      </div>
     </div>
   </div>
 
@@ -383,7 +414,7 @@
     </div>
   </div>
 
-  <!-- Unified 4-Tab Settings, Weapon Codex, Bestiary & Archive Modal (v47.8) -->
+  <!-- Unified 4-Tab Settings, Weapon Codex, Bestiary & Archive Modal (v50.0) -->
   <div id="settings-modal" class="overlay-screen hidden">
     <div class="modal-card settings-journal-card">
       <div class="modal-top-bar modal-top-split">
@@ -508,6 +539,15 @@
         </div>
         <div id="keybind-grid" class="keybind-grid"></div>
       </div>
+      <div class="settings-section">
+        <div class="settings-sec-title"><span data-i18n="legal.settingsSec">档案备份与合规声明</span></div>
+        <div class="settings-row legal-settings-row">
+          <button id="btn-settings-backup" type="button" class="seg-btn" data-i18n="backup.openBtn">存档码导出 / 导入</button>
+          <button id="btn-settings-cadpa" type="button" class="seg-btn" data-i18n="legal.linkCadpa">适龄提示 12+</button>
+          <button id="btn-settings-privacy" type="button" class="seg-btn" data-i18n="legal.linkPrivacy">隐私与协议</button>
+          <button id="btn-settings-credits" type="button" class="seg-btn" data-i18n="legal.linkCredits">制作名单</button>
+        </div>
+      </div>
       </div>
       <button id="btn-close-settings" class="primary-btn" data-i18n="settings.saveClose">保存并返回</button>
     </div>
@@ -571,6 +611,62 @@
   </div>
 
   <!-- Finale Choice Modal (Heart of the First Bell) -->
+  <!-- Legal / CADPA 12+ / Privacy Policy / Credits Modal (v50.0) -->
+  <div id="legal-modal" class="overlay-screen hidden">
+    <div class="modal-card" style="width: min(640px, 94%);">
+      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="legal" data-i18n="modal.close">✕ 关闭</button></div>
+      <div id="legal-modal-title" class="modal-title" data-i18n="legal.title.privacy">隐私政策与用户协议</div>
+      <div id="legal-modal-sub" class="modal-sub" data-i18n="legal.sub.privacy">本地单机存储声明与使用规范</div>
+      <div id="legal-tabs" class="codex-tabs"></div>
+      <div id="legal-body" class="legal-body"></div>
+      <button id="btn-close-legal" type="button" class="primary-btn" data-i18n="modal.back">返回</button>
+    </div>
+  </div>
+
+  <!-- Save-Code Export / Import Backup Modal (v50.0) -->
+  <div id="savecode-modal" class="overlay-screen hidden">
+    <div class="modal-card" style="width: min(600px, 94%);">
+      <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="savecode" data-i18n="modal.close">✕ 关闭</button></div>
+      <div class="modal-title" data-i18n="backup.title">档案码备份与迁移</div>
+      <div id="savecode-desc" class="modal-sub" data-i18n="backup.sub">含 FNV-1a 校验和 · 跨设备或换浏览器防丢档</div>
+      <div id="savecode-tabs" class="codex-tabs"></div>
+      <textarea id="savecode-textarea" class="savecode-textarea" rows="5" spellcheck="false" autocomplete="off"></textarea>
+      <div id="savecode-status" class="savecode-status"></div>
+      <div class="modal-btn-row" style="margin-top: 10px;">
+        <button id="btn-savecode-action" type="button" class="primary-btn" data-i18n="backup.copyBtn">复制档案码</button>
+        <button id="btn-close-savecode" type="button" class="hud-btn" data-i18n="modal.close" style="padding:10px 18px;">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- First-Run Unchecked Privacy & User Agreement Consent Overlay (v50.0) -->
+  <div id="compliance-consent-modal" class="consent-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-card consent-card">
+      <div class="modal-title" data-i18n="legal.consentTitle">隐私政策与用户协议提示</div>
+      <div class="modal-sub" data-i18n="legal.consentSub">《灰钟残誓》为离线单机动作游戏，请阅读并勾选确认后进入</div>
+      <div class="consent-summary">
+        <p data-i18n="legal.consentP1">1. 本游戏不要求手机号、通讯录、定位、相机等敏感系统权限，不向第三方出售或共享您的个人信息。</p>
+        <p data-i18n="legal.consentP2">2. 游戏进度与按键/画质设置仅保存于本设备本地存储（localStorage）；若您在 TapTap 平台运行，将通过平台云存档接口同步您的游戏进度。</p>
+        <p data-i18n="legal.consentP3">3. 您可随时在「选择档案」或「系统设置」中导出、删除本地档案，或撤回本同意声明。</p>
+      </div>
+      <button id="btn-consent-read-policy" type="button" class="legal-link-btn consent-expand-btn" data-i18n="legal.consentExpand">展开完整协议摘要</button>
+      <div id="consent-policy-preview" class="consent-policy-preview hidden">
+        <p data-i18n="legal.privP1"></p>
+        <p data-i18n="legal.privP3"></p>
+        <p data-i18n="legal.cadpaP1"></p>
+      </div>
+      <label class="consent-check-label">
+        <input id="consent-checkbox" type="checkbox" />
+        <span data-i18n="legal.consentCheck">我已阅读并同意《用户协议》与《隐私政策》</span>
+      </label>
+      <div id="consent-decline-msg" class="consent-decline-msg hidden" data-i18n="legal.consentDeclineMsg">需勾选同意隐私政策与用户协议后方可开始游戏。本游戏不收集个人敏感信息，所有存档均可随时清空。</div>
+      <div class="modal-btn-row" style="margin-top: 12px;">
+        <button id="btn-consent-decline" type="button" class="hud-btn" data-i18n="legal.consentDecline" style="padding:10px 18px;">不同意</button>
+        <button id="btn-consent-accept" type="button" class="primary-btn" disabled data-i18n="legal.consentAccept">同意并进入</button>
+      </div>
+    </div>
+  </div>
+
   <div id="ending-choice-modal" class="overlay-screen hidden">
     <div class="modal-card" style="width: min(660px, 94%);">
       <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="ending-choice" data-i18n="modal.deferShort">✕ 暂缓抉择</button></div>
@@ -634,7 +730,7 @@
     <!-- Contextual Interact Pill (appears near Altar / NPC / Tablet / Switch / Pickup) -->
     <button id="mobile-interact-btn" class="mobile-interact-btn t-btn hidden" data-key="KeyE" data-i18n="mob.interact">交互</button>
 
-    <!-- Bottom-Right Ergonomic 6+3 Soulslike Thumb Stage (v47.8) -->
+    <!-- Bottom-Right Ergonomic 6+3 Soulslike Thumb Stage (v50.0) -->
     <div id="action-fan" class="action-fan" data-i18n-aria="mob.fanAria" aria-label="动作扇形按键">
       <svg class="fan-arc-svg" viewBox="0 0 280 248" aria-hidden="true">
         <path d="M 88 228 A 145 145 0 0 1 256 64" fill="none" stroke="rgba(216, 207, 184, 0.16)" stroke-width="1.4" stroke-dasharray="4 6" />
@@ -767,7 +863,7 @@
   }, 8000);
 })();
 </script>
-<script type="module" src="./src/main.js?v=47.8.0"></script>
+<script type="module" src="./src/main.js?v=50.0.0"></script>
   <div id="abv-fatal-banner" class="abv-fatal-banner hidden" role="alert"></div>
   <div id="gp-nav-bar" class="gp-nav-bar hidden" data-i18n="gp.navLegend">[十字/左摇杆] 移动 · [A] 确认 · [B] 返回 · [LB/RB] 切页 · [右摇杆] 滚动</div>
 </body>

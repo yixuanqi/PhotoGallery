@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Zero-dependency static verifier for Ashen Bell Vow v47.8
+"""Zero-dependency static verifier for Ashen Bell Vow v50.0
 Checks:
 1. JS lexical & bracket syntax across all src/**/*.js
 2. ES Module import/export path existence, explicit .js suffix, exact case sensitivity & symbol verification
@@ -646,81 +646,85 @@ def check_v34_economy_relics_i18n(file_texts):
     if 'cycleOverlayTab' not in file_texts.get('src/uiNav.js', '') or 'scrollOverlay' not in file_texts.get('src/uiNav.js', ''):
         errors.append("v43.0: Missing full gamepad tab-cycling / scrolling in src/uiNav.js")
     if '__ABV_OFFLINE_WORLD__' not in file_texts.get('src/levelLoader.js', ''):
-        errors.append("v47.8: Missing offline pre-bundled world fast-path in src/levelLoader.js")
+        errors.append("v50.0: Missing offline pre-bundled world fast-path in src/levelLoader.js")
     if not os.path.isfile(os.path.join(BASE_DIR, 'tools', 'build_release.py')):
-        errors.append("v47.8: Missing tools/build_release.py offline release builder")
+        errors.append("v50.0: Missing tools/build_release.py offline release builder")
     for pwa_f in ('manifest.webmanifest', 'sw.js', 'icon.svg', 'icon-192.png', 'icon-512.png'):
         if not os.path.isfile(os.path.join(BASE_DIR, pwa_f)):
-            errors.append(f"v47.8: Missing PWA asset '{pwa_f}'")
+            errors.append(f"v50.0: Missing PWA asset '{pwa_f}'")
     if 'keepAliveResume' not in file_texts.get('src/audio.js', '') or 'mobileEcoMode' not in file_texts.get('src/state.js', ''):
-        errors.append("v47.8: Missing audio keepAliveResume or mobileEcoMode implementation")
+        errors.append("v50.0: Missing audio keepAliveResume or mobileEcoMode implementation")
     if 'auxBtn' in file_texts.get('src/main.js', '') or 'auxWrap' in file_texts.get('src/main.js', ''):
-        errors.append("v47.8: Stale undeclared reference to removed auxBtn/auxWrap in src/main.js")
+        errors.append("v50.0: Stale undeclared reference to removed auxBtn/auxWrap in src/main.js")
     if 'tickBossGreedPressure' not in file_texts.get('src/ai/bossesAi.js', '') or 'tickWardenGreedPressure' not in file_texts.get('src/ai/wardensAi.js', ''):
-        errors.append("v47.8: Missing anti-facetank greed punish in bossesAi.js / wardensAi.js")
+        errors.append("v50.0: Missing anti-facetank greed punish in bossesAi.js / wardensAi.js")
     if 'bulwarkCd' not in file_texts.get('src/combat/damageCombat.js', '') or 'cistern:' not in file_texts.get('src/locales/world.js', ''):
-        errors.append("v47.8: Missing iron_bulwark cooldown or cistern English biome ambience")
+        errors.append("v50.0: Missing iron_bulwark cooldown or cistern English biome ambience")
     if 'const wasLeft = (prevX + ent.w)' not in file_texts.get('src/physics.js', '') or 'let snapY = bp.y - bp.h' not in file_texts.get('src/player.js', ''):
-        errors.append("v47.8: Missing anti-zip prevX horizontal collision guard or ceiling-safe bounce pad snap")
+        errors.append("v50.0: Missing anti-zip prevX horizontal collision guard or ceiling-safe bounce pad snap")
+    if 'TapCloudStorageAdapter' not in file_texts.get('src/storage.js', '') or 'exportSaveCode' not in file_texts.get('src/save.js', '') or 'ensureComplianceConsent' not in file_texts.get('src/ui/complianceUi.js', ''):
+        errors.append("v50.0: Missing TapCloudStorageAdapter, save-code backup, or commercial compliance shell")
+    if not os.path.isfile(os.path.join(BASE_DIR, 'tools/minify_obfuscate.py')) or not os.path.isfile(os.path.join(BASE_DIR, 'tools/decode_stack.py')):
+        errors.append("v50.0: Missing tools/minify_obfuscate.py or tools/decode_stack.py production build pipeline")
     if 'clipRayToSolids' not in file_texts.get('src/arenaHazards.js', '') or 'drawBeamImpactFlare' not in file_texts.get('src/render/arenaHazardRenderer.js', '') or 'getWardenSafeGroundSpan' not in file_texts.get('src/ai/wardensAi.js', ''):
-        errors.append("v47.8: Missing raycast beam clipping, impact flare, or Forest Warden safe ground span clamping")
+        errors.append("v50.0: Missing raycast beam clipping, impact flare, or Forest Warden safe ground span clamping")
     if 'moltenGeyser' not in file_texts.get('src/arenaHazards.js', '') or 'galeTornado' not in file_texts.get('src/ai/wardensAi.js', '') or 'frostSwordArray' not in file_texts.get('src/ai/wardensAi.js', ''):
-        errors.append("v47.8: Missing Step 3 Boss 2 moltenGeyser or Wind/Mountain Warden spatial signature moves")
+        errors.append("v50.0: Missing Step 3 Boss 2 moltenGeyser or Wind/Mountain Warden spatial signature moves")
     if 'flasksCapped' not in file_texts.get('src/state.js', '') or 'boughtBellSatchel' not in file_texts.get('src/ui/progressionUi.js', '') or 'hideInNgPlus' not in file_texts.get('src/render/worldRenderer.js', ''):
-        errors.append("v47.8: Missing Clean NG+ pickup hiding, Scavenger gear carryover, or NG+ inscription filter")
+        errors.append("v50.0: Missing Clean NG+ pickup hiding, Scavenger gear carryover, or NG+ inscription filter")
     if 'resolveFlyingEnemySolids' not in file_texts.get('src/physics.js', '') or 'syncOwnedAbilityPickups' not in file_texts.get('src/state.js', ''):
-        errors.append("v47.8: Missing resolveFlyingEnemySolids anti-clip or syncOwnedAbilityPickups NG+ dedup")
+        errors.append("v50.0: Missing resolveFlyingEnemySolids anti-clip or syncOwnedAbilityPickups NG+ dedup")
     if 'foundryVentSealed' not in file_texts.get('src/physics.js', '') or 'activeBoss.arenaTopY' not in file_texts.get('src/physics.js', '') or 'awakeBossVis' not in file_texts.get('src/worldCamera.js', ''):
-        errors.append("v47.8: Missing Boss 2 ceiling-vent lock, vertical arenaTopY clamp, or awakeBoss room occlusion immunity")
+        errors.append("v50.0: Missing Boss 2 ceiling-vent lock, vertical arenaTopY clamp, or awakeBoss room occlusion immunity")
     if 'spawnArenaHazard' not in file_texts.get('src/arenaHazards.js', '') or 'drawArenaHazards' not in file_texts.get('src/render/arenaHazardRenderer.js', ''):
-        errors.append("v47.8: Missing generic arenaHazards engine or arenaHazardRenderer")
+        errors.append("v50.0: Missing generic arenaHazards engine or arenaHazardRenderer")
     if 'brambleCage' not in file_texts.get('src/ai/wardensAi.js', '') or 'solarPillars' not in file_texts.get('src/ai/endgameBossesAi.js', ''):
-        errors.append("v47.8: Missing Forest Warden brambleCage or Boss 3 Radiant solarPillars overhaul in endgameBossesAi.js")
+        errors.append("v50.0: Missing Forest Warden brambleCage or Boss 3 Radiant solarPillars overhaul in endgameBossesAi.js")
     if 'inBossTrigger' not in file_texts.get('src/player.js', '') or 'ngAbilityDup' not in file_texts.get('src/combat/worldCombat.js', ''):
-        errors.append("v47.8: Missing dynamic symmetric inBossTrigger or NG+ ability retention resonance")
+        errors.append("v50.0: Missing dynamic symmetric inBossTrigger or NG+ ability retention resonance")
     if "showVictory('boss_hui')" in file_texts.get('src/combat/damageCombat.js', '') or "showVictory('boss_ji')" in file_texts.get('src/combat/damageCombat.js', ''):
-        errors.append("v47.8: Mid-game Boss 1/2 still triggering showVictory modal in damageCombat.js")
+        errors.append("v50.0: Mid-game Boss 1/2 still triggering showVictory modal in damageCombat.js")
     if 'seamTop' not in file_texts.get('src/levelLoader.js', '') or 'seamBottom' not in file_texts.get('src/renderTerrain.js', ''):
-        errors.append("v47.8: Missing pillar seamTop/seamBottom merging in levelLoader.js / renderTerrain.js")
+        errors.append("v50.0: Missing pillar seamTop/seamBottom merging in levelLoader.js / renderTerrain.js")
     if 'moveGroundEnemyWithGuard' not in file_texts.get('src/physics.js', '') or '_padBounceCount' not in file_texts.get('src/ai/enemiesAi.js', ''):
-        errors.append("v47.8: Missing ground-enemy anti-stuck guard or anti-bounce-loop logic")
+        errors.append("v50.0: Missing ground-enemy anti-stuck guard or anti-bounce-loop logic")
     if 'grappleCandidates' not in file_texts.get('src/combat/playerCombat.js', '') or 'playGrappleLockTick' not in file_texts.get('src/audio.js', ''):
-        errors.append("v47.8: Missing multi-target grappleCandidates or playGrappleLockTick feedback")
+        errors.append("v50.0: Missing multi-target grappleCandidates or playGrappleLockTick feedback")
     if 'export const UI_ICONS' not in file_texts.get('src/emblems.js', '') or 'v46.4 INK & STELE' not in open(os.path.join(BASE_DIR, 'styles.css'), encoding='utf-8').read():
-        errors.append("v47.8: Missing UI_ICONS line-art SVG library or Ink & Stele stylesheet overhaul")
+        errors.append("v50.0: Missing UI_ICONS line-art SVG library or Ink & Stele stylesheet overhaul")
     _banned_emojis = ('📜', '🗺', '⚔', '⚑', '🔔', '⚙', '👹', '⚡', '🔄', '📊', '🔒', '⛶')
-    for _chk_rel in ('index.html', 'src/locales/uiZh.js', 'src/locales/uiEn.js', 'src/ui/modalsUi.js', 'src/ui/skillTreeUi.js'):
+    for _chk_rel in ('index.html', 'src/locales/uiZh.js', 'src/locales/uiEn.js', 'src/ui/modalsUi.js', 'src/ui/skillTreeUi.js', 'src/ui/complianceUi.js'):
         _chk_txt = open(os.path.join(BASE_DIR, _chk_rel), encoding='utf-8').read()
         for _em in _banned_emojis:
             if _em in _chk_txt:
-                errors.append(f"v47.8: Banned system emoji '{_em}' still found in {_chk_rel}")
+                errors.append(f"v50.0: Banned system emoji '{_em}' still found in {_chk_rel}")
     if 'clashParryCd' not in file_texts.get('src/combat/playerCombat.js', '') or 'findNearestInteractable' not in file_texts.get('src/combat/worldCombat.js', ''):
-        errors.append("v47.8: Missing anti-spam clashParryCd or single-focus findNearestInteractable")
+        errors.append("v50.0: Missing anti-spam clashParryCd or single-focus findNearestInteractable")
     if 'execKillFocus' not in file_texts.get('src/renderer.js', '') or 'flashMode' not in file_texts.get('src/state.js', '') or 'mobileShowMinimap' not in file_texts.get('src/state.js', ''):
-        errors.append("v47.8: Missing eye-safe execKillFocus/flashMode or mobileShowMinimap slim HUD wiring")
+        errors.append("v50.0: Missing eye-safe execKillFocus/flashMode or mobileShowMinimap slim HUD wiring")
     if 'v46.2 STEP 3' not in open(os.path.join(BASE_DIR, 'styles.css'), encoding='utf-8').read():
-        errors.append("v47.8: Missing mobile smith-modal / ending-choice layout fix in styles.css")
+        errors.append("v50.0: Missing mobile smith-modal / ending-choice layout fix in styles.css")
     if 'ensureWorldForCycle' not in file_texts.get('src/levelLoader.js', '') or '__ABV_OFFLINE_WORLDS__' not in file_texts.get('src/levelLoader.js', ''):
-        errors.append("v47.8: Missing multi-cycle ensureWorldForCycle or __ABV_OFFLINE_WORLDS__ support in src/levelLoader.js")
+        errors.append("v50.0: Missing multi-cycle ensureWorldForCycle or __ABV_OFFLINE_WORLDS__ support in src/levelLoader.js")
     if 'getRoomById' not in file_texts.get('src/state.js', '') or 'roomLocalX' not in file_texts.get('src/render/worldBackdropRenderer.js', ''):
-        errors.append("v47.8: Missing room-relative coordinate helpers in state.js / worldBackdropRenderer.js")
+        errors.append("v50.0: Missing room-relative coordinate helpers in state.js / worldBackdropRenderer.js")
     for bad_num in ('2648', '5584', '6140', '6440', '6716'):
         if bad_num in file_texts.get('src/ai/bossesAi.js', ''):
-            errors.append(f"v47.8: Legacy hardcoded Boss arena X '{bad_num}' still present in src/ai/bossesAi.js")
+            errors.append(f"v50.0: Legacy hardcoded Boss arena X '{bad_num}' still present in src/ai/bossesAi.js")
     r01_d = json.load(open(os.path.join(BASE_DIR, 'data/rooms/r01_sanctuary.json'), encoding='utf-8'))
     if r01_d.get('grappleAnchors') or r01_d.get('secretWalls') or r01_d.get('voidBarriers') or len(r01_d.get('solids', [])) > 4:
-        errors.append("v47.8: r01_sanctuary must stay a clean flat practice room with no grappleAnchors/secretWalls/voidBarriers/aerial platforms")
+        errors.append("v50.0: r01_sanctuary must stay a clean flat practice room with no grappleAnchors/secretWalls/voidBarriers/aerial platforms")
     if 'evictTerrainChunks' not in file_texts.get('src/renderTerrain.js', '') or 'releaseBackdropCanvas' not in file_texts.get('src/render/backdropCache.js', '') or '-webkit-touch-callout' not in open(os.path.join(BASE_DIR, 'styles.css'), encoding='utf-8').read():
-        errors.append("v47.8: Missing iOS WebKit LRU VRAM eviction or -webkit-touch-callout hardening")
+        errors.append("v50.0: Missing iOS WebKit LRU VRAM eviction or -webkit-touch-callout hardening")
     if 'isRoomOccluded(enemy.roomId)' not in file_texts.get('src/main.js', '') or 'hasLineOfSight' not in file_texts.get('src/ai/exoticEnemiesAi.js', ''):
-        errors.append("v47.8: Missing room-occlusion enemy AI gate or Cantor line-of-sight guard")
+        errors.append("v50.0: Missing room-occlusion enemy AI gate or Cantor line-of-sight guard")
     if 'clashParryTimer' not in file_texts.get('src/combat/damageCombat.js', '') or 'renderAltarTabs' not in file_texts.get('src/ui/relicBoardUi.js', ''):
-        errors.append("v47.8: Missing mobile merged clash-parry or 4-tab altar UI")
+        errors.append("v50.0: Missing mobile merged clash-parry or 4-tab altar UI")
     if 'branch1' not in file_texts.get('src/weapons.js', '') or 'martialBeat' not in file_texts.get('src/render/playerRenderer.js', ''):
-        errors.append("v47.8: Missing dashAttack moveset or articulated playerRenderer attack poses")
+        errors.append("v50.0: Missing dashAttack moveset or articulated playerRenderer attack poses")
     for v451_mod in ('src/render/wardenRenderer.js', 'src/ai/biomeEnemiesAi.js', 'src/render/exoticEnemyRenderer.js', 'src/ai/exoticEnemiesAi.js'):
         if v451_mod not in file_texts:
-            errors.append(f"v47.8: Missing modular split file '{v451_mod}'")
+            errors.append(f"v50.0: Missing modular split file '{v451_mod}'")
 
     en_refined_count = len(re.findall(r"^\s+refinedEffect:\s*'", ent_loc, re.M))
     if en_refined_count != len(relic_ids):
@@ -916,7 +920,7 @@ def audit_single_world(world_rel, label):
             if not top_ok:
                 errors.append(f"{label} Law 0: {rid} static voidBarrier '{vb.get('id')}' is not top-sealed!")
 
-    # LAW 0.5 (v47.8): Zero vertical pillar interior overlap & zero lantern-body/rope clipping through platforms/solids!
+    # LAW 0.5 (v50.0): Zero vertical pillar interior overlap & zero lantern-body/rope clipping through platforms/solids!
     _all_world_solids = []
     _v_pillars = []
     for _rid, _rm in rooms.items():
@@ -956,7 +960,7 @@ def audit_single_world(world_rel, label):
                     if _govx > 0 and _govy > 0:
                         errors.append(f"{label} Law 0.5 LanternGrappleClip: {_rid} '{_lan.get('id')}' landing=({_lx},{_by}) clips {_srid} {_st} [{_sx}..{_sx+_sw},{_sy}..{_sy+_sh}]")
 
-    # LAW 0.5b (v47.8): Zero flying-enemy spawn/orbit clipping into solid walls or pillars!
+    # LAW 0.5b (v50.0): Zero flying-enemy spawn/orbit clipping into solid walls or pillars!
     for _rid, _rm in rooms.items():
         _rb = _rm['bounds']
         for _en in _rm.get('enemies', []):
@@ -973,7 +977,7 @@ def audit_single_world(world_rel, label):
                 if (_ex - _ax < _sx + _sw and _ex + _ew + _ax > _sx and _ey - _ay < _sy + _sh and _ey + _eh + _ay > _sy):
                     errors.append(f"{label} Law 0.5b FlyingClip: {_rid} '{_en.get('id')}' ({_ek}) orbit clips {_srid} {_st} [{_sx}..{_sx+_sw},{_sy}..{_sy+_sh}]")
 
-    # LAW 0.5c (v47.8): Zero bounce-pad overhead solid ceiling collisions (prevents ceiling embed & room zip)!
+    # LAW 0.5c (v50.0): Zero bounce-pad overhead solid ceiling collisions (prevents ceiling embed & room zip)!
     for _rid, _rm in rooms.items():
         _rb = _rm['bounds']
         for _bp in _rm.get('bouncePads', []):
@@ -990,7 +994,7 @@ def audit_single_world(world_rel, label):
                 if min(_px1, _sx + _sw) > max(_px0, _sx) and _sy < _py_top and _sy + _sh > _py_head:
                     errors.append(f"{label} Law 0.5c BouncePadCeiling: {_rid} '{_bp.get('id')}' world=({_bx},{_by}) hits {_srid} {_st} [{_sx}..{_sx+_sw},{_sy}..{_sy+_sh}]")
 
-    # LAW 0.5d (v47.8): Zero wind-zone side-wall overlap & zero low overhead ceiling collision!
+    # LAW 0.5d (v50.0): Zero wind-zone side-wall overlap & zero low overhead ceiling collision!
     for _rid, _rm in rooms.items():
         _rb = _rm['bounds']
         for _wz in _rm.get('windZones', []):
@@ -1008,7 +1012,7 @@ def audit_single_world(world_rel, label):
                 if _sy < _wy0 + 24 and _sy + _sh > _wy0 - 75 and ((_wy0 - 27) - (_sy + _sh)) < 45:
                     errors.append(f"{label} Law 0.5d WindLowCeiling: {_rid} '{_wz.get('id')}' top y={_wy0} blocked by {_srid} {_st} [{_sx}..{_sx+_sw},{_sy}..{_sy+_sh}] (head_gap={(_wy0 - 27) - (_sy + _sh)}px)")
 
-    # LAW 0.5e (v47.8): Zero grapple-anchor landing solid clip & minimum 35px overhead ceiling clearance!
+    # LAW 0.5e (v50.0): Zero grapple-anchor landing solid clip & minimum 35px overhead ceiling clearance!
     for _rid, _rm in rooms.items():
         _rb = _rm['bounds']
         for _anc in _rm.get('grappleAnchors', []):
@@ -1251,11 +1255,11 @@ def check_world_topology_and_shafts():
     w0 = json.load(open(os.path.join(BASE_DIR, 'data/world.json'), encoding='utf-8'))
     w1_path = os.path.join(BASE_DIR, 'data/worlds/world_ng1.json')
     if not os.path.isfile(w1_path):
-        all_errors.append("v47.8: Missing pre-baked data/worlds/world_ng1.json (run python3 tools/assemble_worlds.py)")
+        all_errors.append("v50.0: Missing pre-baked data/worlds/world_ng1.json (run python3 tools/assemble_worlds.py)")
     else:
         w1 = json.load(open(w1_path, encoding='utf-8'))
         if w1.get('rooms') != w0.get('rooms'):
-            all_errors.append("v47.8: data/worlds/world_ng1.json drifted from frozen baseline data/world.json!")
+            all_errors.append("v50.0: data/worlds/world_ng1.json drifted from frozen baseline data/world.json!")
 
     ng2_compact, _t2, e2 = audit_single_world('data/worlds/world_ng2.json', 'NG2')
     ng3_compact, _t3, e3 = audit_single_world('data/worlds/world_ng3.json', 'NG3')
@@ -1337,7 +1341,7 @@ def check_undefined_js_calls(file_texts):
         'parseInt','parseFloat','isNaN','isFinite','encodeURIComponent','decodeURIComponent','eval','atob','btoa',
         'console','window','document','navigator','localStorage','sessionStorage','location','history','performance','fetch','URL','URLSearchParams','Blob','FileReader','Image','Audio','AudioContext','webkitAudioContext','OffscreenCanvas','Path2D','DOMMatrix','ResizeObserver','MutationObserver','IntersectionObserver',
         'requestAnimationFrame','cancelAnimationFrame','setTimeout','clearTimeout','setInterval','clearInterval','queueMicrotask','alert','confirm','prompt','getComputedStyle','matchMedia','structuredClone',
-        'Float32Array','Float64Array','Uint8Array','Uint16Array','Uint32Array','Int32Array','Uint8ClampedArray','ArrayBuffer'
+        'Float32Array','Float64Array','Uint8Array','Uint16Array','Uint32Array','Int32Array','Uint8ClampedArray','ArrayBuffer','TextEncoder','TextDecoder','constructor','super'
     }
     for rel, code in sorted(file_texts.items()):
         if not rel.endswith('.js') or 'locales/' in rel:
@@ -1391,7 +1395,7 @@ def check_undefined_js_calls(file_texts):
                 seen_err.add(fn)
                 errors.append(f"{rel}: Undefined function call '{fn}()'")
 
-        # v47.8 Guard: verify every config.js exported constant referenced in a module is explicitly imported/declared
+        # v50.0 Guard: verify every config.js exported constant referenced in a module is explicitly imported/declared
         clean_no_reexp = re.sub(r'export\s*\{[^}]*\}\s*from\s*[^;\n]+', '', clean)
         for sym in sorted(cfg_consts):
             if sym in declared:
@@ -1422,7 +1426,7 @@ def main():
     all_errs = js_errs + rm_errs + lnch_errs + v34_errs + topo_errs + undef_errs + dup_decl_errs
     all_warns = js_warns + rm_warns + v34_warns
 
-    print(f"[Ashen Bell Vow v47.8 Verifier] JS modules: {js_cnt} | Cycles: {cyc_cnt} | Rooms: {rm_cnt} | Stamps: {st_cnt}")
+    print(f"[Ashen Bell Vow v50.0 Verifier] JS modules: {js_cnt} | Cycles: {cyc_cnt} | Rooms: {rm_cnt} | Stamps: {st_cnt}")
     print(
         f"Economy (1x): {eco['total_1x']} echoes "
         f"[Foes({eco['reg_cnt']}): {eco['reg_echo']} | Wardens: {eco['warden_echo']} | Bosses: {eco['boss_echo']} | "

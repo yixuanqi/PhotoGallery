@@ -1,3 +1,28 @@
+## v50.0 里程碑商业发行版：合规壳（适龄提示/隐私弹窗/健康忠告/制作名单）+ TapTap 云存档适配器 + 防坏档双备份 + 校验器增强
+- **商业合规壳（`src/ui/complianceUi.js` / `index.html` / `styles.css`）**：
+  * **标题页合规展示**：左上角版本徽章旁新增自绘线框 **CADPA 12+ 适龄提示徽章按钮**；底栏集成标准 48 字 **《健康游戏忠告》**、软著/ICP/版号集中配置位（`COMPLIANCE_META`）以及「适龄提示 12+ / 隐私与协议 / 制作名单」快捷入口；
+  * **首次启动非默认勾选隐私协议弹窗（`#compliance-consent-modal`）**：复选框默认未勾选，「同意并进入」在勾选前保持禁用，拒绝时展示纯单机零敏感权限说明，并支持在隐私弹窗中随时撤回同意（编辑器预览模式自动跳过）；
+  * **三合一玄墨碑刻合规弹窗（`#legal-modal`）**：承载 CADPA 12+ 四项说明、隐私政策与用户协议、制作人员名单（Credits），同步在系统设置页底部开放常驻入口。
+- **TapTap 云存档适配器 + 自动滚动防坏档 + 存档码导入导出（`src/storage.js` / `src/save.js`）**：
+  * 新增 `TapCloudStorageAdapter`：自动识别宿主 `tap.getCloudSaveManager()` / `tap.getFileSystemManager()`，本地同步秒写 + 后台 `2.5s` 节流推送云端（适配平台 60 次/分钟限频），启动与手动同步按 `savedAt` 时间戳自动合并防覆盖；非 TapTap 环境（个人博客 / itch.io / 本地）零报错无缝回落至 `localStorage`；
+  * **自动滚动防坏档备份（`_bak`）**：每次写档前将上一份校验合法的主档镜像留存至 `_bak` 槽，主档损坏或写入中断时自动无缝恢复；
+  * **带 FNV-1a 32-bit 校验和的 `ABV1:` 存档码导入/导出**：支持 `TextEncoder/TextDecoder` 及旧 WebView `encodeURIComponent` 双路 UTF-8 编解码，在标题页「选择档案」抽屉与「系统设置」均支持一键复制导出与校验导入。
+- **校验门控修复（`verify_project.py`）**：
+  * 补齐内置 Web/ES6 全局标识 `TextEncoder`、`TextDecoder`、`constructor`、`super`，消除误报并新增 v50.0 合规壳与云存档自动化门控，版本号整体跃升至 **`v50.0`**。
+
+---
+
+## v47.9 生产级压缩混淆构建管线 & 离线 SourceMap v3 生成（`tools/build_release.py` / `tools/minify_obfuscate.py` / `tools/decode_stack.py`）
+- **零依赖 JS/CSS 压缩与多层次混淆引擎（`tools/minify_obfuscate.py`）**：
+  * **双引擎支持**：默认 `--engine auto` 自动检测本地 `esbuild` 并无缝回落至零依赖内置 Python 3 引擎（Windows 双击 `build_release.bat` 无需安装 Node.js 即可直接跑出生产压缩混淆包），同时支持 `--no-minify`、`--no-obfuscate`、`--no-sourcemap` 调试开关；
+  * **四层安全混淆**：① 全 70 模块路径转为数字 ID（`0..69`）并精简打包壳函数；② 跨模块 632 个导出键统一混淆；③ 精确两遍词法作用域分析器对 2,610 个无遮蔽、无简写冲突的模块级符号安全重命名；④ 317 KB 离线三周目世界 JSON 采用双射可逆 ASCII 置换加密（原始体积零膨胀、ZIP 压缩零损失、ES5 毫秒级解码）；
+  * **ASI-Safe JS 压缩 + `calc()` 安全 CSS 压缩**：完整去除注释与冗余空白并保留所有 JS 自动分号边界与 CSS `calc()/min()/max()/clamp()` 运算符空格，压缩后强制通过词法括号平衡、重复声明扫描与无 `sourceMappingURL` 泄露审计。
+- **标准离线 SourceMap v3 与崩溃堆栈反查工具（`dist/sourcemaps/` + `tools/decode_stack.py`）**：
+  * 每次构建自动生成符合 Source Map Revision 3 标准的 `game.bundle.js.map`、`styles.css.map` 与 `symbols.json` 并单独归档至 `dist/ashen_bell_vow_<ver>_sourcemaps_OFFLINE.zip`，严禁打入公开 TapTap/itch 发行包；
+  * 新增 `tools/decode_stack.py`，收到线上玩家报错（如 `L12:4832` 或堆栈文本）后可一键离线反查至精确原始 `src/*.js` 文件、行号、原符号名及源码上下文。
+
+---
+
 ## v47.8 Boss 场地技能视觉与碰撞收口（射线截断光斑 + 圣光柱落地收口 + 有机荆棘地笼避台避孢伞）
 - **射线触地/撞墙精确截断与灼烧光斑（`src/arenaHazards.js` / `src/render/arenaHazardRenderer.js`）**：
   * 新增 `clipRayToSolids()` 与 `getHazardArenaBounds()` 射线-实心体精确截断算法，统一接入终关 Boss「渊」的 **棱镜光束（`prismBeam`）**、**圣光十字阵（`radiantCross` 四向独立截断）** 及霜境守卫「凛」的 **悬冰剑阵（`iceLance`）**；

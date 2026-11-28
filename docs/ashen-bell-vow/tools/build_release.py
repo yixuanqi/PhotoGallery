@@ -22,6 +22,21 @@ import zipfile
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DIST_DIR = os.path.join(ROOT, "dist")
+SOURCEMAP_DIR = os.path.join(DIST_DIR, "sourcemaps")
+TOOLS_DIR = os.path.dirname(os.path.abspath(__file__))
+if TOOLS_DIR not in sys.path:
+    sys.path.insert(0, TOOLS_DIR)
+
+from minify_obfuscate import (
+    encode_worlds_payload,
+    find_esbuild_bin,
+    lookup_sourcemap,
+    make_short_id_gen,
+    mangle_module_tokens,
+    minify_css,
+    minify_js_segments,
+    minify_js_with_esbuild,
+)
 
 # Keywords after which a `/` begins a RegExp literal rather than division
 _REGEX_PREV_KEYWORDS = {
@@ -389,21 +404,46 @@ def rewrite_live_ident_refs(code, live_ref_map):
     return "".join(out)
 
 
-def transform_es_module(rel, code, live_exports_by_mod):
+def transform_es_module(
+    rel,
+    code,
+    live_exports_by_mod,
+    module_id_map=None,
+    export_key_map=None,
+    short_runtime=False,
+):
     """
     Transform a single ES module into a classic factory body `function(__req, __exports) { ... }`.
-    Preserves exact ES Module live bindings, re-exports, star exports, and hoisting.
-    Returns (transformed_body, exported_symbol_names, required_pairs)
-    where required_pairs = [(dep_rel, imported_name), ...]
+    Preserves exact ES Module live bindings, re-exports, star exports, hoisting, AND 1:1 original line numbers
+    for accurate SourceMap v3 mapping!
     """
-    exported_locals = []  # [(export_name, local_name)]
-    reexport_lines = []
+    req_fn = "_r" if short_runtime else "__req"
+    exp_fn = "_e" if short_runtime else "__exp"
+    exp_obj = "_x" if short_runtime else "__exports"
+    reexp_all_fn = "_ra" if short_runtime else "__reexportAll"
+    reexp_named_fn = "_rn" if short_runtime else "__reexportNamed"
+    live_prefix = "_l" if short_runtime else "__live_"
+
+    def fmt_mod_id(dep_rel):
+        if module_id_map is not None:
+            return str(module_id_map[dep_rel])
+        return f"'{dep_rel}'"
+
+    def fmt_exp_key(sym):
+        if export_key_map is not None:
+            return export_key_map[sym]
+        return sym
+
+    exported_locals = []
     required_pairs = []
-    live_ref_map = {}  # local_name -> "__live_N.orig_name"
+    live_ref_map = {}
     live_counter = [0]
     exported_names = set()
 
-    # 1. Transform all `import { ... } from '...';` statements
+    def _pad_newlines(orig_text, repl_text):
+        diff = orig_text.count("\n") - repl_text.count("\n")
+        return repl_text + ("\n" * diff if diff > 0 else "")
+
     def repl_import(m):
         spec_str = m.group(1)
         dep = resolve_module_path(rel, m.group(2))
@@ -413,25 +453,26 @@ def transform_es_module(rel, code, live_exports_by_mod):
         live_specs = []
         for orig, alias in specs:
             required_pairs.append((dep, orig))
+            ek = fmt_exp_key(orig)
             if orig in dep_live:
-                live_specs.append((orig, alias))
+                live_specs.append((orig, ek, alias))
             else:
-                static_parts.append(orig if orig == alias else f"{orig}: {alias}")
+                static_parts.append(ek if ek == alias else f"{ek}: {alias}")
 
-        lines = []
+        stmts = []
         if live_specs:
-            var_name = f"__live_{live_counter[0]}"
+            var_name = f"{live_prefix}{live_counter[0]}"
             live_counter[0] += 1
-            lines.append(f"const {var_name} = __req('{dep}');")
-            for orig, alias in live_specs:
-                live_ref_map[alias] = f"{var_name}.{orig}"
+            stmts.append(f"const {var_name} = {req_fn}({fmt_mod_id(dep)});")
+            for _orig, ek, alias in live_specs:
+                live_ref_map[alias] = f"{var_name}.{ek}"
             if static_parts:
-                lines.append(f"const {{ {', '.join(static_parts)} }} = {var_name};")
+                stmts.append(f"const {{ {', '.join(static_parts)} }} = {var_name};")
         elif static_parts:
-            lines.append(f"const {{ {', '.join(static_parts)} }} = __req('{dep}');")
+            stmts.append(f"const {{ {', '.join(static_parts)} }} = {req_fn}({fmt_mod_id(dep)});")
         else:
-            lines.append(f"__req('{dep}');")
-        return "\n".join(lines)
+            stmts.append(f"{req_fn}({fmt_mod_id(dep)});")
+        return _pad_newlines(m.group(0), " ".join(stmts))
 
     body = re.sub(
         r"^[ \t]*import\s*\{([\s\S]*?)\}\s*from\s*['\"]([^'\"]+)['\"]\s*;?",
@@ -440,12 +481,10 @@ def transform_es_module(rel, code, live_exports_by_mod):
         flags=re.M
     )
 
-    # 2. Transform `export * from '...';`
     def repl_export_star(m):
         dep = resolve_module_path(rel, m.group(1))
         required_pairs.append((dep, "*"))
-        reexport_lines.append(f"__reexportAll(__exports, __req('{dep}'));")
-        return f"__reexportAll(__exports, __req('{dep}'));"
+        return _pad_newlines(m.group(0), f"{reexp_all_fn}({exp_obj}, {req_fn}({fmt_mod_id(dep)}));")
 
     body = re.sub(
         r"^[ \t]*export\s*\*\s*from\s*['\"]([^'\"]+)['\"]\s*;?",
@@ -454,7 +493,6 @@ def transform_es_module(rel, code, live_exports_by_mod):
         flags=re.M
     )
 
-    # 3. Transform `export { ... } from '...';`
     def repl_reexport_named(m):
         spec_str = m.group(1)
         dep = resolve_module_path(rel, m.group(2))
@@ -463,8 +501,8 @@ def transform_es_module(rel, code, live_exports_by_mod):
         for orig, alias in specs:
             required_pairs.append((dep, orig))
             exported_names.add(alias)
-            pairs.append(f"['{orig}','{alias}']")
-        return f"__reexportNamed(__exports, __req('{dep}'), [{', '.join(pairs)}]);"
+            pairs.append(f"['{fmt_exp_key(orig)}','{fmt_exp_key(alias)}']")
+        return _pad_newlines(m.group(0), f"{reexp_named_fn}({exp_obj}, {req_fn}({fmt_mod_id(dep)}), [{', '.join(pairs)}]);")
 
     body = re.sub(
         r"^[ \t]*export\s*\{([\s\S]*?)\}\s*from\s*['\"]([^'\"]+)['\"]\s*;?",
@@ -473,13 +511,12 @@ def transform_es_module(rel, code, live_exports_by_mod):
         flags=re.M
     )
 
-    # 4. Transform local `export { a, b as c };`
     def repl_export_local_block(m):
         specs = parse_named_specifiers(m.group(1))
         for local, alias in specs:
             exported_locals.append((alias, local))
             exported_names.add(alias)
-        return ""
+        return "\n" * m.group(0).count("\n")
 
     body = re.sub(
         r"^[ \t]*export\s*\{([\s\S]*?)\}\s*;?",
@@ -488,7 +525,6 @@ def transform_es_module(rel, code, live_exports_by_mod):
         flags=re.M
     )
 
-    # 5. Transform `export async function / function / class / const / let / var`
     def repl_export_decl(m):
         indent = m.group(1)
         decl_kw = m.group(2)
@@ -504,11 +540,9 @@ def transform_es_module(rel, code, live_exports_by_mod):
         flags=re.M
     )
 
-    # 6. Rewrite live-binding references inside this module body
     if live_ref_map:
         body = rewrite_live_ident_refs(body, live_ref_map)
 
-    # 7. Append live getter definitions for all local exports
     if exported_locals:
         seen = set()
         entries = []
@@ -516,8 +550,9 @@ def transform_es_module(rel, code, live_exports_by_mod):
             if exp_name in seen:
                 continue
             seen.add(exp_name)
-            entries.append(f"  '{exp_name}': () => {loc_name}")
-        body = body.rstrip() + "\n__exp(__exports, {\n" + ",\n".join(entries) + "\n});\n"
+            ek = fmt_exp_key(exp_name)
+            entries.append(f"  '{ek}': () => {loc_name}")
+        body = body.rstrip() + f"\n{exp_fn}({exp_obj}, {{\n" + ",\n".join(entries) + "\n});\n"
 
     return body, exported_names, required_pairs
 
@@ -545,104 +580,172 @@ def load_offline_cycle_worlds():
     }
 
 
-def build_offline_bundle_js(version):
+def build_offline_bundle_js(version, minify=True, obfuscate=True, emit_sourcemap=True, engine="auto"):
+    """
+    Build the offline zero-module, zero-fetch single-file bundle (`game.bundle.js`).
+    Returns dict: { "js", "order", "sourcemap", "symbols", "raw_bytes", "final_bytes", "engine_used" }.
+    """
     order, sources = collect_runtime_modules("src/main.js")
     live_exports = find_live_let_exports(sources)
     cycle_worlds = load_offline_cycle_worlds()
 
-    transformed = {}
-    all_exports = {}
-    all_requires = {}
-
+    dry_exports = {}
+    dry_requires = {}
     for rel in order:
-        body, exps, reqs = transform_es_module(rel, sources[rel], live_exports)
-        transformed[rel] = body
-        all_exports[rel] = exps
-        all_requires[rel] = reqs
-
-    # Resolve star-reexports for static validation
+        body_dry, exps_dry, reqs_dry = transform_es_module(rel, sources[rel], live_exports)
+        dry_exports[rel] = exps_dry
+        dry_requires[rel] = reqs_dry
     for rel in order:
-        for dep, sym in all_requires[rel]:
+        for dep, sym in dry_requires[rel]:
             if sym == "*":
-                all_exports[rel] |= all_exports.get(dep, set())
-
-    # Validate every single import symbol & zero stray ES module statements!
+                dry_exports[rel] |= dry_exports.get(dep, set())
     for rel in order:
-        for dep, sym in all_requires[rel]:
-            if dep not in transformed:
+        for dep, sym in dry_requires[rel]:
+            if dep not in dry_exports:
                 raise RuntimeError(f"Bundle error: {rel} requires missing module {dep}")
-            if sym != "*" and sym not in all_exports[dep]:
+            if sym != "*" and sym not in dry_exports[dep]:
                 raise RuntimeError(f"Bundle error: {rel} imports '{sym}' which is not exported by {dep}")
-        # Verify no stray top-level `import ` or `export ` lines remain
-        for ln_no, ln in enumerate(transformed[rel].splitlines(), 1):
+
+    module_id_map = {rel: idx for idx, rel in enumerate(order)} if obfuscate else None
+    export_key_map = None
+    if obfuscate:
+        all_export_syms = sorted(set().union(*dry_exports.values()))
+        ek_gen = make_short_id_gen(prefix="e")
+        export_key_map = {sym: next(ek_gen) for sym in all_export_syms}
+
+    short_rt = bool(obfuscate)
+    def_fn = "_d" if short_rt else "__def"
+    req_fn = "_r" if short_rt else "__req"
+    exp_fn = "_e" if short_rt else "__exp"
+    exp_obj = "_x" if short_rt else "__exports"
+    reexp_all_fn = "_ra" if short_rt else "__reexportAll"
+    reexp_named_fn = "_rn" if short_rt else "__reexportNamed"
+    fac_var = "_f" if short_rt else "__factories"
+    cac_var = "_c" if short_rt else "__cache"
+
+    transformed = {}
+    mangle_maps = {}
+    raw_unminified_chars = 0
+
+    for rel in order:
+        body, _exps, _reqs = transform_es_module(
+            rel,
+            sources[rel],
+            live_exports,
+            module_id_map=module_id_map,
+            export_key_map=export_key_map,
+            short_runtime=short_rt,
+        )
+        for ln_no, ln in enumerate(body.splitlines(), 1):
             if re.match(r"^\s*(?:import|export)\s+", ln):
                 raise RuntimeError(f"Bundle error: Untransformed ES module syntax in {rel}:{ln_no}: {ln}")
+        raw_unminified_chars += len(body.encode("utf-8"))
+        if obfuscate:
+            body, local_mmap = mangle_module_tokens(body, tokenize_js)
+            mangle_maps[rel] = local_mmap
+        else:
+            mangle_maps[rel] = {}
+        transformed[rel] = body
 
-    # Assemble single classic script bundle
-    parts = []
-    parts.append(f"// Ashen Bell Vow {version} — Offline Zero-Module Zero-Fetch Single Bundle (generated by tools/build_release.py)")
-    parts.append("(function (global) {")
-    parts.append("  'use strict';")
-    worlds_json = json.dumps(cycle_worlds, ensure_ascii=False, separators=(",", ":"))
-    parts.append(f"  global.__ABV_OFFLINE_WORLDS__ = {worlds_json};")
-    parts.append("  global.__ABV_OFFLINE_WORLD__ = global.__ABV_OFFLINE_WORLDS__['1'];")
-    parts.append("""
-  const __factories = Object.create(null);
-  const __cache = Object.create(null);
-  function __def(id, fn) { __factories[id] = fn; }
-  function __exp(target, getters) {
-    const keys = Object.keys(getters);
-    for (let i = 0; i < keys.length; i++) {
-      const k = keys[i];
-      Object.defineProperty(target, k, { enumerable: true, configurable: true, get: getters[k] });
-    }
-  }
-  function __reexportAll(target, src) {
-    const descs = Object.getOwnPropertyDescriptors(src);
-    const keys = Object.keys(descs);
-    for (let i = 0; i < keys.length; i++) {
-      const k = keys[i];
-      if (!Object.prototype.hasOwnProperty.call(target, k)) {
-        Object.defineProperty(target, k, descs[k]);
-      }
-    }
-  }
-  function __reexportNamed(target, src, pairs) {
-    for (let i = 0; i < pairs.length; i++) {
-      const orig = pairs[i][0], alias = pairs[i][1];
-      const d = Object.getOwnPropertyDescriptor(src, orig);
-      if (d) Object.defineProperty(target, alias, d);
-    }
-  }
-  function __req(id) {
-    if (__cache[id]) return __cache[id];
-    const fn = __factories[id];
-    if (!fn) throw new Error('Missing bundled module: ' + id);
-    const exports = {};
-    __cache[id] = exports;
-    fn(__req, exports);
-    return exports;
-  }
-""")
+    if obfuscate:
+        worlds_expr = encode_worlds_payload(cycle_worlds, seed=47901)
+    else:
+        worlds_expr = json.dumps(cycle_worlds, ensure_ascii=False, separators=(",", ":"))
+    raw_unminified_chars += len(json.dumps(cycle_worlds, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
 
+    header_code = (
+        f"// Ashen Bell Vow {version} — Offline Production Bundle\n"
+        "(function(global){\n"
+        "'use strict';\n"
+        f"global.__ABV_OFFLINE_WORLDS__={worlds_expr};\n"
+        "global.__ABV_OFFLINE_WORLD__=global.__ABV_OFFLINE_WORLDS__['1'];\n"
+        f"const {fac_var}=Object.create(null),{cac_var}=Object.create(null);\n"
+        f"function {def_fn}(i,f){{{fac_var}[i]=f;}}\n"
+        f"function {exp_fn}(t,g){{const k=Object.keys(g);for(let i=0;i<k.length;i++){{const a=k[i];Object.defineProperty(t,a,{{enumerable:true,configurable:true,get:g[a]}});}}}}\n"
+        f"function {reexp_all_fn}(t,s){{const d=Object.getOwnPropertyDescriptors(s),k=Object.keys(d);for(let i=0;i<k.length;i++){{const a=k[i];if(!Object.prototype.hasOwnProperty.call(t,a))Object.defineProperty(t,a,d[a]);}}}}\n"
+        f"function {reexp_named_fn}(t,s,p){{for(let i=0;i<p.length;i++){{const d=Object.getOwnPropertyDescriptor(s,p[i][0]);if(d)Object.defineProperty(t,p[i][1],d);}}}}\n"
+        f"function {req_fn}(i){{if({cac_var}[i])return {cac_var}[i];const f={fac_var}[i];if(!f)throw new Error('Missing module: '+i);const e={{}};{cac_var}[i]=e;f({req_fn},e);return e;}}\n"
+    )
+    main_id = str(module_id_map["src/main.js"]) if module_id_map is not None else "'src/main.js'"
+    footer_code = f"{req_fn}({main_id});\n}})(typeof window!=='undefined'?window:globalThis);\n"
+
+    segments = [{"code": header_code, "source_path": None}]
     for rel in order:
-        parts.append(f"// ===== MODULE: {rel} =====")
-        parts.append(f"__def('{rel}', function(__req, __exports) {{")
-        parts.append(transformed[rel])
-        parts.append("});\n")
+        mid = str(module_id_map[rel]) if module_id_map is not None else f"'{rel}'"
+        prefix_hdr = "" if obfuscate else f"// ===== MODULE: {rel} =====\n"
+        segments.append({"code": f"{prefix_hdr}{def_fn}({mid},function({req_fn},{exp_obj}){{\n", "source_path": None})
+        rev_names = {short_n: orig_n for orig_n, short_n in mangle_maps[rel].items()}
+        segments.append({
+            "code": transformed[rel],
+            "source_path": rel,
+            "source_content": sources[rel],
+            "reverse_names": rev_names,
+        })
+        segments.append({"code": "});\n", "source_path": None})
+    segments.append({"code": footer_code, "source_path": None})
 
-    parts.append("  __req('src/main.js');")
-    parts.append("})(typeof window !== 'undefined' ? window : globalThis);")
-    bundle_js = "\n".join(parts) + "\n"
+    use_esbuild = False
+    if minify:
+        if engine == "esbuild":
+            if not find_esbuild_bin():
+                raise RuntimeError("--engine esbuild requested, but `esbuild` binary was not found on PATH.")
+            use_esbuild = True
+        elif engine == "auto" and find_esbuild_bin():
+            use_esbuild = True
 
-    # Lexical bracket balance audit across the entire compiled bundle!
+    sourcemap_obj = None
+    engine_used = "none"
+    if not minify:
+        bundle_js = "".join(seg["code"] for seg in segments)
+    elif use_esbuild:
+        assembled = "".join(seg["code"] for seg in segments)
+        bundle_js, sourcemap_obj = minify_js_with_esbuild(assembled, out_file="game.bundle.js")
+        if not emit_sourcemap:
+            sourcemap_obj = None
+        engine_used = "esbuild"
+    else:
+        bundle_js, sourcemap_obj = minify_js_segments(
+            segments, tokenize_js, out_file="game.bundle.js", emit_sourcemap=emit_sourcemap
+        )
+        engine_used = "builtin"
+
     audit_bundle_syntax(bundle_js)
-    return bundle_js, order
+
+    if sourcemap_obj is not None and engine_used == "builtin":
+        gen_lines = bundle_js.splitlines()
+        found_probe = False
+        for cand_ln in range(2, min(len(gen_lines) + 1, 80)):
+            p = lookup_sourcemap(sourcemap_obj, cand_ln, 0)
+            if p and p.get("source"):
+                found_probe = True
+                break
+        if not found_probe:
+            raise RuntimeError("SourceMap v3 audit failed: no valid source mappings found in game.bundle.js.map!")
+
+    symbols_manifest = {
+        "version": version,
+        "engine": engine_used,
+        "minified": bool(minify),
+        "obfuscated": bool(obfuscate),
+        "modules": {str(v): k for k, v in module_id_map.items()} if module_id_map else {k: k for k in order},
+        "exports": {v: k for k, v in export_key_map.items()} if export_key_map else {},
+        "mangledCount": sum(len(m) for m in mangle_maps.values()),
+    }
+
+    return {
+        "js": bundle_js,
+        "order": order,
+        "sourcemap": sourcemap_obj,
+        "symbols": symbols_manifest,
+        "raw_bytes": raw_unminified_chars,
+        "final_bytes": len(bundle_js.encode("utf-8")),
+        "engine_used": engine_used,
+    }
 
 
 def scan_duplicate_lexical_decls(code, label="bundle"):
     """
-    Exact ES6 lexical-scope duplicate declaration scanner (v47.8).
+    Exact ES6 lexical-scope duplicate declaration scanner (v50.0).
     Detects duplicate const/let/class/import/param declarations in the same lexical block,
     properly balancing `${ ... }` template interpolations with `}`.
     """
@@ -914,11 +1017,14 @@ def audit_bundle_syntax(js_code):
         ch, pos = stack[-1]
         line_no = js_code.count("\n", 0, pos) + 1
         raise RuntimeError(f"Syntax audit failed: unclosed '{ch}' opened at bundle line {line_no}")
-    # Guard against accidental `SYM: __live_N.SYM` inside function calls
-    for m in re.finditer(r"\([^(){}]*\b([A-Za-z_$][\w$]*)\s*:\s*__live_\d+\.\1\b", js_code):
+    # Guard against accidental `SYM: __live_N.SYM` / `SYM: _lN.SYM` inside function calls
+    for m in re.finditer(r"\([^(){}]*\b([A-Za-z_$][\w$]*)\s*:\s*(?:__live_|_l)\d+\.\1\b", js_code):
         line_no = js_code.count("\n", 0, m.start()) + 1
         raise RuntimeError(f"Syntax audit failed: illegal live shorthand inside parens at bundle line {line_no}")
-    # v47.8 Guard against duplicate lexical const/let/class/param declarations in the same scope!
+    # Guard against accidental sourceMappingURL leakage into public production bundle
+    if "sourceMappingURL=" in js_code:
+        raise RuntimeError("Security audit failed: sourceMappingURL comment leaked into public game.bundle.js!")
+    # v50.0 Guard against duplicate lexical const/let/class/param declarations in the same scope!
     dup_errs = scan_duplicate_lexical_decls(js_code, "game.bundle.js")
     if dup_errs:
         raise RuntimeError("Syntax audit failed: " + " | ".join(dup_errs[:5]))
@@ -958,7 +1064,7 @@ def build_offline_index_html():
     var head = document.createElement('div');
     head.className = 'abv-fatal-head';
     var title = document.createElement('span');
-    title.textContent = isEnBoot ? '◆ Runtime Error (v47.8)' : '◆ 运行异常诊断 (v47.8)';
+    title.textContent = isEnBoot ? '◆ Runtime Error (v50.0)' : '◆ 运行异常诊断 (v50.0)';
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'abv-fatal-dismiss';
@@ -974,7 +1080,7 @@ def build_offline_index_html():
   window.__ABV_SHOW_FATAL__ = showFatal;
   window.addEventListener('error', function (e) {
     var detail = (e && e.message) ? e.message : 'Unknown script error';
-    if (e && e.lineno) detail += ' (L' + e.lineno + ':' + (e.colno || 0) + ')';
+    if (e && e.lineno) detail += ' (L' + e.lineno + ':' + Math.max(0, (e.colno || 1) - 1) + ')';
     showFatal(detail);
   });
   window.addEventListener('unhandledrejection', function (e) {
@@ -1026,7 +1132,15 @@ def write_zip_from_files(zip_path, entries):
 def main():
     parser = argparse.ArgumentParser(description="Build Ashen Bell Vow multi-platform release packages.")
     parser.add_argument("--skip-verify", action="store_true", help="Skip running verify_project.py before build")
+    parser.add_argument("--engine", choices=("auto", "builtin", "esbuild"), default="auto", help="JS minifier engine (default: auto)")
+    parser.add_argument("--no-minify", action="store_true", help="Disable JS/CSS minification (readable debug bundle)")
+    parser.add_argument("--no-obfuscate", action="store_true", help="Disable module ID, export key, identifier & world payload obfuscation")
+    parser.add_argument("--no-sourcemap", action="store_true", help="Skip writing offline SourceMap v3 files to dist/sourcemaps/")
     args = parser.parse_args()
+
+    do_minify = not args.no_minify
+    do_obfuscate = not args.no_obfuscate
+    do_sourcemap = (not args.no_sourcemap) and do_minify
 
     version = detect_version()
     ver_slug = version.replace(".", "_")
@@ -1049,26 +1163,75 @@ def main():
                 print(vp.stderr, file=sys.stderr)
             sys.exit(vp.returncode)
 
-    print(f"[build_release] Step 2/4: Compiling offline zero-module bundle (game.bundle.js)...")
-    bundle_js, runtime_order = build_offline_bundle_js(version)
+    mode_desc = f"engine={args.engine}, minify={do_minify}, obfuscate={do_obfuscate}, sourcemap={do_sourcemap}"
+    print(f"[build_release] Step 2/4: Compiling production offline bundle ({mode_desc})...")
+    bundle_res = build_offline_bundle_js(
+        version,
+        minify=do_minify,
+        obfuscate=do_obfuscate,
+        emit_sourcemap=do_sourcemap,
+        engine=args.engine,
+    )
+    bundle_js = bundle_res["js"]
+    runtime_order = bundle_res["order"]
     offline_html = build_offline_index_html()
-    styles_path = os.path.join(ROOT, "styles.css")
 
-    # Package 1: TapTap / 4399 Pure Offline H5 ZIP (single top-level folder `ashen_bell_vow/` containing index.html)
+    styles_path = os.path.join(ROOT, "styles.css")
+    raw_css = open(styles_path, encoding="utf-8").read()
+    raw_css_bytes = len(raw_css.encode("utf-8"))
+    if do_minify:
+        prod_css, css_map = minify_css(raw_css, source_name="styles.css")
+    else:
+        prod_css, css_map = raw_css, None
+    prod_css_bytes = len(prod_css.encode("utf-8"))
+
+    js_pct = 100.0 * (1.0 - bundle_res["final_bytes"] / max(1, bundle_res["raw_bytes"]))
+    css_pct = 100.0 * (1.0 - prod_css_bytes / max(1, raw_css_bytes))
+    print(
+        f"[build_release]   -> JS  ({bundle_res['engine_used']}): {bundle_res['raw_bytes']:,} B -> {bundle_res['final_bytes']:,} B (-{js_pct:.1f}%) "
+        f"| mangled={bundle_res['symbols']['mangledCount']} local + {len(bundle_res['symbols']['exports'])} export keys"
+    )
+    print(
+        f"[build_release]   -> CSS (builtin): {raw_css_bytes:,} B -> {prod_css_bytes:,} B (-{css_pct:.1f}%)"
+    )
+
+    if do_sourcemap:
+        os.makedirs(SOURCEMAP_DIR, exist_ok=True)
+        sm_entries = []
+        if bundle_res["sourcemap"] is not None:
+            js_map_str = json.dumps(bundle_res["sourcemap"], ensure_ascii=False, separators=(",", ":"))
+            js_map_path = os.path.join(SOURCEMAP_DIR, "game.bundle.js.map")
+            with open(js_map_path, "w", encoding="utf-8", newline="\n") as f:
+                f.write(js_map_str)
+            sm_entries.append(("game.bundle.js.map", js_map_str.encode("utf-8")))
+        if css_map is not None:
+            css_map_str = json.dumps(css_map, ensure_ascii=False, separators=(",", ":"))
+            css_map_path = os.path.join(SOURCEMAP_DIR, "styles.css.map")
+            with open(css_map_path, "w", encoding="utf-8", newline="\n") as f:
+                f.write(css_map_str)
+            sm_entries.append(("styles.css.map", css_map_str.encode("utf-8")))
+        sym_str = json.dumps(bundle_res["symbols"], ensure_ascii=False, indent=2) + "\n"
+        sym_path = os.path.join(SOURCEMAP_DIR, "symbols.json")
+        with open(sym_path, "w", encoding="utf-8", newline="\n") as f:
+            f.write(sym_str)
+        sm_entries.append(("symbols.json", sym_str.encode("utf-8")))
+        sm_zip = os.path.join(DIST_DIR, f"ashen_bell_vow_{ver_slug}_sourcemaps_OFFLINE.zip")
+        sm_sz = write_zip_from_files(sm_zip, sm_entries)
+        print(f"[build_release]   -> Offline SourceMap ZIP (DO NOT UPLOAD PUBLICLY): {sm_zip} ({len(sm_entries)} files | {sm_sz:,} bytes)")
+
     taptap_zip = os.path.join(DIST_DIR, f"ashen_bell_vow_{ver_slug}_taptap_offline.zip")
     taptap_sz = write_zip_from_files(taptap_zip, [
         ("ashen_bell_vow/index.html", offline_html.encode("utf-8")),
-        ("ashen_bell_vow/styles.css", styles_path),
+        ("ashen_bell_vow/styles.css", prod_css.encode("utf-8")),
         ("ashen_bell_vow/game.bundle.js", bundle_js.encode("utf-8")),
     ])
     print(f"[build_release]   -> TapTap/4399 Offline ZIP: {taptap_zip}")
-    print(f"                     1 top folder `ashen_bell_vow/` (index.html, styles.css, game.bundle.js) | {taptap_sz:,} bytes | {len(runtime_order)} modules + 3 cycle worlds (NG1/NG2/NG3, 76 room snapshots) inlined")
+    print(f"                     1 top folder `ashen_bell_vow/` (index.html, minified styles.css, minified+obfuscated game.bundle.js) | {taptap_sz:,} bytes | {len(runtime_order)} modules + 3 cycle worlds inlined")
 
-    # Package 2: itch.io Flat-Root Web ZIP (runtime src/ + data/ only, no editor/dev files)
     print(f"[build_release] Step 3/4: Building itch.io flat-root Web ZIP...")
     itch_entries = [
         ("index.html", os.path.join(ROOT, "index.html")),
-        ("styles.css", styles_path),
+        ("styles.css", prod_css.encode("utf-8")),
     ]
     for pwa_asset in ("manifest.webmanifest", "sw.js", "icon.svg", "icon-192.png", "icon-512.png"):
         ap = os.path.join(ROOT, pwa_asset)
@@ -1087,7 +1250,6 @@ def main():
     itch_sz = write_zip_from_files(itch_zip, itch_entries)
     print(f"[build_release]   -> itch.io Web ZIP:         {itch_zip} ({len(itch_entries)} entries | {itch_sz:,} bytes)")
 
-    # Package 3: Full Modular Source Archive (excludes dist/ & __pycache__)
     print(f"[build_release] Step 4/4: Building full modular source archive...")
     top_dir = f"ashen_bell_vow_{ver_slug}_modular"
     src_entries = []

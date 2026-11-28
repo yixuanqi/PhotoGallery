@@ -51,3 +51,7 @@ export {
   openEndingChoice, startEndingCinematic, advanceEndingCinematic,
   refreshActiveModalI18n, updateAndRenderEndingCinematic
 } from './ui/progressionUi.js';
+export {
+  initComplianceUI, ensureComplianceConsent, openLegalModal, openSaveCodeModal,
+  refreshComplianceI18n, updateCloudStatusPills
+} from './ui/complianceUi.js';

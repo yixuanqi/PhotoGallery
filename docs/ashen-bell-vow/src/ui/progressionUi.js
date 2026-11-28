@@ -41,6 +41,7 @@ import {
   hideAllOverlays, openModal, closeModal, syncRoomThemeAndResetAudio
 } from './uiShared.js';
 import { renderParchmentMap, renderMapPinToolbar } from './mapUi.js';
+import { refreshComplianceI18n } from './complianceUi.js';
 
 export function returnToTitle() {
   clearOutcomeTimer();
@@ -878,6 +879,7 @@ export function refreshActiveModalI18n() {
   else if (G.activeModal === 'lore') uiHooks.renderLoreModal();
   else if (G.activeModal === 'smith') uiHooks.renderSmithModal();
   else if (G.activeModal === 'dummy') uiHooks.renderDummyModal();
+  refreshComplianceI18n();
   else if (G.activeModal === 'npc' && uiState.activeNpcModalRef) {
     if (uiState.activeNpcModalRef.kind === 'chronicler') uiHooks.renderChroniclerModal();
     else if (uiState.activeNpcModalRef.kind === 'keeper') uiHooks.renderKeeperModal();

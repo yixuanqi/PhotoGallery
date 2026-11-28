@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 cd "$(dirname "$0")"
-echo "=== Ashen Bell Vow v47.8 - Level Editor Launcher ==="
+echo "=== Ashen Bell Vow v50.0 - Level Editor Launcher ==="
 if command -v python3 >/dev/null 2>&1; then
   exec python3 serve_local.py --editor
 elif command -v python >/dev/null 2>&1; then

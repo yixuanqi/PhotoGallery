@@ -1,5 +1,6 @@
 // Entry point: wires cross-module hooks, canvas lifecycle, UI listeners & main gameLoop
 window.__ABV_MODULE_LOADED__ = true;
+import { storage } from './storage.js';
 import { ALTARS, STAMPS, WORLD_W, WORLD_H, FLOOR_Y } from './config.js';
 import { G, hooks, createFreshWorldState, markMapExplored, createLanterns, createResonancePuzzles, createCrumblePlatforms, getAwakeBoss, getHudBoss, setTextFast, damp } from './state.js';
 import { loadWorldData, getPreviewSpawnRoomId } from './levelLoader.js';
@@ -22,14 +23,15 @@ import { prewarmGlyphAtlas, clearGlyphAtlas, getGlyphAtlasStats } from './render
 import { getBackdropCacheStats } from './render/backdropCache.js';
 import { prof } from './profiler.js';
 import { isBenchmarkActive, startCombatBenchmark, cancelCombatBenchmark, tickCombatBenchmark, openBenchmarkReportModal, copyBenchmarkReport } from './benchmark.js';
-import { readSaveData, saveProgress, loadUserSettings, saveUserSettings } from './save.js';
+import { readSaveData, saveProgress, loadUserSettings, saveUserSettings, syncCloudSaveSlots } from './save.js';
 import { t, setLocale, toggleLocale, loadSavedLocale, onLocaleChange, applyStaticI18n } from './i18n.js';
 import {
   HUD_DOM, refreshTitleSaveUI, refreshActiveModalI18n, syncHUD, openModal, closeModal, renderParchmentMap, renderSettingsModal, openSettingsJournal,
   openSmithModal, openNpcModal, openDummyModal, openLoreModal, openMapModal, openCodexModal, openPauseModal, returnToTitle, interactWithAltar, respawnAtActiveAltar,
   startEchoChallenge, advanceEchoRushStage2, advanceEchoRushStage3, advanceWardenRushStage2, advanceWardenRushStage3, advanceSevenBellsNext, showDeath, showVictory,
   startGame, startNewGamePlus, continueSavedGame, continueIntoBellWell,
-  openEndingChoice, startEndingCinematic, advanceEndingCinematic, updateAndRenderEndingCinematic, updateAndRenderSkillPreview
+  openEndingChoice, startEndingCinematic, advanceEndingCinematic, updateAndRenderEndingCinematic, updateAndRenderSkillPreview,
+  initComplianceUI, ensureComplianceConsent, updateCloudStatusPills
 } from './ui.js';
 
 // Register cross-layer hooks (eliminates all circular ES Module dependencies)
@@ -927,6 +929,7 @@ window.addEventListener('focus', () => {
 });
 window.addEventListener('pagehide', () => {
   if (G.saveDirtyTimer > 0 && G.worldState) saveProgress(false);
+  storage.flushCloudQueue();
   audio.emergencySuspend();
 });
 const _recoverAudioOnGesture = () => {
@@ -1016,7 +1019,10 @@ async function bootstrapGame() {
   const contBtnEl = document.getElementById('btn-continue');
   if (startBtnEl) { startBtnEl.disabled = false; startBtnEl.style.opacity = ''; }
   if (contBtnEl) { contBtnEl.disabled = false; contBtnEl.style.opacity = ''; }
+  initComplianceUI();
   refreshTitleSaveUI();
+  ensureComplianceConsent();
+  syncCloudSaveSlots().then(() => updateCloudStatusPills()).catch(() => {});
   resizeCanvas();
   snapCameraToPlayer(0);
   G.lanterns = createLanterns();

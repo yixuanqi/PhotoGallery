@@ -13,10 +13,71 @@ import { t } from './i18n.js';
 
 export const SAVE_SLOT_COUNT = 3;
 const SLOT_KEY_PREFIX = 'ashen_bell_vow_slot_';
+const VALID_SAVE_VERSIONS = [8, 9, 10, 11, 12, 15, 17, 18, 19, 20, 25, 26, 30, 33, 34, 35, 37, 38, 40, 41, 42];
+const SAVE_CODE_PREFIX = 'ABV1:';
 
 function slotKey(slot) {
   const s = Math.max(0, Math.min(SAVE_SLOT_COUNT - 1, Number(slot) || 0));
   return `${SLOT_KEY_PREFIX}${s}`;
+}
+
+function slotBackupKey(slot) {
+  return `${slotKey(slot)}_bak`;
+}
+
+function isValidSavePayload(data) {
+  return !!(data && typeof data === 'object' && VALID_SAVE_VERSIONS.includes(Number(data.v)));
+}
+
+function fnv1aHex(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, '0');
+}
+
+function utf8ToBase64(str) {
+  if (typeof TextEncoder === 'function') {
+    const bytes = new TextEncoder().encode(str);
+    let bin = '';
+    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  }
+  const esc = encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) => String.fromCharCode(parseInt(p1, 16)));
+  return btoa(esc);
+}
+
+function base64ToUtf8(b64) {
+  const bin = atob(b64);
+  if (typeof TextDecoder === 'function') {
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+  let pct = '';
+  for (let i = 0; i < bin.length; i++) {
+    pct += '%' + ('00' + bin.charCodeAt(i).toString(16)).slice(-2);
+  }
+  return decodeURIComponent(pct);
+}
+
+function writeSlotWithBackup(slot, payloadObj) {
+  const key = slotKey(slot);
+  const bakKey = slotBackupKey(slot);
+  const prevRaw = storage.get(key);
+  if (prevRaw) {
+    try {
+      const prevParsed = JSON.parse(prevRaw);
+      if (isValidSavePayload(prevParsed)) {
+        storage.set(bakKey, prevRaw);
+      }
+    } catch {
+      // Do not overwrite good backup with corrupted primary data
+    }
+  }
+  return storage.setJSON(key, payloadObj);
 }
 
 export function migrateLegacySaveIfNeeded() {
@@ -113,9 +174,74 @@ export function loadUserSettings() {
 
 export function readSaveSlot(slot = G.activeSaveSlot) {
   migrateLegacySaveIfNeeded();
-  const data = storage.getJSON(slotKey(slot));
-  if (!data || ![8, 9, 10, 11, 12, 15, 17, 18, 19, 20, 25, 26, 30, 33, 34, 35, 37, 38, 40, 41, 42].includes(data.v)) return null;
-  return data;
+  const key = slotKey(slot);
+  const data = storage.getJSON(key);
+  if (isValidSavePayload(data)) return data;
+  // v50.0 Automatic Rolling-Backup Recovery if primary slot was truncated/corrupted
+  const bak = storage.getJSON(slotBackupKey(slot));
+  if (isValidSavePayload(bak)) {
+    storage.setJSON(key, bak);
+    return bak;
+  }
+  return null;
+}
+
+export function exportSaveCode(slot = G.activeSaveSlot) {
+  const data = readSaveSlot(slot);
+  if (!data) return null;
+  const jsonStr = JSON.stringify(data);
+  const chk = fnv1aHex(jsonStr);
+  return `${SAVE_CODE_PREFIX}${chk}:${utf8ToBase64(jsonStr)}`;
+}
+
+export function importSaveCode(rawInput, targetSlot = G.activeSaveSlot) {
+  const cleaned = String(rawInput || '').replace(/\s+/g, '');
+  if (!cleaned.startsWith(SAVE_CODE_PREFIX)) {
+    return { ok: false, reason: 'prefix' };
+  }
+  const rest = cleaned.slice(SAVE_CODE_PREFIX.length);
+  const sep = rest.indexOf(':');
+  if (sep !== 8) {
+    return { ok: false, reason: 'format' };
+  }
+  const expectedChk = rest.slice(0, 8).toLowerCase();
+  const b64 = rest.slice(9);
+  let jsonStr = '';
+  try {
+    jsonStr = base64ToUtf8(b64);
+  } catch {
+    return { ok: false, reason: 'decode' };
+  }
+  if (fnv1aHex(jsonStr) !== expectedChk) {
+    return { ok: false, reason: 'checksum' };
+  }
+  let parsed = null;
+  try {
+    parsed = JSON.parse(jsonStr);
+  } catch {
+    return { ok: false, reason: 'json' };
+  }
+  if (!isValidSavePayload(parsed)) {
+    return { ok: false, reason: 'schema' };
+  }
+  const safeSlot = Math.max(0, Math.min(SAVE_SLOT_COUNT - 1, Number(targetSlot) || 0));
+  parsed.slot = safeSlot;
+  parsed.savedAt = Date.now();
+  const ok = writeSlotWithBackup(safeSlot, parsed);
+  if (!ok) return { ok: false, reason: 'storage' };
+  G.activeSaveSlot = safeSlot;
+  hooks.refreshTitleSaveUI();
+  return { ok: true, slot: safeSlot, data: parsed };
+}
+
+export async function syncCloudSaveSlots() {
+  const keys = [];
+  for (let i = 0; i < SAVE_SLOT_COUNT; i++) keys.push(slotKey(i));
+  const res = await storage.pullCloudKeys(keys);
+  if (res && res.updated > 0) {
+    hooks.refreshTitleSaveUI();
+  }
+  return res;
 }
 
 export function readSaveData() {
@@ -133,6 +259,7 @@ export function listSaveSlots() {
 
 export function deleteSaveSlot(slot) {
   storage.remove(slotKey(slot));
+  storage.remove(slotBackupKey(slot));
   if (slot === 0) {
     storage.remove(SAVE_KEY);
   }
@@ -213,17 +340,17 @@ export function saveProgress(showToast = false) {
     exploredStr,
     explorePct: getExplorationPercent()
   };
-  const targetKey = slotKey(G.activeSaveSlot);
+  const activeSlot = G.activeSaveSlot;
   G.saveDirtyTimer = 0;
   if (!showToast && G.gameState === 'playing') {
-    const writeNow = () => storage.setJSON(targetKey, payload);
+    const writeNow = () => writeSlotWithBackup(activeSlot, payload);
     if (typeof window.requestIdleCallback === 'function') {
       window.requestIdleCallback(writeNow, { timeout: 1200 });
     } else {
       window.setTimeout(writeNow, 16);
     }
   } else {
-    storage.setJSON(targetKey, payload);
+    writeSlotWithBackup(activeSlot, payload);
   }
   if (G.gameState === 'title') hooks.refreshTitleSaveUI();
   if (showToast && G.player && G.gameState === 'playing') {
