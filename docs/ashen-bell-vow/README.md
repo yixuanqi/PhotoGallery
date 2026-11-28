@@ -1,3 +1,26 @@
+## v47.8 Boss 场地技能视觉与碰撞收口（射线截断光斑 + 圣光柱落地收口 + 有机荆棘地笼避台避孢伞）
+- **射线触地/撞墙精确截断与灼烧光斑（`src/arenaHazards.js` / `src/render/arenaHazardRenderer.js`）**：
+  * 新增 `clipRayToSolids()` 与 `getHazardArenaBounds()` 射线-实心体精确截断算法，统一接入终关 Boss「渊」的 **棱镜光束（`prismBeam`）**、**圣光十字阵（`radiantCross` 四向独立截断）** 及霜境守卫「凛」的 **悬冰剑阵（`iceLance`）**；
+  * 渲染层与伤害判定线段 1:1 同步在地面、石壁与房间顶界终止，彻底消除光束穿地 `334–714px` 与穿墙 `282px` 现象，并在每个触地/撞墙交点绘制贴合表面法线的灼烧/寒霜光斑环与溅射火星。
+- **终关 Boss「渊」圣光柱落地收口与顶部柔和淡入（`src/render/arenaHazardRenderer.js`）**：
+  * `solarPillar` 严格收敛于房间顶部 `arenaTopY` 并施加 `82px` 纵向柔和淡入，不再向 `r17_frost_summit` 跨房溢出；
+  * 底部由平切矩形升级为贴地扩口光柱 + 白金冲击光环底座与地面横逸光屑，落地观感浑然一体。
+- **林境守卫「枯」荆棘地笼与地毯避台避孢伞 + 有机藤柱重绘（`src/ai/wardensAi.js` / `src/arenaHazards.js` / `src/render/arenaHazardRenderer.js`）**：
+  * 新增 `getWardenSafeGroundSpan()` 动态避开地面两朵弹性孢伞与左右低矮平台，将 `brambleCage`（笼高收敛至 `132px`）与 `thornCarpet` 严格约束于树窟中央开阔区，彻底消除笼顶/血条穿高台及荆棘盖孢伞；
+  * 重绘 `brambleCage` 为扎根泥土的双股缠绕尖刺藤柱与编织藤蔓拱门，并在合拢瞬间增加防夹刺平滑推离逻辑，防止主角被卡在 `18px` 笼壁正中。
+
+---
+
+## v47.7 视觉精修：修复熔浆火柱与高空光柱顶部平切“断柱”观感
+- **重绘第二关 Boss「寂」熔浆火柱（`src/render/arenaHazardRenderer.js`：`moltenGeyser`）**：
+  * 废除原先硬矩形 `fillRect` 导致的顶部平切“断柱”效果，重塑为**手绘三叉跳动火舌羽流**（外层赤橙熔焰 + 内层白金火芯 + 顶部自然纵向淡出至透明 + 3 枚向上逸散的跳动余烬火舌），预警态同步改为收尖火羽虚影轮廓；
+- **全场地竖向光柱/风柱顶部无缝收口（`src/render/arenaHazardRenderer.js`）**：
+  * 终关 Boss「渊」天降圣光柱（`solarPillar`）视觉顶端向上延展 `160px` 越出镜头上缘，杜绝高屏宽比视口出现顶部断口；
+  * 「寂」天降锻链（`chainDrop`）起点嵌入穹顶石梁内部 `36px`；
+  * 风境守卫「朔」罡风龙卷（`galeTornado`）顶部透明度自然衰减至 `0`，彻底消除硬边横切。
+
+---
+
 ## v47.6 全境风井侧壁/顶板净空精修 + 悬灯/钩环防嵌板修复与自动化门控
 - **修复全图扫描检出的 5 处风井、悬灯与钩环顶板/穿板隐患**：
   * **`r20_bell_galleries`（残钟阁）**：将风井 `wz_gal_1` 移至幽影暗阁外左侧（`x=680..820, y=130..620`），不再穿透暗阁底板 `pillar#10` 与右壁 `pillar#11`，顶部距天花板保留 `69px` 净空；将 `lan_gal_2` 迁出矮暗阁移至东中开阔空域（`x=1130, len=185`），彻底消除钩落脚部嵌板与磕顶。

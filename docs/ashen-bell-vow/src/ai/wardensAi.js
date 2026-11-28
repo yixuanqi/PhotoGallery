@@ -1,5 +1,5 @@
 // Three-Biome Warden Mini-Boss AI: Shuo (Wind), Ku (Forest), Lin (Mountain) (v33.0 Anti-Air & 5-Move Expanded)
-import { COLORS, FLOOR_Y, WELL_BOTTOM_Y, GRAVITY, DUMMY_MODES, WIND_ZONES, BOUNCE_PADS } from '../config.js';
+import { COLORS, FLOOR_Y, WELL_BOTTOM_Y, GRAVITY, DUMMY_MODES, WIND_ZONES, BOUNCE_PADS, SOLIDS } from '../config.js';
 import { G, addShake, triggerBossBanner, getCombatScaling, isPlayerInRoomId, damp } from '../state.js';
 import { audio } from '../audio.js';
 import { triggerHaptic } from '../input.js';
@@ -40,6 +40,39 @@ function tickWardenGreedPressure(e, dt, absDx) {
     e.greedHits = Math.max(0, e.greedHits - dt * 1.4);
   }
   return e.greedPunishCd <= 0 && (e.greedHits || 0) >= 4 && absDx < 165;
+}
+
+// v47.8 Compute open ground span inside Warden arena clear of ground bounce pads & (optionally) low platforms
+function getWardenSafeGroundSpan(e, fy, avoidLowPlatforms = false) {
+  let leftX = e.minX + 18;
+  let rightX = e.maxX - 18;
+  const arenaMid = (e.minX + e.maxX) * 0.5;
+  if (Array.isArray(BOUNCE_PADS)) {
+    for (let i = 0; i < BOUNCE_PADS.length; i++) {
+      const bp = BOUNCE_PADS[i];
+      if (!bp || Math.abs(bp.y - fy) > 42) continue;
+      if (bp.x < e.minX - 60 || bp.x > e.maxX + 60) continue;
+      const bpL = bp.x - bp.w * 0.5 - 12;
+      const bpR = bp.x + bp.w * 0.5 + 12;
+      if (bp.x < arenaMid) leftX = Math.max(leftX, bpR);
+      else rightX = Math.min(rightX, bpL);
+    }
+  }
+  if (avoidLowPlatforms && Array.isArray(SOLIDS)) {
+    for (let i = 0; i < SOLIDS.length; i++) {
+      const s = SOLIDS[i];
+      if (!s || s.type !== 'platform') continue;
+      if (s.y < fy - 200 || s.y > fy - 40) continue;
+      if (s.x + s.w <= leftX || s.x >= rightX) continue;
+      const sMid = s.x + s.w * 0.5;
+      if (sMid < arenaMid) leftX = Math.max(leftX, s.x + s.w + 10);
+      else rightX = Math.min(rightX, s.x - 10);
+    }
+  }
+  if (rightX - leftX < 230) {
+    return { minX: e.minX + 18, maxX: e.maxX - 18 };
+  }
+  return { minX: leftX, maxX: rightX };
 }
 
 function consumeWardenGreedTrigger(e, cd = 5.4) {
@@ -572,9 +605,10 @@ export function updateWardenForest(e, dt) {
       } else if (e.moveKind === 'thornCarpet') {
         e.stateTimer = 0.34;
         const fy = e.y + e.h;
-        const spanW = e.phase === 2 ? 430 : 350;
-        const minC = e.minX + 18;
-        const maxC = Math.max(minC, e.maxX - spanW - 18);
+        const safeT = getWardenSafeGroundSpan(e, fy, false);
+        const spanW = Math.min(e.phase === 2 ? 380 : 320, Math.max(180, safeT.maxX - safeT.minX - 6));
+        const minC = safeT.minX + 3;
+        const maxC = Math.max(minC, safeT.maxX - spanW - 3);
         const tx = Math.max(minC, Math.min(maxC, px - spanW * 0.5));
         audio.playBellQuake();
         addShake(8);
@@ -585,26 +619,31 @@ export function updateWardenForest(e, dt) {
       } else if (e.moveKind === 'brambleCage') {
         e.stateTimer = 0.42;
         const fy = e.y + e.h;
-        const hw = 96;
-        const cageX = Math.max(e.minX + hw + 28, Math.min(e.maxX - hw - 28, px));
+        const hw = 92;
+        const ww = 18;
+        const safeC = getWardenSafeGroundSpan(e, fy, true);
+        const minCx = safeC.minX + hw + ww + 2;
+        const maxCx = safeC.maxX - hw - ww - 2;
+        const cageX = minCx <= maxCx ? Math.max(minCx, Math.min(maxCx, px)) : ((safeC.minX + safeC.maxX) * 0.5);
         audio.playBarkCrack();
         addShake(7);
         spawnArenaHazard({
-          kind: 'brambleCage', owner: e, cx: cageX, y: fy, halfW: hw, h: 148, wallW: 18,
+          kind: 'brambleCage', owner: e, cx: cageX, y: fy, halfW: hw, h: 132, wallW: ww,
           hp: e.phase === 2 ? 64 : 52, telegraph: 0.78, activeDur: 4.8, fadeDur: 0.35
         });
         spawnArenaHazard({
-          kind: 'rootSpike', owner: e, x: cageX, y: fy, w: 54, h: 122,
+          kind: 'rootSpike', owner: e, x: cageX, y: fy, w: 54, h: 118,
           telegraph: 1.55, activeDur: 0.46, fadeDur: 0.26, dmg: 28
         });
       } else if (e.moveKind === 'rootEruption') {
         e.stateTimer = 0.36;
         const fy = e.y + e.h;
+        const safeR = getWardenSafeGroundSpan(e, fy, false);
         audio.playBellQuake();
         addShake(8);
         const cnt = e.phase === 2 ? 4 : 3;
         for (let k = 0; k < cnt; k++) {
-          const sx = Math.max(e.minX + 36, Math.min(e.maxX - 36, px + (k - (cnt - 1) * 0.5) * 96));
+          const sx = Math.max(safeR.minX + 24, Math.min(safeR.maxX - 24, px + (k - (cnt - 1) * 0.5) * 96));
           spawnArenaHazard({
             kind: 'rootSpike', owner: e, x: sx, y: fy, w: 46, h: 112,
             telegraph: 0.56 + k * 0.22, activeDur: 0.42, fadeDur: 0.25, dmg: 24

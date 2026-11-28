@@ -1,6 +1,6 @@
 // Generic Persistent Arena Hazard & Destructible Boss-Skill Engine (v47.0)
 // Supports 4-stage lifecycle: telegraph -> active -> fade -> remove, plus destructible obstacles (e.g. Bramble Cage)
-import { COLORS, FLOOR_Y } from './config.js';
+import { COLORS, FLOOR_Y, SOLIDS, ROOMS } from './config.js';
 import { G, addShake, punchZoom } from './state.js';
 import { audio } from './audio.js';
 import { spawnParticles, spawnShockwave, spawnFloatText } from './vfx.js';
@@ -16,6 +16,104 @@ function pointToSegmentDist(px, py, x1, y1, x2, y2) {
   if (lenSq <= 1e-6) return Math.hypot(px - x1, py - y1);
   const proj = Math.max(0, Math.min(1, ((px - x1) * vx + (py - y1) * vy) / lenSq));
   return Math.hypot(px - (x1 + proj * vx), py - (y1 + proj * vy));
+}
+
+// v47.8 Derive exact room/arena bounding box for raycast beam clipping (no cross-room or floor/wall bleed!)
+export function getHazardArenaBounds(h) {
+  const ow = h && h.owner;
+  if (!ow) return null;
+  if (ow.arenaMinX !== undefined && ow.arenaMaxX !== undefined) {
+    return {
+      minX: ow.arenaMinX - 16,
+      maxX: ow.arenaMaxX + 8,
+      topY: ow.arenaTopY !== undefined ? ow.arenaTopY : undefined,
+      floorY: ow.arenaFloorY !== undefined ? ow.arenaFloorY : undefined
+    };
+  }
+  if (ow.roomId && Array.isArray(ROOMS)) {
+    for (let i = 0; i < ROOMS.length; i++) {
+      if (ROOMS[i].id === ow.roomId && ROOMS[i].bounds) {
+        const rb = ROOMS[i].bounds;
+        return { minX: rb.x + 8, maxX: rb.x + rb.w - 8, topY: rb.y, floorY: rb.y + rb.h };
+      }
+    }
+  }
+  return null;
+}
+
+// v47.8 Exact ray-vs-AABB slab clipping against non-platform SOLIDS & arena walls/floor/ceiling
+export function clipRayToSolids(ox, oy, ang, maxLen, bounds = null) {
+  const dx = Math.cos(ang);
+  const dy = Math.sin(ang);
+  let bestT = Math.max(1, maxLen || 800);
+  let hit = false;
+  let nx = 0;
+  let ny = 0;
+
+  if (bounds) {
+    if (bounds.minX !== undefined && dx < -1e-6) {
+      const t = (bounds.minX - ox) / dx;
+      if (t >= 2 && t < bestT) { bestT = t; hit = true; nx = 1; ny = 0; }
+    }
+    if (bounds.maxX !== undefined && dx > 1e-6) {
+      const t = (bounds.maxX - ox) / dx;
+      if (t >= 2 && t < bestT) { bestT = t; hit = true; nx = -1; ny = 0; }
+    }
+    if (bounds.topY !== undefined && dy < -1e-6) {
+      const t = (bounds.topY - oy) / dy;
+      if (t >= 2 && t < bestT) { bestT = t; hit = true; nx = 0; ny = 1; }
+    }
+    if (bounds.floorY !== undefined && dy > 1e-6) {
+      const t = (bounds.floorY - oy) / dy;
+      if (t >= 2 && t < bestT) { bestT = t; hit = true; nx = 0; ny = -1; }
+    }
+  }
+
+  if (Array.isArray(SOLIDS)) {
+    for (let i = 0; i < SOLIDS.length; i++) {
+      const s = SOLIDS[i];
+      if (!s || s.type === 'platform' || s.isBrambleWall) continue;
+      const sx0 = s.x;
+      const sy0 = s.y;
+      const sx1 = s.x + s.w;
+      const sy1 = s.y + s.h;
+
+      let tMinX = 0; let tMaxX = 0; let hitNx = 0;
+      if (Math.abs(dx) < 1e-8) {
+        if (ox < sx0 || ox > sx1) continue;
+        tMinX = -1e9;
+        tMaxX = 1e9;
+      } else {
+        const tx1 = (sx0 - ox) / dx;
+        const tx2 = (sx1 - ox) / dx;
+        if (tx1 <= tx2) { tMinX = tx1; tMaxX = tx2; hitNx = -1; }
+        else { tMinX = tx2; tMaxX = tx1; hitNx = 1; }
+      }
+
+      let tMinY = 0; let tMaxY = 0; let hitNy = 0;
+      if (Math.abs(dy) < 1e-8) {
+        if (oy < sy0 || oy > sy1) continue;
+        tMinY = -1e9;
+        tMaxY = 1e9;
+      } else {
+        const ty1 = (sy0 - oy) / dy;
+        const ty2 = (sy1 - oy) / dy;
+        if (ty1 <= ty2) { tMinY = ty1; tMaxY = ty2; hitNy = -1; }
+        else { tMinY = ty2; tMaxY = ty1; hitNy = 1; }
+      }
+
+      const tEnter = Math.max(tMinX, tMinY);
+      const tExit = Math.min(tMaxX, tMaxY);
+      if (tEnter <= tExit && tEnter >= 2 && tEnter < bestT) {
+        bestT = tEnter;
+        hit = true;
+        if (tMinX >= tMinY) { nx = hitNx; ny = 0; }
+        else { nx = 0; ny = hitNy; }
+      }
+    }
+  }
+
+  return { x: ox + dx * bestT, y: oy + dy * bestT, len: bestT, hit, nx, ny };
 }
 
 export function spawnArenaHazard(spec) {
@@ -180,7 +278,18 @@ export function updateArenaHazards(dt, applyIncomingAttackToPlayer) {
           audio.playBarkCrack();
           audio.playBellQuake();
           addShake(8);
-          const hw = h.halfW || 96;
+          const hw = h.halfW || 92;
+          const ww = h.wallW || 18;
+          // v47.8 Smoothly slide player off the 18px thorny bar on snap-close so they never get wedged inside a bar!
+          if (pAlive) {
+            if (h.leftWallBox && aabbOverlap(p, h.leftWallBox)) {
+              const barMidL = h.leftWallBox.x + ww * 0.5;
+              p.x = pcx >= barMidL ? (h.cx - hw + 2) : (h.leftWallBox.x - p.w - 2);
+            } else if (h.rightWallBox && aabbOverlap(p, h.rightWallBox)) {
+              const barMidR = h.rightWallBox.x + ww * 0.5;
+              p.x = pcx <= barMidR ? (h.cx + hw - p.w - 2) : (h.rightWallBox.x + ww + 2);
+            }
+          }
           spawnShockwave(h.cx - hw, fy - 40, 62, '#4ade80', 3.4, 0.26);
           spawnShockwave(h.cx + hw, fy - 40, 62, '#4ade80', 3.4, 0.26);
           spawnParticles(h.cx - hw, fy - 52, 12, { color: '#6ee7b7', speed: 180, grav: 120, life: 0.36 });
@@ -207,6 +316,15 @@ export function updateArenaHazards(dt, applyIncomingAttackToPlayer) {
           addShake(11);
           spawnShockwave(h.cx, h.cy, 155, '#fef08a', 4.8, 0.36);
           spawnParticles(h.cx, h.cy, 24, { color: COLORS.goldBright, speed: 300, spark: true, grav: 0, life: 0.42 });
+          const rcBounds = getHazardArenaBounds(h);
+          const rcHalf = (h.len || 760) * 0.5;
+          for (let rk = 0; rk < 4; rk++) {
+            const end = clipRayToSolids(h.cx, h.cy, (h.baseAngle || 0) + rk * Math.PI * 0.5, rcHalf, rcBounds);
+            if (end.hit) {
+              spawnShockwave(end.x, end.y, 58, '#fef08a', 3.2, 0.26);
+              spawnParticles(end.x, end.y, 10, { color: COLORS.goldBright, speed: 210, spark: true, grav: 140, life: 0.34 });
+            }
+          }
         } else if (h.kind === 'moltenGeyser') {
           audio.playBellQuake();
           audio.playDetonate();
@@ -230,6 +348,11 @@ export function updateArenaHazards(dt, applyIncomingAttackToPlayer) {
           addShake(6.5);
           spawnShockwave(h.ox, h.oy, 56, '#bae6fd', 3.2, 0.22);
           spawnParticles(h.ox, h.oy, 12, { color: '#e0f2fe', speed: 220, spark: true, grav: 40, life: 0.34 });
+          const ilEnd = clipRayToSolids(h.ox, h.oy, h.angle, h.len || 780, getHazardArenaBounds(h));
+          if (ilEnd.hit) {
+            spawnShockwave(ilEnd.x, ilEnd.y, 56, '#7dd3fc', 3.2, 0.26);
+            spawnParticles(ilEnd.x, ilEnd.y, 12, { color: '#e0f2fe', speed: 210, spark: true, grav: 180, life: 0.36 });
+          }
         } else if (h.kind === 'frostPatch') {
           audio.playFrostShatter();
           addShake(6);
@@ -293,10 +416,14 @@ export function updateArenaHazards(dt, applyIncomingAttackToPlayer) {
           h.ox = h.owner.x + h.owner.w * 0.5;
           h.oy = h.owner.y + (h.ownerOffY !== undefined ? h.ownerOffY : 38);
         }
-        const ex = h.ox + Math.cos(h.curAngle) * (h.len || 920);
-        const ey = h.oy + Math.sin(h.curAngle) * (h.len || 920);
+        const end = clipRayToSolids(h.ox, h.oy, h.curAngle, h.len || 920, getHazardArenaBounds(h));
+        if (end.hit && Math.random() < 34 * dt) {
+          spawnParticles(end.x + end.nx * 3, end.y + end.ny * 3, 1, {
+            color: Math.random() < 0.5 ? '#fef08a' : '#f59e0b', speed: 155, spark: true, grav: 160, life: 0.28
+          });
+        }
         if (pCanBeHit && h.hitCd <= 0) {
-          const dist = pointToSegmentDist(pcx, pcy, h.ox, h.oy, ex, ey);
+          const dist = pointToSegmentDist(pcx, pcy, h.ox, h.oy, end.x, end.y);
           if (dist < (h.width || 28) * 0.52 + 12) {
             h.hitCd = 0.48;
             applyIncomingAttackToPlayer({ x: h.ox, w: 0, isBoss: true }, h.dmg || 28, true, 220);
@@ -305,13 +432,12 @@ export function updateArenaHazards(dt, applyIncomingAttackToPlayer) {
       } else if (h.kind === 'radiantCross') {
         const halfL = (h.len || 760) * 0.5;
         const baseA = h.baseAngle || 0;
+        const rcBounds = getHazardArenaBounds(h);
         if (pCanBeHit && h.hitCd <= 0) {
           let hitRay = false;
-          for (let r = 0; r < 2; r++) {
-            const ang = baseA + r * Math.PI * 0.5;
-            const cA = Math.cos(ang);
-            const sA = Math.sin(ang);
-            const dist = pointToSegmentDist(pcx, pcy, h.cx - cA * halfL, h.cy - sA * halfL, h.cx + cA * halfL, h.cy + sA * halfL);
+          for (let r = 0; r < 4; r++) {
+            const end = clipRayToSolids(h.cx, h.cy, baseA + r * Math.PI * 0.5, halfL, rcBounds);
+            const dist = pointToSegmentDist(pcx, pcy, h.cx, h.cy, end.x, end.y);
             if (dist < (h.width || 30) * 0.48 + 12) { hitRay = true; break; }
           }
           if (hitRay) {
@@ -366,11 +492,9 @@ export function updateArenaHazards(dt, applyIncomingAttackToPlayer) {
           }
         }
       } else if (h.kind === 'iceLance') {
-        const len = h.len || 760;
-        const ex = h.ox + Math.cos(h.angle) * len;
-        const ey = h.oy + Math.sin(h.angle) * len;
+        const end = clipRayToSolids(h.ox, h.oy, h.angle, h.len || 760, getHazardArenaBounds(h));
         if (!h.didHit && pCanBeHit) {
-          const dist = pointToSegmentDist(pcx, pcy, h.ox, h.oy, ex, ey);
+          const dist = pointToSegmentDist(pcx, pcy, h.ox, h.oy, end.x, end.y);
           if (dist < (h.width || 22) * 0.55 + 11) {
             h.didHit = true;
             applyIncomingAttackToPlayer({ x: h.ox, w: 0, isBoss: true, inflictsFrost: h.inflictsFrost || 24 }, h.dmg || 26, true, 225);

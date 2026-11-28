@@ -642,7 +642,7 @@ def build_offline_bundle_js(version):
 
 def scan_duplicate_lexical_decls(code, label="bundle"):
     """
-    Exact ES6 lexical-scope duplicate declaration scanner (v47.6).
+    Exact ES6 lexical-scope duplicate declaration scanner (v47.8).
     Detects duplicate const/let/class/import/param declarations in the same lexical block,
     properly balancing `${ ... }` template interpolations with `}`.
     """
@@ -918,7 +918,7 @@ def audit_bundle_syntax(js_code):
     for m in re.finditer(r"\([^(){}]*\b([A-Za-z_$][\w$]*)\s*:\s*__live_\d+\.\1\b", js_code):
         line_no = js_code.count("\n", 0, m.start()) + 1
         raise RuntimeError(f"Syntax audit failed: illegal live shorthand inside parens at bundle line {line_no}")
-    # v47.6 Guard against duplicate lexical const/let/class/param declarations in the same scope!
+    # v47.8 Guard against duplicate lexical const/let/class/param declarations in the same scope!
     dup_errs = scan_duplicate_lexical_decls(js_code, "game.bundle.js")
     if dup_errs:
         raise RuntimeError("Syntax audit failed: " + " | ".join(dup_errs[:5]))
@@ -958,7 +958,7 @@ def build_offline_index_html():
     var head = document.createElement('div');
     head.className = 'abv-fatal-head';
     var title = document.createElement('span');
-    title.textContent = isEnBoot ? '◆ Runtime Error (v47.6)' : '◆ 运行异常诊断 (v47.6)';
+    title.textContent = isEnBoot ? '◆ Runtime Error (v47.8)' : '◆ 运行异常诊断 (v47.8)';
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'abv-fatal-dismiss';
