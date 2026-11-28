@@ -21,7 +21,7 @@
         <strong id="hpText">100</strong>
       </span>
       <span id="shieldPill" class="shield-pill hidden" title="星露护膜（18 秒限时双层盾，抵挡伤害并弹开周围敌弹）">🛡️ <strong id="shieldText">×2 18s</strong></span>
-      <button id="activeSkillPill" class="active-skill-pill hidden" title="点击或按 Q 释放稀有/传说主动技能"><span id="activeSkillText">🎯 折光自导 [Q]</span></button>
+      <button id="activeSkillPill" class="active-skill-pill hidden" title="点击或按 Q 释放稀有/传说主动技能"><span id="activeSkillText">🌬️ 狂风瓶 [Q]</span></button>
       <span class="divider"></span>
       <span class="orb-wrap" id="orbTray" title="星露弹珠（蓄力重弹消耗 1 颗；物理连撞/崖杀/破防瞬回，打空可捡回）">
         <span class="orb-pip filled"></span>
@@ -263,6 +263,14 @@
 
         <div class="settings-row">
           <div class="settings-info">
+            <strong>🎯 瞄准辅助模式</strong>
+            <small>默认自动锁敌（加怪平衡），拖拽右摇杆或指机关可临时手瞄</small>
+          </div>
+          <button id="btnSetAimMode" class="settings-toggle active">自动瞄准</button>
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-info">
             <strong>🎬 启动自动播放开场动画</strong>
             <small>每次打开游戏时播放 10 秒水彩序幕</small>
           </div>
@@ -314,6 +322,7 @@
 
       <div class="pause-quick-row">
         <button id="btnPauseAudio" class="pause-toggle active">🔊 音效: 开</button>
+        <button id="btnPauseAim" class="pause-toggle active">🎯 瞄准: 自动</button>
         <button id="btnPauseLayout" class="pause-toggle">💻 布局: 自动</button>
         <button id="btnPauseFullscreen" class="pause-toggle">⛶ 全屏</button>
       </div>

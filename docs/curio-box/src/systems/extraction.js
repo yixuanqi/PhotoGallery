@@ -584,6 +584,7 @@
     if (!Array.isArray(m.seenGuards)) m.seenGuards = [];
     if (!m.defeatedGuards || typeof m.defeatedGuards !== 'object') m.defeatedGuards = {};
     if (typeof m.autoPlayIntro !== 'boolean') m.autoPlayIntro = true;
+    if (m.aimMode !== 'auto' && m.aimMode !== 'manual') m.aimMode = 'auto';
   }
 
   function getMetaBonuses() {
@@ -758,6 +759,9 @@
               chargeSpeed: Number(parsed.upgrades.chargeSpeed) || 0,
               dashCd: Number(parsed.upgrades.dashCd) || 0,
               magnet: Number(parsed.upgrades.magnet) || 0,
+              orbCap: Number(parsed.upgrades.orbCap) || 0,
+              salvagePod: Number(parsed.upgrades.salvagePod) || 0,
+              chartScope: Number(parsed.upgrades.chartScope) || 0,
             };
           }
           if (Array.isArray(parsed.unlockedSkins)) game.meta.unlockedSkins = parsed.unlockedSkins;
@@ -769,6 +773,9 @@
           }
           if (typeof parsed.autoPlayIntro === 'boolean') {
             game.meta.autoPlayIntro = parsed.autoPlayIntro;
+          }
+          if (parsed.aimMode === 'auto' || parsed.aimMode === 'manual') {
+            game.meta.aimMode = parsed.aimMode;
           }
           if (parsed.deepestLeg) game.meta.deepestLeg = Number(parsed.deepestLeg) || 0;
           if (parsed.maxAltitude) game.meta.maxAltitude = Number(parsed.maxAltitude) || 0;
@@ -798,13 +805,14 @@
     game.meta.bestHaul = 0;
     game.meta.unlockedCurios = [];
     game.meta.clearedStages = [];
-    game.meta.upgrades = { maxHp: 0, chargeSpeed: 0, dashCd: 0, magnet: 0 };
+    game.meta.upgrades = { maxHp: 0, chargeSpeed: 0, dashCd: 0, magnet: 0, orbCap: 0, salvagePod: 0, chartScope: 0 };
     game.meta.unlockedSkins = ['explorer'];
     game.meta.selectedSkin = 'explorer';
     game.meta.loadoutCurioId = null;
     game.meta.seenGuards = [];
     game.meta.defeatedGuards = {};
     game.meta.autoPlayIntro = true;
+    game.meta.aimMode = 'auto';
     game.meta.deepestLeg = 0;
     game.meta.maxAltitude = 0;
     game.meta.bossesCleared = 0;
@@ -1117,15 +1125,18 @@
   function summonPursuitSquad(centerRoomId, tx, ty, kinds) {
     const map = game.map;
     if (!map || !CB.guards || !CB.guards.spawnReinforcement) return;
-    if (game.guards.length >= 16) return;
+    const isAutoAim = !game.meta || game.meta.aimMode !== 'manual';
+    const maxGuards = isAutoAim ? 22 : 16;
+    if (game.guards.length >= maxGuards) return;
 
     const room = map.rooms[centerRoomId];
     if (!room) return;
     const neighborIds = Array.from(room.neighbors).filter((nid) => map.rooms[nid].role !== 'spawn');
     if (neighborIds.length === 0) return;
 
-    kinds.forEach((kind, idx) => {
-      if (game.guards.length >= 16) return;
+    const spawnList = isAutoAim && kinds.length > 0 ? [...kinds, kinds[0]] : kinds;
+    spawnList.forEach((kind, idx) => {
+      if (game.guards.length >= maxGuards) return;
       const nid = neighborIds[idx % neighborIds.length];
       const spawnRoom = map.rooms[nid];
       CB.guards.spawnReinforcement(kind, spawnRoom, tx, ty);

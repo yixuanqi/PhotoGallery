@@ -1012,7 +1012,7 @@ def main():
 
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     res = run_verification(project_root, bundle_zip=args.bundle)
-    print("✓ Curio Box v9.8.1 Automated Release Verification PASSED!")
+    print("✓ Curio Box v9.9 Automated Release Verification PASSED!")
     print(f"  - JS Modules verified     : {res['scripts']} (syntax / IIFE / full no-undef / zero-ESM)")
     print(f"  - CB.* Namespaces checked : {res['modules']} (load order & symbols 100%)")
     print(f"  - DOM IDs matched         : {res['dom_ids']}/{res['dom_ids']}")

@@ -530,8 +530,12 @@
       const pair = themePairs[t] || themePairs.friction;
       let plan = [];
 
+      const isAutoAim = !game.meta || game.meta.aimMode !== 'manual';
+
       if (room.role === 'atrium') {
-        plan = ['colossus', 'astro_sentinel', 'dew_hopper'];
+        plan = isAutoAim
+          ? ['colossus', 'astro_sentinel', 'dew_hopper', pair[0]]
+          : ['colossus', 'astro_sentinel', 'dew_hopper'];
       } else if (room.role === 'vault') {
         const isBoss = !!(stage && stage.nodeType === 'boss');
         const hasDoubleVault = !!(CB.stages && CB.stages.hasMutator && CB.stages.hasMutator('double_vault'));
@@ -544,19 +548,24 @@
           ? 'vine_magnet'
           : 'dew_hopper';
         plan = [eliteKind, escortKind];
+        if (isAutoAim) {
+          plan.push(pair[0]);
+        }
         if (isBoss || hasDoubleVault) {
           plan.push(eliteKind === 'colossus' ? 'astro_archon' : 'lotus_warden');
         }
       } else if (room.role === 'gallery') {
-        plan = [pair[0], pair[1]];
+        plan = isAutoAim ? [pair[0], pair[1], pair[cursor % pair.length]] : [pair[0], pair[1]];
+        cursor++;
       } else if (room.role === 'corridor') {
-        plan = [pair[0], pair[1]];
+        plan = isAutoAim ? [pair[0], pair[1], pair[(cursor + 1) % pair.length]] : [pair[0], pair[1]];
+        cursor++;
       } else if (room.role === 'extract') {
-        plan = [pair[0]];
+        plan = isAutoAim ? [pair[0], pair[1 % pair.length]] : [pair[0]];
       } else if (room.role === 'treasure') {
-        plan = [pair[1 % pair.length]];
+        plan = isAutoAim ? [pair[0], pair[1 % pair.length]] : [pair[1 % pair.length]];
       } else {
-        plan = [pair[cursor % pair.length]];
+        plan = isAutoAim ? [pair[cursor % pair.length], pair[(cursor + 1) % pair.length]] : [pair[cursor % pair.length]];
         cursor++;
       }
 

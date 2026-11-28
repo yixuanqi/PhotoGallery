@@ -28,6 +28,7 @@
     drawOrbReturnFly,
     drawSkillPack,
     drawGaleWave,
+    drawAutoAimReticle,
     drawInteractPrompt,
   } = CB.brush;
   const { drawMochiPlayer } = CB.drawPlayer;
@@ -443,6 +444,9 @@
       for (let i = 0; i < galeWaves.length; i++) {
         drawGaleWave(ctx, galeWaves[i]);
       }
+    }
+    if (player && player.autoAimTarget && !player.autoAimTarget.dead && game.run.phase === 'playing' && !game.titleOpen && !game.mapOverview) {
+      drawAutoAimReticle(ctx, player.autoAimTarget, time);
     }
 
     // 5.5. 弹射子弹、棱镜光束、守卫弹丸与打击火花粒子

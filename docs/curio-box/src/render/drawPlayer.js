@@ -57,7 +57,7 @@
     if ((p.shieldCharges || 0) > 0 && (p.shieldTimer || 0) > 0) {
       drawPlayerShield(ctx, px, py - liftY, p, time);
     }
-    if ((p.goldenBodyTimer || 0) > 0 || (p.homingTimer || 0) > 0 || (p.chronoWatchTimer || 0) > 0) {
+    if ((p.goldenBodyTimer || 0) > 0 || (p.chronoWatchTimer || 0) > 0) {
       drawPlayerActiveSkillAura(ctx, px, py - liftY, p, time);
     }
     if (stealthFade) {
@@ -982,32 +982,6 @@
       ctx.arc(px, cy, R - 4, time * 5.2, time * 5.2 + Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
-      ctx.restore();
-    }
-
-    // 2. 🎯 折光自导：紫晶锁定准星环 + 4 个旋转瞄准角括
-    if ((p.homingTimer || 0) > 0) {
-      const frac = Math.max(0, Math.min(1, p.homingTimer / (p.homingMaxDuration || 9.0)));
-      const exp = p.homingTimer <= 2.2;
-      const a = exp ? (0.45 + 0.55 * Math.abs(Math.sin(time * 14))) : 0.92;
-      const R = 35;
-
-      ctx.save();
-      ctx.globalAlpha = a;
-      ctx.strokeStyle = '#c87aff';
-      ctx.lineWidth = 2.4;
-      ctx.beginPath();
-      ctx.arc(px, cy, R, -Math.PI * 0.5, -Math.PI * 0.5 + Math.PI * 2 * frac);
-      ctx.stroke();
-
-      for (let k = 0; k < 4; k++) {
-        const ang = time * 1.9 + (k * Math.PI) / 2;
-        ctx.strokeStyle = '#f0c4ff';
-        ctx.lineWidth = 2.2;
-        ctx.beginPath();
-        ctx.arc(px, cy, R + 4.5, ang - 0.16, ang + 0.16);
-        ctx.stroke();
-      }
       ctx.restore();
     }
 

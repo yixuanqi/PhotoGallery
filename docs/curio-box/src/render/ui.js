@@ -301,11 +301,7 @@
         isLeg = true;
         exp = p.chronoWatchTimer <= 1.5;
         label = `⏳ 时停怀表 ${Math.ceil(p.chronoWatchTimer)}s`;
-      } else if ((p.homingTimer || 0) > 0) {
-        mode = 'running';
-        isLeg = false;
-        exp = p.homingTimer <= 2.2;
-        label = `🎯 折光自导 ${Math.ceil(p.homingTimer)}s`;
+
       } else if (held) {
         mode = 'ready';
         isLeg = held.rarity === 'legendary';
@@ -1373,7 +1369,7 @@
           ? '✦ 满蓄重弹!'
           : isHeavy
           ? '⚡ 蓄力重弹'
-          : '点射 / 拖拽蓄力';
+          : ((!game.meta || game.meta.aimMode !== 'manual') ? '点射锁敌 / 拖拽精瞄' : '点射 / 拖拽蓄力');
       }
     }
 

@@ -30,6 +30,7 @@
     keys.moveAxisX = 0;
     keys.moveAxisY = 0;
     keys.aimStickActive = false;
+    keys.aimStickDragDist = 0;
     keys.aimCancelHover = false;
     keys.fireHeld = false;
     keys.firePressed = false;
@@ -219,11 +220,14 @@
       moveHost.addEventListener('lostpointercapture', (e) => endMove(e.pointerId));
     }
 
-    // 2. 右手虚拟瞄准 & 蓄力发射摇杆（支持滑入左上角 ✕ 取消区撤回发射，潜行零误触！）
+    // 2. 右手虚拟瞄准 & 蓄力发射摇杆（v9.9 动态落点原点 + 54px 宽半径 + 防松手漂移）
     if (els.aimZone && els.aimKnob) {
       let aimPid = null;
       let originX = 0;
       let originY = 0;
+      let stableAngle = 0;
+      let stableTime = 0;
+      const AIM_MAX_R = 54;
 
       const checkCancelHover = (cx, cy) => {
         if (!els.cancelZone) return false;
@@ -231,7 +235,7 @@
         if (rect.width <= 0 || rect.height <= 0) return false;
         const ccx = rect.left + rect.width / 2;
         const ccy = rect.top + rect.height / 2;
-        const hitR = Math.max(rect.width, rect.height) * 0.5 + 16;
+        const hitR = Math.max(rect.width, rect.height) * 0.5 + 18;
         return Math.hypot(cx - ccx, cy - ccy) <= hitR;
       };
 
@@ -252,18 +256,28 @@
         const dx = cx - originX;
         const dy = cy - originY;
         const dist = Math.hypot(dx, dy);
-        const clamped = Math.min(STICK_MAX_R, dist);
+        keys.aimStickDragDist = dist;
+        const clamped = Math.min(AIM_MAX_R, dist);
         const nx = dist > 0.01 ? dx / dist : 0;
         const ny = dist > 0.01 ? dy / dist : 0;
         setKnob(els.aimKnob, nx * clamped, ny * clamped);
-        if (!hoveringCancel && dist > 8) {
-          keys.aimStickAngle = Math.atan2(dy, dx);
+        if (!hoveringCancel && dist > 10) {
+          const ang = Math.atan2(dy, dx);
+          keys.aimStickAngle = ang;
+          if (dist > 16) {
+            stableAngle = ang;
+            stableTime = performance.now();
+          }
         }
       };
 
       const endAim = (pid, forceCancel = false) => {
         if (pid !== null && pid !== aimPid) return;
         const canceled = forceCancel || keys.aimCancelHover;
+        // 松手防抖：若刚刚拖拽过超过 16px，沿用稳定角度防止抬指微滚带偏重弹
+        if (!canceled && keys.aimStickDragDist > 16 && performance.now() - stableTime < 140) {
+          keys.aimStickAngle = stableAngle;
+        }
         aimPid = null;
         keys.aimStickActive = false;
         setCancelVisual(false);
@@ -272,6 +286,7 @@
         if (els.cancelZone) els.cancelZone.classList.remove('visible');
 
         if (canceled) {
+          keys.aimStickDragDist = 0;
           keys.fireHeld = false;
           keys.firePressed = false;
           keys.fireReleased = false;
@@ -296,20 +311,21 @@
         if (els.aimZone.setPointerCapture) {
           try { els.aimZone.setPointerCapture(e.pointerId); } catch (_) {}
         }
-        const rect = els.aimZone.getBoundingClientRect();
-        originX = rect.left + rect.width / 2;
-        originY = rect.top + rect.height / 2;
+        // 以拇指实际落点为摇杆圆心（告别按偏瞬间乱甩角度！）
+        originX = e.clientX;
+        originY = e.clientY;
         keys.useTouchAim = true;
         keys.aimStickActive = true;
+        keys.aimStickDragDist = 0;
         keys.aimCancelHover = false;
-        if (Math.hypot(e.clientX - originX, e.clientY - originY) <= 8) {
-          keys.aimStickAngle = game.player.aimAngle || 0;
-        }
+        keys.aimStickAngle = game.player.aimAngle || 0;
+        stableAngle = keys.aimStickAngle;
+        stableTime = performance.now();
         keys.fireHeld = true;
         keys.firePressed = true;
         els.aimZone.classList.add('active');
         if (els.cancelZone) els.cancelZone.classList.add('visible');
-        updateAim(e.clientX, e.clientY);
+        setKnob(els.aimKnob, 0, 0);
       });
 
       els.aimZone.addEventListener('pointermove', (e) => {

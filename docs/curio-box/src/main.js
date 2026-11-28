@@ -287,6 +287,7 @@
   function syncSettingsUI() {
     const btnSetAudio = document.getElementById('btnSetAudio');
     const btnSetLayout = document.getElementById('btnSetLayout');
+    const btnSetAimMode = document.getElementById('btnSetAimMode');
     const btnSetAutoIntro = document.getElementById('btnSetAutoIntro');
     if (btnSetAudio) {
       btnSetAudio.textContent = game.audioMuted ? '静音' : '开启';
@@ -300,6 +301,11 @@
       }[game.touchMode] || '自动';
       btnSetLayout.textContent = lbl;
       btnSetLayout.classList.toggle('active', game.touchMode !== 'auto');
+    }
+    if (btnSetAimMode) {
+      const isAuto = !game.meta || game.meta.aimMode !== 'manual';
+      btnSetAimMode.textContent = isAuto ? '自动瞄准' : '手动瞄准';
+      btnSetAimMode.classList.toggle('active', isAuto);
     }
     if (btnSetAutoIntro) {
       const autoOn = game.meta.autoPlayIntro !== false;
@@ -322,6 +328,7 @@
     const guardsEl = document.getElementById('pauseGuards');
     const timeEl = document.getElementById('pauseTime');
     const btnPAudio = document.getElementById('btnPauseAudio');
+    const btnPAim = document.getElementById('btnPauseAim');
     const btnPLayout = document.getElementById('btnPauseLayout');
 
     if (stageEl && st) stageEl.textContent = `第 ${st.leg || 1} 航段 · ${st.altitude || 1200}m`;
@@ -345,6 +352,11 @@
       }[game.touchMode] || '💻 布局: 自动';
       btnPLayout.textContent = lbl;
       btnPLayout.classList.toggle('active', game.touchMode !== 'auto');
+    }
+    if (btnPAim) {
+      const isAuto = !game.meta || game.meta.aimMode !== 'manual';
+      btnPAim.textContent = isAuto ? '🎯 瞄准: 自动' : '🎯 瞄准: 手动';
+      btnPAim.classList.toggle('active', isAuto);
     }
     syncFullscreenUI();
   }
@@ -648,6 +660,7 @@
     const btnPauseRestart = document.getElementById('btnPauseRestart');
     const btnPauseTitle = document.getElementById('btnPauseTitle');
     const btnPauseAudio = document.getElementById('btnPauseAudio');
+    const btnPauseAim = document.getElementById('btnPauseAim');
     const btnPauseLayout = document.getElementById('btnPauseLayout');
     const btnPauseFullscreen = document.getElementById('btnPauseFullscreen');
     const btnCloseHub = document.getElementById('btnCloseHub');
@@ -667,6 +680,7 @@
     const btnCloseSettings = document.getElementById('btnCloseSettings');
     const btnSetAudio = document.getElementById('btnSetAudio');
     const btnSetLayout = document.getElementById('btnSetLayout');
+    const btnSetAimMode = document.getElementById('btnSetAimMode');
     const btnSetAutoIntro = document.getElementById('btnSetAutoIntro');
     const btnSetReplayIntro = document.getElementById('btnSetReplayIntro');
     const btnSetResetSave = document.getElementById('btnSetResetSave');
@@ -707,6 +721,26 @@
       updateTitleCard();
       syncSettingsUI();
       if (game.paused) syncPauseUI();
+    };
+
+    const toggleAimMode = () => {
+      const isCurrentlyAuto = !game.meta || game.meta.aimMode !== 'manual';
+      game.meta.aimMode = isCurrentlyAuto ? 'manual' : 'auto';
+      if (game.meta.aimMode === 'manual') {
+        game.player.autoAimTarget = null;
+      }
+      if (CB.extraction && CB.extraction.saveMeta) CB.extraction.saveMeta();
+      if (CB.audio && CB.audio.playUiClick) CB.audio.playUiClick();
+      syncSettingsUI();
+      syncPauseUI();
+      if (game.run.phase === 'playing' && !game.titleOpen) {
+        spawnPopup(
+          game.player.x,
+          game.player.y - 54,
+          game.meta.aimMode === 'auto' ? '🎯 已切自动瞄准（下段起加怪平衡）' : '🎯 已切手动瞄准（标准怪量）',
+          '#1f7a96'
+        );
+      }
     };
 
     const cycleTouchMode = () => {
@@ -921,6 +955,7 @@
     }
     if (btnSetAudio) btnSetAudio.addEventListener('click', toggleAudio);
     if (btnSetLayout) btnSetLayout.addEventListener('click', cycleTouchMode);
+    if (btnSetAimMode) btnSetAimMode.addEventListener('click', toggleAimMode);
     if (btnSetAutoIntro) {
       btnSetAutoIntro.addEventListener('click', () => {
         game.meta.autoPlayIntro = !(game.meta.autoPlayIntro !== false);
@@ -997,6 +1032,7 @@
       });
     }
     if (btnPauseAudio) btnPauseAudio.addEventListener('click', toggleAudio);
+    if (btnPauseAim) btnPauseAim.addEventListener('click', toggleAimMode);
     if (btnPauseLayout) btnPauseLayout.addEventListener('click', cycleTouchMode);
     if (btnPauseFullscreen) btnPauseFullscreen.addEventListener('click', toggleFullscreen);
     if (btnPauseHub) {

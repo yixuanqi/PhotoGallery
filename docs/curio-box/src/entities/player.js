@@ -62,8 +62,7 @@
     if (resetStats) {
       p.heldSkill = null;
     }
-    p.homingTimer = 0;
-    p.homingMaxDuration = 9.0;
+    p.autoAimTarget = null;
     p.goldenBodyTimer = 0;
     p.goldenBodyMaxDuration = 5.5;
     p.chronoWatchTimer = 0;
@@ -172,12 +171,7 @@
 
     if (CB.audio && CB.audio.playActiveSkillCast) CB.audio.playActiveSkillCast(sk.id);
 
-    if (sk.id === 'homing') {
-      p.homingMaxDuration = sk.duration || 9.0;
-      p.homingTimer = p.homingMaxDuration;
-      spawnDust(p.x, p.y - 12, '#d88cff', 14, 1.45);
-      spawnPopup(p.x, p.y - 52, '🎯 折光自导开启（9s）!', '#9b44d6');
-    } else if (sk.id === 'golden_body') {
+    if (sk.id === 'golden_body') {
       p.goldenBodyMaxDuration = sk.duration || 5.5;
       p.goldenBodyTimer = p.goldenBodyMaxDuration;
       p.squash = -0.3;
@@ -285,12 +279,7 @@
       }
     }
 
-    if ((p.homingTimer || 0) > 0) {
-      p.homingTimer = Math.max(0, p.homingTimer - dt);
-      if (p.homingTimer <= 0) {
-        spawnPopup(p.x, p.y - 44, '🎯 折光自导结束', '#7c5aa8');
-      }
-    }
+
     if ((p.goldenBodyTimer || 0) > 0) {
       p.goldenBodyTimer = Math.max(0, p.goldenBodyTimer - dt);
       if (Math.random() < dt * 14) {
@@ -318,11 +307,64 @@
       }
     }
 
-    // 1. 鼠标 / 触控右摇杆瞄准与朝向（以枪口高度 y - 10 对齐世界目标，保证预判线精准）
-    if (inp.useTouchAim) {
-      p.aimAngle = inp.aimStickAngle;
+    // 1. v9.9 土豆兄弟式自动瞄准（默认开启，设置可切纯手动）+ 机关/拖拽无缝临时手瞄覆盖
+    const isAutoAim = !game.meta || game.meta.aimMode !== 'manual';
+    let manualOverride = false;
+
+    if (isAutoAim) {
+      if (inp.useTouchAim) {
+        // 移动端：拖拽右摇杆超过 18px 时进入临时精瞄（方便推箱子/点透镜/打反弹），否则自动锁敌！
+        if (inp.aimStickActive && (inp.aimStickDragDist || 0) > 18) {
+          manualOverride = true;
+        }
+      } else if (map && map.props) {
+        // PC 端：鼠标直接悬停在木箱或物理机关上时优先准星指机关，其余自动锁定最近可见守卫！
+        const mx = inp.mouseWorldX;
+        const my = inp.mouseWorldY;
+        for (let pi = 0; pi < map.props.length; pi++) {
+          const prop = map.props[pi];
+          if (prop.broken) continue;
+          const pt = prop.type;
+          if (
+            pt !== 'crate' && pt !== 'pressure_can' && pt !== 'convex_lens' &&
+            pt !== 'mirror_post' && pt !== 'charge_pylon' && pt !== 'prism' &&
+            pt !== 'singularity' && pt !== 'chime' && pt !== 'sunflower_switch' &&
+            pt !== 'inkwell' && pt !== 'pollen_bud'
+          ) continue;
+          const px = prop.shape === 'circle' ? prop.x : prop.x + prop.w * 0.5;
+          const py = prop.shape === 'circle' ? prop.y : prop.y + prop.h * 0.5;
+          if (Math.hypot(mx - px, my - py) <= 46) {
+            manualOverride = true;
+            break;
+          }
+        }
+      }
+    }
+
+    const autoLock = (isAutoAim && !manualOverride && CB.combat && CB.combat.findAutoAimTarget)
+      ? CB.combat.findAutoAimTarget(p, 480)
+      : null;
+
+    if (autoLock && autoLock.guard) {
+      p.autoAimTarget = autoLock.guard;
+      p.aimAngle = autoLock.angle;
+      if (inp.useTouchAim && !inp.aimStickActive) {
+        inp.aimStickAngle = autoLock.angle;
+      }
     } else {
-      p.aimAngle = Math.atan2(inp.mouseWorldY - (p.y - 10), inp.mouseWorldX - p.x);
+      p.autoAimTarget = null;
+      if (inp.useTouchAim) {
+        if (inp.aimStickActive && (inp.aimStickDragDist || 0) > 10) {
+          p.aimAngle = inp.aimStickAngle;
+        } else if (isAutoAim && Math.hypot(p.vx || 0, p.vy || 0) > 45) {
+          p.aimAngle = Math.atan2(p.vy, p.vx);
+          inp.aimStickAngle = p.aimAngle;
+        } else {
+          p.aimAngle = inp.aimStickAngle;
+        }
+      } else {
+        p.aimAngle = Math.atan2(inp.mouseWorldY - (p.y - 10), inp.mouseWorldX - p.x);
+      }
     }
     if (Math.abs(Math.cos(p.aimAngle)) > 0.12) {
       p.facing = Math.cos(p.aimAngle) >= 0 ? 1 : -1;

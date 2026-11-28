@@ -3363,30 +3363,6 @@
       ctx.arc(-2.5, -2.5, 2.2, 0, Math.PI * 2);
       ctx.arc(2.8, 1.5, 1.6, 0, Math.PI * 2);
       ctx.fill();
-    } else if (pack.id === 'homing') {
-      // 🎯 折光自导：紫晶准星棱镜镜片
-      ctx.fillStyle = '#f2e0ff';
-      ctx.strokeStyle = INK;
-      ctx.lineWidth = 2.0;
-      ctx.beginPath();
-      ctx.arc(0, 0, 10.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.strokeStyle = '#9c42e8';
-      ctx.lineWidth = 2.0;
-      ctx.beginPath();
-      ctx.arc(0, 0, 6.0, 0, Math.PI * 2);
-      ctx.moveTo(-12.5, 0); ctx.lineTo(-4.5, 0);
-      ctx.moveTo(4.5, 0); ctx.lineTo(12.5, 0);
-      ctx.moveTo(0, -12.5); ctx.lineTo(0, -4.5);
-      ctx.moveTo(0, 4.5); ctx.lineTo(0, 12.5);
-      ctx.stroke();
-
-      ctx.fillStyle = '#ffe26a';
-      ctx.beginPath();
-      ctx.arc(0, 0, 2.6, 0, Math.PI * 2);
-      ctx.fill();
     } else if (pack.id === 'gust_bottle') {
       // 🌬️ 顺风狂澜瓶：青蓝玻璃旋风瓶 + 瓶内风涡
       ctx.fillStyle = '#e0faff';
@@ -3538,6 +3514,45 @@
     ctx.restore();
   }
 
+
+  // v9.9 土豆兄弟式自动瞄准锁定准星环（清晰标注当前自动锁定的守卫）
+  function drawAutoAimReticle(ctx, guard, time) {
+    if (!guard || guard.dead) return;
+    const gx = guard.x;
+    const gy = guard.y - 12;
+    const r = (guard.radius || 20) + 10 + Math.sin(time * 8) * 1.6;
+
+    ctx.save();
+    ctx.translate(gx, gy);
+    ctx.lineCap = 'round';
+
+    // 柔暖外圈呼吸光晕
+    ctx.strokeStyle = 'rgba(255, 224, 96, 0.36)';
+    ctx.lineWidth = 5.0;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 4 个旋转手绘锁定角括
+    for (let k = 0; k < 4; k++) {
+      const a = time * 1.8 + (k * Math.PI) / 2;
+      ctx.strokeStyle = '#ff6b4a';
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, a - 0.24, a + 0.24);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#fff9df';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * (r - 4), Math.sin(a) * (r - 4));
+      ctx.lineTo(Math.cos(a) * (r + 5), Math.sin(a) * (r + 5));
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
   CB.brush = {
     createPaperPattern,
     drawSoftShadow,
@@ -3567,6 +3582,7 @@
     drawOrbReturnFly,
     drawSkillPack,
     drawGaleWave,
+    drawAutoAimReticle,
     drawInteractPrompt,
   };
 })();

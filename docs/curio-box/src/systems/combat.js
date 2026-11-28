@@ -286,7 +286,7 @@
 
   // ==================== 低摩擦露水滑道查询 ====================
 
-  // ==================== v9.8 碎箱随机技能包（非必掉 · 绿蓝75% / 稀紫17% / 传说金8%） ====================
+  // ==================== v9.9 碎箱随机技能包（非必掉 · 绿蓝78% / 稀紫11% / 传说金11%） ====================
   const SKILL_PACK_DEFS = [
     {
       id: 'heal',
@@ -296,7 +296,7 @@
       rarity: 'common',
       kind: 'instant',
       duration: 0,
-      weight: 42,
+      weight: 44,
       color: '#46c97e',
       accent: '#c8ffe0',
       glow: 'rgba(84, 232, 146, 0.72)',
@@ -309,23 +309,10 @@
       rarity: 'common',
       kind: 'instant',
       duration: 18,
-      weight: 33,
+      weight: 34,
       color: '#4ecdf5',
       accent: '#dcf9ff',
       glow: 'rgba(104, 224, 255, 0.78)',
-    },
-    {
-      id: 'homing',
-      name: '折光自导',
-      shortLabel: '自导',
-      icon: '🎯',
-      rarity: 'rare',
-      kind: 'active',
-      duration: 9.0,
-      weight: 11,
-      color: '#b46cff',
-      accent: '#f2e0ff',
-      glow: 'rgba(186, 114, 255, 0.82)',
     },
     {
       id: 'gust_bottle',
@@ -335,7 +322,7 @@
       rarity: 'rare',
       kind: 'active',
       duration: 0,
-      weight: 6,
+      weight: 11,
       color: '#3ec7db',
       accent: '#defaff',
       glow: 'rgba(92, 224, 240, 0.82)',
@@ -348,7 +335,7 @@
       rarity: 'legendary',
       kind: 'active',
       duration: 5.5,
-      weight: 5,
+      weight: 7,
       color: '#ffca3a',
       accent: '#fff7cc',
       glow: 'rgba(255, 214, 72, 0.92)',
@@ -361,7 +348,7 @@
       rarity: 'legendary',
       kind: 'active',
       duration: 4.0,
-      weight: 3,
+      weight: 4,
       color: '#6e84ff',
       accent: '#e6ebff',
       glow: 'rgba(136, 158, 255, 0.90)',
@@ -875,6 +862,54 @@
   /**
    * 实时曲线数值积分预判线（星轨仪弯道 + 引力漩涡 + 台球木箱推射轨迹 + 1次折射 + 棱镜/分裂晶）
    */
+  // ==================== v9.9 土豆兄弟式自动索敌引擎（优先直视最近守卫，含防抖滞回） ====================
+  function findAutoAimTarget(p, maxRange = 480) {
+    const map = game.map;
+    if (!p || !game.guards || game.guards.length === 0) return null;
+
+    const prevId = p.autoAimTarget && !p.autoAimTarget.dead ? p.autoAimTarget.id : null;
+    let bestLos = null;
+    let bestLosScore = Infinity;
+    let bestFallback = null;
+    let bestFallbackScore = Infinity;
+
+    for (let i = 0; i < game.guards.length; i++) {
+      const g = game.guards[i];
+      if (g.dead) continue;
+      if (map && map.rooms && g.roomId >= 0 && map.rooms[g.roomId] && map.rooms[g.roomId].fogAlpha >= 0.85) {
+        continue;
+      }
+      const dx = g.x - p.x;
+      const dy = g.y - p.y;
+      const d = Math.hypot(dx, dy);
+      if (d < 4 || d > maxRange) continue;
+
+      const nx = dx / d;
+      const ny = dy / d;
+      const ray = raycastScene(p.x, p.y, nx, ny, Math.max(4, d - g.radius - 2), {
+        pad: 2,
+        includeGuards: false,
+        includeDestructibles: false,
+        includeClosedGates: true,
+      });
+      const hasLos = !ray.hit;
+      const hysteresis = g.id === prevId ? -42 : 0;
+      const score = d + hysteresis;
+
+      if (hasLos) {
+        if (score < bestLosScore) {
+          bestLosScore = score;
+          bestLos = { guard: g, angle: Math.atan2(dy, dx), dist: d, hasLos: true };
+        }
+      } else if (d <= 285 && score < bestFallbackScore) {
+        bestFallbackScore = score;
+        bestFallback = { guard: g, angle: Math.atan2(dy, dx), dist: d, hasLos: false };
+      }
+    }
+
+    return bestLos || bestFallback;
+  }
+
   function computeAimPreview() {
     const p = game.player;
     const isCharging = !!p.charging;
@@ -2718,38 +2753,6 @@
         const subDt = Math.min(remainDt, SIM_STEP_DT);
         remainDt -= subDt;
 
-        if (player && (player.homingTimer || 0) > 0 && game.guards.length > 0) {
-          let bestG = null;
-          let bestD = 340;
-          const bDirX = b.vx / (b.speed || 1);
-          const bDirY = b.vy / (b.speed || 1);
-          for (let gi = 0; gi < game.guards.length; gi++) {
-            const g = game.guards[gi];
-            if (g.dead) continue;
-            const gdx = g.x - b.x;
-            const gdy = g.y - b.y;
-            const gd = Math.hypot(gdx, gdy);
-            if (gd < 8 || gd > bestD) continue;
-            const forward = (gdx / gd) * bDirX + (gdy / gd) * bDirY;
-            if (forward > 0.15) {
-              bestD = gd;
-              bestG = g;
-            }
-          }
-          if (bestG) {
-            const curAng = Math.atan2(b.vy, b.vx);
-            const targetAng = Math.atan2(bestG.y - b.y, bestG.x - b.x);
-            let diff = targetAng - curAng;
-            while (diff > Math.PI) diff -= Math.PI * 2;
-            while (diff < -Math.PI) diff += Math.PI * 2;
-            const maxTurn = (b.bounceCount > 0 ? 7.8 : 4.6) * subDt;
-            const nextAng = curAng + Math.max(-maxTurn, Math.min(maxTurn, diff));
-            b.vx = Math.cos(nextAng) * b.speed;
-            b.vy = Math.sin(nextAng) * b.speed;
-            b.color = '#d988ff';
-          }
-        }
-
         const grav = computeGravityAccel(b.x, b.y, b.curveAccum, { applyLensHoming: true });
         if (grav.maxU > 0.005) {
           const prevAng = Math.atan2(b.vy, b.vx);
@@ -3191,33 +3194,8 @@
               if (CB.audio) CB.audio.playSplitBounce();
               CB.player.spawnDust(hit.x, hit.y - 10, '#88e4ff', 8, 1.35);
             } else {
-              let outX = rx;
-              let outY = ry;
-              if (player && (player.homingTimer || 0) > 0 && game.guards.length > 0) {
-                let snapG = null;
-                let snapD = 380;
-                for (let gi = 0; gi < game.guards.length; gi++) {
-                  const g = game.guards[gi];
-                  if (g.dead) continue;
-                  const gdx = g.x - b.x;
-                  const gdy = g.y - b.y;
-                  const gd = Math.hypot(gdx, gdy);
-                  if (gd > 10 && gd < snapD && (gdx * hit.nx + gdy * hit.ny) > -10) {
-                    snapD = gd;
-                    snapG = g;
-                  }
-                }
-                if (snapG) {
-                  const sd = Math.hypot(snapG.x - b.x, snapG.y - b.y) || 1;
-                  outX = (snapG.x - b.x) / sd;
-                  outY = (snapG.y - b.y) / sd;
-                  b.isPrismBeam = true;
-                  b.color = '#e08eff';
-                  CB.player.spawnDust(b.x, b.y - 8, '#d988ff', 6, 1.2);
-                }
-              }
-              b.vx = outX * b.speed;
-              b.vy = outY * b.speed;
+              b.vx = rx * b.speed;
+              b.vy = ry * b.speed;
               b.trail.push({ x: b.x, y: b.y });
               if (CB.audio) CB.audio.playRicochet(b.bounceCount, isSuper);
             }
@@ -3432,6 +3410,7 @@
     pushCrate,
     raycastScene,
     computeGravityAccel,
+    findAutoAimTarget,
     computeAimPreview,
     emitSoundRipple,
     spawnGravityVortex,

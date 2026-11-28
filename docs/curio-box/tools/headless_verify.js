@@ -351,16 +351,32 @@ function runSuite() {
   CB.player.grantSkillShield(2, 18, false);
   for (let t = 0; t < 20; t++) CB.player.updatePlayer(1.0);
   assert(game.player.shieldCharges === 0 && game.player.shieldTimer === 0, '18s shield should expire after 18s');
-  // v9.8 Rare & Legendary Active Skills (homing / gust_bottle / golden_body / chrono_watch) + Active Slot Swap
-  assert(CB.combat.SKILL_PACK_DEFS.length >= 6, 'Expected >= 6 skills in SKILL_PACK_DEFS');
-  for (const skId of ['homing', 'gust_bottle', 'golden_body', 'chrono_watch']) {
+  // v9.9 Auto-Aim default (Brotato-style) + Guard Density Scaling + 5-Skill Pack Suite (homing removed)
+  assert(game.meta.aimMode === 'auto', 'Default aimMode must be auto!');
+  assert(CB.combat.SKILL_PACK_DEFS.length === 5, 'Expected 5 skills after removing homing pack');
+  assert(!CB.combat.SKILL_PACK_DEFS.some((s) => s.id === 'homing'), 'homing skill pack must be removed');
+  for (const skId of ['gust_bottle', 'golden_body', 'chrono_watch']) {
     const pkA = CB.combat.spawnSkillPack(skId, game.player.x + 20, game.player.y);
     assert(pkA && pkA.kind === 'active', `Failed to spawn active skill pack ${skId}`);
   }
   CB.renderer.renderWorld(mockCtx);
 
-  game.player.heldSkill = { id: 'homing', name: '折光自导', shortLabel: '自导', icon: '🎯', rarity: 'rare', duration: 9.0 };
-  assert(CB.player.activateHeldSkill() === true && game.player.homingTimer === 9.0 && game.player.heldSkill === null, 'homing cast failed');
+  const balSpec = CB.stages.buildSectorSpec({ leg: 2, anomalies: ['friction'] });
+  const balMap = CB.mapGen.generateMap(balSpec, 909090);
+  game.meta.aimMode = 'manual';
+  const manualGuards = CB.guards.populateGuardsForMap(balMap).length;
+  game.meta.aimMode = 'auto';
+  const autoGuards = CB.guards.populateGuardsForMap(balMap).length;
+  assert(autoGuards > manualGuards, `Auto-aim should spawn more guards to balance difficulty (${autoGuards} vs ${manualGuards})`);
+
+  game.map = balMap;
+  CB.player.placePlayerAtSpawn(true);
+  const testG = CB.guards.spawnReinforcement('shield_charger', balMap.rooms[balMap.spawnRoomId], game.player.x + 120, game.player.y);
+  testG.x = game.player.x + 110;
+  testG.y = game.player.y;
+  const lockInfo = CB.combat.findAutoAimTarget(game.player, 480);
+  assert(lockInfo && lockInfo.guard, 'Auto-aim failed to lock nearby visible guard');
+  game.player.autoAimTarget = lockInfo.guard;
   CB.renderer.renderWorld(mockCtx);
 
   game.player.heldSkill = { id: 'golden_body', name: '鎏金金身', shortLabel: '金身', icon: '✨', rarity: 'legendary', duration: 5.5 };
@@ -378,10 +394,13 @@ function runSuite() {
   game.player.heldSkill = { id: 'gust_bottle', name: '顺风狂澜瓶', shortLabel: '狂风瓶', icon: '🌬️', rarity: 'rare', duration: 0 };
   assert(CB.player.activateHeldSkill() === true && game.galeWaves.length >= 1, 'gust_bottle cast failed');
   CB.renderer.renderWorld(mockCtx);
-  game.player.homingTimer = 0;
   game.player.goldenBodyTimer = 0;
   game.player.chronoWatchTimer = 0;
-  console.log('✓ [4/6] Orb Economy, Upgrades, Market, Daily & v9.8 Full 6-Skill Pack Suite: PASSED!');
+  game.player.autoAimTarget = null;
+  game.map = CB.mapGen.generateMap(testSpec, 424242);
+  CB.player.placePlayerAtSpawn(true);
+  CB.guards.populateGuardsForMap(game.map);
+  console.log(`✓ [4/6] Auto-Aim Balance (${autoGuards} vs ${manualGuards} guards), 5-Skill Suite & Upgrades: PASSED!`);
 
   // ==================== [5/6] Cross-Disciplinary Physics & 4 Discipline Synergies ====================
   const slide = game.map.dewSlides && game.map.dewSlides[0];
