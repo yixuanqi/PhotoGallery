@@ -20,6 +20,7 @@ import { aabbOverlap, hasLineOfSight, getGroundSurfaceY } from '../physics.js';
 import { recordBestiaryEvent, checkAchievements } from '../codex.js';
 import { t, isEn, locDummyMode, locPickup, locPuzzleName, locBoss, locRelic } from '../i18n.js';
 import { WEAPON_ORDER, normalizeWeaponId, getWeaponById, getWeaponMoveDef, getWeaponUltimateDef } from '../weapons.js';
+import { damageArenaHazardsInBox } from '../arenaHazards.js';
 import {
   reclaimLostEchoes, rallyPlayerGrayHp, damageEnemyHP, addPostureToEnemy, applyIncomingAttackToPlayer, applyEnemyHitFeel
 } from './damageCombat.js';
@@ -84,6 +85,8 @@ export function cycleWeapon(step = 1) {
    9. PLAYER UPDATE (MOVEMENT, EXPANDED SWORD KIT, SPELL & GRAPPLE)
    ========================================================================= */
 export function findBestGrappleTarget() {
+  if (!Array.isArray(G.grappleCandidates)) G.grappleCandidates = [];
+  G.grappleCandidates.length = 0;
   if (!G.player || !(G.worldState && G.worldState.abilities && G.worldState.abilities.grappleHook)) return null;
   const px = G.player.x + G.player.w * 0.5;
   const py = G.player.y + 22;
@@ -93,6 +96,7 @@ export function findBestGrappleTarget() {
   // Build smooth directional aim intent from WASD / Stick (defaults to forward + slightly upward)
   const inX = (isActionHeld('right') ? 1 : 0) - (isActionHeld('left') ? 1 : 0);
   const inY = (isActionHeld('down') ? 1 : 0) - (isActionHeld('up') ? 1 : 0);
+  const isSteering = inX !== 0 || inY !== 0;
   let aimX = inX !== 0 ? inX : (inY !== 0 ? G.player.facing * 0.35 : G.player.facing);
   let aimY = inY !== 0 ? inY : -0.32;
   const aimLen = Math.hypot(aimX, aimY) || 1;
@@ -103,18 +107,13 @@ export function findBestGrappleTarget() {
   const recentRef = (G.player.lastGrappleIgnoreTimer > 0) ? G.player.lastGrappleRef : null;
   const holdingDown = inY > 0;
 
-  let best = null;
-  let bestScore = Infinity;
-  let fallback = null;
-  let fallbackScore = Infinity;
+  const rawPool = [];
 
   const evalCandidate = (type, ref, x, y, bias, puzzle) => {
     const dx = x - px;
     const dy = y - py;
-    // Fast bounding-box pre-cull before sqrt or raycast
     if (dx > 420 || dx < -420 || dy > 420 || dy < -420) return;
     const distSq = dx * dx + dy * dy;
-    // Slightly larger min distance (72px) for static points prevents re-hooking the point you are right on top of
     const minDistSq = type === 'enemy' ? 3600 : 5184;
     if (distSq > 176400 || distSq < minDistSq) return;
     if (activeBoss) {
@@ -123,42 +122,21 @@ export function findBestGrappleTarget() {
 
     const dist = Math.sqrt(distSq);
     const invD = 1 / dist;
-    const align = (dx * aimX + dy * aimY) * invD; // -1 (directly behind) to +1 (dead ahead along aim)
+    const align = (dx * aimX + dy * aimY) * invD;
 
-    // Smooth continuous directional cone weight (eliminates abrupt jumps at hard x thresholds)
-    let dirMult = 0.64 + (1 - align) * 0.78;
-    // Strong extra penalty when player explicitly holds Left/Right and target is behind that direction
-    if (inX !== 0 && dx * inX < -28) dirMult *= 1.85;
-    // Softly discourage hooking downward when player isn't holding Down (prevents falling back to lower hooks)
+    // Responsive steering cone: tighter directional bias when actively steering stick/keys so player can pick any hook freely!
+    let dirMult = isSteering ? (0.52 + (1 - align) * 0.96) : (0.64 + (1 - align) * 0.78);
+    if (inX !== 0 && dx * inX < -24) dirMult *= 2.05;
+    if (inY !== 0 && dy * inY < -24) dirMult *= 1.65;
     if (!holdingDown && dy > 36 && type !== 'enemy') dirMult *= 1.38;
 
     let score = dist * dirMult * bias;
-    // Sticky hysteresis (24% bonus) keeps reticle rock-steady instead of flickering between two close hooks
     const isRecent = recentRef !== null && ref === recentRef;
+    // Lower sticky hysteresis while actively steering (0.88) so switching targets feels crisp; steadier (0.76) when neutral
     if (prevRef !== null && ref === prevRef && !isRecent) {
-      score *= 0.76;
+      score *= isSteering ? 0.88 : 0.76;
     }
-
-    if (isRecent) {
-      if (score >= fallbackScore) return;
-    } else {
-      if (score >= bestScore) return;
-    }
-
-    if (playerRoom && dy > 40) {
-      const targetRoom = getRoomAt(x, y);
-      if (targetRoom && targetRoom.id !== playerRoom.id && !isWorldPosExplored(x, y)) return;
-    }
-    if (!hasLineOfSight(px, py, x, y)) return;
-
-    const cand = puzzle ? { type, ref, puzzle, x, y, bias } : { type, ref, x, y, bias };
-    if (isRecent) {
-      fallbackScore = score;
-      fallback = cand;
-    } else {
-      bestScore = score;
-      best = cand;
-    }
+    rawPool.push({ type, ref, puzzle, x, y, bias, score, isRecent, dy });
   };
 
   for (let i = 0; i < G.lanterns.length; i++) {
@@ -194,7 +172,27 @@ export function findBestGrappleTarget() {
   if (G.boss3 && G.boss3.alive && G.boss3.awake) evalCandidate('enemy', G.boss3, G.boss3.x + G.boss3.w * 0.5, G.boss3.y + G.boss3.h * 0.35, 1.05, null);
   if (G.boss4 && G.boss4.alive && G.boss4.awake) evalCandidate('enemy', G.boss4, G.boss4.x + G.boss4.w * 0.5, G.boss4.y + G.boss4.h * 0.35, 1.05, null);
 
-  // Prefer ANY fresh target over the anchor we just vaulted from; only fall back if no other anchor exists!
+  if (rawPool.length === 0) return null;
+  rawPool.sort((a, b) => a.score - b.score);
+
+  let best = null;
+  let fallback = null;
+  const maxCands = 6;
+  for (let i = 0; i < rawPool.length && G.grappleCandidates.length < maxCands; i++) {
+    const c = rawPool[i];
+    if (playerRoom && c.dy > 40) {
+      const targetRoom = getRoomAt(c.x, c.y);
+      if (targetRoom && targetRoom.id !== playerRoom.id && !isWorldPosExplored(c.x, c.y)) continue;
+    }
+    if (!hasLineOfSight(px, py, c.x, c.y)) continue;
+    const cand = c.puzzle ? { type: c.type, ref: c.ref, puzzle: c.puzzle, x: c.x, y: c.y, bias: c.bias } : { type: c.type, ref: c.ref, x: c.x, y: c.y, bias: c.bias };
+    G.grappleCandidates.push(cand);
+    if (c.isRecent) {
+      if (!fallback) fallback = cand;
+    } else if (!best) {
+      best = cand;
+    }
+  }
   return best || fallback;
 }
 
@@ -206,7 +204,16 @@ export function performExecution(target) {
   audio.playExecution();
   triggerHaptic('execution');
   triggerHitstop(0.085);
-  G.invertTimer = 0.09;
+  const fMode = (G.settings && G.settings.flashMode) || 'soft';
+  if (fMode === 'classic') {
+    G.invertTimer = 0.09;
+  } else {
+    G.invertTimer = 0;
+  }
+  const execCx = target.x + target.w * 0.5;
+  const execCy = target.y + target.h * 0.45;
+  G.execKillFocus = { x: execCx, y: execCy, timer: 0.16, maxTimer: 0.16, isBoss: !!target.isBoss };
+  punchZoom(1.045);
   addShake(16);
 
   G.player.execTimer = 0.38;
@@ -318,6 +325,8 @@ export function evaluatePlayerActiveAttack() {
         punchZoom(1.036);
         G.screenFlash = { alpha: 0.18, color: COLORS.goldBright };
         G.player.riposteWindow = 0.52;
+        G.player.clashParryCd = 0;
+        G.player.clashChainTimer = 0.45;
         if (G.player.seals < G.player.maxSeals) G.player.seals++;
         G.player.soul = Math.min(G.player.maxSoul, G.player.soul + Math.round(26 * rsOrb.soulGainMult));
         pr.reflected = true;
@@ -347,6 +356,11 @@ export function evaluatePlayerActiveAttack() {
       }
     }
   }
+
+  // v47.0 Hit Destructible Arena Hazards (e.g. Forest Warden's Bramble Cage!)
+  const hazDmg = Math.round(atk.dmg * getBladeDamageMult());
+  const hazHeavy = !!atk.heavy || atk.type === 'iai' || atk.type === 'counter' || atk.type === 'slash3';
+  damageArenaHazardsInBox(box, hazDmg, hazHeavy, atk.hitIds);
 
   // Hit Enemies & Bosses (multi-frame sweep, deduplicated per swing via hitIds)
   const targets = getLivingFoes();
@@ -1008,8 +1022,17 @@ export function triggerPlayerAttack(type) {
   G.player.attackCd = move.cd;
   G.player.parryActive = false;
   if (G.isMobile && (!G.settings || G.settings.mobileMergedParry !== false)) {
-    const clashSec = Math.max(0.14, Math.min(0.24, (getRelicStats().parryWindowMs || 140) / 1000));
-    G.player.clashParryTimer = clashSec;
+    // v46.3 Anti-Spam Clash Parry: only deliberate opening swings (or immediate chain after a real deflect) open a tight 95-118ms clash window!
+    const canChain = (G.player.clashChainTimer || 0) > 0;
+    const isOpeningSwing = type === 'slash1' || type === 'air1' || type === 'dashAttack' || type === 'up' || type === 'pogo';
+    if (canChain || ((G.player.clashParryCd || 0) <= 0 && isOpeningSwing)) {
+      const baseMs = (getRelicStats().parryWindowMs || 140) * 0.68;
+      G.player.clashParryTimer = Math.max(0.095, Math.min(0.118, baseMs / 1000));
+      G.player.clashParryCd = canChain ? 0.16 : 0.44;
+      G.player.clashChainTimer = 0;
+    } else {
+      G.player.clashParryTimer = 0;
+    }
   }
 
   const px = G.player.x + G.player.w / 2;

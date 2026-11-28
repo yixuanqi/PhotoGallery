@@ -208,11 +208,11 @@
     },
     {
       "id": "fg_cn_1",
-      "kind": "fungus",
+      "kind": "weaver",
       "x": 1210,
-      "y": 428,
+      "y": 450,
       "minX": 1145,
-      "maxX": 1335
+      "maxX": 1331
     },
     {
       "id": "an_cn_1",

@@ -95,8 +95,10 @@ function restoreSnapshot(snap) {
   G.sporeClouds = [];
   G.weaponUltimates = [];
   G.delayedStrikes = [];
+  G.arenaHazards = [];
   G.hitstopTimer = 0;
   G.invertTimer = 0;
+  G.execKillFocus = null;
   G.screenFlash = { alpha: 0, color: '#fff' };
 
   hooks.resizeCanvas();
@@ -154,10 +156,12 @@ function setupDeterministicArena() {
   G.sporeClouds = [];
   G.weaponUltimates = [];
   G.delayedStrikes = [];
+  G.arenaHazards = [];
   G.chapelTide = null;
   G.bossBanner = null;
   G.hitstopTimer = 0;
   G.invertTimer = 0;
+  G.execKillFocus = null;
   G.screenFlash = { alpha: 0, color: '#fff' };
   G.cam = {
     x: Math.max(2648, Math.min(Math.max(0, WORLD_W - G.canvasW), 3160 - G.canvasW * 0.5)),
@@ -462,7 +466,7 @@ function buildDiagnosis(report) {
 
 function formatPlainReport(report) {
   const lines = [
-    `=== 灰钟残誓 v46.1 10秒 A/B 战斗压测报告 (字形图集 + 静态背景缓存版) ===`,
+    `=== 灰钟残誓 v47.6 10秒 A/B 战斗压测报告 (字形图集 + 静态背景缓存版) ===`,
     `屏幕实测刷频: ${report.refreshHz}Hz (1×预算 ${report.budgetMs.toFixed(2)}ms) | UA: ${report.uaShort}`,
     `离屏缓存状态: 字形图集命中率 ${report.cacheSnap.glyphHitRate.toFixed(1)}% (${report.cacheSnap.glyphEntries}项) | 静态背景缓存 ${report.cacheSnap.backdropPanels}块`,
     ``

@@ -7,6 +7,7 @@ import { updateCloak, spawnParticles, spawnShockwave, spawnFloatText } from '../
 import { aabbOverlap, moveAndCollide, getGroundSurfaceY } from '../physics.js';
 import { applyIncomingAttackToPlayer } from '../combat.js';
 import { t, locBoss } from '../i18n.js';
+import { spawnArenaHazard, clearArenaHazards, hasActiveArenaHazard } from '../arenaHazards.js';
 
 function tickWardenOverheadPressure(e, dt) {
   if (e.antiAirCd > 0) e.antiAirCd = Math.max(0, e.antiAirCd - dt);
@@ -72,6 +73,8 @@ export function resetWardenState(e) {
   e.greedDecayTimer = 0;
   e.greedPunishCd = 0;
   e.rootSpikeQueue = null;
+  e.signatureOpened = false;
+  clearArenaHazards(e);
   if (e.kind === 'warden_forest') e.barkArmor = true;
   if (G.wardenArenaFx) {
     G.wardenArenaFx.windDir = 0;
@@ -182,35 +185,60 @@ export function updateWardenWind(e, dt) {
       e.vx = 0;
       audio.playWindBlade();
       spawnFloatText(cx, e.y - 36, t('combat.antiAirWind'), '#7dd3fc', 16, 0.85);
-    } else if (e.stateTimer <= 0 && absDx < 480) {
+    } else if (e.stateTimer <= 0 && absDx < 560) {
+      // v47.4 Wind Warden 'Shuo' Signature Kit: Opening Gale Tornado + Aerial Wind-Blade Fan + Repelling Back-Leap!
+      const hasTornado = hasActiveArenaHazard('galeTornado', e);
       const r = Math.random();
-      if (wantsGreedPunish) {
-        consumeWardenGreedTrigger(e, 5.4);
-        e.moveKind = 'windDashCut';
+      if (!e.signatureOpened) {
+        e.signatureOpened = true;
+        e.moveKind = 'galeTornado';
         e.comboIdx = 0;
         e.comboTotal = 1;
-        e.windupDuration = 0.56;
-        e.vx = -e.facing * 190;
-        audio.playDangerAlert();
-        spawnFloatText(cx, e.y - 38, t('combat.greedPunish'), COLORS.crimsonBright, 16, 0.85);
-      } else if (absDx < 115 && r < 0.24) {
+        e.windupDuration = 0.54;
+        e.vx = 0;
+        audio.playWindBlade();
+        spawnFloatText(cx, e.y - 46, t('combat.windTornadoWarn'), '#7dd3fc', 18, 1.15);
+      } else if (wantsGreedPunish) {
+        consumeWardenGreedTrigger(e, 5.2);
+        if (G.player && G.player.hp > 0) {
+          G.player.vx = (dx >= 0 ? 1 : -1) * 320;
+          G.player.vy = Math.min(G.player.vy, -190);
+        }
+        audio.playWindBlade();
+        spawnShockwave(cx, cy, 132, '#7dd3fc', 4.0, 0.28);
+        e.moveKind = !hasTornado ? 'galeTornado' : 'windRetreatVolley';
+        e.comboIdx = 0;
+        e.comboTotal = 1;
+        e.windupDuration = e.moveKind === 'galeTornado' ? 0.46 : 0.34;
+        e.vx = -e.facing * 310;
+        e.vy = -290;
+        spawnFloatText(cx, e.y - 46, t('combat.windTornadoWarn'), '#7dd3fc', 18, 1.05);
+      } else if (!hasTornado && e.lastMoveKind !== 'galeTornado' && r < 0.34) {
+        e.moveKind = 'galeTornado';
+        e.comboIdx = 0;
+        e.comboTotal = 1;
+        e.windupDuration = 0.54;
+        e.vx = 0;
+        audio.playWindBlade();
+        spawnFloatText(cx, e.y - 46, t('combat.windTornadoWarn'), '#7dd3fc', 18, 1.1);
+      } else if (absDx < 115 && r < 0.50) {
         e.moveKind = 'windRetreatVolley';
         e.comboIdx = 0;
         e.comboTotal = 1;
         e.windupDuration = 0.34;
         e.vx = -e.facing * 310;
         e.vy = -310;
-      } else if (absDx > 195 || r < 0.42) {
+      } else if (absDx > 185 || r < 0.68) {
         e.moveKind = 'updraftBarrage';
         e.comboIdx = 0;
         e.comboTotal = 1;
         e.windupDuration = 0.50;
-        e.vy = -350;
-      } else if (r < 0.64) {
+        e.vy = -380;
+      } else if (r < 0.84) {
         e.moveKind = 'windDashCut';
         e.comboIdx = 0;
         e.comboTotal = 1;
-        e.windupDuration = 0.60;
+        e.windupDuration = 0.58;
         e.vx = -e.facing * 210;
         audio.playDangerAlert();
       } else {
@@ -219,6 +247,7 @@ export function updateWardenWind(e, dt) {
         e.comboTotal = e.phase === 2 ? 3 : 2;
         e.windupDuration = 0.38;
       }
+      e.lastMoveKind = e.moveKind;
       e.state = 'windup';
       e.stateTimer = e.windupDuration;
       e.isDelayedHit = false;
@@ -248,9 +277,29 @@ export function updateWardenWind(e, dt) {
         audio.playWindBlade();
         spawnShockwave(cx, cy - 20, 96, '#7dd3fc', 3.6, 0.26);
         G.slashes.push({ x: cx + e.facing * 12, y: e.y - 16, facing: e.facing, type: 'bossAntiAir', life: 0.28, maxLife: 0.28 });
+      } else if (e.moveKind === 'galeTornado') {
+        e.stateTimer = 0.42;
+        const fy = e.y + e.h;
+        const dir = dx >= 0 ? 1 : -1;
+        const tSpd = e.phase === 2 ? 205 : 170;
+        audio.playWindBlade();
+        addShake(7);
+        spawnShockwave(cx, cy, 108, '#7dd3fc', 3.6, 0.28);
+        spawnArenaHazard({
+          kind: 'galeTornado', owner: e, x: Math.max(e.minX + 60, Math.min(e.maxX - 60, cx + dir * 72)), y: fy,
+          vx: dir * tSpd, minX: e.minX + 42, maxX: e.maxX - 42, w: 68, h: 265,
+          telegraph: 0.72, activeDur: 3.6, fadeDur: 0.36, dmg: 20
+        });
+        if (e.phase === 2) {
+          spawnArenaHazard({
+            kind: 'galeTornado', owner: e, x: Math.max(e.minX + 60, Math.min(e.maxX - 60, cx - dir * 82)), y: fy,
+            vx: -dir * (tSpd * 0.92), minX: e.minX + 42, maxX: e.maxX - 42, w: 64, h: 250,
+            telegraph: 0.84, activeDur: 3.4, fadeDur: 0.36, dmg: 18
+          });
+        }
       } else if (e.moveKind === 'updraftBarrage' || e.moveKind === 'windRetreatVolley') {
         e.stateTimer = 0.28;
-        const count = e.moveKind === 'windRetreatVolley' ? 3 : (e.phase === 2 ? 3 : 2);
+        const count = e.moveKind === 'windRetreatVolley' ? 3 : (e.phase === 2 ? 5 : 3);
         audio.playWindBlade();
         for (let k = 0; k < count; k++) {
           const spread = (k - (count - 1) * 0.5) * 0.24;
@@ -282,7 +331,7 @@ export function updateWardenWind(e, dt) {
     }
   } else if (e.state === 'strike') {
     e.vx *= damp(0.9, dt);
-    if (e.moveKind !== 'updraftBarrage' && e.moveKind !== 'windRetreatVolley' && !e.didHit) {
+    if (e.moveKind !== 'updraftBarrage' && e.moveKind !== 'windRetreatVolley' && e.moveKind !== 'galeTornado' && !e.didHit) {
       if (e.moveKind === 'galeUppercut') {
         const aaBox = { x: cx - 64, y: e.y - 68, w: 128, h: 126 };
         if (aabbOverlap(aaBox, G.player)) {
@@ -447,29 +496,51 @@ export function updateWardenForest(e, dt) {
       e.vx = 0;
       audio.playDangerAlert();
       spawnFloatText(cx, e.y - 48, t('combat.antiAirForest'), '#4ade80', 17, 0.9);
-    } else if (e.stateTimer <= 0 && absDx < 460) {
+    } else if (e.stateTimer <= 0 && absDx < 520) {
+      // v47.0 Forest Warden 'Ku' Signature Kit: Opening Thorn Carpet + Destructible Bramble Cage + Tracking Root Spikes!
+      const hasCage = hasActiveArenaHazard('brambleCage', e);
+      const hasCarpet = hasActiveArenaHazard('thornCarpet', e);
       const r = Math.random();
       if (wantsGreedPunish) {
-        consumeWardenGreedTrigger(e, 5.4);
-        e.moveKind = 'canopyThorns';
-        e.windupDuration = 0.50;
+        consumeWardenGreedTrigger(e, 5.2);
+        if (G.player && G.player.hp > 0) {
+          G.player.vx = (dx >= 0 ? 1 : -1) * 340;
+          G.player.vy = Math.min(G.player.vy, -180);
+        }
+        audio.playBarkCrack();
+        spawnShockwave(cx, cy, 132, '#4ade80', 4.2, 0.28);
+        e.moveKind = !hasCage ? 'brambleCage' : (!hasCarpet ? 'thornCarpet' : 'canopyThorns');
+        e.windupDuration = 0.44;
         audio.playDangerAlert();
-        spawnFloatText(cx, e.y - 48, t('combat.greedPunish'), COLORS.crimsonBright, 17, 0.9);
-      } else if (absDx > 175 && r < 0.38) {
+        spawnFloatText(cx, e.y - 52, t('combat.forestCageWarn'), '#6ee7b7', 18, 1.05);
+      } else if (!e.signatureOpened) {
+        e.signatureOpened = true;
+        e.moveKind = 'thornCarpet';
+        e.windupDuration = 0.54;
+        audio.playDangerAlert();
+        spawnFloatText(cx, e.y - 52, t('combat.forestCarpetWarn'), '#4ade80', 18, 1.05);
+      } else if (!hasCage && e.lastMoveKind !== 'brambleCage' && r < 0.34) {
+        e.moveKind = 'brambleCage';
+        e.windupDuration = 0.52;
+        audio.playDangerAlert();
+        spawnFloatText(cx, e.y - 52, t('combat.forestCageWarn'), '#6ee7b7', 18, 1.05);
+      } else if (!hasCarpet && e.lastMoveKind !== 'thornCarpet' && r < 0.58) {
+        e.moveKind = 'thornCarpet';
+        e.windupDuration = 0.56;
+        audio.playDangerAlert();
+        spawnFloatText(cx, e.y - 52, t('combat.forestCarpetWarn'), '#4ade80', 18, 1.05);
+      } else if (e.lastMoveKind !== 'rootEruption' && r < 0.78) {
         e.moveKind = 'rootEruption';
-        e.windupDuration = 0.62;
+        e.windupDuration = 0.54;
         audio.playDangerAlert();
-      } else if (absDx > 160 || r < 0.56) {
-        e.moveKind = 'vineWave';
-        e.windupDuration = 0.66;
-        audio.playDangerAlert();
-      } else if (r < 0.78) {
+      } else if (r < 0.90) {
         e.moveKind = 'sporeEruption';
-        e.windupDuration = 0.68;
+        e.windupDuration = 0.62;
       } else {
         e.moveKind = 'rootSlam';
-        e.windupDuration = 0.58;
+        e.windupDuration = 0.54;
       }
+      e.lastMoveKind = e.moveKind;
       e.state = 'windup';
       e.stateTimer = e.windupDuration;
       e.didHit = false;
@@ -498,17 +569,46 @@ export function updateWardenForest(e, dt) {
         if (G.sporeClouds.length < 4) {
           G.sporeClouds.push({ x: cx, y: e.y - 42, r: 66, life: 3.6, maxLife: 3.6, dmg: 12 });
         }
-      } else if (e.moveKind === 'rootEruption') {
+      } else if (e.moveKind === 'thornCarpet') {
         e.stateTimer = 0.34;
+        const fy = e.y + e.h;
+        const spanW = e.phase === 2 ? 430 : 350;
+        const minC = e.minX + 18;
+        const maxC = Math.max(minC, e.maxX - spanW - 18);
+        const tx = Math.max(minC, Math.min(maxC, px - spanW * 0.5));
+        audio.playBellQuake();
+        addShake(8);
+        spawnArenaHazard({
+          kind: 'thornCarpet', owner: e, x: tx, y: fy, w: spanW, h: 30,
+          telegraph: 0.72, activeDur: e.phase === 2 ? 6.0 : 5.2, fadeDur: 0.42, dmg: 14
+        });
+      } else if (e.moveKind === 'brambleCage') {
+        e.stateTimer = 0.42;
+        const fy = e.y + e.h;
+        const hw = 96;
+        const cageX = Math.max(e.minX + hw + 28, Math.min(e.maxX - hw - 28, px));
+        audio.playBarkCrack();
+        addShake(7);
+        spawnArenaHazard({
+          kind: 'brambleCage', owner: e, cx: cageX, y: fy, halfW: hw, h: 148, wallW: 18,
+          hp: e.phase === 2 ? 64 : 52, telegraph: 0.78, activeDur: 4.8, fadeDur: 0.35
+        });
+        spawnArenaHazard({
+          kind: 'rootSpike', owner: e, x: cageX, y: fy, w: 54, h: 122,
+          telegraph: 1.55, activeDur: 0.46, fadeDur: 0.26, dmg: 28
+        });
+      } else if (e.moveKind === 'rootEruption') {
+        e.stateTimer = 0.36;
         const fy = e.y + e.h;
         audio.playBellQuake();
         addShake(8);
-        e.rootSpikeQueue = [];
-        const cnt = e.phase === 2 ? 3 : 2;
+        const cnt = e.phase === 2 ? 4 : 3;
         for (let k = 0; k < cnt; k++) {
-          const sx = Math.max(e.minX + 36, Math.min(e.maxX - 36, px + (k - (cnt - 1) * 0.5) * 92));
-          e.rootSpikeQueue.push({ x: sx, y: fy, timer: 0.42 + k * 0.24 });
-          spawnShockwave(sx, fy - 4, 42, '#4ade80', 2.4, 0.38);
+          const sx = Math.max(e.minX + 36, Math.min(e.maxX - 36, px + (k - (cnt - 1) * 0.5) * 96));
+          spawnArenaHazard({
+            kind: 'rootSpike', owner: e, x: sx, y: fy, w: 46, h: 112,
+            telegraph: 0.56 + k * 0.22, activeDur: 0.42, fadeDur: 0.25, dmg: 24
+          });
         }
       } else if (e.moveKind === 'vineWave') {
         e.stateTimer = 0.28;
@@ -653,18 +753,55 @@ export function updateWardenMountain(e, dt) {
       e.vx = 0;
       audio.playFrostBuild();
       spawnFloatText(cx, e.y - 38, t('combat.antiAirMountain'), '#bae6fd', 17, 0.9);
-    } else if (e.stateTimer <= 0 && absDx < 480) {
+    } else if (e.stateTimer <= 0 && absDx < 560) {
+      // v47.4 Mountain Warden 'Lin' Signature Kit: Opening Floating Frost-Sword Array + Persistent Frost Domain + Frost-Blink!
+      const hasFrostField = hasActiveArenaHazard('frostPatch', e);
       const r = Math.random();
-      if (wantsGreedPunish) {
-        consumeWardenGreedTrigger(e, 5.2);
-        e.moveKind = 'glacialThrust';
+      if (!e.signatureOpened) {
+        e.signatureOpened = true;
+        e.moveKind = 'frostSwordArray';
         e.comboIdx = 0;
         e.comboTotal = 1;
-        e.windupDuration = 0.58;
-        e.vx = -e.facing * 170;
-        audio.playDangerAlert();
-        spawnFloatText(cx, e.y - 38, t('combat.greedPunish'), COLORS.crimsonBright, 17, 0.9);
-      } else if (e.phase === 2 && r < 0.24) {
+        e.windupDuration = 0.52;
+        e.vx = 0;
+        audio.playFrostBuild();
+        spawnFloatText(cx, e.y - 46, t('combat.frostSwordArrayWarn'), '#bae6fd', 18, 1.15);
+      } else if (wantsGreedPunish) {
+        consumeWardenGreedTrigger(e, 5.2);
+        // Glacial shatter blink: repels facetanker, flashes to opposite side & summons Floating Frost-Sword Array!
+        if (G.player && G.player.hp > 0) {
+          G.player.vx = (dx >= 0 ? 1 : -1) * 320;
+        }
+        audio.playFrostShatter();
+        audio.playShadowBlink();
+        spawnShockwave(cx, cy, 138, '#bae6fd', 4.2, 0.28);
+        const midM = (e.minX + e.maxX) * 0.5;
+        const destM = px < midM ? (e.maxX - 210) : (e.minX + 160);
+        e.x = Math.max(e.minX + 24, Math.min(e.maxX - e.w - 24, destM));
+        e.facing = px >= (e.x + e.w * 0.5) ? 1 : -1;
+        e.moveKind = 'frostSwordArray';
+        e.comboIdx = 0;
+        e.comboTotal = 1;
+        e.windupDuration = 0.46;
+        e.vx = 0;
+        spawnFloatText(e.x + e.w * 0.5, e.y - 46, t('combat.frostSwordArrayWarn'), '#bae6fd', 18, 1.1);
+      } else if (e.lastMoveKind !== 'frostSwordArray' && r < 0.34) {
+        e.moveKind = 'frostSwordArray';
+        e.comboIdx = 0;
+        e.comboTotal = 1;
+        e.windupDuration = 0.52;
+        e.vx = 0;
+        audio.playFrostBuild();
+        spawnFloatText(cx, e.y - 46, t('combat.frostSwordArrayWarn'), '#bae6fd', 18, 1.1);
+      } else if (!hasFrostField && e.lastMoveKind !== 'frostDomain' && r < 0.56) {
+        e.moveKind = 'frostDomain';
+        e.comboIdx = 0;
+        e.comboTotal = 1;
+        e.windupDuration = 0.54;
+        e.vx = 0;
+        audio.playFrostBuild();
+        spawnFloatText(cx, e.y - 46, t('combat.frostDomainWarn'), '#7dd3fc', 18, 1.1);
+      } else if (e.phase === 2 && r < 0.72) {
         e.moveKind = 'frostBlinkBackstab';
         e.comboIdx = 0;
         e.comboTotal = 1;
@@ -677,25 +814,19 @@ export function updateWardenMountain(e, dt) {
         e.x = Math.max(e.minX + 20, Math.min(e.maxX - e.w - 20, destCenter - e.w * 0.5));
         e.facing = px >= (e.x + e.w * 0.5) ? 1 : -1;
         spawnShockwave(e.x + e.w * 0.5, cy, 72, '#bae6fd', 3.2, 0.24);
-      } else if (absDx > 185 || r < 0.44) {
+      } else if (absDx > 185 || r < 0.84) {
         e.moveKind = 'frostIai';
         e.comboIdx = 0;
         e.comboTotal = 1;
-        e.windupDuration = 0.66;
+        e.windupDuration = 0.62;
         audio.playIaiReady();
-      } else if (r < 0.68) {
-        e.moveKind = 'glacialThrust';
-        e.comboIdx = 0;
-        e.comboTotal = 1;
-        e.windupDuration = 0.64;
-        e.vx = -e.facing * 170;
-        audio.playDangerAlert();
       } else {
         e.moveKind = 'frostCombo';
         e.comboIdx = 0;
         e.comboTotal = e.phase === 2 ? 4 : 3;
         e.windupDuration = 0.40;
       }
+      e.lastMoveKind = e.moveKind;
       e.state = 'windup';
       e.stateTimer = e.windupDuration;
       e.isDelayedHit = e.moveKind === 'frostBlinkBackstab';
@@ -731,6 +862,35 @@ export function updateWardenMountain(e, dt) {
             x: cx, y: e.y - 16, vx: Math.cos(a) * 380, vy: Math.sin(a) * 380,
             r: 12, dmg: 22, posture: 24, inflictsFrost: 26, life: 1.6, maxLife: 1.6, reflected: false, hitIds: new Set()
           });
+        });
+      } else if (e.moveKind === 'frostSwordArray') {
+        e.stateTimer = e.phase === 2 ? 1.15 : 0.92;
+        const cnt = e.phase === 2 ? 6 : 4;
+        audio.playFrostBuild();
+        addShake(6);
+        spawnShockwave(cx, cy - 30, 125, '#bae6fd', 3.8, 0.28);
+        for (let k = 0; k < cnt; k++) {
+          const arcA = -Math.PI * 0.88 + (Math.PI * 0.76 * k) / Math.max(1, cnt - 1);
+          const ox = Math.max(e.minX + 36, Math.min(e.maxX - 36, cx + Math.cos(arcA) * 115));
+          const oy = e.y - 32 + Math.sin(arcA) * 84;
+          spawnArenaHazard({
+            kind: 'iceLance', owner: e, ox, oy, angle: Math.atan2(py - oy, px - ox), len: 780, width: 22,
+            telegraph: 0.74 + k * 0.16, activeDur: 0.34, fadeDur: 0.24, dmg: 26, inflictsFrost: 24
+          });
+        }
+      } else if (e.moveKind === 'frostDomain') {
+        e.stateTimer = 0.40;
+        const fy = e.y + e.h;
+        const spanW = e.phase === 2 ? 380 : 320;
+        const minF = e.minX + 18;
+        const maxF = Math.max(minF, e.maxX - spanW - 18);
+        const fx = Math.max(minF, Math.min(maxF, px - spanW * 0.5));
+        audio.playFrostShatter();
+        addShake(8);
+        spawnShockwave(cx, fy - 8, 125, '#7dd3fc', 4.0, 0.30);
+        spawnArenaHazard({
+          kind: 'frostPatch', owner: e, x: fx, y: fy, w: spanW, h: 28,
+          telegraph: 0.68, activeDur: e.phase === 2 ? 5.4 : 4.8, fadeDur: 0.42, dmg: 12
         });
       } else if (e.moveKind === 'frostBlinkBackstab') {
         e.stateTimer = 0.24;
@@ -771,7 +931,7 @@ export function updateWardenMountain(e, dt) {
     }
   } else if (e.state === 'strike') {
     e.vx *= damp(0.9, dt);
-    if (!e.didHit) {
+    if (!e.didHit && e.moveKind !== 'frostSwordArray' && e.moveKind !== 'frostDomain') {
       if (e.moveKind === 'frostPillarRise') {
         const aaBox = { x: cx - 72, y: e.y - 84, w: 144, h: 134 };
         if (aabbOverlap(aaBox, G.player)) {

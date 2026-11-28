@@ -49,7 +49,7 @@
       "x": 0,
       "y": 740,
       "w": 40,
-      "h": 760,
+      "h": 960,
       "type": "pillar"
     },
     {
@@ -228,17 +228,17 @@
     {
       "id": "lan_ft_1",
       "x": 540,
-      "anchorY": 1520,
+      "anchorY": 1470,
       "topY": 1200,
-      "len": 130,
+      "len": 95,
       "angle": 0.08
     },
     {
       "id": "lan_ft_2",
       "x": 970,
-      "anchorY": 720,
-      "topY": 0,
-      "len": 145,
+      "anchorY": 695,
+      "topY": 642,
+      "len": 105,
       "angle": -0.09
     }
   ],

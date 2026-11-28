@@ -28,7 +28,7 @@ export function getWorldVariantKeyForCycle(cycle = 1) {
 
 export function getWorldVariantIdForCycle(cycle = 1) {
   const k = getWorldVariantKeyForCycle(cycle);
-  return k === 2 ? 'ng2_mirror' : k === 3 ? 'ng3_skyway' : 'ng1_classic';
+  return k === 2 ? 'ng2_eclipse' : k === 3 ? 'ng3_skyway' : 'ng1_classic';
 }
 
 export function getWorldVariantLabel(cycle = 1) {
@@ -437,17 +437,36 @@ export function hydrateWorldBundle(bundle) {
     }
   }
 
-  // Mark adjacent ground slabs so room boundaries render seamlessly with zero false cliff seams
+  // Mark adjacent ground slabs & pillars so room boundaries and abutting columns merge seamlessly with zero overlapping caps
   for (let i = 0; i < SOLIDS.length; i++) {
     const a = SOLIDS[i];
-    if (a.type !== 'ground') continue;
-    for (let j = 0; j < SOLIDS.length; j++) {
-      if (i === j) continue;
-      const b = SOLIDS[j];
-      if (b.type !== 'ground') continue;
-      if (Math.abs(a.y - b.y) <= 4) {
-        if (Math.abs(a.x - (b.x + b.w)) <= 4) a.seamLeft = true;
-        if (Math.abs((a.x + a.w) - b.x) <= 4) a.seamRight = true;
+    if (a.type === 'ground') {
+      for (let j = 0; j < SOLIDS.length; j++) {
+        if (i === j) continue;
+        const b = SOLIDS[j];
+        if (b.type !== 'ground') continue;
+        if (Math.abs(a.y - b.y) <= 4) {
+          if (Math.abs(a.x - (b.x + b.w)) <= 4) a.seamLeft = true;
+          if (Math.abs((a.x + a.w) - b.x) <= 4) a.seamRight = true;
+        }
+      }
+    } else if (a.type === 'pillar') {
+      for (let j = 0; j < SOLIDS.length; j++) {
+        if (i === j) continue;
+        const b = SOLIDS[j];
+        if (b.type === 'platform') continue;
+        const hxOv = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+        const vyOv = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+        // Vertical abutment (column-to-column, column-to-lintel, column-to-ground): suppress interior capital/plinth moulding!
+        if (hxOv >= Math.min(a.w, b.w) * 0.45) {
+          if (b.y <= a.y + 8 && (b.y + b.h) >= a.y - 6) a.seamTop = true;
+          if (b.y <= a.y + a.h + 6 && (b.y + b.h) >= a.y + a.h - 8) a.seamBottom = true;
+        }
+        // Horizontal abutment (side-by-side double walls across room seams): flush cap edges instead of protruding 5px!
+        if (vyOv >= 20) {
+          if (b.x <= a.x + 6 && (b.x + b.w) >= a.x - 4) a.seamLeft = true;
+          if (b.x <= a.x + a.w + 4 && (b.x + b.w) >= a.x + a.w - 6) a.seamRight = true;
+        }
       }
     }
   }

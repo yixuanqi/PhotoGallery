@@ -94,7 +94,20 @@
   "loreTablets": [],
   "gates": [],
   "secretWalls": [],
-  "voidBarriers": [],
+  "voidBarriers": [
+    {
+      "id": "vb_ng3_sky_sweep",
+      "x": 460,
+      "y": 158,
+      "w": 24,
+      "h": 142,
+      "sweeping": true,
+      "sweepMinX": 295,
+      "sweepMaxX": 820,
+      "sweepSpeed": 1.35,
+      "sweepPhase": 0.5
+    }
+  ],
   "slickWalls": [],
   "pickups": [
     {

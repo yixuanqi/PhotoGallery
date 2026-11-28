@@ -145,6 +145,18 @@
       "y": 180,
       "w": 22,
       "h": 140
+    },
+    {
+      "id": "vb_ng2_rain_sweep",
+      "x": 680,
+      "y": 458,
+      "w": 24,
+      "h": 142,
+      "sweeping": true,
+      "sweepMinX": 460,
+      "sweepMaxX": 1140,
+      "sweepSpeed": 1.28,
+      "sweepPhase": 0.8
     }
   ],
   "altars": [],
@@ -161,13 +173,13 @@
       "desc": "淋雨墓阶外廊残钟下遗落的 +75 残响"
     },
     {
-      "id": "pickup_relic_core",
+      "id": "pickup_relic_bell",
       "kind": "relic",
-      "relicId": "bellcore",
+      "relicId": "bellthread",
       "x": 710,
       "y": 215,
-      "name": "苍穹秘宝 · 古钟心核",
-      "desc": "墨印上限 +1，弹反回血，居合/断钟返增伤 25%！"
+      "name": "隐藏圣物 · 幽丝断钟",
+      "desc": "已解锁并可在祭坛铭刻！"
     }
   ],
   "resonancePuzzles": [],
@@ -213,9 +225,9 @@
   "enemies": [
     {
       "id": "s_rain_1",
-      "kind": "sentinel",
+      "kind": "duelist",
       "x": 540,
-      "y": 538,
+      "y": 540,
       "minX": 435,
       "maxX": 820
     },
@@ -229,11 +241,11 @@
     },
     {
       "id": "s_rain_2",
-      "kind": "sentinel",
+      "kind": "frostguard",
       "x": 1450,
-      "y": 538,
+      "y": 532,
       "minX": 1365,
-      "maxX": 1620
+      "maxX": 1616
     }
   ],
   "bosses": [],

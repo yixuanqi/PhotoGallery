@@ -218,6 +218,10 @@ export function updateRoomVisibility(dt, snap = false) {
   const vis = G.visibleRoomIds || (G.visibleRoomIds = new Set());
   vis.clear();
   vis.add(curRoom.id);
+  const awakeBossVis = getAwakeBoss();
+  if (awakeBossVis && awakeBossVis.roomId) {
+    vis.add(awakeBossVis.roomId);
+  }
 
   // Add horizontally & vertically connected unlocked rooms near the player's band
   for (let i = 0; i < ROOMS.length; i++) {

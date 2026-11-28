@@ -5,8 +5,8 @@ Zero external dependencies, deterministic, idempotent.
 
 Generates pre-baked, geometry-verified world manifests into data/worlds/:
   - NG1 (data/worlds/world_ng1.json)                        : Frozen 25-room classic baseline (zero diff vs data/world.json)
-  - NG2 (data/worlds/world_ng2.json + data/worlds/ng2_rooms): Inverted Mirror Cycle (full X-mirror + elite & relic remix)
-  - NG3 (data/worlds/world_ng3.json + data/worlds/ng3_rooms): Skyward Span Cycle (26 rooms with r26_sky_span upper bridge)
+  - NG2 (data/worlds/world_ng2.json + data/worlds/ng2_rooms): Eclipse Master Mode (forward 25 rooms + 17 cross-biome elite remixes, sweeping void hazards, 2 exclusive caches & relic swaps)
+  - NG3 (data/worlds/world_ng3.json + data/worlds/ng3_rooms): Skyward Span Cycle (26 rooms: full NG2 Eclipse Master + r26_sky_span upper bridge & escalated sky guards)
 """
 import copy
 import json
@@ -242,37 +242,91 @@ def build_ng1(base_world, base_rooms):
     return w, base_rooms
 
 
+def apply_eclipse_master_remix(rooms_dict):
+    """Plan A (v46.8): Forward-facing Eclipse Master Mode remix (cross-biome elite squads, sweeping void hazards, exclusive caches & relic swaps)."""
+    # 1. 17 Cross-Biome Elite Garrison Upgrades (exact ENTITY_DIMS foot alignment, zero clipping!)
+    remixes = [
+        ("r02_corridor",      "sent_1",          "frostguard", True),
+        ("r02_corridor",      "sent_2",          "crawler",    True),
+        ("r02_corridor",      "wraith_2",        "cantor",     False),
+        ("r04_bell_well",     "golem_1",         "frostguard", True),
+        ("r04_bell_well",     "golem_2",         "anchorite",  True),
+        ("r04_bell_well",     "wraith_3",        "cantor",     False),
+        ("r06_crypt",         "crawler_crypt_1", "weaver",     True),
+        ("r07_ascent",        "golem_asc",       "anchorite",  True),
+        ("r07_ascent",        "duelist_asc",     "frostguard", True),
+        ("r09_wind_spire",    "priest_wind_1",   "cantor",     False),
+        ("r09_wind_spire",    "duelist_wind_1",  "crawler",    True),
+        ("r10_ink_woods",     "fungus_forest_1", "anchorite",  True),
+        ("r11_frost_ridge",   "priest_frost_1",  "cantor",     False),
+        ("r18_rain_steps",    "s_rain_1",        "duelist",    True),
+        ("r18_rain_steps",    "s_rain_2",        "frostguard", True),
+        ("r21_cistern_west",  "p_cw_1",          "cantor",     False),
+        ("r22_cistern_nave",  "fg_cn_1",         "weaver",     True),
+    ]
+    for rid, eid, new_kind, adj in remixes:
+        if rid in rooms_dict:
+            upgrade_enemy_kind(rooms_dict[rid], eid, new_kind, adjust_ground=adj)
+
+    # 2. High-Hazard Sweeping Ink-Blight Curtains (designed around NG+ players retaining Shadow Dash from start!)
+    rooms_dict["r02_corridor"].setdefault("voidBarriers", []).append({
+        "id": "vb_ng2_corridor_sweep", "x": 620, "y": 438, "w": 24, "h": 142,
+        "sweeping": True, "sweepMinX": 500, "sweepMaxX": 980, "sweepSpeed": 1.25, "sweepPhase": 0.4
+    })
+    rooms_dict["r04_bell_well"].setdefault("voidBarriers", []).append({
+        "id": "vb_ng2_well_sweep", "x": 1120, "y": 878, "w": 24, "h": 142,
+        "sweeping": True, "sweepMinX": 970, "sweepMaxX": 1420, "sweepSpeed": 1.32, "sweepPhase": 1.1
+    })
+    rooms_dict["r18_rain_steps"].setdefault("voidBarriers", []).append({
+        "id": "vb_ng2_rain_sweep", "x": 680, "y": 458, "w": 24, "h": 142,
+        "sweeping": True, "sweepMinX": 460, "sweepMaxX": 1140, "sweepSpeed": 1.28, "sweepPhase": 0.8
+    })
+
+    # 3. Exclusive Master-Mode Eclipse Echo Caches (+120 echoes each)
+    rooms_dict["r02_corridor"].setdefault("pickups", []).append({
+        "id": "pickup_echo_ng2_corridor",
+        "kind": "echoCache",
+        "echoAmount": 120,
+        "x": 660,
+        "y": 580,
+        "name": "蚀月残响匣",
+        "desc": "蚀月大师模式秘宝 · 获得 +120 残响！"
+    })
+    rooms_dict["r09_wind_spire"].setdefault("pickups", []).append({
+        "id": "pickup_echo_ng2_spire",
+        "kind": "echoCache",
+        "echoAmount": 120,
+        "x": 590,
+        "y": 580,
+        "name": "绝风蚀月匣",
+        "desc": "蚀月大师模式秘宝 · 获得 +120 残响！"
+    })
+
+    # 4. Relic Pedestal Remix (same lock-tier pairs -> 0 softlocks, fresh build cadence)
+    swap_relic_payloads(rooms_dict["r18_rain_steps"], "pickup_relic_core", rooms_dict["r19_belfry_outer"], "pickup_relic_bell")
+    swap_relic_payloads(rooms_dict["r02_corridor"], "pickup_relic_clapper", rooms_dict["r04_bell_well"], "pickup_relic_ironheart")
+
+
 def build_ng2(base_world, base_rooms):
-    world_max_x = max(rm["bounds"]["x"] + rm["bounds"]["w"] for rm in base_rooms.values())
     ng2_rooms_dir = os.path.join(WORLDS_DIR, "ng2_rooms")
     os.makedirs(ng2_rooms_dir, exist_ok=True)
 
-    ng2_rooms = {}
-    for rid, rm in base_rooms.items():
-        ng2_rooms[rid] = mirror_room_horizontal(rm, world_max_x)
-
-    # NG2 Elite Enemy Remix (keeps exact ground alignment & healthy economy!)
-    upgrade_enemy_kind(ng2_rooms["r02_corridor"], "sent_2", "crawler", adjust_ground=True)
-    upgrade_enemy_kind(ng2_rooms["r02_corridor"], "wraith_2", "cantor", adjust_ground=False)
-    upgrade_enemy_kind(ng2_rooms["r04_bell_well"], "golem_2", "anchorite", adjust_ground=True)
-    upgrade_enemy_kind(ng2_rooms["r07_ascent"], "golem_asc", "anchorite", adjust_ground=True)
-
-    # NG2 Relic Pedestal Remix (same lock-tier pairs -> 0 softlocks, fresh build order!)
-    swap_relic_payloads(ng2_rooms["r18_rain_steps"], "pickup_relic_core", ng2_rooms["r19_belfry_outer"], "pickup_relic_bell")
-    swap_relic_payloads(ng2_rooms["r02_corridor"], "pickup_relic_clapper", ng2_rooms["r04_bell_well"], "pickup_relic_ironheart")
+    ng2_rooms = {rid: copy.deepcopy(rm) for rid, rm in base_rooms.items()}
+    apply_eclipse_master_remix(ng2_rooms)
 
     w = copy.deepcopy(base_world)
     w["cycle"] = 2
-    w["variantId"] = "ng2_mirror"
-    w["variantName"] = "二周目 · 倒影逆钟"
-    w["variantNameEn"] = "NG2 · Inverted Reflection"
-    w["mirrored"] = True
+    w["variantId"] = "ng2_eclipse"
+    w["variantName"] = "二周目 · 蚀月大师"
+    w["variantNameEn"] = "NG2 · Eclipse Master"
+    w["mirrored"] = False
     w["compositeBlocks"] = COMPOSITE_BLOCKS
     w["rooms"] = []
 
     for entry in base_world["rooms"]:
         rid = entry["id"]
         rm = ng2_rooms[rid]
+        rm["mirrored"] = False
         rel_file = f"./data/worlds/ng2_rooms/{rid}.json"
         save_json(os.path.join(ROOT, rel_file.lstrip("./")), rm)
         w["rooms"].append({
@@ -281,7 +335,7 @@ def build_ng2(base_world, base_rooms):
             "zoneName": rm.get("zoneName", entry.get("zoneName", "晦渊")),
             "name": rm["name"],
             "theme": rm["theme"],
-            "mirrored": True,
+            "mirrored": False,
             "bounds": copy.deepcopy(rm["bounds"]),
             "connections": list(rm["connections"]),
         })
@@ -396,10 +450,16 @@ def build_ng3(base_world, base_rooms):
     ng3_rooms_dir = os.path.join(WORLDS_DIR, "ng3_rooms")
     os.makedirs(ng3_rooms_dir, exist_ok=True)
 
+    # NG3 inherits the full NG2 Eclipse Master Mode remix + adds Skyward Span 26th room & apex garrisons!
     ng3_rooms = {rid: copy.deepcopy(rm) for rid, rm in base_rooms.items()}
+    apply_eclipse_master_remix(ng3_rooms)
 
     # 1. Insert r26_sky_span bridging r18_rain_steps (x=940..2645) <-> r20_bell_galleries (x=3780..5560)
     r26 = make_r26_sky_span()
+    r26.setdefault("voidBarriers", []).append({
+        "id": "vb_ng3_sky_sweep", "x": 460, "y": 158, "w": 24, "h": 142,
+        "sweeping": True, "sweepMinX": 295, "sweepMaxX": 820, "sweepSpeed": 1.35, "sweepPhase": 0.5
+    })
     ng3_rooms["r26_sky_span"] = r26
 
     # Carve clean 180px doorway on r18_rain_steps east wall (x=1670..1705, open y=420..600)
@@ -436,11 +496,9 @@ def build_ng3(base_world, base_rooms):
     if "r26_sky_span" not in r20["connections"]:
         r20["connections"].append("r26_sky_span")
 
-    # 2. NG3 Elite Garrison Escalation
-    upgrade_enemy_kind(ng3_rooms["r02_corridor"], "sent_1", "weaver", adjust_ground=True)
-    upgrade_enemy_kind(ng3_rooms["r09_wind_spire"], "priest_wind_1", "cantor", adjust_ground=False)
-    upgrade_enemy_kind(ng3_rooms["r09_wind_spire"], "duelist_wind_1", "crawler", adjust_ground=True)
-    upgrade_enemy_kind(ng3_rooms["r11_frost_ridge"], "priest_frost_1", "cantor", adjust_ground=False)
+    # 2. NG3 Additional Apex Escalation on top of NG2 Master garrisons
+    upgrade_enemy_kind(ng3_rooms["r14_woods_cavern"], "fungus_wc_1", "anchorite", adjust_ground=True)
+    upgrade_enemy_kind(ng3_rooms["r20_bell_galleries"], "f_gal_2", "cantor", adjust_ground=False)
 
     w = copy.deepcopy(base_world)
     w["cycle"] = 3
@@ -477,8 +535,8 @@ def assemble_all(verbose=True):
     if verbose:
         print("[assemble_worlds] Baked 3 deterministic cycle worlds into data/worlds/:")
         print(f"  - NG1 (world_ng1.json): {len(w1['rooms'])} rooms | Classic Cloister (baseline frozen)")
-        print(f"  - NG2 (world_ng2.json): {len(w2['rooms'])} rooms | Inverted Reflection (mirrored X, 4 elite & 2 relic-pair remixes)")
-        print(f"  - NG3 (world_ng3.json): {len(w3['rooms'])} rooms | Skyward Span (+r26_sky_span upper bridge, 4 elite remixes)")
+        print(f"  - NG2 (world_ng2.json): {len(w2['rooms'])} rooms | Eclipse Master (forward, 17 cross-biome elites, 3 sweeping curtains, 2 caches)")
+        print(f"  - NG3 (world_ng3.json): {len(w3['rooms'])} rooms | Skyward Span (NG2 Eclipse Master + r26_sky_span upper bridge & apex esc)")
     return {"ng1": (w1, r1), "ng2": (w2, r2), "ng3": (w3, r3)}
 
 

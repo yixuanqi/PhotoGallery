@@ -5,7 +5,7 @@
   "name": "枯墨古林 · 盘根溶洞",
   "theme": "forest",
   "bounds": {
-    "x": 8500,
+    "x": 1080,
     "y": 1520,
     "w": 1600,
     "h": 740
@@ -18,14 +18,14 @@
   "subZones": [
     {
       "name": "枯墨古林 · 盘根深窟",
-      "x": 720,
+      "x": 0,
       "y": 0,
       "w": 880,
       "h": 740
     },
     {
       "name": "枯墨古林 · 暗河渗池",
-      "x": 0,
+      "x": 880,
       "y": 0,
       "w": 720,
       "h": 740
@@ -33,112 +33,112 @@
   ],
   "solids": [
     {
-      "x": 0,
+      "x": 1560,
       "y": 0,
       "w": 40,
       "h": 420,
       "type": "pillar"
     },
     {
-      "x": 0,
+      "x": 1560,
       "y": 600,
       "w": 40,
       "h": 140,
       "type": "pillar"
     },
     {
-      "x": 0,
+      "x": 900,
       "y": 0,
       "w": 700,
       "h": 36,
       "type": "pillar"
     },
     {
-      "x": 680,
+      "x": 0,
       "y": 600,
       "w": 920,
       "h": 140,
       "type": "ground"
     },
     {
-      "x": 100,
+      "x": 920,
       "y": 670,
       "w": 580,
       "h": 70,
       "type": "ground"
     },
     {
-      "x": 0,
+      "x": 1480,
       "y": 600,
       "w": 120,
       "h": 140,
       "type": "ground"
     },
     {
-      "x": 1140,
+      "x": 262,
       "y": 430,
-      "w": 135,
+      "w": 120,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 1140,
+      "x": 262,
       "y": 240,
-      "w": 135,
+      "w": 120,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 1150,
-      "y": 68,
-      "w": 125,
+      "x": 262,
+      "y": 104,
+      "w": 118,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 870,
+      "x": 540,
       "y": 455,
       "w": 190,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 630,
+      "x": 790,
       "y": 350,
       "w": 180,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 435,
+      "x": 1020,
       "y": 530,
       "w": 145,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 125,
+      "x": 1255,
       "y": 420,
       "w": 220,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 60,
+      "x": 1350,
       "y": 270,
       "w": 190,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 40,
+      "x": 1360,
       "y": 110,
       "w": 200,
       "h": 20,
       "type": "pillar"
     },
     {
-      "x": 40,
+      "x": 1360,
       "y": 270,
       "w": 200,
       "h": 20,
@@ -152,7 +152,7 @@
   "voidBarriers": [
     {
       "id": "vb_woods_deep",
-      "x": 213,
+      "x": 1365,
       "y": 130,
       "w": 22,
       "h": 140
@@ -164,7 +164,7 @@
       "role": "switchGate",
       "switchKey": "cisternWestOpen",
       "orientation": "vertical",
-      "x": 0,
+      "x": 1560,
       "y": 420,
       "w": 40,
       "h": 180
@@ -174,7 +174,7 @@
     {
       "id": "pickup_echo_woods_deep",
       "kind": "echoCache",
-      "x": 145,
+      "x": 1455,
       "y": 270,
       "echoAmount": 115,
       "name": "渗池古铃残响",
@@ -187,7 +187,7 @@
       "bonusHp": 10,
       "bonusSoul": 10,
       "echoAmount": 60,
-      "x": 400,
+      "x": 1200,
       "y": 670,
       "name": "渗池古核 · 干涸菌髓",
       "desc": "暗河泄洪后显露于渗池底部的荧光古核（生命 +10 · 魂火 +10 · +60 残响）"
@@ -198,7 +198,7 @@
   "bouncePads": [
     {
       "id": "bp_wc_up1",
-      "x": 1210,
+      "x": 322,
       "y": 600,
       "w": 84,
       "h": 28,
@@ -206,7 +206,7 @@
     },
     {
       "id": "bp_wc_up2",
-      "x": 1210,
+      "x": 322,
       "y": 240,
       "w": 76,
       "h": 24,
@@ -214,7 +214,7 @@
     },
     {
       "id": "bp_wc_pool",
-      "x": 510,
+      "x": 1090,
       "y": 530,
       "w": 80,
       "h": 26,
@@ -222,15 +222,15 @@
     },
     {
       "id": "bp_wc_up3",
-      "x": 1212,
-      "y": 68,
+      "x": 322,
+      "y": 104,
       "w": 78,
       "h": 24,
-      "boostVy": -920
+      "boostVy": -950
     },
     {
       "id": "bp_wc_dormant",
-      "x": 870,
+      "x": 730,
       "y": 600,
       "w": 88,
       "h": 30,
@@ -239,7 +239,7 @@
     },
     {
       "id": "bp_wc_mid",
-      "x": 1210,
+      "x": 322,
       "y": 430,
       "w": 76,
       "h": 24,
@@ -249,13 +249,13 @@
   "grappleAnchors": [
     {
       "id": "anc_wc_1",
-      "x": 960,
+      "x": 640,
       "y": 245,
       "topY": 0
     },
     {
       "id": "anc_wc_2",
-      "x": 445,
+      "x": 1155,
       "y": 270,
       "topY": 36
     }
@@ -263,59 +263,59 @@
   "lanterns": [
     {
       "id": "lan_wc_1",
-      "x": 1145,
+      "x": 480,
       "anchorY": 165,
       "topY": 0,
       "len": 135,
-      "angle": -0.05
+      "angle": 0.05
     },
     {
       "id": "lan_wc_2",
-      "x": 605,
+      "x": 995,
       "anchorY": 180,
       "topY": 36,
       "len": 145,
-      "angle": 0.06
+      "angle": -0.06
     }
   ],
   "enemies": [
     {
       "id": "fungus_wc_1",
       "kind": "fungus",
-      "x": 980,
+      "x": 580,
       "y": 542,
-      "minX": 710,
-      "maxX": 1210
+      "minX": 350,
+      "maxX": 850
     },
     {
       "id": "fungus_wc_2",
       "kind": "fungus",
-      "x": 220,
+      "x": 1340,
       "y": 362,
-      "minX": 100,
-      "maxX": 295
+      "minX": 1265,
+      "maxX": 1460
     },
     {
       "id": "leech_wc_1",
       "kind": "leech",
-      "x": 606,
+      "x": 960,
       "y": 42
     },
     {
       "id": "weaver_wc_2",
       "kind": "weaver",
-      "x": 476,
+      "x": 1080,
       "y": 634,
-      "minX": 136,
-      "maxX": 616
+      "minX": 940,
+      "maxX": 1420
     },
     {
       "id": "weaver_wc_1",
       "kind": "weaver",
-      "x": 696,
+      "x": 860,
       "y": 314,
-      "minX": 631,
-      "maxX": 756
+      "minX": 800,
+      "maxX": 925
     }
   ],
   "bosses": [],
@@ -324,71 +324,71 @@
     "banners": [],
     "candles": [
       {
-        "x": 285,
+        "x": 1315,
         "y": 420
       },
       {
-        "x": 190,
+        "x": 1410,
         "y": 420
       }
     ],
     "stamps": [
       {
         "type": "gnarled_tree",
-        "x": 1440,
+        "x": 160,
         "y": 600,
         "scale": 1.25,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.78,
         "seed": 0
       },
       {
         "type": "spore_cluster",
-        "x": 1180,
+        "x": 420,
         "y": 600,
         "scale": 1.12,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.85,
         "seed": 1
       },
       {
         "type": "gnarled_tree",
-        "x": 860,
+        "x": 740,
         "y": 600,
         "scale": 1.32,
-        "flip": false,
+        "flip": true,
         "layer": "bg",
         "alpha": 0.78,
         "seed": 2
       },
       {
         "type": "fallen_bell",
-        "x": 460,
+        "x": 1140,
         "y": 620,
         "scale": 0.92,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.76,
         "seed": 1
       },
       {
         "type": "spore_cluster",
-        "x": 180,
+        "x": 1420,
         "y": 420,
         "scale": 0.96,
-        "flip": false,
+        "flip": true,
         "layer": "bg",
         "alpha": 0.84,
         "seed": 2
       },
       {
         "type": "gnarled_tree",
-        "x": 105,
+        "x": 1495,
         "y": 600,
         "scale": 1.18,
-        "flip": false,
+        "flip": true,
         "layer": "bg",
         "alpha": 0.76,
         "seed": 0
@@ -399,7 +399,7 @@
   "loreTablets": [
     {
       "id": "lore_woods_seepage",
-      "x": 240,
+      "x": 1360,
       "y": 420,
       "title": "逃兵菌刻碑",
       "sub": "枯墨古林 · 暗河渗池断桥",
@@ -410,21 +410,21 @@
   "rivers": [
     {
       "id": "river_woods_seep",
-      "x": 120,
+      "x": 920,
       "y": 622,
       "w": 560,
       "h": 48,
-      "safeX": 755,
+      "safeX": 845,
       "safeY": 542,
       "drainable": true
     }
   ],
   "inscriptions": [
     {
-      "x": 1490,
+      "x": 110,
       "y": 535,
       "text": "西行步入「古钟树窟」— 破除盘根树铠后可由西侧孢伞直冲回廊"
     }
   ],
-  "mirrored": true
+  "mirrored": false
 }

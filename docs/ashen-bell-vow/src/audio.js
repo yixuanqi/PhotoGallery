@@ -813,6 +813,11 @@ export class SoundEngine {
     this._playBaked('grapple_latch', 1.0);
   }
 
+  playGrappleLockTick(isEnemy = false) {
+    if (!this._canPlaySfx('grapple_tick', 0.095)) return;
+    this._playBaked('grapple_tick', isEnemy ? 1.16 : 0.96);
+  }
+
   playWraithShot() {
     this._playBaked('wraith_shot', 1.0);
   }

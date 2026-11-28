@@ -3,7 +3,7 @@
   "name": "沉钟水牢 · 淹钟巨厅",
   "theme": "cistern",
   "bounds": {
-    "x": 5020,
+    "x": 4280,
     "y": 1520,
     "w": 1880,
     "h": 740
@@ -15,84 +15,84 @@
   ],
   "solids": [
     {
-      "x": 1020,
+      "x": 0,
       "y": 0,
       "w": 860,
       "h": 34,
       "type": "pillar"
     },
     {
-      "x": 0,
+      "x": 1000,
       "y": 0,
       "w": 880,
       "h": 34,
       "type": "pillar"
     },
     {
-      "x": 1120,
+      "x": 0,
       "y": 600,
       "w": 760,
       "h": 140,
       "type": "ground"
     },
     {
-      "x": 440,
+      "x": 760,
       "y": 668,
       "w": 680,
       "h": 72,
       "type": "ground"
     },
     {
-      "x": 0,
+      "x": 1440,
       "y": 600,
       "w": 440,
       "h": 140,
       "type": "ground"
     },
     {
-      "x": 825,
+      "x": 845,
       "y": 500,
       "w": 210,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 520,
+      "x": 1135,
       "y": 490,
       "w": 225,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 835,
+      "x": 850,
       "y": 310,
       "w": 195,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 970,
+      "x": 795,
       "y": 145,
       "w": 115,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 1420,
+      "x": 220,
       "y": 385,
       "w": 240,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 150,
+      "x": 1480,
       "y": 395,
       "w": 250,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 854,
+      "x": 1000,
       "y": 34,
       "w": 26,
       "h": 200,
@@ -105,13 +105,13 @@
   "voidBarriers": [
     {
       "id": "vb_cistern_sweep",
-      "x": 316,
+      "x": 1540,
       "y": 455,
       "w": 24,
       "h": 145,
       "sweeping": true,
-      "sweepMinX": 66,
-      "sweepMaxX": 391,
+      "sweepMinX": 1465,
+      "sweepMaxX": 1790,
       "sweepSpeed": 1.3,
       "sweepPhase": 0.6
     }
@@ -119,7 +119,7 @@
   "altars": [
     {
       "id": "altar_cistern",
-      "x": 1420,
+      "x": 460,
       "y": 600,
       "name": "沉钟水牢 · 淹钟祭坛",
       "shortName": "淹钟祭坛"
@@ -129,7 +129,7 @@
     {
       "id": "npc_scavenger",
       "kind": "scavenger",
-      "x": 1270,
+      "x": 610,
       "y": 600,
       "name": "盲眼拾荒童 · 灰芽"
     }
@@ -137,7 +137,7 @@
   "loreTablets": [
     {
       "id": "lore_cistern_nave",
-      "x": 1570,
+      "x": 310,
       "y": 600,
       "title": "泄洪旧录",
       "sub": "沉钟水牢 · 淹钟巨厅",
@@ -150,7 +150,7 @@
       "kind": "flaskCore",
       "requiresSwitch": "riverDrained",
       "echoAmount": 75,
-      "x": 785,
+      "x": 1095,
       "y": 668,
       "name": "淹钟灯芯 · 退潮残芯",
       "desc": "排干暗河后自巨厅水底拾获的古灯油残芯（灯油上限 +1 · +75 残响）"
@@ -160,14 +160,14 @@
   "lanterns": [
     {
       "id": "lan_cn_1",
-      "x": 1420,
+      "x": 460,
       "anchorY": 34,
       "len": 190,
       "topY": 34
     },
     {
       "id": "lan_cn_2",
-      "x": 635,
+      "x": 1245,
       "anchorY": 34,
       "len": 195,
       "topY": 34
@@ -175,13 +175,13 @@
   ],
   "grappleAnchors": [
     {
-      "x": 950,
+      "x": 930,
       "y": 230,
       "id": "anc_r22_cistern_nave_0",
       "topY": 34
     },
     {
-      "x": 785,
+      "x": 1095,
       "y": 390,
       "id": "anc_r22_cistern_nave_1",
       "topY": 34
@@ -191,7 +191,7 @@
   "rivers": [
     {
       "id": "river_cistern_nave",
-      "x": 440,
+      "x": 760,
       "y": 632,
       "w": 680,
       "drainable": true
@@ -201,32 +201,32 @@
     {
       "id": "dr_cn_1",
       "kind": "drowned",
-      "x": 1664,
+      "x": 180,
       "y": 540,
-      "minX": 1494,
-      "maxX": 1784
+      "minX": 60,
+      "maxX": 350
     },
     {
       "id": "fg_cn_1",
-      "kind": "fungus",
-      "x": 630,
-      "y": 428,
-      "minX": 505,
-      "maxX": 695
+      "kind": "weaver",
+      "x": 1210,
+      "y": 450,
+      "minX": 1145,
+      "maxX": 1331
     },
     {
       "id": "an_cn_1",
       "kind": "anchorite",
-      "x": 212,
+      "x": 1620,
       "y": 522,
-      "minX": 17,
-      "maxX": 362
+      "minX": 1470,
+      "maxX": 1815
     }
   ],
   "bosses": [],
   "inscriptions": [
     {
-      "x": 785,
+      "x": 1095,
       "y": 430,
       "text": "「若启钟井暗河泄洪闸 · 巨厅深池将现古灯残芯」",
       "hideWhenSwitch": "riverDrained"
@@ -235,20 +235,20 @@
   "props": {
     "puddles": [
       {
-        "x": 1240,
+        "x": 380,
         "w": 260,
         "y": 600
       }
     ],
     "banners": [
       {
-        "x": 1420,
+        "x": 460,
         "y": 34,
         "len": 170,
         "color": "#0e2938"
       },
       {
-        "x": 260,
+        "x": 1620,
         "y": 34,
         "len": 165,
         "color": "#1a2030"
@@ -256,12 +256,12 @@
     ],
     "candles": [
       {
-        "x": 1460,
+        "x": 420,
         "y": 600,
         "count": 4
       },
       {
-        "x": 1240,
+        "x": 640,
         "y": 600,
         "count": 3
       }
@@ -270,39 +270,36 @@
     "stamps": [
       {
         "type": "tide_pillar",
-        "x": 1490,
+        "x": 390,
         "y": 600,
         "scale": 1.1,
-        "layer": "bg",
-        "flip": true
+        "layer": "bg"
       },
       {
         "type": "iron_cage",
-        "x": 795,
+        "x": 1085,
         "y": 34,
         "scale": 1.05,
-        "layer": "bg",
-        "flip": true
+        "layer": "bg"
       },
       {
         "type": "sunken_bell_giant",
-        "x": 230,
+        "x": 1650,
         "y": 600,
         "scale": 1.15,
-        "layer": "bg",
-        "flip": true
+        "layer": "bg"
       }
     ]
   },
   "slickWalls": [
     {
       "id": "slick_r22_shaft",
-      "x": 854,
+      "x": 1000,
       "y": 34,
       "w": 26,
       "h": 200,
-      "side": "right"
+      "side": "left"
     }
   ],
-  "mirrored": true
+  "mirrored": false
 }

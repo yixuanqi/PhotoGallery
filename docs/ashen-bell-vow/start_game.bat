@@ -6,7 +6,7 @@ set PYTHONIOENCODING=utf-8
 cd /d "%~dp0"
 
 echo ========================================================
-echo   Ashen Bell Vow v46.1 - Windows Local Launcher
+echo   Ashen Bell Vow v47.6 - Windows Local Launcher
 echo ========================================================
 echo.
 

@@ -640,6 +640,259 @@ def build_offline_bundle_js(version):
     return bundle_js, order
 
 
+def scan_duplicate_lexical_decls(code, label="bundle"):
+    """
+    Exact ES6 lexical-scope duplicate declaration scanner (v47.6).
+    Detects duplicate const/let/class/import/param declarations in the same lexical block,
+    properly balancing `${ ... }` template interpolations with `}`.
+    """
+    tokens = tokenize_js(code)
+    sig = [t for t in tokens if t[0] not in ("ws", "comment")]
+    n = len(sig)
+    scopes = [{}]
+    pending_params = None
+    errors = []
+
+    def add_binding(scope, name, kind, pos):
+        ln = code.count("\n", 0, pos) + 1
+        if name in scope:
+            prev_k, prev_ln = scope[name]
+            if kind in ("const", "let", "class", "import", "param") or prev_k in ("const", "let", "class", "import", "param"):
+                errors.append(f"{label}: Duplicate lexical binding '{name}' in same scope ({prev_k} L{prev_ln} vs {kind} L{ln})")
+        else:
+            scope[name] = (kind, ln)
+
+    def extract_binding_names(start_idx, end_idx):
+        out = []
+        k = start_idx
+        stack = []
+        expect = True
+        while k < end_idx:
+            tk, tt, ts, _ = sig[k]
+            if not stack:
+                if tk == "punct" and tt == "{":
+                    stack.append("obj"); expect = True
+                elif tk == "punct" and tt == "[":
+                    stack.append("arr"); expect = True
+                elif tk == "punct" and tt == "...":
+                    pass
+                elif tk == "punct" and tt == "=":
+                    stack.append("expr")
+                elif tk == "punct" and tt == ",":
+                    expect = True
+                elif expect and tk == "ident":
+                    out.append((tt, ts))
+                    expect = False
+            else:
+                top = stack[-1]
+                if top == "expr":
+                    if tk == "punct" and tt in ("(", "[", "{", "${"):
+                        stack.append("expr")
+                    elif tk == "punct" and tt in (")", "]", "}"):
+                        stack.pop()
+                    elif tk == "punct" and tt == "," and len(stack) == 1:
+                        stack.pop()
+                        expect = True
+                elif top == "obj":
+                    if tk == "punct" and tt == "}":
+                        stack.pop()
+                        if not stack: expect = False
+                    elif tk == "punct" and tt == ",":
+                        expect = True
+                    elif tk == "punct" and tt == "=":
+                        d2 = 0
+                        k += 1
+                        while k < end_idx:
+                            ck, ct, _, _ = sig[k]
+                            if d2 == 0 and ck == "punct" and ct in (",", "}"):
+                                k -= 1
+                                break
+                            if ck == "punct" and ct in ("(", "[", "{", "${"): d2 += 1
+                            elif ck == "punct" and ct in (")", "]", "}"): d2 -= 1
+                            k += 1
+                    elif tk == "punct" and tt == ":":
+                        expect = True
+                    elif tk == "punct" and tt == "{":
+                        stack.append("obj"); expect = True
+                    elif tk == "punct" and tt == "[":
+                        stack.append("arr"); expect = True
+                    elif expect and tk == "ident":
+                        nxt = sig[k + 1][1] if k + 1 < end_idx else ""
+                        if nxt == ":":
+                            expect = False
+                        else:
+                            out.append((tt, ts))
+                            expect = False
+                elif top == "arr":
+                    if tk == "punct" and tt == "]":
+                        stack.pop()
+                        if not stack: expect = False
+                    elif tk == "punct" and tt == ",":
+                        expect = True
+                    elif tk == "punct" and tt == "=":
+                        d2 = 0
+                        k += 1
+                        while k < end_idx:
+                            ck, ct, _, _ = sig[k]
+                            if d2 == 0 and ck == "punct" and ct in (",", "]"):
+                                k -= 1
+                                break
+                            if ck == "punct" and ct in ("(", "[", "{", "${"): d2 += 1
+                            elif ck == "punct" and ct in (")", "]", "}"): d2 -= 1
+                            k += 1
+                    elif tk == "punct" and tt == "{":
+                        stack.append("obj"); expect = True
+                    elif tk == "punct" and tt == "[":
+                        stack.append("arr"); expect = True
+                    elif expect and tk == "ident":
+                        out.append((tt, ts))
+                        expect = False
+            k += 1
+        return out
+
+    i = 0
+    while i < n:
+        k, t, s, _e = sig[i]
+        prev_t = sig[i - 1][1] if i > 0 else ""
+
+        if k == "punct" and t in ("{", "${"):
+            scopes.append(dict(pending_params) if (t == "{" and pending_params) else {})
+            if t == "{":
+                pending_params = None
+            i += 1
+            continue
+        if k == "punct" and t == "}":
+            if len(scopes) > 1:
+                scopes.pop()
+            else:
+                errors.append(f"{label}: Unexpected extra '}}' at L{code.count(chr(10), 0, s) + 1}")
+            i += 1
+            continue
+
+        if k == "ident" and t == "import" and prev_t != ".":
+            j = i + 1
+            if j < n and sig[j][0] == "punct" and sig[j][1] == "(":
+                i += 1
+                continue
+            while j < n and not (sig[j][0] == "ident" and sig[j][1] == "from") and not (sig[j][0] == "punct" and sig[j][1] == ";"):
+                j += 1
+            p = i + 1
+            while p < j:
+                pk, pt, ps, _ = sig[p]
+                if pk == "ident":
+                    if p + 2 < j and sig[p + 1][1] == "as":
+                        add_binding(scopes[-1], sig[p + 2][1], "import", sig[p + 2][2])
+                        p += 3
+                        continue
+                    elif pt != "type":
+                        add_binding(scopes[-1], pt, "import", ps)
+                p += 1
+            i = j + 1
+            continue
+
+        if k == "ident" and t == "function" and prev_t != ".":
+            j = i + 1
+            if j < n and sig[j][1] == "*": j += 1
+            if j < n and sig[j][0] == "ident":
+                if (i == 0) or prev_t in (";", "{", "}", "export", "async", "default"):
+                    add_binding(scopes[-1], sig[j][1], "function", sig[j][2])
+                j += 1
+            if j < n and sig[j][1] == "(":
+                pstart = j + 1
+                pd = 1
+                j += 1
+                while j < n and pd > 0:
+                    if sig[j][1] == "(": pd += 1
+                    elif sig[j][1] == ")": pd -= 1
+                    j += 1
+                if j < n and sig[j][1] == "{":
+                    pmap = {}
+                    for nm, npos in extract_binding_names(pstart, j - 1):
+                        if nm in pmap:
+                            errors.append(f"{label}: Duplicate parameter '{nm}' at L{code.count(chr(10), 0, npos) + 1}")
+                        pmap[nm] = ("param", code.count("\n", 0, npos) + 1)
+                    pending_params = pmap
+            i = j
+            continue
+
+        if k == "punct" and t == "=>" and i + 1 < n and sig[i + 1][1] == "{":
+            pmap = {}
+            if i >= 1 and sig[i - 1][0] == "ident":
+                pmap[sig[i - 1][1]] = ("param", code.count("\n", 0, sig[i - 1][2]) + 1)
+            elif i >= 1 and sig[i - 1][1] == ")":
+                pd = 1
+                j = i - 2
+                while j >= 0 and pd > 0:
+                    if sig[j][1] == ")": pd += 1
+                    elif sig[j][1] == "(": pd -= 1
+                    j -= 1
+                for nm, npos in extract_binding_names(j + 2, i - 1):
+                    if nm in pmap:
+                        errors.append(f"{label}: Duplicate arrow parameter '{nm}' at L{code.count(chr(10), 0, npos) + 1}")
+                    pmap[nm] = ("param", code.count("\n", 0, npos) + 1)
+            pending_params = pmap
+            i += 1
+            continue
+
+        if k == "ident" and t == "class" and prev_t != ".":
+            if i + 1 < n and sig[i + 1][0] == "ident" and prev_t in ("", ";", "{", "}", "export", "default"):
+                add_binding(scopes[-1], sig[i + 1][1], "class", sig[i + 1][2])
+            i += 1
+            continue
+
+        if k == "ident" and t in ("const", "let") and prev_t != ".":
+            if i >= 2 and sig[i - 1][1] == "(" and sig[i - 2][1] == "for":
+                i += 1
+                continue
+            j = i + 1
+            d0 = 0
+            saw_eq = False
+            while j < n:
+                jk, jt, js_pos, _ = sig[j]
+                if d0 == 0 and jk == "punct" and jt in (";", ")", "}"):
+                    break
+                if d0 == 0 and jk == "ident" and jt in ("in", "of"):
+                    break
+                if d0 == 0 and saw_eq and j > i + 2:
+                    between = code[sig[j - 1][3]:js_pos]
+                    if "\n" in between and jk == "ident" and jt in ("const", "let", "var", "if", "for", "while", "return", "function", "export", "switch", "try", "break", "continue", "throw"):
+                        break
+                if jk == "punct" and jt in ("(", "[", "{", "${"):
+                    d0 += 1
+                elif jk == "punct" and jt in (")", "]", "}"):
+                    d0 -= 1
+                elif d0 == 0 and jk == "punct" and jt == "=":
+                    saw_eq = True
+                j += 1
+            seg_start = i + 1
+            d1 = 0
+            for m in range(i + 1, j + 1):
+                is_end = (m == j) or (d1 == 0 and sig[m][0] == "punct" and sig[m][1] == ",")
+                if not is_end:
+                    if sig[m][0] == "punct" and sig[m][1] in ("(", "[", "{", "${"): d1 += 1
+                    elif sig[m][0] == "punct" and sig[m][1] in (")", "]", "}"): d1 -= 1
+                else:
+                    eq_pos = m
+                    d2 = 0
+                    for q in range(seg_start, m):
+                        if sig[q][0] == "punct" and sig[q][1] in ("(", "[", "{", "${"): d2 += 1
+                        elif sig[q][0] == "punct" and sig[q][1] in (")", "]", "}"): d2 -= 1
+                        elif d2 == 0 and sig[q][0] == "punct" and sig[q][1] == "=":
+                            eq_pos = q
+                            break
+                    for nm, npos in extract_binding_names(seg_start, eq_pos):
+                        add_binding(scopes[-1], nm, t, npos)
+                    seg_start = m + 1
+            i = j
+            continue
+
+        i += 1
+
+    if len(scopes) != 1:
+        errors.append(f"{label}: Unbalanced lexical scope depth at EOF (depth={len(scopes)})")
+    return errors
+
+
 def audit_bundle_syntax(js_code):
     """Lexical integrity check: verifies all (), [], {} are strictly balanced outside strings/comments/regexes."""
     tokens = tokenize_js(js_code)
@@ -665,6 +918,10 @@ def audit_bundle_syntax(js_code):
     for m in re.finditer(r"\([^(){}]*\b([A-Za-z_$][\w$]*)\s*:\s*__live_\d+\.\1\b", js_code):
         line_no = js_code.count("\n", 0, m.start()) + 1
         raise RuntimeError(f"Syntax audit failed: illegal live shorthand inside parens at bundle line {line_no}")
+    # v47.6 Guard against duplicate lexical const/let/class/param declarations in the same scope!
+    dup_errs = scan_duplicate_lexical_decls(js_code, "game.bundle.js")
+    if dup_errs:
+        raise RuntimeError("Syntax audit failed: " + " | ".join(dup_errs[:5]))
 
 
 def build_offline_index_html():
@@ -675,7 +932,7 @@ def build_offline_index_html():
     html = re.sub(r'<link rel="apple-touch-icon"[^>]*>\n?', '', html)
     html = re.sub(
         r'<link rel="icon"[^>]*href="\./icon\.svg"[^>]*>',
-        """<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24'>🔔</text></svg>" />""",
+        """<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%230b0d11'/><path d='M16 6v2M9 22c0-6 2.4-12 7-12s7 6 7 12l2 2H7l2-2z' fill='none' stroke='%23e9c97b' stroke-width='2'/></svg>" />""",
         html
     )
     # 2. Replace the inline file:// blocker + module loader with clean offline error guard + classic bundle script
@@ -701,7 +958,7 @@ def build_offline_index_html():
     var head = document.createElement('div');
     head.className = 'abv-fatal-head';
     var title = document.createElement('span');
-    title.textContent = isEnBoot ? '⚠ Runtime Error (v46.1)' : '⚠ 运行异常诊断 (v46.1)';
+    title.textContent = isEnBoot ? '◆ Runtime Error (v47.6)' : '◆ 运行异常诊断 (v47.6)';
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'abv-fatal-dismiss';

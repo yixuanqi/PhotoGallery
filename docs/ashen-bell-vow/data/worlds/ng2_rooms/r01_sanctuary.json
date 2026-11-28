@@ -5,7 +5,7 @@
   "name": "熄灯祭坛",
   "theme": "sanctuary",
   "bounds": {
-    "x": 10240,
+    "x": 0,
     "y": 0,
     "w": 940,
     "h": 720
@@ -13,14 +13,14 @@
   "subZones": [
     {
       "name": "沉钟回廊 · 熄灯祭坛",
-      "x": 160,
+      "x": 0,
       "y": 0,
       "w": 780,
       "h": 720
     },
     {
       "name": "沉钟回廊 · 枯骨长廊",
-      "x": 0,
+      "x": 780,
       "y": 0,
       "w": 160,
       "h": 720
@@ -33,28 +33,28 @@
   ],
   "solids": [
     {
-      "x": 920,
+      "x": -40,
       "y": 0,
       "w": 60,
       "h": 1520,
       "type": "pillar"
     },
     {
-      "x": 790,
+      "x": 0,
       "y": 580,
       "w": 150,
       "h": 160,
       "type": "ground"
     },
     {
-      "x": 685,
+      "x": 150,
       "y": 580,
       "w": 105,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 0,
+      "x": 255,
       "y": 580,
       "w": 685,
       "h": 160,
@@ -65,7 +65,7 @@
   "altars": [
     {
       "id": "altar_start",
-      "x": 610,
+      "x": 330,
       "y": 580,
       "name": "沉钟回廊 · 熄灯祭坛",
       "shortName": "起点 · 熄灯祭坛",
@@ -85,10 +85,10 @@
     {
       "id": "dummy_sanctuary",
       "kind": "dummy",
-      "x": 357,
+      "x": 545,
       "y": 512,
-      "minX": 227,
-      "maxX": 467
+      "minX": 435,
+      "maxX": 675
     }
   ],
   "bosses": [],
@@ -96,19 +96,19 @@
   "props": {
     "puddles": [
       {
-        "x": 419,
+        "x": 425,
         "w": 96
       }
     ],
     "banners": [
       {
-        "x": 685,
+        "x": 255,
         "y": 130,
         "len": 145,
         "color": "#2b1520"
       },
       {
-        "x": 535,
+        "x": 405,
         "y": 130,
         "len": 130,
         "color": "#1b2232"
@@ -116,61 +116,61 @@
     ],
     "candles": [
       {
-        "x": 670,
+        "x": 270,
         "y": 580,
         "count": 4
       },
       {
-        "x": 548,
+        "x": 392,
         "y": 580,
         "count": 3
       },
       {
-        "x": 895,
+        "x": 45,
         "y": 580,
         "count": 3
       }
     ],
     "boneCairns": [
-      100
+      840
     ],
     "stamps": [
       {
         "type": "hanging_chains",
-        "x": 485,
+        "x": 455,
         "y": 0,
         "scale": 0.95,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.54,
         "seed": 1
       },
       {
         "type": "tattered_pennant",
-        "x": 280,
+        "x": 660,
         "y": 580,
         "scale": 0.78,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.76,
         "seed": 2
       },
       {
         "type": "broken_arch",
-        "x": 175,
+        "x": 765,
         "y": 580,
         "scale": 1.15,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.7,
         "seed": 1
       },
       {
         "type": "fallen_bell",
-        "x": 80,
+        "x": 860,
         "y": 580,
         "scale": 0.85,
-        "flip": false,
+        "flip": true,
         "layer": "bg",
         "alpha": 0.82,
         "seed": 0
@@ -182,11 +182,11 @@
       "id": "npc_smith",
       "kind": "smith",
       "name": "老铸钟匠 · 砺",
-      "x": 745,
+      "x": 195,
       "y": 580
     }
   ],
   "voidBarriers": [],
   "slickWalls": [],
-  "mirrored": true
+  "mirrored": false
 }

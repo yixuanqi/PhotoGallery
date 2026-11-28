@@ -298,15 +298,15 @@
       "desc": "习得二段跳！空中再按 Space 可振翼跃升，可登上淋雨墓阶高台寻觅古钟心核！"
     },
     {
-      "id": "pickup_relic_ironheart",
+      "id": "pickup_relic_clapper",
       "kind": "relic",
-      "relicId": "ironheart",
+      "relicId": "clapper",
       "requiresPuzzle": "puzzle_well",
       "bonusHp": 15,
       "x": 1680,
       "y": 580,
-      "name": "深井秘宝 · 裂钟铁心",
-      "desc": "解锁破势圣物「裂钟铁心」且生命上限永久 +15！"
+      "name": "共鸣秘宝 · 回响钟舌",
+      "desc": "解锁法术圣物「回响钟舌」且魂火上限永久 +20！"
     },
     {
       "id": "pickup_flask_abyss",
@@ -478,19 +478,19 @@
   "enemies": [
     {
       "id": "golem_1",
-      "kind": "golem",
+      "kind": "frostguard",
       "x": 1280,
-      "y": 502,
+      "y": 512,
       "minX": 960,
       "maxX": 1480
     },
     {
       "id": "golem_2",
-      "kind": "golem",
+      "kind": "anchorite",
       "x": 1235,
       "y": 942,
       "minX": 960,
-      "maxX": 1460
+      "maxX": 1458
     },
     {
       "id": "golem_3",
@@ -502,7 +502,7 @@
     },
     {
       "id": "wraith_3",
-      "kind": "wraith",
+      "kind": "cantor",
       "x": 635,
       "y": 835
     },
@@ -545,22 +545,26 @@
     {
       "x": 1080,
       "y": 492,
-      "text": "「重盾铁卫 · 居合 / 灵刃 / 弹反可破盾」"
+      "text": "「重盾铁卫 · 居合 / 灵刃 / 弹反可破盾」",
+      "hideInNgPlus": true
     },
     {
       "x": 1200,
       "y": 920,
-      "text": "「青铜钟摆 · 可闪避、下劈或精准弹反」"
+      "text": "「青铜钟摆 · 可闪避、下劈或精准弹反」",
+      "hideInNgPlus": true
     },
     {
       "x": 550,
       "y": 1245,
-      "text": "「墨蚀暗河 · 须借石台与悬灯渡越」"
+      "text": "「墨蚀暗河 · 须借石台与悬灯渡越」",
+      "hideInNgPlus": true
     },
     {
       "x": 1400,
       "y": 1295,
-      "text": "「井底暗河尽头 · 封存墨翼神龛」"
+      "text": "「井底暗河尽头 · 封存墨翼神龛」",
+      "hideWhenDoubleJump": true
     },
     {
       "x": 1690,
@@ -753,6 +757,18 @@
       "y": 1220,
       "w": 22,
       "h": 160
+    },
+    {
+      "id": "vb_ng2_well_sweep",
+      "x": 1120,
+      "y": 878,
+      "w": 24,
+      "h": 142,
+      "sweeping": true,
+      "sweepMinX": 970,
+      "sweepMaxX": 1420,
+      "sweepSpeed": 1.32,
+      "sweepPhase": 1.1
     }
   ],
   "npcs": [

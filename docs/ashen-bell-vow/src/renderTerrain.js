@@ -513,34 +513,53 @@ function paintPillarSolid(c, s, st) {
   }
   c.restore();
 
-  // Carved Capital & Plinth Mouldings (for tall columns)
+  // Carved Capital & Plinth Mouldings (v46.7: seam-aware — suppresses buried interior caps & flushes abutting sides!)
   if (!isHorizontalBeam && s.h >= 56) {
+    const padL = s.seamLeft ? 0 : 5;
+    const padR = s.seamRight ? 0 : 5;
+    const capX = s.x - padL;
+    const capW = s.w + padL + padR;
     c.fillStyle = st.pillarCap;
-    c.fillRect(s.x - 5, s.y, s.w + 10, 14);
-    c.fillRect(s.x - 5, s.y + s.h - 14, s.w + 10, 14);
     c.strokeStyle = st.rimStroke;
     c.lineWidth = 1.6;
-    c.strokeRect(s.x - 5, s.y, s.w + 10, 14);
-    c.strokeRect(s.x - 5, s.y + s.h - 14, s.w + 10, 14);
+    if (!s.seamTop) {
+      c.fillRect(capX, s.y, capW, 14);
+      c.strokeRect(capX, s.y, capW, 14);
+    }
+    if (!s.seamBottom) {
+      c.fillRect(capX, s.y + s.h - 14, capW, 14);
+      c.strokeRect(capX, s.y + s.h - 14, capW, 14);
+    }
   }
 
-  // Outer chiseled ink contour (subtly softer than walkable floors so platforms lead the eye)
+  // Outer chiseled ink contour (v46.7: skips buried seam edges so stacked/adjacent pillars render as one monolithic masonry wall!)
   c.save();
   c.globalAlpha = 0.76;
   c.strokeStyle = st.rimStroke;
   c.lineWidth = 1.65;
   c.beginPath();
-  c.moveTo(s.x, s.y);
-  c.lineTo(s.x + s.w, s.y);
-  for (let py = s.y + stepY; py < s.y + s.h; py += stepY) {
-    c.lineTo(s.x + s.w + wHash(s.x + s.w, py) * 2.2 * wf, py);
+  if (!s.seamTop) {
+    c.moveTo(s.x, s.y);
+    c.lineTo(s.x + s.w, s.y);
   }
-  c.lineTo(s.x + s.w, s.y + s.h);
-  c.lineTo(s.x, s.y + s.h);
-  for (let py = s.y + s.h - stepY; py > s.y; py -= stepY) {
-    c.lineTo(s.x + wHash(s.x, py) * 2.2 * wf, py);
+  if (!s.seamRight) {
+    c.moveTo(s.x + s.w, s.y);
+    for (let py = s.y + stepY; py < s.y + s.h; py += stepY) {
+      c.lineTo(s.x + s.w + wHash(s.x + s.w, py) * 2.2 * wf, py);
+    }
+    c.lineTo(s.x + s.w, s.y + s.h);
   }
-  c.closePath();
+  if (!s.seamBottom) {
+    c.moveTo(s.x + s.w, s.y + s.h);
+    c.lineTo(s.x, s.y + s.h);
+  }
+  if (!s.seamLeft) {
+    c.moveTo(s.x, s.y + s.h);
+    for (let py = s.y + s.h - stepY; py > s.y; py -= stepY) {
+      c.lineTo(s.x + wHash(s.x, py) * 2.2 * wf, py);
+    }
+    c.lineTo(s.x, s.y);
+  }
   c.stroke();
   c.restore();
 

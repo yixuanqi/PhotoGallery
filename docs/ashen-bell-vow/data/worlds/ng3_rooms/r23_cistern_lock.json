@@ -182,9 +182,9 @@
   "lanterns": [
     {
       "id": "lan_cl_1",
-      "x": 640,
+      "x": 470,
       "anchorY": 34,
-      "len": 165,
+      "len": 180,
       "topY": 34
     },
     {

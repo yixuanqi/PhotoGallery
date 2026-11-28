@@ -1,3 +1,4 @@
+import { uiIcon } from '../emblems.js';
 // Codex, NPCs (Mochen / Xi / Bell-Smith Li), Training Console, Lore, Pause, Settings & Altar Modals (v32.0)
 import { getNpcPortraitSvg } from '../npcPortraits.js';
 import { COLORS, RELICS, RELIC_SYNERGIES, DUMMY_MODES, ACTION_META, ROOMS, LORE_TABLETS } from '../config.js';
@@ -102,7 +103,7 @@ function renderWeaponCodexInto(bodyEl) {
       <div class="wcodex-traits-row">${traits.map(ft => {
         const has = isWeaponTraitUnlocked(ft.id);
         const act = has && activeTid === ft.id;
-        return `<span class="wcodex-trait-pill${has ? ' lit' : ''}">${act ? '✦ ' : has ? '◇ ' : '🔒 '}${en ? ft.nameEn : ft.name}</span>`;
+        return `<span class="wcodex-trait-pill${has ? ' lit' : ''}">${act ? '✦ ' : has ? '◇ ' : `${uiIcon('lock')} `}${en ? ft.nameEn : ft.name}</span>`;
       }).join('')}</div>
     `;
   } else {
@@ -733,7 +734,7 @@ export function renderDummyModal() {
   const refillBtn = document.createElement('button');
   refillBtn.type = 'button';
   refillBtn.className = 'dummy-qbtn';
-  refillBtn.textContent = t('dummy.btnRefill');
+  refillBtn.innerHTML = `${uiIcon('bolt')}<span>${t('dummy.btnRefill')}</span>`;
   refillBtn.addEventListener('click', () => {
     if (G.player) {
       G.player.hp = G.player.maxHp;
@@ -756,7 +757,7 @@ export function renderDummyModal() {
   const autoBtn = document.createElement('button');
   autoBtn.type = 'button';
   autoBtn.className = `dummy-qbtn${G.dummyAutoFullSeals ? ' active' : ''}`;
-  autoBtn.textContent = G.dummyAutoFullSeals ? t('dummy.btnAutoOn') : t('dummy.btnAutoOff');
+  autoBtn.innerHTML = `${uiIcon('refresh')}<span>${G.dummyAutoFullSeals ? t('dummy.btnAutoOn') : t('dummy.btnAutoOff')}</span>`;
   autoBtn.addEventListener('click', () => {
     G.dummyAutoFullSeals = !G.dummyAutoFullSeals;
     G.dummyRefillTimer = 0;
@@ -767,7 +768,7 @@ export function renderDummyModal() {
   const resetBtn = document.createElement('button');
   resetBtn.type = 'button';
   resetBtn.className = 'dummy-qbtn';
-  resetBtn.textContent = t('dummy.btnResetMeter');
+  resetBtn.innerHTML = `${uiIcon('meter')}<span>${t('dummy.btnResetMeter')}</span>`;
   resetBtn.addEventListener('click', () => {
     e.meter = { hits: [], totalDmg: 0, totalPosture: 0, maxHit: 0, dps: 0, pps: 0, lastHitTime: -99 };
     e.hp = e.maxHp;
@@ -902,17 +903,17 @@ export function renderSettingsModal() {
     tabsEl.innerHTML = '';
     const tabList = inWorld
       ? [
-          { id: 'settings', label: t('settings.tabSystem') },
-          { id: 'weapons',  label: t('settings.tabWeapons', unlWeapons, WEAPON_ORDER.length) },
-          { id: 'bestiary', label: t('settings.tabBestiary', seenFoes, BESTIARY_ENTRIES.length) },
-          { id: 'archive',  label: t('settings.tabArchive', c ? c.achievements.length : 0, ACHIEVEMENTS_DEF.length) }
+          { id: 'settings', ico: 'gear',   label: t('settings.tabSystem') },
+          { id: 'weapons',  ico: 'sword',  label: t('settings.tabWeapons', unlWeapons, WEAPON_ORDER.length) },
+          { id: 'bestiary', ico: 'foe',    label: t('settings.tabBestiary', seenFoes, BESTIARY_ENTRIES.length) },
+          { id: 'archive',  ico: 'scroll', label: t('settings.tabArchive', c ? c.achievements.length : 0, ACHIEVEMENTS_DEF.length) }
         ]
-      : [{ id: 'settings', label: t('settings.tabSystem') }];
+      : [{ id: 'settings', ico: 'gear', label: t('settings.tabSystem') }];
     tabList.forEach(tb => {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = `codex-tab-btn${settingsActiveTab === tb.id ? ' active' : ''}`;
-      btn.textContent = tb.label;
+      btn.innerHTML = `${uiIcon(tb.ico)}<span>${tb.label}</span>`;
       btn.addEventListener('click', () => {
         settingsActiveTab = tb.id;
         const sm = document.querySelector('#settings-modal .modal-card');
@@ -1071,6 +1072,30 @@ export function renderSettingsModal() {
     });
   }
 
+  const flGroup = document.getElementById('flash-mode-group');
+  if (flGroup) {
+    flGroup.innerHTML = '';
+    const curFl = G.settings.flashMode || 'soft';
+    [
+      { val: 'soft',    label: t('settings.flashSoft') },
+      { val: 'off',     label: t('settings.flashOff') },
+      { val: 'classic', label: t('settings.flashClassic') }
+    ].forEach(opt => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `seg-btn${curFl === opt.val ? ' active' : ''}`;
+      btn.textContent = opt.label;
+      btn.addEventListener('click', () => {
+        G.settings.flashMode = opt.val;
+        if (opt.val !== 'classic') G.invertTimer = 0;
+        if (opt.val === 'off') { G.screenFlash.alpha = 0; G.execKillFocus = null; }
+        saveUserSettings();
+        renderSettingsModal();
+      });
+      flGroup.appendChild(btn);
+    });
+  }
+
   const hapBtn = document.getElementById('btn-haptics-toggle');
   if (hapBtn) {
     hapBtn.textContent = G.settings.haptics ? t('settings.hapticsOn') : t('settings.hapticsOff');
@@ -1101,9 +1126,15 @@ export function renderSettingsModal() {
   if (scaleInp) scaleInp.value = String(curScalePct);
   if (scaleVal) scaleVal.textContent = `${curScalePct}%`;
 
+  const miniBtn = document.getElementById('btn-mob-minimap');
+  if (miniBtn) {
+    const on = !!G.settings.mobileShowMinimap;
+    miniBtn.textContent = on ? t('settings.mobMinimapOn') : t('settings.mobMinimapOff');
+    miniBtn.classList.toggle('active', on);
+  }
   const opInp = document.getElementById('mob-btn-opacity');
   const opVal = document.getElementById('mob-btn-opacity-val');
-  const curOpPct = Math.round((Number(G.settings.mobileBtnOpacity) || 0.90) * 100);
+  const curOpPct = Math.round((Number(G.settings.mobileBtnOpacity) || 0.65) * 100);
   if (opInp) opInp.value = String(curOpPct);
   if (opVal) opVal.textContent = `${curOpPct}%`;
 

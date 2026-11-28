@@ -5,7 +5,7 @@
   "name": "断钟礼拜堂",
   "theme": "chapel",
   "bounds": {
-    "x": 7400,
+    "x": 2645,
     "y": 0,
     "w": 1135,
     "h": 720
@@ -32,21 +32,21 @@
       "type": "ground"
     },
     {
-      "x": 0,
+      "x": 1095,
       "y": 0,
       "w": 40,
       "h": 480,
       "type": "pillar"
     },
     {
-      "x": 840,
+      "x": 155,
       "y": 486,
       "w": 140,
       "h": 20,
       "type": "platform"
     },
     {
-      "x": 230,
+      "x": 765,
       "y": 486,
       "w": 140,
       "h": 20,
@@ -60,7 +60,7 @@
     {
       "id": "gate_chapel_exit",
       "role": "chapelExit",
-      "x": 0,
+      "x": 1095,
       "y": 480,
       "w": 40,
       "h": 100
@@ -73,7 +73,7 @@
       "kind": "ability",
       "abilityId": "grappleHook",
       "requiresBoss": "boss_hui",
-      "x": 570,
+      "x": 565,
       "y": 580,
       "name": "绝技 · 幽丝钩索",
       "desc": "斩落断钟骑士·晦解封！按 [F/中键/I] 飞索拉向高空青铜钩环、悬灯或敌兵并派生「幽丝瞬斩」！"
@@ -85,34 +85,34 @@
   "grappleAnchors": [
     {
       "id": "anc_boss_l",
-      "x": 790,
+      "x": 345,
       "y": 240
     },
     {
       "id": "anc_boss_c",
-      "x": 580,
+      "x": 555,
       "y": 200
     },
     {
       "id": "anc_boss_r",
-      "x": 370,
+      "x": 765,
       "y": 240
     }
   ],
   "lanterns": [
     {
       "id": "lan_4",
-      "x": 910,
-      "anchorY": 150,
-      "len": 180,
-      "angle": -0.04
-    },
-    {
-      "id": "lan_5",
-      "x": 300,
+      "x": 225,
       "anchorY": 150,
       "len": 180,
       "angle": 0.04
+    },
+    {
+      "id": "lan_5",
+      "x": 835,
+      "anchorY": 150,
+      "len": 180,
+      "angle": -0.04
     }
   ],
   "enemies": [],
@@ -120,54 +120,55 @@
     {
       "id": "boss_hui",
       "kind": "boss",
-      "x": 302,
+      "x": 775,
       "y": 476,
-      "arenaMinX": 42,
-      "arenaMaxX": 1132,
+      "arenaMinX": 3,
+      "arenaMaxX": 1093,
       "arenaFloorY": 580,
       "arenaTopY": 0
     }
   ],
   "inscriptions": [
     {
-      "x": 570,
+      "x": 565,
       "y": 525,
       "text": "「断钟骑士遗留的幽丝残环 · 破敌后可习得飞索绝技」",
-      "hideWhenBossDefeated": true
+      "hideWhenBossDefeated": true,
+      "hideWhenGrappleHook": true
     }
   ],
   "props": {
     "puddles": [
       {
-        "x": 755,
+        "x": 215,
         "w": 165
       },
       {
-        "x": 280,
+        "x": 705,
         "w": 150
       }
     ],
     "banners": [
       {
-        "x": 1010,
+        "x": 125,
         "y": 95,
         "len": 185,
         "color": "#421621"
       },
       {
-        "x": 720,
+        "x": 415,
         "y": 85,
         "len": 200,
         "color": "#421621"
       },
       {
-        "x": 440,
+        "x": 695,
         "y": 85,
         "len": 200,
         "color": "#421621"
       },
       {
-        "x": 160,
+        "x": 975,
         "y": 95,
         "len": 185,
         "color": "#421621"
@@ -175,87 +176,87 @@
     ],
     "candles": [
       {
-        "x": 1105,
+        "x": 30,
         "y": 580,
         "count": 4
       },
       {
-        "x": 840,
+        "x": 295,
         "y": 580,
         "count": 3
       },
       {
-        "x": 320,
+        "x": 815,
         "y": 580,
         "count": 3
       },
       {
-        "x": 70,
+        "x": 1065,
         "y": 580,
         "count": 4
       }
     ],
     "boneCairns": [
-      1040,
-      120
+      95,
+      1015
     ],
     "stamps": [
       {
         "type": "broken_arch",
-        "x": 995,
+        "x": 140,
         "y": 580,
         "scale": 1.32,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.62,
         "seed": 1
       },
       {
         "type": "sword_mound",
-        "x": 895,
+        "x": 240,
         "y": 580,
         "scale": 0.76,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.74,
         "seed": 2
       },
       {
         "type": "tattered_pennant",
-        "x": 750,
+        "x": 385,
         "y": 580,
         "scale": 0.92,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.72,
         "seed": 0
       },
       {
         "type": "hanging_chains",
-        "x": 275,
+        "x": 860,
         "y": 0,
         "scale": 1.1,
-        "flip": false,
+        "flip": true,
         "layer": "bg",
         "alpha": 0.42,
         "seed": 1
       },
       {
         "type": "stone_statue",
-        "x": 175,
+        "x": 960,
         "y": 580,
         "scale": 1.08,
-        "flip": false,
+        "flip": true,
         "layer": "bg",
         "alpha": 0.6,
         "seed": 2
       },
       {
         "type": "sword_mound",
-        "x": 105,
+        "x": 1030,
         "y": 580,
         "scale": 0.88,
-        "flip": false,
+        "flip": true,
         "layer": "bg",
         "alpha": 0.78,
         "seed": 0
@@ -263,5 +264,5 @@
     ]
   },
   "voidBarriers": [],
-  "mirrored": true
+  "mirrored": false
 }

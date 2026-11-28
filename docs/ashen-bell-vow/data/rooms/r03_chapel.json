@@ -133,7 +133,8 @@
       "x": 565,
       "y": 525,
       "text": "「断钟骑士遗留的幽丝残环 · 破敌后可习得飞索绝技」",
-      "hideWhenBossDefeated": true
+      "hideWhenBossDefeated": true,
+      "hideWhenGrappleHook": true
     }
   ],
   "props": {

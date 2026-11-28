@@ -410,10 +410,11 @@ export function drawBoss3(b) {
   const isStagger = b.state === 'stagger';
   const isP2 = b.phase === 2;
   const isP3 = b.phase >= 3;
+  const isLightCast = (b.moveKind === 'solarPillars' || b.moveKind === 'prismSweep' || b.moveKind === 'radiantCross' || b.moveKind === 'haloOrbs') && (b.state === 'windup' || b.state === 'strike');
   const isRed = (b.moveKind === 'crimsonArc' || b.moveKind === 'skyShatter' || b.moveKind === 'eclipseTide') && (b.state === 'windup' || b.state === 'strike');
   const now = G.globalTime;
   const hoverY = isStagger ? 18 : (-10 + Math.sin(now * 2.4) * 6);
-  const coreCol = isP3 ? '#fef08a' : isP2 ? COLORS.violetBright : COLORS.goldBright;
+  const coreCol = isLightCast ? '#fffbeb' : (isP3 ? '#fef08a' : isP2 ? '#fde047' : COLORS.goldBright);
 
   G.ctx.save();
   applyBossHitDeform(b, cx, fy);
@@ -454,15 +455,27 @@ export function drawBoss3(b) {
     }
   });
 
-  // 2. Orbiting Broken Solar-Eclipse Halo Fragments behind Skull-Mask
+  // 2. Radiant Solar-Crown Halo + Casting Sun-Rays behind Reliquary Mask (v47.0 Light Theme)
   G.ctx.save();
   G.ctx.translate(0, -96);
+  if (isLightCast) {
+    drawGlowSprite('gold', 0, 0, 128, 0.72);
+    G.ctx.strokeStyle = 'rgba(254, 240, 138, 0.72)';
+    G.ctx.lineWidth = 2.0;
+    for (let r = 0; r < 8; r++) {
+      const ra = (r * Math.PI) / 4 + now * 1.4;
+      G.ctx.beginPath();
+      G.ctx.moveTo(Math.cos(ra) * 32, Math.sin(ra) * 32);
+      G.ctx.lineTo(Math.cos(ra) * 76, Math.sin(ra) * 76);
+      G.ctx.stroke();
+    }
+  }
   G.ctx.rotate(b.haloAngle || 0);
   G.ctx.strokeStyle = coreCol;
-  G.ctx.lineWidth = isP3 ? 2.8 : 2.0;
+  G.ctx.lineWidth = (isP3 || isLightCast) ? 3.0 : 2.2;
   for (let i = 0; i < 4; i++) {
     const a = (i * Math.PI) / 2;
-    G.ctx.beginPath(); G.ctx.arc(0, 0, 44, a + 0.18, a + Math.PI * 0.5 - 0.18); G.ctx.stroke();
+    G.ctx.beginPath(); G.ctx.arc(0, 0, 46, a + 0.16, a + Math.PI * 0.5 - 0.16); G.ctx.stroke();
   }
   G.ctx.restore();
 

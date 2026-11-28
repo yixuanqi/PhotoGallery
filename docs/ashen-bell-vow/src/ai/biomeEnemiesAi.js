@@ -4,7 +4,7 @@ import { COLORS, GRAVITY } from '../config.js';
 import { G, addShake, damp } from '../state.js';
 import { audio } from '../audio.js';
 import { updateCloak, spawnParticles, spawnShockwave, spawnFloatText } from '../vfx.js';
-import { aabbOverlap, moveAndCollide, getGroundSurfaceY, hasLineOfSight } from '../physics.js';
+import { aabbOverlap, moveAndCollide, getGroundSurfaceY, hasLineOfSight, canEnemyAggro, moveGroundEnemyWithGuard, resolveFlyingEnemySolids } from '../physics.js';
 import { applyIncomingAttackToPlayer } from '../combat.js';
 import { t } from '../i18n.js';
 
@@ -132,6 +132,7 @@ export function updateFalcon(e, dt) {
       e.stateTimer = 0.75 + Math.random() * 0.45;
     }
   }
+  resolveFlyingEnemySolids(e);
 }
 
 export function updateFungus(e, dt) {
@@ -157,7 +158,7 @@ export function updateFungus(e, dt) {
     e.vx = e.facing * 52;
     if (e.x < e.minX) e.facing = 1;
     if (e.x > e.maxX) e.facing = -1;
-    if (absDx < 330 && Math.abs(dy) < 125) e.state = 'chase';
+    if (canEnemyAggro(e, absDx, 330, Math.abs(dy), 125)) e.state = 'chase';
   } else if (e.state === 'chase') {
     e.inhalingSpore = false;
     e.facing = dx >= 0 ? 1 : -1;
@@ -231,10 +232,8 @@ export function updateFungus(e, dt) {
   }
 
   e.vy += GRAVITY * dt;
-  moveAndCollide(e, dt, false);
+  moveGroundEnemyWithGuard(e, dt, { leashPad: 65, canStepUp: false });
   if (Math.abs(e.vx) > 12 && e.grounded) e.walkCycle = (e.walkCycle || 0) + dt * Math.abs(e.vx) * 0.05;
-  if (e.x < e.minX - 65) e.x = e.minX - 65;
-  if (e.x > e.maxX + 65) e.x = e.maxX + 65;
 }
 
 export function updateFrostguard(e, dt) {
@@ -258,7 +257,7 @@ export function updateFrostguard(e, dt) {
     e.vx = e.facing * 64;
     if (e.x < e.minX) e.facing = 1;
     if (e.x > e.maxX) e.facing = -1;
-    if (absDx < 350 && Math.abs(dy) < 120) e.state = 'chase';
+    if (canEnemyAggro(e, absDx, 350, Math.abs(dy), 120)) e.state = 'chase';
   } else if (e.state === 'chase') {
     e.facing = dx >= 0 ? 1 : -1;
     if (absDx > 96) e.vx = e.facing * 124;
@@ -341,10 +340,8 @@ export function updateFrostguard(e, dt) {
   }
 
   e.vy += GRAVITY * dt;
-  moveAndCollide(e, dt, false);
+  moveGroundEnemyWithGuard(e, dt, { leashPad: 65, canStepUp: true });
   if (Math.abs(e.vx) > 12 && e.grounded) e.walkCycle = (e.walkCycle || 0) + dt * Math.abs(e.vx) * 0.05;
-  if (e.x < e.minX - 65) e.x = e.minX - 65;
-  if (e.x > e.maxX + 65) e.x = e.maxX + 65;
   if (e.cloak) updateCloak(e.cloak, e.x + e.w / 2 - e.facing * 6, e.y + 18, e.facing, -e.vx * 0.45, dt);
 }
 
@@ -372,8 +369,7 @@ export function updateDrowned(e, dt) {
     e.vx = e.facing * 72;
     if (e.x <= e.minX) e.facing = 1;
     if (e.x >= e.maxX) e.facing = -1;
-    if (absDx < 370 && dy < 175 && G.player.hp > 0) {
-      e.state = 'chase';
+    if (canEnemyAggro(e, absDx, 370, Math.abs(dy), 175)) { e.state = 'chase';
       e.facing = dx >= 0 ? 1 : -1;
     }
   } else if (e.state === 'chase') {
@@ -476,10 +472,8 @@ export function updateDrowned(e, dt) {
   }
 
   e.vy += GRAVITY * dt;
-  moveAndCollide(e, dt, false);
+  moveGroundEnemyWithGuard(e, dt, { leashPad: 65, canStepUp: true });
   if (Math.abs(e.vx) > 12 && e.grounded) e.walkCycle = (e.walkCycle || 0) + dt * Math.abs(e.vx) * 0.055;
-  if (e.x < e.minX - 65) e.x = e.minX - 65;
-  if (e.x > e.maxX + 65) e.x = e.maxX + 65;
   if (e.cloak) updateCloak(e.cloak, e.x + e.w * 0.5 - e.facing * 6, e.y + 16, e.facing, -e.vx * 0.45, dt);
 }
 
@@ -504,8 +498,7 @@ export function updateAnchorite(e, dt) {
     e.vx = e.facing * 48;
     if (e.x <= e.minX) e.facing = 1;
     if (e.x >= e.maxX) e.facing = -1;
-    if (absDx < 350 && dy < 165 && G.player.hp > 0) {
-      e.state = 'chase';
+    if (canEnemyAggro(e, absDx, 350, Math.abs(dy), 165)) { e.state = 'chase';
       e.facing = dx >= 0 ? 1 : -1;
     }
   } else if (e.state === 'chase') {
@@ -594,9 +587,7 @@ export function updateAnchorite(e, dt) {
   }
 
   e.vy += GRAVITY * dt;
-  moveAndCollide(e, dt, false);
+  moveGroundEnemyWithGuard(e, dt, { leashPad: 60, canStepUp: false });
   if (Math.abs(e.vx) > 10 && e.grounded) e.walkCycle = (e.walkCycle || 0) + dt * Math.abs(e.vx) * 0.042;
-  if (e.x < e.minX - 60) e.x = e.minX - 60;
-  if (e.x > e.maxX + 60) e.x = e.maxX + 60;
   if (e.cloak) updateCloak(e.cloak, e.x + e.w * 0.5 - e.facing * 8, e.y + 20, e.facing, -e.vx * 0.4, dt);
 }

@@ -9,8 +9,11 @@ import {
   resetWardenState, updateWardenWind, updateWardenForest, updateWardenMountain
 } from './ai/wardensAi.js';
 import {
-  updateBoss, updateBoss2, updateBoss3, triggerBoss4UltimateReaction, updateBoss4
+  updateBoss, updateBoss2
 } from './ai/bossesAi.js';
+import {
+  updateBoss3, triggerBoss4UltimateReaction, updateBoss4
+} from './ai/endgameBossesAi.js';
 
 export function updateEnemy(e, dt) {
   if (!e.alive) return;
@@ -29,6 +32,12 @@ export function updateEnemy(e, dt) {
   const effDt = (e.state === 'recover' || e.state === 'chase' || e.state === 'idle' || e.state === 'hover') ? dt * sc.aggroMult : dt;
   if (e.bounceCd > 0) e.bounceCd = Math.max(0, e.bounceCd - dt);
   if (e.windLiftedTimer > 0) e.windLiftedTimer = Math.max(0, e.windLiftedTimer - dt);
+  if (e.deaggroTimer > 0) e.deaggroTimer = Math.max(0, e.deaggroTimer - dt);
+  if (e._stepJumpCd > 0) e._stepJumpCd = Math.max(0, e._stepJumpCd - dt);
+  if (e._padBounceResetTimer > 0) {
+    e._padBounceResetTimer = Math.max(0, e._padBounceResetTimer - dt);
+    if (e._padBounceResetTimer <= 0) e._padBounceCount = 0;
+  }
 
   if (e.kind === 'wraith') updateWraith(e, effDt);
   else if (e.kind === 'golem') updateGolem(e, effDt);

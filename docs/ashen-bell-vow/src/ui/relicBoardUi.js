@@ -13,7 +13,7 @@ import { equipWeapon } from '../combat.js';
 import { spawnFloatText } from '../vfx.js';
 import { saveProgress } from '../save.js';
 import { t, isEn, locAltar, locRelic, locSynergy, locVow, locBoss } from '../i18n.js';
-import { SLOT_EMBLEMS, getRelicEmblemSvg, getWeaponEmblemSvg } from '../emblems.js';
+import { SLOT_EMBLEMS, uiIcon, getRelicEmblemSvg, getWeaponEmblemSvg } from '../emblems.js';
 import { WEAPON_ORDER, WEAPONS, getWeaponForgeTraits, getWeaponUltimateDef } from '../weapons.js';
 import { recordSynergyDiscovered } from '../codex.js';
 import { getWorldVariantLabel, getWorldVariantKeyForCycle } from '../levelLoader.js';
@@ -31,17 +31,17 @@ function renderAltarTabs() {
   const unlWeap = getUnlockedWeaponIds().length;
   const vs = getActiveVowStats();
   const tabs = [
-    { id: 'armory', label: t('altar.tabArmory', unlWeap, WEAPON_ORDER.length) },
-    { id: 'relics', label: t('altar.tabRelics') },
-    { id: 'vows',   label: vs.count > 0 ? t('altar.tabVowsActive', vs.count) : t('altar.tabVows') },
-    { id: 'echoes', label: t('altar.tabEchoes') }
+    { id: 'armory', ico: 'sword', label: t('altar.tabArmory', unlWeap, WEAPON_ORDER.length) },
+    { id: 'relics', ico: 'relic', label: t('altar.tabRelics') },
+    { id: 'vows',   ico: 'vow',   label: vs.count > 0 ? t('altar.tabVowsActive', vs.count) : t('altar.tabVows') },
+    { id: 'echoes', ico: 'bell',  label: t('altar.tabEchoes') }
   ];
   tabBar.innerHTML = '';
   for (const tb of tabs) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = `codex-tab-btn${altarActiveTab === tb.id ? ' active' : ''}`;
-    btn.textContent = tb.label;
+    btn.innerHTML = `${uiIcon(tb.ico)}<span>${tb.label}</span>`;
     btn.addEventListener('click', () => {
       if (altarActiveTab === tb.id) return;
       altarActiveTab = tb.id;

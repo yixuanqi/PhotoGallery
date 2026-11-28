@@ -17,7 +17,7 @@ import { rgbStr, drawParallaxBackground, drawForegroundSilhouettes } from '../re
 import { drawStampsLayer } from '../stampAtlas.js';
 import { drawWorldArchitecture } from '../renderTerrain.js';
 import { getGroundSurfaceY } from '../physics.js';
-import { isPickupUnlocked } from '../combat.js';
+import { isPickupUnlocked, findNearestInteractable } from '../combat.js';
 import { isRoomOccluded } from '../world.js';
 import { drawAchievementBanner } from '../codex.js';
 import {
@@ -30,30 +30,7 @@ import { drawCachedText, drawCachedBadge } from './glyphAtlas.js';
 export { drawWorldBackdrop, drawWeatherRipples } from './worldBackdropRenderer.js';
 
 function hasNearbyWorldPrompt(px, py) {
-  if (!G.player || G.gameState !== 'playing') return false;
-  if (G.worldState && G.worldState.boss3Defeated && !G.echoSession &&
-      Math.hypot(px - FIRST_BELL_CORE_POS.x, py - FIRST_BELL_CORE_POS.y) < 105) return true;
-  for (let i = 0; i < ALTARS.length; i++) {
-    if (Math.hypot(px - ALTARS[i].x, py - ALTARS[i].y) < 86) return true;
-  }
-  for (let i = 0; i < NPCS.length; i++) {
-    if (Math.hypot(px - NPCS[i].x, py - NPCS[i].y) < 88) return true;
-  }
-  for (let i = 0; i < G.enemies.length; i++) {
-    const e = G.enemies[i];
-    if (e && e.alive && e.isDummy && Math.hypot(px - (e.x + e.w * 0.5), py - (e.y + e.h)) < 94) return true;
-  }
-  if (G.worldState && !G.worldState.shortcutOpen && Math.hypot(px - SHORTCUT_GATE_DEF.leverX, py - SHORTCUT_GATE_DEF.leverY) < 76) return true;
-  for (let i = 0; i < LORE_TABLETS.length; i++) {
-    if (Math.hypot(px - LORE_TABLETS[i].x, py - LORE_TABLETS[i].y) < 78) return true;
-  }
-  if (G.worldState) {
-    for (let i = 0; i < G.worldState.pickups.length; i++) {
-      const p = G.worldState.pickups[i];
-      if (!p.collected && isPickupUnlocked(p) && Math.hypot(px - p.x, py - p.y) < 72) return true;
-    }
-  }
-  return false;
+  return !!findNearestInteractable(px, py);
 }
 
 export function drawRoomOcclusionMasks() {
@@ -88,8 +65,13 @@ export function drawWallInscriptions() {
     if (isRoomOccluded(ins.roomId)) continue;
     if (ins.dynamicKey === 'grapple' && (!G.worldState || !G.worldState.abilities || !G.worldState.abilities.grappleHook)) continue;
     if (ins.hideWhenShortcutOpen && G.worldState && G.worldState.shortcutOpen) continue;
-    if (ins.hideWhenDoubleJump && G.worldState && G.worldState.abilities.doubleJump) continue;
-    if (ins.hideWhenShadeDash && G.worldState && G.worldState.abilities.shadeDash) continue;
+    if (ins.hideInNgPlus && G.worldState && (G.worldState.ngPlusCycle || 1) >= 2) continue;
+    if (ins.hideWhenGrappleHook && G.worldState && G.worldState.abilities && G.worldState.abilities.grappleHook) continue;
+    if (ins.hideWhenDoubleJump && G.worldState && G.worldState.abilities && G.worldState.abilities.doubleJump) continue;
+    if (ins.hideWhenShadeDash && G.worldState && G.worldState.abilities && G.worldState.abilities.shadeDash) continue;
+    if (ins.hideWhenFlaskMax && G.worldState && (3 + (G.worldState.bonusFlasks || 0)) >= 6) continue;
+    if (ins.hideWhenDawnSigil && G.worldState && G.worldState.keyItems && G.worldState.keyItems.dawnSigil) continue;
+    if (ins.hideWhenPickup && G.worldState && Array.isArray(G.worldState.pickups) && G.worldState.pickups.some(p => p.id === ins.hideWhenPickup && p.collected)) continue;
     if (ins.hideWhenBoss2Defeated && G.worldState && G.worldState.boss2Defeated) continue;
     if (ins.hideWhenBossDefeated && G.worldState && G.worldState.bossDefeated) continue;
     if (ins.hideWhenPuzzleSolved && G.worldState && G.worldState.solvedPuzzles && G.worldState.solvedPuzzles.has(ins.hideWhenPuzzleSolved)) continue;
@@ -133,21 +115,57 @@ export function drawWallInscriptions() {
 }
 
 export function drawAltars() {
+  const now = G.globalTime || 0;
   for (const altar of ALTARS) {
     const { x, y } = altar;
-    if (isRoomOccluded(altar.roomId) || !isInView(x - 60, y - 100, 120, 110, 100)) continue;
+    if (isRoomOccluded(altar.roomId) || !isInView(x - 76, y - 240, 152, 250, 100)) continue;
     const isLit = !G.worldState || G.worldState.litAltars.has(altar.id);
     const isActive = G.worldState && G.worldState.activeAltarId === altar.id;
+    const pulse = 0.78 + Math.sin(now * (isLit ? 2.6 : 3.8) + x * 0.03) * 0.22;
 
     G.ctx.save();
+    // 1. Tall vertical sanctuary light pillar (makes save points readable from half a screen away!)
+    const beamH = isLit ? 225 : 195;
+    const beamW = isLit ? (isActive ? 56 : 46) : 40;
+    const beamGrad = G.ctx.createLinearGradient(x, y - 10, x, y - beamH);
     if (isLit) {
-      drawGlowSprite('cyan', x, y - 48, isActive ? 128 : 100, isActive ? 0.40 : 0.26);
+      beamGrad.addColorStop(0, `rgba(56, 189, 248, ${(0.24 * pulse).toFixed(3)})`);
+      beamGrad.addColorStop(0.35, `rgba(245, 158, 11, ${(0.12 * pulse).toFixed(3)})`);
+      beamGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+    } else {
+      // Unlit altar: unmistakable beckoning pale-gold & silver sanctuary beacon so players never walk past it!
+      beamGrad.addColorStop(0, `rgba(253, 224, 71, ${(0.20 * pulse).toFixed(3)})`);
+      beamGrad.addColorStop(0.45, `rgba(186, 230, 253, ${(0.10 * pulse).toFixed(3)})`);
+      beamGrad.addColorStop(1, 'rgba(186, 230, 253, 0)');
+    }
+    G.ctx.fillStyle = beamGrad;
+    G.ctx.fillRect(x - beamW * 0.5, y - beamH, beamW, beamH - 8);
+
+    // Thin bright vertical filament core
+    const coreGrad = G.ctx.createLinearGradient(x, y - 34, x, y - beamH * 0.78);
+    coreGrad.addColorStop(0, isLit ? `rgba(186, 230, 253, ${(0.45 * pulse).toFixed(3)})` : `rgba(254, 240, 138, ${(0.34 * pulse).toFixed(3)})`);
+    coreGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    G.ctx.fillStyle = coreGrad;
+    G.ctx.fillRect(x - 2, y - beamH * 0.78, 4, beamH * 0.78 - 34);
+
+    // Grounded sanctuary aura ring
+    G.ctx.strokeStyle = isLit ? `rgba(125, 211, 252, ${(0.48 * pulse).toFixed(3)})` : `rgba(253, 224, 71, ${(0.44 * pulse).toFixed(3)})`;
+    G.ctx.lineWidth = 1.6;
+    G.ctx.beginPath();
+    G.ctx.ellipse(x, y - 1, 38, 6.5, 0, 0, Math.PI * 2);
+    G.ctx.stroke();
+
+    if (isLit) {
+      drawGlowSprite('cyan', x, y - 48, isActive ? 138 : 108, (isActive ? 0.44 : 0.30) * pulse);
+      drawGlowSprite('gold', x, y - 24, 62, 0.22 * pulse);
+    } else {
+      drawGlowSprite('gold', x, y - 44, 68, 0.34 * pulse);
     }
 
-    // Stone Pedestal & Brazier
-    G.ctx.fillStyle = isLit ? '#182132' : '#121620';
-    G.ctx.strokeStyle = isLit ? COLORS.parchment : 'rgba(216, 207, 184, 0.45)';
-    G.ctx.lineWidth = 1.8;
+    // Stone Pedestal & Brazier (higher rim contrast)
+    G.ctx.fillStyle = isLit ? '#1c273b' : '#161c2a';
+    G.ctx.strokeStyle = isLit ? COLORS.cyanBright : COLORS.goldBright;
+    G.ctx.lineWidth = 2.0;
     G.ctx.beginPath();
     G.ctx.moveTo(x - 26, y);
     G.ctx.lineTo(x - 16, y - 34);
@@ -159,36 +177,53 @@ export function drawAltars() {
 
     // Secondary Altar Cracked Bell Arch Ornament
     if (altar.id === 'altar_chapel') {
-      G.ctx.strokeStyle = isLit ? 'rgba(245, 158, 11, 0.45)' : 'rgba(216, 207, 184, 0.2)';
-      G.ctx.lineWidth = 1.5;
+      G.ctx.strokeStyle = isLit ? 'rgba(245, 158, 11, 0.55)' : 'rgba(253, 224, 71, 0.34)';
+      G.ctx.lineWidth = 1.6;
       G.ctx.beginPath();
       G.ctx.arc(x, y - 46, 36, Math.PI, 0);
       G.ctx.stroke();
     }
 
     if (isLit) {
-      // Hanging Soul Flame (pre-rendered glow sprite)
-      const fl = Math.sin(G.globalTime * 9 + x) * 3;
-      drawGlowSprite('cyan', x, y - 52 + fl * 0.5, 34, 0.72);
+      const fl = Math.sin(now * 9 + x) * 3;
+      drawGlowSprite('cyan', x, y - 52 + fl * 0.5, 38, 0.78);
       G.ctx.fillStyle = COLORS.cyanBright;
       G.ctx.beginPath();
-      G.ctx.moveTo(x, y - 72 + fl);
+      G.ctx.moveTo(x, y - 74 + fl);
       G.ctx.quadraticCurveTo(x + 14, y - 50, x, y - 38);
-      G.ctx.quadraticCurveTo(x - 14, y - 50, x, y - 72 + fl);
+      G.ctx.quadraticCurveTo(x - 14, y - 50, x, y - 74 + fl);
+      G.ctx.fill();
+      G.ctx.fillStyle = '#ffffff';
+      G.ctx.beginPath();
+      G.ctx.moveTo(x, y - 62 + fl * 0.7);
+      G.ctx.quadraticCurveTo(x + 6, y - 49, x, y - 41);
+      G.ctx.quadraticCurveTo(x - 6, y - 49, x, y - 62 + fl * 0.7);
       G.ctx.fill();
     } else {
-      // Unlit ash embers & faint wisp
-      G.ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
+      // Unlit beckoning ember seed + rising golden spirit wisps
+      G.ctx.fillStyle = 'rgba(253, 224, 71, 0.72)';
       G.ctx.beginPath();
-      G.ctx.ellipse(x, y - 35, 11, 3.5, 0, 0, Math.PI * 2);
+      G.ctx.ellipse(x, y - 35, 12, 4, 0, 0, Math.PI * 2);
       G.ctx.fill();
-      const drift = Math.sin(G.globalTime * 2.4) * 5;
-      G.ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
-      G.ctx.lineWidth = 1.4;
+      const drift = Math.sin(now * 2.8 + x) * 5;
+      G.ctx.strokeStyle = 'rgba(254, 240, 138, 0.62)';
+      G.ctx.lineWidth = 1.6;
       G.ctx.beginPath();
       G.ctx.moveTo(x, y - 38);
-      G.ctx.quadraticCurveTo(x + drift, y - 54, x - drift * 0.6, y - 70);
+      G.ctx.quadraticCurveTo(x + drift, y - 56, x - drift * 0.6, y - 74);
       G.ctx.stroke();
+    }
+
+    // Rising ambient sanctuary motes (4 deterministic wisps)
+    G.ctx.fillStyle = isLit ? '#bae6fd' : '#fde047';
+    for (let mi = 0; mi < 4; mi++) {
+      const prog = ((now * 0.34 + mi * 0.25 + (x % 17) * 0.05) % 1);
+      const mx = x + Math.sin(now * 2.2 + mi * 2.1 + x) * (8 + prog * 10);
+      const my = y - 40 - prog * 125;
+      G.ctx.globalAlpha = Math.sin(prog * Math.PI) * 0.78;
+      G.ctx.beginPath();
+      G.ctx.arc(mx, my, 1.8 + (1 - prog) * 1.1, 0, Math.PI * 2);
+      G.ctx.fill();
     }
     G.ctx.restore();
   }
@@ -756,7 +791,7 @@ export function drawPickups() {
   for (const p of G.worldState.pickups) {
     if (p.collected || isRoomOccluded(p.roomId)) continue;
     if (p.requiresSwitch && !isWorldSwitchOn(p.requiresSwitch)) continue;
-    if (!isInView(p.x - 36, p.y - 60, 72, 70, 80)) continue;
+    if (!isInView(p.x - 46, p.y - 140, 92, 150, 80)) continue;
     const bob = Math.sin(G.globalTime * 3.6 + p.x) * 5;
     const py = p.y - 28 + bob;
     const isFlask = p.kind === 'flaskCore';
@@ -776,8 +811,32 @@ export function drawPickups() {
       G.ctx.fillRect(p.x - 24, p.y - 160, 48, 152);
       drawGlowSprite('gold', p.x, py, 74, 0.65);
     }
-    drawGlowSprite(isShade ? 'violet' : (isFlask || isAbility || isWeapon || isRealmSeal ? 'cyan' : 'gold'), p.x, py, (isAbility || isWeapon || isRealmSeal) ? 68 : 46, (isAbility || isWeapon || isRealmSeal) ? 0.60 : 0.42);
-    if (isWeapon) drawGlowSprite('gold', p.x, py, 36, 0.44);
+    if (!bossLocked) {
+      const pPulse = 0.76 + Math.sin(G.globalTime * 3.4 + p.x) * 0.24;
+      const bRgb = isShade ? '192, 132, 252' : (isFlask || isAbility || isWeapon || isRealmSeal ? '56, 189, 248' : '253, 224, 71');
+      const pBeamH = (isAbility || isWeapon || isRealmSeal) ? 148 : 112;
+      const pg = G.ctx.createLinearGradient(p.x, p.y - 6, p.x, p.y - pBeamH);
+      pg.addColorStop(0, `rgba(${bRgb}, ${(0.22 * pPulse).toFixed(3)})`);
+      pg.addColorStop(1, `rgba(${bRgb}, 0)`);
+      G.ctx.fillStyle = pg;
+      G.ctx.fillRect(p.x - 14, p.y - pBeamH, 28, pBeamH - 6);
+      G.ctx.strokeStyle = `rgba(${bRgb}, ${(0.52 * pPulse).toFixed(3)})`;
+      G.ctx.lineWidth = 1.4;
+      G.ctx.beginPath();
+      G.ctx.ellipse(p.x, p.y - 1, 22, 4.5, 0, 0, Math.PI * 2);
+      G.ctx.stroke();
+      G.ctx.fillStyle = col;
+      for (let ki = 0; ki < 3; ki++) {
+        const kp = ((G.globalTime * 0.46 + ki * 0.33 + (p.x % 13) * 0.07) % 1);
+        const kx = p.x + Math.sin(G.globalTime * 2.8 + ki * 2.2) * 11;
+        const ky = p.y - 16 - kp * 84;
+        G.ctx.globalAlpha = Math.sin(kp * Math.PI) * 0.85;
+        G.ctx.beginPath(); G.ctx.arc(kx, ky, 1.8, 0, Math.PI * 2); G.ctx.fill();
+      }
+      G.ctx.globalAlpha = 1;
+    }
+    drawGlowSprite(isShade ? 'violet' : (isFlask || isAbility || isWeapon || isRealmSeal ? 'cyan' : 'gold'), p.x, py, (isAbility || isWeapon || isRealmSeal) ? 74 : 56, (isAbility || isWeapon || isRealmSeal) ? 0.66 : 0.50);
+    if (isWeapon) drawGlowSprite('gold', p.x, py, 40, 0.48);
 
     // Stone miniature shrine plinth
     G.ctx.fillStyle = '#182132';
@@ -1106,13 +1165,31 @@ export function drawResonancePuzzles() {
 }
 
 export function drawLoreTablets() {
+  const now = G.globalTime || 0;
+  const readList = G.worldState && G.worldState.codex && Array.isArray(G.worldState.codex.readTablets) ? G.worldState.codex.readTablets : [];
   for (const lt of LORE_TABLETS) {
     const { x, y } = lt;
-    if (isRoomOccluded(lt.roomId) || x < G.cam.x - 100 || x > G.cam.x + G.canvasW + 100) continue;
+    if (isRoomOccluded(lt.roomId) || !isInView(x - 42, y - 125, 84, 130, 100)) continue;
+    const isRead = readList.includes(lt.id);
+    const pulse = 0.75 + Math.sin(now * 3.0 + x * 0.05) * 0.25;
     G.ctx.save();
-    G.ctx.fillStyle = '#1b2436';
-    G.ctx.strokeStyle = COLORS.parchment;
-    G.ctx.lineWidth = 1.8;
+    if (!isRead) {
+      const tg = G.ctx.createLinearGradient(x, y - 8, x, y - 110);
+      tg.addColorStop(0, `rgba(253, 224, 71, ${(0.18 * pulse).toFixed(3)})`);
+      tg.addColorStop(1, 'rgba(253, 224, 71, 0)');
+      G.ctx.fillStyle = tg;
+      G.ctx.fillRect(x - 15, y - 110, 30, 102);
+      drawGlowSprite('gold', x, y - 34, 56, 0.32 * pulse);
+      G.ctx.strokeStyle = `rgba(253, 224, 71, ${(0.42 * pulse).toFixed(3)})`;
+      G.ctx.lineWidth = 1.3;
+      G.ctx.beginPath(); G.ctx.ellipse(x, y - 1, 22, 4.2, 0, 0, Math.PI * 2); G.ctx.stroke();
+    } else {
+      drawGlowSprite('gold', x, y - 32, 34, 0.14);
+    }
+
+    G.ctx.fillStyle = isRead ? '#161d2c' : '#202a3e';
+    G.ctx.strokeStyle = isRead ? 'rgba(216, 207, 184, 0.65)' : COLORS.goldBright;
+    G.ctx.lineWidth = isRead ? 1.6 : 2.0;
     G.ctx.beginPath();
     G.ctx.moveTo(x - 18, y);
     G.ctx.lineTo(x - 15, y - 54);
@@ -1122,10 +1199,18 @@ export function drawLoreTablets() {
     G.ctx.fill();
     G.ctx.stroke();
 
-    G.ctx.strokeStyle = 'rgba(253, 224, 71, 0.55)';
-    G.ctx.lineWidth = 1.3;
+    G.ctx.strokeStyle = isRead ? 'rgba(253, 224, 71, 0.35)' : 'rgba(254, 240, 138, 0.85)';
+    G.ctx.lineWidth = isRead ? 1.2 : 1.5;
     for (let r = 0; r < 3; r++) {
       boilLine(G.ctx, x - 9, y - 42 + r * 11, x + 9, y - 42 + r * 11, 3100 + x + r * 7, 0.7, 2);
+    }
+    if (!isRead) {
+      G.ctx.fillStyle = COLORS.goldBright;
+      for (let ki = 0; ki < 2; ki++) {
+        const kp = ((now * 0.38 + ki * 0.5 + (x % 11) * 0.08) % 1);
+        G.ctx.globalAlpha = Math.sin(kp * Math.PI) * 0.75;
+        G.ctx.beginPath(); G.ctx.arc(x + Math.sin(now * 2.4 + ki * 3) * 9, y - 48 - kp * 48, 1.6, 0, Math.PI * 2); G.ctx.fill();
+      }
     }
     G.ctx.restore();
   }
@@ -1207,47 +1292,136 @@ export function drawGrappleAnchors() {
 }
 
 export function drawGrappleReticle() {
-  if (!G.player || G.player.hp <= 0 || !G.grapplePreviewTarget || G.player.grappleState !== 'none' || G.gameState !== 'playing') return;
+  if (!G.player || G.player.hp <= 0 || G.player.grappleState !== 'none' || G.gameState !== 'playing') return;
   const tgt = G.grapplePreviewTarget;
+  const cands = Array.isArray(G.grappleCandidates) ? G.grappleCandidates : [];
+  if (!tgt && cands.length === 0) return;
+
   const ready = G.player.grappleCd <= 0;
-  // Subtle sightline tether so player always sees which hook is locked before pressing Grapple
   const px = G.player.x + G.player.w * 0.5;
   const py = G.player.y + 22;
-  G.ctx.save();
-  G.ctx.strokeStyle = ready ? 'rgba(125, 211, 252, 0.22)' : 'rgba(148, 163, 184, 0.10)';
-  G.ctx.lineWidth = 1.4;
-  G.ctx.beginPath();
-  G.ctx.moveTo(px, py);
-  G.ctx.lineTo(tgt.x, tgt.y);
-  G.ctx.stroke();
+  const now = G.globalTime || 0;
+  const ctx = G.ctx;
 
-  const pulse = 1 + Math.sin(G.globalTime * 11) * 0.1;
-  const rot = G.globalTime * 1.9;
-  G.ctx.translate(tgt.x, tgt.y);
-  G.ctx.scale(pulse, pulse);
+  ctx.save();
 
-  G.ctx.save();
-  G.ctx.rotate(rot);
-  G.ctx.strokeStyle = G.player.grappleCd <= 0 ? COLORS.cyanBright : 'rgba(148, 163, 184, 0.45)';
-  G.ctx.lineWidth = 1.9;
+  // 1. Secondary Grapple Candidates (v46.5: subtle dashed standby ring + distinct hookable-enemy crest so players know they can steer targets!)
+  for (let ci = 0; ci < cands.length; ci++) {
+    const c = cands[ci];
+    if (!c || (tgt && c.ref === tgt.ref)) continue;
+    const isEnemyCand = c.type === 'enemy';
+    ctx.save();
+    ctx.translate(c.x, c.y);
+    if (isEnemyCand) {
+      // Hookable Enemy Crest: quiet brass-cyan diamond ring + twin inward chevrons
+      const ep = 0.76 + Math.sin(now * 5.2 + ci) * 0.24;
+      ctx.strokeStyle = ready ? `rgba(233, 201, 123, ${(0.58 * ep).toFixed(3)})` : 'rgba(148, 163, 184, 0.22)';
+      ctx.lineWidth = 1.4;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.strokeStyle = ready ? `rgba(125, 211, 252, ${(0.72 * ep).toFixed(3)})` : 'rgba(148, 163, 184, 0.24)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-19, -4); ctx.lineTo(-14, 0); ctx.lineTo(-19, 4);
+      ctx.moveTo(19, -4);  ctx.lineTo(14, 0);  ctx.lineTo(19, 4);
+      ctx.stroke();
+    } else {
+      // Static Hook/Lantern Candidate Standby Ring
+      ctx.strokeStyle = ready ? 'rgba(223, 213, 190, 0.42)' : 'rgba(148, 163, 184, 0.18)';
+      ctx.lineWidth = 1.25;
+      ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.arc(0, 0, 16, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = ready ? 'rgba(125, 211, 252, 0.55)' : 'rgba(148, 163, 184, 0.25)';
+      ctx.beginPath(); ctx.arc(0, 0, 2.2, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  if (!tgt) {
+    ctx.restore();
+    return;
+  }
+
+  const isEnemyLock = tgt.type === 'enemy';
+  const multiAvail = cands.length >= 2;
+  const snapP = Math.max(0, Math.min(1, (G.grappleLockSnapTimer || 0) / 0.14));
+
+  // 2. Subtle sightline tether from protagonist to currently locked grapple target
+  ctx.strokeStyle = ready
+    ? (isEnemyLock ? 'rgba(233, 201, 123, 0.30)' : 'rgba(125, 211, 252, 0.24)')
+    : 'rgba(148, 163, 184, 0.10)';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(px, py);
+  ctx.lineTo(tgt.x, tgt.y);
+  ctx.stroke();
+
+  const pulse = (1 + Math.sin(now * 11) * 0.08) * (1 + snapP * 0.28);
+  const rot = now * (isEnemyLock ? 2.4 : 1.9);
+  ctx.translate(tgt.x, tgt.y);
+
+  // Kinetic lock-switch contraction ring on target change
+  if (snapP > 0.02 && ready) {
+    ctx.save();
+    ctx.strokeStyle = isEnemyLock ? `rgba(233, 201, 123, ${(snapP * 0.85).toFixed(3)})` : `rgba(125, 211, 252, ${(snapP * 0.82).toFixed(3)})`;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(0, 0, 20 + snapP * 18, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.save();
+  ctx.scale(pulse, pulse);
+  ctx.rotate(rot);
+  ctx.strokeStyle = ready ? (isEnemyLock ? '#e9c97b' : COLORS.cyanBright) : 'rgba(148, 163, 184, 0.45)';
+  ctx.lineWidth = isEnemyLock ? 2.1 : 1.9;
+  const rad = isEnemyLock ? 21 : 22;
   for (let i = 0; i < 4; i++) {
     const a = (i * Math.PI) / 2;
-    G.ctx.beginPath(); G.ctx.arc(0, 0, 22, a - 0.32, a + 0.32); G.ctx.stroke();
-    G.ctx.beginPath();
-    G.ctx.moveTo(Math.cos(a) * 16, Math.sin(a) * 16);
-    G.ctx.lineTo(Math.cos(a) * 26, Math.sin(a) * 26);
-    G.ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, rad, a - 0.32, a + 0.32); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * (rad - 6), Math.sin(a) * (rad - 6));
+    ctx.lineTo(Math.cos(a) * (rad + 4), Math.sin(a) * (rad + 4));
+    ctx.stroke();
   }
-  G.ctx.restore();
+  ctx.restore();
 
-  if (G.player.grappleCd <= 0) {
-    drawCachedBadge(G.ctx, getControlLabels().shortGrapple, 0, 37, {
+  // Enemy-lock inner combat diamond crest (visually separates combat grapple from platforming anchors)
+  if (isEnemyLock && ready) {
+    ctx.strokeStyle = 'rgba(248, 113, 113, 0.88)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(0, -10); ctx.lineTo(10, 0); ctx.lineTo(0, 10); ctx.lineTo(-10, 0);
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  // Subtle side-chevrons when multiple grapple targets are available (silently signals directional steering!)
+  if (multiAvail && ready) {
+    const chA = 0.55 + Math.sin(now * 6.5) * 0.25;
+    ctx.strokeStyle = `rgba(223, 213, 190, ${chA.toFixed(3)})`;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(-31, -4); ctx.lineTo(-35, 0); ctx.lineTo(-31, 4);
+    ctx.moveTo(31, -4);  ctx.lineTo(35, 0);  ctx.lineTo(31, 4);
+    ctx.stroke();
+  }
+
+  if (ready) {
+    const lbl = isEnemyLock ? t('grapple.enemyTag', getControlLabels().shortGrapple) : getControlLabels().shortGrapple;
+    drawCachedBadge(ctx, lbl, 0, 37, {
       font: '11px ui-monospace, "Noto Serif SC", monospace',
-      bg: 'rgba(8, 12, 18, 0.78)', border: 'rgba(125, 211, 252, 0.55)', borderW: 1,
-      color: COLORS.cyanBright, minW: 38, padX: 6, h: 16, boxTopOff: -12, textOffY: 0
+      bg: 'rgba(11, 13, 17, 0.86)',
+      border: isEnemyLock ? 'rgba(233, 201, 123, 0.72)' : 'rgba(125, 211, 252, 0.58)',
+      borderW: 1,
+      color: isEnemyLock ? '#e9c97b' : COLORS.cyanBright,
+      minW: isEnemyLock ? 56 : 38, padX: 6, h: 16, boxTopOff: -12, textOffY: 0
     });
   }
-  G.ctx.restore();
+  ctx.restore();
 }
 
 export function drawGrappleThread() {

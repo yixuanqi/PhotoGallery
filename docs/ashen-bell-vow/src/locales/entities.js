@@ -203,17 +203,17 @@ export const ENTITIES_EN = {
     noFlasks: {
       name: 'Vow of Dry Oil',
       short: 'No Oil',
-      desc: 'Seals all Lantern Oil flasks (max locked to 0); sustain only via rally & executions · Echoes +25%'
+      desc: 'Oil flasks locked to 0; sustain via rally & executions · +25% Echoes'
     },
     doubleDmg: {
       name: 'Vow of Brittle Bone',
       short: 'Brittle',
-      desc: 'All enemy and boss damage taken is raised to 180% · Echoes +30%'
+      desc: 'All incoming damage raised to 180% · +30% Echoes'
     },
     noGrayBlock: {
       name: 'Vow of Flawless Steel',
       short: 'Flawless',
-      desc: 'Imperfect blocks no longer leave recoverable Gray HP—they deal 75% real chip damage · Echoes +30%'
+      desc: 'No gray-HP rally on block; 75% real chip damage · +30% Echoes'
     },
     fierceFoes: {
       name: 'Vow of Frenzied Chimes',

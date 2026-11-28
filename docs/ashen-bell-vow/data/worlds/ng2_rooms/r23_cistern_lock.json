@@ -3,7 +3,7 @@
   "name": "沉钟水牢 · 断索水闸",
   "theme": "cistern",
   "bounds": {
-    "x": 3240,
+    "x": 6160,
     "y": 1520,
     "w": 1780,
     "h": 740
@@ -15,98 +15,98 @@
   ],
   "solids": [
     {
-      "x": 190,
+      "x": 0,
       "y": 0,
       "w": 1590,
       "h": 34,
       "type": "pillar"
     },
     {
-      "x": 0,
+      "x": 1730,
       "y": 0,
       "w": 50,
       "h": 34,
       "type": "pillar"
     },
     {
-      "x": 1400,
+      "x": 0,
       "y": 600,
       "w": 380,
       "h": 140,
       "type": "ground"
     },
     {
-      "x": 620,
+      "x": 380,
       "y": 664,
       "w": 780,
       "h": 76,
       "type": "ground"
     },
     {
-      "x": 0,
+      "x": 1160,
       "y": 600,
       "w": 620,
       "h": 140,
       "type": "ground"
     },
     {
-      "x": 1125,
+      "x": 460,
       "y": 500,
       "w": 195,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 790,
+      "x": 775,
       "y": 430,
       "w": 215,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 70,
+      "x": 1495,
       "y": 425,
       "w": 215,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 55,
+      "x": 1530,
       "y": 240,
       "w": 195,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 150,
+      "x": 1515,
       "y": 100,
       "w": 115,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 1045,
+      "x": 520,
       "y": 270,
       "w": 215,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 1045,
+      "x": 530,
       "y": 110,
       "w": 205,
       "h": 20,
       "type": "pillar"
     },
     {
-      "x": 1045,
+      "x": 530,
       "y": 270,
       "w": 205,
       "h": 20,
       "type": "pillar"
     },
     {
-      "x": 1045,
+      "x": 715,
       "y": 130,
       "w": 20,
       "h": 140,
@@ -116,7 +116,7 @@
   "crumblePlatforms": [
     {
       "id": "cr_cl_1",
-      "x": 630,
+      "x": 1030,
       "y": 510,
       "w": 120,
       "h": 20
@@ -127,20 +127,20 @@
   "voidBarriers": [
     {
       "id": "vb_cistern_lock",
-      "x": 1223,
+      "x": 535,
       "y": 130,
       "w": 22,
       "h": 140
     },
     {
       "id": "vb_lock_sweep",
-      "x": 446,
+      "x": 1310,
       "y": 455,
       "w": 24,
       "h": 145,
       "sweeping": true,
-      "sweepMinX": 146,
-      "sweepMaxX": 566,
+      "sweepMinX": 1190,
+      "sweepMaxX": 1610,
       "sweepSpeed": 1.4,
       "sweepPhase": 2.1
     }
@@ -150,7 +150,7 @@
   "loreTablets": [
     {
       "id": "lore_cistern_lock",
-      "x": 1550,
+      "x": 230,
       "y": 600,
       "title": "断索水闸碑",
       "sub": "沉钟水牢 · 断索水闸",
@@ -162,7 +162,7 @@
       "id": "pickup_echo_cistern_lock",
       "kind": "echoCache",
       "echoAmount": 110,
-      "x": 1155,
+      "x": 625,
       "y": 270,
       "name": "断索水闸残响",
       "desc": "悬挂于断索青铜闸梁之上的 +110 残响"
@@ -172,7 +172,7 @@
       "kind": "relic",
       "relicId": "tidebell",
       "requiresSwitch": "riverDrained",
-      "x": 1000,
+      "x": 780,
       "y": 664,
       "name": "隐藏圣物 · 退潮沉钟印",
       "desc": "暗河泄洪后显露于水闸河底！法术范围 +18%，泄洪后常驻法伤 +16% 且耗魂 -4。"
@@ -182,14 +182,14 @@
   "lanterns": [
     {
       "id": "lan_cl_1",
-      "x": 1140,
+      "x": 470,
       "anchorY": 34,
-      "len": 165,
+      "len": 180,
       "topY": 34
     },
     {
       "id": "lan_cl_2",
-      "x": 450,
+      "x": 1330,
       "anchorY": 34,
       "len": 185,
       "topY": 34
@@ -197,13 +197,13 @@
   ],
   "grappleAnchors": [
     {
-      "x": 900,
+      "x": 880,
       "y": 330,
       "id": "anc_r23_cistern_lock_0",
       "topY": 34
     },
     {
-      "x": 125,
+      "x": 1655,
       "y": 175,
       "id": "anc_r23_cistern_lock_1",
       "topY": 34
@@ -211,7 +211,7 @@
   ],
   "pendulums": [
     {
-      "x": 1100,
+      "x": 680,
       "anchorY": 34,
       "len": 350,
       "amp": 0.5,
@@ -220,7 +220,7 @@
       "r": 26
     },
     {
-      "x": 700,
+      "x": 1080,
       "anchorY": 34,
       "len": 340,
       "amp": 0.52,
@@ -232,7 +232,7 @@
   "rivers": [
     {
       "id": "river_cistern_lock",
-      "x": 620,
+      "x": 380,
       "y": 628,
       "w": 780,
       "drainable": true
@@ -242,32 +242,32 @@
     {
       "id": "dr_cl_1",
       "kind": "drowned",
-      "x": 1544,
+      "x": 200,
       "y": 540,
-      "minX": 1394,
-      "maxX": 1679
+      "minX": 65,
+      "maxX": 350
     },
     {
       "id": "an_cl_1",
       "kind": "anchorite",
-      "x": 442,
+      "x": 1290,
       "y": 522,
-      "minX": 172,
-      "maxX": 547
+      "minX": 1185,
+      "maxX": 1560
     },
     {
       "id": "p_cl_1",
       "kind": "priest",
-      "x": 904,
+      "x": 840,
       "y": 370,
-      "minX": 784,
-      "maxX": 959
+      "minX": 785,
+      "maxX": 960
     }
   ],
   "bosses": [],
   "inscriptions": [
     {
-      "x": 140,
+      "x": 1640,
       "y": 540,
       "text": "「东行步入霜渊冰窖 · 暗河融雪之源」"
     }
@@ -275,25 +275,25 @@
   "props": {
     "puddles": [
       {
-        "x": 1480,
+        "x": 140,
         "w": 160,
         "y": 600
       },
       {
-        "x": 280,
+        "x": 1280,
         "w": 220,
         "y": 600
       }
     ],
     "banners": [
       {
-        "x": 1520,
+        "x": 260,
         "y": 34,
         "len": 155,
         "color": "#0e2938"
       },
       {
-        "x": 330,
+        "x": 1450,
         "y": 34,
         "len": 165,
         "color": "#0e2938"
@@ -301,12 +301,12 @@
     ],
     "candles": [
       {
-        "x": 1460,
+        "x": 320,
         "y": 600,
         "count": 3
       },
       {
-        "x": 570,
+        "x": 1210,
         "y": 600,
         "count": 3
       }
@@ -315,29 +315,26 @@
     "stamps": [
       {
         "type": "sunken_bell_giant",
-        "x": 1600,
+        "x": 180,
         "y": 600,
         "scale": 0.95,
-        "layer": "bg",
-        "flip": true
+        "layer": "bg"
       },
       {
         "type": "iron_cage",
-        "x": 900,
+        "x": 880,
         "y": 34,
         "scale": 1.0,
-        "layer": "bg",
-        "flip": true
+        "layer": "bg"
       },
       {
         "type": "tide_pillar",
-        "x": 370,
+        "x": 1410,
         "y": 600,
         "scale": 1.1,
-        "layer": "bg",
-        "flip": true
+        "layer": "bg"
       }
     ]
   },
-  "mirrored": true
+  "mirrored": false
 }

@@ -313,6 +313,8 @@ export const WORLD_EN = {
     pickup_core_belfry: { name: 'Belfry Core · Severed Crystal', desc: 'Max Vitality +15 · Max Soulfire +10 · +55 Echoes.' },
     pickup_echo_galleries: { name: 'Bell-Gallery Echoes', desc: 'Recovered +85 Echoes among the suspended chains.' },
     pickup_echo_sky_span:  { name: 'Sky-Span Echo Cache', desc: 'NG3 Skyward Span cache — gained +90 Echoes!' },
+    pickup_echo_ng2_corridor: { name: 'Eclipse Echo Cache', desc: 'NG2 Eclipse Master cache — gained +120 Echoes!' },
+    pickup_echo_ng2_spire:    { name: 'Gale Eclipse Cache', desc: 'NG2 Eclipse Master cache — gained +120 Echoes!' },
     pickup_flask_cistern: { name: 'Drowned Wick · Ebbed Oil Core', desc: 'Uncovered after draining the cistern (+1 Max Lantern Oil · +75 Echoes).' },
     pickup_echo_cistern_lock: { name: 'Sluice-Lock Echoes', desc: 'Recovered +110 Echoes atop the bronze lock beams.' },
     pickup_echo_frost_seep: { name: 'Frost-Seep Echoes', desc: 'Recovered +120 pure Echoes at the frozen river source.' },

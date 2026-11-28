@@ -5,7 +5,7 @@
   "name": "沉渊铸钟殿",
   "theme": "foundry",
   "bounds": {
-    "x": 4440,
+    "x": 5560,
     "y": 780,
     "w": 1180,
     "h": 740
@@ -26,7 +26,7 @@
   ],
   "solids": [
     {
-      "x": 0,
+      "x": 1140,
       "y": 0,
       "w": 40,
       "h": 460,
@@ -40,28 +40,28 @@
       "type": "ground"
     },
     {
-      "x": 905,
+      "x": 0,
       "y": 0,
       "w": 275,
       "h": 40,
       "type": "pillar"
     },
     {
-      "x": 0,
+      "x": 430,
       "y": 0,
       "w": 750,
       "h": 40,
       "type": "pillar"
     },
     {
-      "x": 865,
+      "x": 160,
       "y": 425,
       "w": 155,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 180,
+      "x": 845,
       "y": 425,
       "w": 155,
       "h": 22,
@@ -75,7 +75,7 @@
     {
       "id": "gate_foundry_exit",
       "role": "foundryExit",
-      "x": 0,
+      "x": 1140,
       "y": 460,
       "w": 40,
       "h": 140
@@ -83,7 +83,7 @@
     {
       "id": "gate_foundry_vent",
       "role": "foundryValve",
-      "x": 750,
+      "x": 275,
       "y": 0,
       "w": 155,
       "h": 40
@@ -96,7 +96,7 @@
       "kind": "ability",
       "abilityId": "bellDive",
       "requiresBoss": "boss_ji",
-      "x": 600,
+      "x": 580,
       "y": 600,
       "name": "绝技 · 镇岳下砸",
       "desc": "空中按 [S+法术] 化身青铜巨钟无敌俯冲，可震碎发光裂石地板与脆冰！"
@@ -108,19 +108,19 @@
   "grappleAnchors": [
     {
       "id": "anc_ji_l",
-      "x": 840,
+      "x": 340,
       "y": 275,
       "topY": 40
     },
     {
       "id": "anc_ji_c",
-      "x": 600,
+      "x": 580,
       "y": 205,
       "topY": 40
     },
     {
       "id": "anc_ji_r",
-      "x": 360,
+      "x": 820,
       "y": 275,
       "topY": 40
     }
@@ -128,19 +128,19 @@
   "lanterns": [
     {
       "id": "lan_9",
-      "x": 780,
-      "anchorY": 160,
-      "topY": 40,
-      "len": 135,
-      "angle": -0.05
-    },
-    {
-      "id": "lan_10",
-      "x": 420,
+      "x": 400,
       "anchorY": 160,
       "topY": 40,
       "len": 135,
       "angle": 0.05
+    },
+    {
+      "id": "lan_10",
+      "x": 760,
+      "anchorY": 160,
+      "topY": 40,
+      "len": 135,
+      "angle": -0.05
     }
   ],
   "enemies": [],
@@ -148,22 +148,23 @@
     {
       "id": "boss_ji",
       "kind": "boss2",
-      "x": 324,
+      "x": 800,
       "y": 458,
-      "arenaMinX": 44,
-      "arenaMaxX": 1156,
+      "arenaMinX": 24,
+      "arenaMaxX": 1136,
       "arenaFloorY": 600,
       "arenaTopY": 40
     }
   ],
   "inscriptions": [
     {
-      "x": 1095,
+      "x": 85,
       "y": 510,
-      "text": "「沉渊铸钟殿 · 借墨翼与钩环迎战铸钟师」"
+      "text": "「沉渊铸钟殿 · 借墨翼与钩环迎战铸钟师」",
+      "hideInNgPlus": true
     },
     {
-      "x": 150,
+      "x": 1030,
       "y": 510,
       "text": "「斩落铸钟师 · 东门直通初钟圣阶 →」",
       "hideWhenBoss2Defeated": true
@@ -174,17 +175,17 @@
     "banners": [],
     "candles": [
       {
-        "x": 1115,
+        "x": 65,
         "y": 600,
         "count": 4
       },
       {
-        "x": 600,
+        "x": 580,
         "y": 600,
         "count": 5
       },
       {
-        "x": 85,
+        "x": 1095,
         "y": 600,
         "count": 4
       }
@@ -193,33 +194,23 @@
     "stamps": [
       {
         "type": "crucible_vat",
-        "x": 1035,
+        "x": 145,
         "y": 40,
         "scale": 1.05,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.85,
         "seed": 0
       },
       {
         "type": "bronze_gear",
-        "x": 975,
+        "x": 205,
         "y": 310,
         "scale": 1.24,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.62,
         "seed": 0
-      },
-      {
-        "type": "hanging_chains",
-        "x": 830,
-        "y": 40,
-        "scale": 1.08,
-        "flip": true,
-        "layer": "bg",
-        "alpha": 0.5,
-        "seed": 1
       },
       {
         "type": "hanging_chains",
@@ -229,24 +220,34 @@
         "flip": false,
         "layer": "bg",
         "alpha": 0.5,
+        "seed": 1
+      },
+      {
+        "type": "hanging_chains",
+        "x": 830,
+        "y": 40,
+        "scale": 1.08,
+        "flip": true,
+        "layer": "bg",
+        "alpha": 0.5,
         "seed": 2
       },
       {
         "type": "bronze_gear",
-        "x": 215,
+        "x": 965,
         "y": 320,
         "scale": 1.22,
-        "flip": false,
+        "flip": true,
         "layer": "bg",
         "alpha": 0.62,
         "seed": 1
       },
       {
         "type": "crucible_vat",
-        "x": 155,
+        "x": 1025,
         "y": 40,
         "scale": 1.05,
-        "flip": false,
+        "flip": true,
         "layer": "bg",
         "alpha": 0.85,
         "seed": 2
@@ -260,7 +261,7 @@
       "switchKey": "foundryValveOpen",
       "kind": "valve",
       "requiresBoss": "boss_ji",
-      "x": 828,
+      "x": 352,
       "y": 600,
       "name": "古炉泄压风阀"
     }
@@ -268,7 +269,7 @@
   "windZones": [
     {
       "id": "wz_foundry_express",
-      "x": 750,
+      "x": 275,
       "y": -24,
       "w": 155,
       "h": 624,
@@ -277,5 +278,5 @@
       "requiresSwitch": "foundryValveOpen"
     }
   ],
-  "mirrored": true
+  "mirrored": false
 }

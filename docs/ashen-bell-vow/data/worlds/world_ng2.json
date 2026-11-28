@@ -11,9 +11,9 @@
       "zoneName": "沉钟回廊",
       "name": "熄灯祭坛",
       "theme": "sanctuary",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 10240,
+        "x": 0,
         "y": 0,
         "w": 940,
         "h": 720
@@ -30,9 +30,9 @@
       "zoneName": "沉钟回廊",
       "name": "枯骨长廊",
       "theme": "corridor",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 8535,
+        "x": 940,
         "y": 0,
         "w": 1705,
         "h": 720
@@ -50,9 +50,9 @@
       "zoneName": "沉钟回廊",
       "name": "断钟礼拜堂",
       "theme": "chapel",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 7400,
+        "x": 2645,
         "y": 0,
         "w": 1135,
         "h": 720
@@ -68,9 +68,9 @@
       "zoneName": "沉渊钟井",
       "name": "沉渊钟井",
       "theme": "bell_well",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 5620,
+        "x": 3780,
         "y": 0,
         "w": 1780,
         "h": 1520
@@ -90,9 +90,9 @@
       "zoneName": "沉渊钟井",
       "name": "沉渊铸钟殿",
       "theme": "foundry",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 4440,
+        "x": 5560,
         "y": 780,
         "w": 1180,
         "h": 740
@@ -109,9 +109,9 @@
       "zoneName": "沉钟回廊",
       "name": "残钟地窖",
       "theme": "crypt",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 7400,
+        "x": 1980,
         "y": 740,
         "w": 1800,
         "h": 780
@@ -129,9 +129,9 @@
       "zoneName": "初钟圣顶",
       "name": "初钟圣阶",
       "theme": "ascent",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 2820,
+        "x": 6740,
         "y": 0,
         "w": 1620,
         "h": 1520
@@ -150,9 +150,9 @@
       "zoneName": "初钟圣顶",
       "name": "初钟圣心",
       "theme": "heart",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 1500,
+        "x": 8360,
         "y": 0,
         "w": 1320,
         "h": 720
@@ -167,9 +167,9 @@
       "zoneName": "绝风断塔",
       "name": "绝风断塔 · 风井下口",
       "theme": "wind",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 4440,
+        "x": 5560,
         "y": 0,
         "w": 1180,
         "h": 780
@@ -187,9 +187,9 @@
       "zoneName": "枯墨古林",
       "name": "枯墨古林 · 渗水菌廊",
       "theme": "forest",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 9200,
+        "x": 0,
         "y": 740,
         "w": 1980,
         "h": 780
@@ -207,9 +207,9 @@
       "zoneName": "霜骸圣脊",
       "name": "霜骸圣脊 · 融雪谷口",
       "theme": "mountain",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 1500,
+        "x": 8360,
         "y": 740,
         "w": 1320,
         "h": 780
@@ -226,9 +226,9 @@
       "zoneName": "绝风断塔",
       "name": "绝风断塔 · 千铃悬桥",
       "theme": "wind",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 4440,
+        "x": 5560,
         "y": -740,
         "w": 1180,
         "h": 740
@@ -245,9 +245,9 @@
       "zoneName": "绝风断塔",
       "name": "绝风断塔 · 断塔绝顶",
       "theme": "wind",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 2920,
+        "x": 6740,
         "y": -740,
         "w": 1520,
         "h": 740
@@ -264,9 +264,9 @@
       "zoneName": "枯墨古林",
       "name": "枯墨古林 · 盘根溶洞",
       "theme": "forest",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 8500,
+        "x": 1080,
         "y": 1520,
         "w": 1600,
         "h": 740
@@ -283,9 +283,9 @@
       "zoneName": "枯墨古林",
       "name": "枯墨古林 · 古钟树窟",
       "theme": "forest",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 10100,
+        "x": 0,
         "y": 1520,
         "w": 1080,
         "h": 740
@@ -301,9 +301,9 @@
       "zoneName": "霜骸圣脊",
       "name": "霜骸圣脊 · 冻剑冢",
       "theme": "mountain",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 0,
+        "x": 9680,
         "y": -740,
         "w": 1500,
         "h": 2260
@@ -319,9 +319,9 @@
       "zoneName": "霜骸圣脊",
       "name": "霜骸圣脊 · 绝脊霜台",
       "theme": "mountain",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 1500,
+        "x": 8260,
         "y": -740,
         "w": 1420,
         "h": 740
@@ -337,9 +337,9 @@
       "zoneName": "晦渊",
       "name": "淋雨墓阶 · 残钟外廊",
       "theme": "corridor",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 8535,
+        "x": 940,
         "y": -740,
         "w": 1705,
         "h": 740
@@ -355,9 +355,9 @@
       "zoneName": "晦渊",
       "name": "断索钟楼 · 外廊残钟",
       "theme": "sanctuary",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 10240,
+        "x": 0,
         "y": -740,
         "w": 940,
         "h": 740
@@ -373,9 +373,9 @@
       "zoneName": "晦渊",
       "name": "悬索钟阁 · 风桥前廊",
       "theme": "wind",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 5620,
+        "x": 3780,
         "y": -740,
         "w": 1780,
         "h": 740
@@ -391,9 +391,9 @@
       "zoneName": "晦渊",
       "name": "沉钟水牢 · 渗水囚廊",
       "theme": "cistern",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 6900,
+        "x": 2680,
         "y": 1520,
         "w": 1600,
         "h": 740
@@ -410,9 +410,9 @@
       "zoneName": "晦渊",
       "name": "沉钟水牢 · 淹钟巨厅",
       "theme": "cistern",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 5020,
+        "x": 4280,
         "y": 1520,
         "w": 1880,
         "h": 740
@@ -429,9 +429,9 @@
       "zoneName": "晦渊",
       "name": "沉钟水牢 · 断索水闸",
       "theme": "cistern",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 3240,
+        "x": 6160,
         "y": 1520,
         "w": 1780,
         "h": 740
@@ -448,9 +448,9 @@
       "zoneName": "晦渊",
       "name": "霜渊冰窖 · 暗河源洞",
       "theme": "mountain",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 1500,
+        "x": 7940,
         "y": 1520,
         "w": 1740,
         "h": 740
@@ -466,9 +466,9 @@
       "zoneName": "晦渊",
       "name": "初铸镜渊 · 终极隐藏殿堂",
       "theme": "heart",
-      "mirrored": true,
+      "mirrored": false,
       "bounds": {
-        "x": 2120,
+        "x": 7460,
         "y": -1480,
         "w": 1600,
         "h": 740
@@ -479,10 +479,10 @@
     }
   ],
   "cycle": 2,
-  "variantId": "ng2_mirror",
-  "variantName": "二周目 · 倒影逆钟",
-  "variantNameEn": "NG2 · Inverted Reflection",
-  "mirrored": true,
+  "variantId": "ng2_eclipse",
+  "variantName": "二周目 · 蚀月大师",
+  "variantNameEn": "NG2 · Eclipse Master",
+  "mirrored": false,
   "compositeBlocks": {
     "A_Prologue": [
       "r01_sanctuary",

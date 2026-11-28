@@ -85,6 +85,8 @@ export function createPlayer(x = 340, y = FLOOR_Y - 56) {
     parryActive: false,
     parryElapsedMs: 0,
     clashParryTimer: 0,
+    clashParryCd: 0,
+    clashChainTimer: 0,
     parryCooldown: 0,
     parryStreak: 0,
     parryStreakTimer: 0,

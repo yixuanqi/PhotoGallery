@@ -4,7 +4,7 @@ import { COLORS, GRAVITY } from '../config.js';
 import { G, addShake, damp } from '../state.js';
 import { audio } from '../audio.js';
 import { updateCloak, spawnParticles, spawnShockwave, spawnFloatText } from '../vfx.js';
-import { aabbOverlap, moveAndCollide, getGroundSurfaceY, hasLineOfSight } from '../physics.js';
+import { aabbOverlap, moveAndCollide, getGroundSurfaceY, hasLineOfSight, hasWalkableAhead, canEnemyAggro, moveGroundEnemyWithGuard, resolveFlyingEnemySolids } from '../physics.js';
 import { applyIncomingAttackToPlayer } from '../combat.js';
 import { t } from '../i18n.js';
 
@@ -35,7 +35,7 @@ export function updateWeaver(e, dt) {
     e.vx = e.facing * 86;
     if (e.x <= e.minX) e.facing = 1;
     if (e.x >= e.maxX) e.facing = -1;
-    if (absDx < 360 && Math.abs(dy) < 160 && G.player.hp > 0) {
+    if (canEnemyAggro(e, absDx, 360, Math.abs(dy), 160)) {
       e.state = 'chase';
       e.facing = dx >= 0 ? 1 : -1;
     }
@@ -46,15 +46,16 @@ export function updateWeaver(e, dt) {
     } else if (e.stateTimer <= 0 && Math.abs(dy) < 130) {
       const lowHp = e.hp <= e.maxHp * 0.58;
       if ((e.webCd || 0) <= 0 && (lowHp || (absDx > 135 && absDx < 310))) {
-        // Back-hop and spit sticky ink-web orb!
+        // Back-hop and spit sticky ink-web orb (ledge-aware: won't back-hop off a narrow platform into a spore pad!)
         e.state = 'windup';
         e.attackKind = 'webShot';
         e.stateTimer = 0.54;
-        e.vx = -e.facing * 235;
-        e.vy = -210;
+        const safeBack = !e.grounded || hasWalkableAhead(e, -e.facing, 28, 42);
+        e.vx = safeBack ? (-e.facing * 220) : 0;
+        e.vy = safeBack ? -205 : -115;
         e.didHit = false;
         audio.playWraithShot();
-      } else if ((e.dropCd || 0) <= 0 && absDx < 200 && e.grounded && Math.random() < 0.36) {
+      } else if ((e.dropCd || 0) <= 0 && absDx < 200 && dy > -36 && e.grounded && e.wallDir === 0 && Math.random() < 0.36) {
         // Leap onto silk thread -> crimson peril ambush drop!
         e.state = 'windup';
         e.attackKind = 'silkDrop';
@@ -132,7 +133,11 @@ export function updateWeaver(e, dt) {
         applyIncomingAttackToPlayer(e, isRed ? 24 : (e.comboIdx === 1 ? 18 : 14), isRed, isRed ? 245 : 175);
       }
     }
-    if (e.stateTimer <= 0 || (e.attackKind === 'silkDrop' && e.grounded && e.vy >= 0 && e.stateTimer < 0.28)) {
+    if (e.attackKind === 'silkDrop' && e.wallDir !== 0 && e.stateTimer < 0.32) {
+      e.vx = -e.wallDir * 145;
+      e.state = 'recover';
+      e.stateTimer = 0.52;
+    } else if (e.stateTimer <= 0 || (e.attackKind === 'silkDrop' && e.grounded && e.vy >= 0 && e.stateTimer < 0.28)) {
       if (e.attackKind === 'fangCombo' && e.comboIdx === 0) {
         e.comboIdx = 1;
         e.state = 'windup';
@@ -151,10 +156,8 @@ export function updateWeaver(e, dt) {
   if (!(e.state === 'windup' && e.attackKind === 'silkDrop' && e.vy >= -20)) {
     e.vy += GRAVITY * dt;
   }
-  moveAndCollide(e, dt, false);
+  moveGroundEnemyWithGuard(e, dt, { leashPad: 70, canStepUp: true });
   if (Math.abs(e.vx) > 12 && e.grounded) e.walkCycle = (e.walkCycle || 0) + dt * Math.abs(e.vx) * 0.065;
-  if (e.x < e.minX - 70) e.x = e.minX - 70;
-  if (e.x > e.maxX + 70) e.x = e.maxX + 70;
 }
 
 /* ---------- 2. CRYPT / WELL EXCLUSIVE: 熔铜炉奴 (Cinder-Bell Crawler) ---------- */
@@ -190,7 +193,7 @@ export function updateCrawler(e, dt) {
     e.vx = e.facing * 64;
     if (e.x <= e.minX) e.facing = 1;
     if (e.x >= e.maxX) e.facing = -1;
-    if (absDx < 370 && dy < 150 && G.player.hp > 0) {
+    if (canEnemyAggro(e, absDx, 370, dy, 150)) {
       e.state = 'chase';
       e.facing = dx >= 0 ? 1 : -1;
     }
@@ -268,10 +271,8 @@ export function updateCrawler(e, dt) {
   }
 
   e.vy += GRAVITY * dt;
-  moveAndCollide(e, dt, false);
+  moveGroundEnemyWithGuard(e, dt, { leashPad: 65, canStepUp: false });
   if (Math.abs(e.vx) > 10 && e.grounded) e.walkCycle = (e.walkCycle || 0) + dt * Math.abs(e.vx) * 0.055;
-  if (e.x < e.minX - 65) e.x = e.minX - 65;
-  if (e.x > e.maxX + 65) e.x = e.maxX + 65;
 }
 
 /* ---------- 3. ASCENT / BELFRY EXCLUSIVE: 金钟执灯侍 (Gilded Belfry Cantor) ---------- */
@@ -411,5 +412,6 @@ export function updateCantor(e, dt) {
     }
   }
 
-  if (e.cloak) updateCloak(e.cloak, ex, e.y + 22, e.facing, -e.vx * 0.3, dt);
+  resolveFlyingEnemySolids(e);
+  if (e.cloak) updateCloak(e.cloak, e.x + e.w * 0.5, e.y + 22, e.facing, -e.vx * 0.3, dt);
 }

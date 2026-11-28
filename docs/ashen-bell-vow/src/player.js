@@ -1,6 +1,6 @@
 // Player movement, buffering, combo/iai/parry/grapple/spell state machine
 import {
-  COLORS, GRAVITY, FLOOR_Y, ALTARS, NPCS, LORE_TABLETS, SHORTCUT_GATE_DEF, VOID_BARRIERS, FIRST_BELL_CORE_POS, ABYSSAL_RIVERS, PUDDLES, PENDULUMS, DUMMY_MODES, WIND_ZONES, BOUNCE_PADS, WORLD_SWITCHES_DEF, SLICK_WALLS
+  COLORS, SOLIDS, GRAVITY, FLOOR_Y, ALTARS, NPCS, LORE_TABLETS, SHORTCUT_GATE_DEF, VOID_BARRIERS, FIRST_BELL_CORE_POS, ABYSSAL_RIVERS, PUDDLES, PENDULUMS, DUMMY_MODES, WIND_ZONES, BOUNCE_PADS, WORLD_SWITCHES_DEF, SLICK_WALLS
 } from './config.js';
 import { G, hooks, getLivingFoes, getRelicStats, getActiveWeapon, getActiveWeaponId, getFlaskHealPct, hasKeeperBlessing, isSkillNodeUnlocked, isWorldSwitchOn, isSwitchUnlocked, isRiverDrained, isWindZoneActive, isBouncePadAwake, getEffectiveNpcPos, markMapExplored, addShake, punchZoom, triggerBossBanner, triggerBossIntro, createFoundryCrucibles, triggerHitstop, damp } from './state.js';
 import { audio } from './audio.js';
@@ -11,7 +11,7 @@ import {
 import { aabbOverlap, moveAndCollide } from './physics.js';
 import { triggerHaptic } from './input.js';
 import {
-  findBestGrappleTarget, performExecution, updatePlayerActiveAttack,
+  findBestGrappleTarget, findNearestInteractable, performExecution, updatePlayerActiveAttack,
   evaluatePlayerSealLunge, triggerPlayerAttack, openSkywayShortcut,
   collectPickup, isPickupUnlocked, ringResonanceBell, castBellQuake, triggerMiniBellQuake,
   damageEnemyHP, addPostureToEnemy, applyEnemyHitFeel, reclaimLostEchoes, triggerWeaponResonanceUltimate, triggerHammerAirSlamImpact, tryQuellChapelTideByLantern,
@@ -55,7 +55,17 @@ export function updatePlayer(dt) {
   }
 
   G.player.wasGrounded = G.player.grounded;
-  G.grapplePreviewTarget = findBestGrappleTarget();
+  const prevGrapRef = G.grapplePreviewTarget ? G.grapplePreviewTarget.ref : null;
+  const nextGrap = findBestGrappleTarget();
+  G.grapplePreviewTarget = nextGrap;
+  if (G.grappleLockSnapTimer > 0) G.grappleLockSnapTimer = Math.max(0, G.grappleLockSnapTimer - dt);
+  if (nextGrap && nextGrap.ref !== prevGrapRef && G.player.grappleState === 'none' && G.player.grappleCd <= 0) {
+    G.grappleLockSnapTimer = 0.14;
+    const steeringSwitch = isActionHeld('left') || isActionHeld('right') || isActionHeld('up') || isActionHeld('down');
+    if ((prevGrapRef !== null && (G.grappleCandidates.length >= 2 || steeringSwitch)) || (prevGrapRef === null && nextGrap.type === 'enemy')) {
+      audio.playGrappleLockTick(nextGrap.type === 'enemy');
+    }
+  }
 
   // Cooldowns & input buffer timers
   if (G.player.coyoteTimer > 0) G.player.coyoteTimer -= dt;
@@ -96,6 +106,8 @@ export function updatePlayer(dt) {
   if (G.player.bellSealCd > 0) G.player.bellSealCd = Math.max(0, G.player.bellSealCd - dt);
   if (G.player.parryCooldown > 0) G.player.parryCooldown -= dt;
   if (G.player.clashParryTimer > 0) G.player.clashParryTimer = Math.max(0, G.player.clashParryTimer - dt);
+  if (G.player.clashParryCd > 0) G.player.clashParryCd = Math.max(0, G.player.clashParryCd - dt);
+  if (G.player.clashChainTimer > 0) G.player.clashChainTimer = Math.max(0, G.player.clashChainTimer - dt);
   if (G.player.parryStreakTimer > 0) {
     G.player.parryStreakTimer -= dt;
     if (G.player.parryStreakTimer <= 0) G.player.parryStreak = 0;
@@ -156,66 +168,20 @@ export function updatePlayer(dt) {
     }
   }
 
-  // Interact with Altars, Shortcut Lever, Lore Tablet or Pickups
+  // Interact with Single Nearest Focused Target (100% synced with world prompt & mobile interact pill!)
   if (consumeActionPress('interact')) {
     const px = G.player.x + G.player.w / 2;
     const py = G.player.y + G.player.h;
-
-    if (G.worldState && G.worldState.boss3Defeated && !G.echoSession &&
-        Math.hypot(px - FIRST_BELL_CORE_POS.x, py - FIRST_BELL_CORE_POS.y) < 105) {
-      hooks.openEndingChoice();
-      return;
-    }
-
-    for (const altar of ALTARS) {
-      if (Math.hypot(px - altar.x, py - altar.y) < 86) {
-        hooks.interactWithAltar(altar);
-        return;
-      }
-    }
-
-    for (const npc of NPCS) {
-      const pos = getEffectiveNpcPos(npc);
-      if (Math.hypot(px - pos.x, py - pos.y) < 88) {
-        hooks.openNpcModal(npc);
-        return;
-      }
-    }
-
-    for (const e of G.enemies) {
-      if (e && e.alive && e.isDummy && Math.hypot(px - (e.x + e.w * 0.5), py - (e.y + e.h)) < 94) {
-        if (hooks.openDummyModal) {
-          hooks.openDummyModal(e);
-        }
-        return;
-      }
-    }
-
-    if (G.worldState && !G.worldState.shortcutOpen && Math.hypot(px - SHORTCUT_GATE_DEF.leverX, py - SHORTCUT_GATE_DEF.leverY) < 76) {
-      openSkywayShortcut();
-      return;
-    }
-    for (const sw of WORLD_SWITCHES_DEF) {
-      if (isSwitchUnlocked(sw) && !isWorldSwitchOn(sw.switchKey) && Math.hypot(px - sw.x, py - sw.y) < 82) {
-        activateWorldSwitch(sw);
-        return;
-      }
-    }
-
-    for (const lt of LORE_TABLETS) {
-      if (Math.hypot(px - lt.x, py - lt.y) < 78) {
-        hooks.openLoreModal(lt);
-        return;
-      }
-    }
-
-    if (G.worldState) {
-      for (const p of G.worldState.pickups) {
-        if (!p.collected && isPickupUnlocked(p) && Math.hypot(px - p.x, py - p.y) < 72) {
-          collectPickup(p);
-          return;
-        }
-      }
+    const target = findNearestInteractable(px, py);
+    if (target) {
+      if (target.kind === 'core') { hooks.openEndingChoice(); return; }
+      if (target.kind === 'altar') { hooks.interactWithAltar(target.ref); return; }
+      if (target.kind === 'npc') { hooks.openNpcModal(target.ref); return; }
+      if (target.kind === 'dummy') { if (hooks.openDummyModal) hooks.openDummyModal(target.ref); return; }
+      if (target.kind === 'lever') { openSkywayShortcut(); return; }
+      if (target.kind === 'switch') { activateWorldSwitch(target.ref); return; }
+      if (target.kind === 'tablet') { hooks.openLoreModal(target.ref); return; }
+      if (target.kind === 'pickup') { collectPickup(target.ref); return; }
     }
   }
 
@@ -704,16 +670,17 @@ export function updatePlayer(dt) {
           addShake(5.5);
           const boosted = G.player.shadeGrappleBoostTimer > 0;
           G.player.shadeGrappleBoostTimer = 0;
-          damageEnemyHP(foe, boosted ? 24 : 12, true);
-          addPostureToEnemy(foe, boosted ? 36 : 18);
-          G.player.soul = Math.min(G.player.maxSoul, G.player.soul + (boosted ? 26 : 14));
+          damageEnemyHP(foe, boosted ? 26 : 14, true);
+          addPostureToEnemy(foe, boosted ? 42 : 24);
+          G.player.soul = Math.min(G.player.maxSoul, G.player.soul + (boosted ? 26 : 16));
           if (boosted) {
             spawnShockwave(foe.x + foe.w / 2, foe.y + foe.h * 0.45, 76, COLORS.violetBright, 3.6, 0.26);
             spawnFloatText(foe.x + foe.w / 2, foe.y - 36, t('combat.synShadeThread'), COLORS.violetBright, 18, 0.9);
           }
-          if (foe.kind === 'wraith' && foe.state === 'windup') {
+          // v46.5 Grapple interrupts ranged/aerial windups cleanly (gives Grapple a decisive combat niche vs Double Jump!)
+          if ((foe.kind === 'wraith' || foe.kind === 'priest' || foe.kind === 'cantor' || foe.kind === 'weaver' || foe.kind === 'falcon') && foe.state === 'windup') {
             foe.state = 'recover';
-            foe.stateTimer = 0.85;
+            foe.stateTimer = 0.90;
           }
           if (getRelicStats().synGrappleQuake) {
             triggerMiniBellQuake(foe.x + foe.w / 2, foe.y + foe.h * 0.45);
@@ -1004,7 +971,15 @@ export function updatePlayer(dt) {
         if (!isBouncePadAwake(bp)) { bp.cd = 1.4; spawnFloatText(bp.x, bp.y - 44, t('combat.sporePadDormantHint'), '#c084fc', 15, 1.25); break; }
         bp.cd = 0.22;
         bp.squish = 1.0;
-        G.player.y = bp.y - bp.h - G.player.h - 1;
+        let snapY = bp.y - bp.h - G.player.h - 1;
+        for (let si = 0; si < SOLIDS.length; si++) {
+          const s = SOLIDS[si];
+          if (s.type === 'platform') continue;
+          if (G.player.x < s.x + s.w && G.player.x + G.player.w > s.x && snapY < s.y + s.h && snapY + G.player.h > s.y) {
+            snapY = Math.max(snapY, s.y + s.h + 1);
+          }
+        }
+        G.player.y = snapY;
         G.player.vy = bp.boostVy || -790;
         G.player.grounded = false;
         G.player.coyoteTimer = 0;
@@ -1254,19 +1229,26 @@ export function updatePlayer(dt) {
     }
   }
 
-  if (G.boss && G.boss.alive && !G.boss.awake && G.player.x > 2740 && G.player.x < 3760 && G.player.y >= 0 && G.player.y < 700) {
+  // v46.9 Dynamic Symmetric Boss Arena Activation (triggers cleanly from EITHER left or right entrance in any world layout!)
+  const bossChkX = G.player.x + G.player.w * 0.5;
+  const pFootY = G.player.y + G.player.h;
+  const inBossTrigger = (b) => !!(b && b.alive && !b.awake &&
+    bossChkX > (b.arenaMinX + 75) && bossChkX < (b.arenaMaxX - 75) &&
+    pFootY > b.arenaTopY && pFootY <= (b.arenaFloorY + 42));
+
+  if (inBossTrigger(G.boss)) {
     G.boss.awake = true; recordBestiaryEvent('boss', 'seen'); audio.playBellToll(); addShake(11);
     spawnShockwave(G.boss.x + G.boss.w * 0.5, G.boss.y + 44, 195, COLORS.crimsonBright, 4.4, 0.45);
     triggerBossIntro(G.boss, locBoss(G.boss, 'name'), t('boss.hui.awakeQuote'), COLORS.parchment, 1.55);
   }
-  if (G.boss2 && G.boss2.alive && !G.boss2.awake && G.player.x > 5650 && G.player.x < 6720 && G.player.y > 880 && G.player.y < 1520) {
+  if (inBossTrigger(G.boss2)) {
     G.boss2.awake = true;
     if (!G.foundryCrucibles || G.foundryCrucibles.length === 0) G.foundryCrucibles = createFoundryCrucibles();
     recordBestiaryEvent('boss2', 'seen'); audio.playBellToll(); addShake(12);
     spawnShockwave(G.boss2.x + G.boss2.w * 0.5, G.boss2.y + 48, 210, COLORS.goldBright, 4.8, 0.48);
     triggerBossIntro(G.boss2, locBoss(G.boss2, 'name'), t('boss.ji.awakeQuote'), COLORS.goldBright, 1.55);
   }
-  if (G.boss3 && G.boss3.alive && !G.boss3.awake && G.player.x > 8450 && G.player.x < 9660 && G.player.y >= 0 && G.player.y < 700) {
+  if (inBossTrigger(G.boss3)) {
     G.boss3.awake = true; recordBestiaryEvent('boss3', 'seen'); audio.playBellToll(); addShake(14);
     spawnShockwave(G.boss3.x + G.boss3.w * 0.5, G.boss3.y + 52, 240, COLORS.goldBright, 5.2, 0.52);
     triggerBossIntro(G.boss3, locBoss(G.boss3, 'name'), t('boss.yuan.awakeQuote'), COLORS.goldBright, 1.65);

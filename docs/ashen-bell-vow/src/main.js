@@ -331,6 +331,10 @@ function runGameFrame(timestamp) {
   }
 
   if (G.invertTimer > 0) G.invertTimer = Math.max(0, G.invertTimer - dt);
+  if (G.execKillFocus) {
+    G.execKillFocus.timer -= dt;
+    if (G.execKillFocus.timer <= 0) G.execKillFocus = null;
+  }
 
   pollGamepad();
 
@@ -612,6 +616,8 @@ if (fsBtn) {
   });
 }
 document.getElementById('btn-map').addEventListener('click', openMapModal);
+const mobMapBtnEl = document.getElementById('btn-mob-map');
+if (mobMapBtnEl) mobMapBtnEl.addEventListener('click', openMapModal);
 document.getElementById('minimap-strip').addEventListener('click', openMapModal);
 document.getElementById('btn-help').addEventListener('click', () => openModal('help'));
 document.getElementById('btn-settings').addEventListener('click', () => openSettingsJournal('settings'));
@@ -768,10 +774,20 @@ if (mobScaleInp) {
   });
   mobScaleInp.addEventListener('change', () => saveUserSettings());
 }
+const mobMiniBtn = document.getElementById('btn-mob-minimap');
+if (mobMiniBtn) {
+  mobMiniBtn.addEventListener('click', () => {
+    G.settings.mobileShowMinimap = !G.settings.mobileShowMinimap;
+    applyMobileTouchPrefs();
+    saveUserSettings();
+    renderSettingsModal();
+    if (G.settings.mobileShowMinimap) { G.minimapDirty = true; renderParchmentMap(HUD_DOM.minimapCanvas, false); }
+  });
+}
 const mobOpInp = document.getElementById('mob-btn-opacity');
 if (mobOpInp) {
   mobOpInp.addEventListener('input', () => {
-    const pct = Math.max(45, Math.min(100, Number(mobOpInp.value) || 90));
+    const pct = Math.max(35, Math.min(100, Number(mobOpInp.value) || 65));
     G.settings.mobileBtnOpacity = pct / 100;
     const lbl = document.getElementById('mob-btn-opacity-val');
     if (lbl) lbl.textContent = `${pct}%`;

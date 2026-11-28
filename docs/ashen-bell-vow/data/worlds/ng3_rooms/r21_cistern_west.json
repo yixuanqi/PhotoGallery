@@ -191,11 +191,9 @@
     },
     {
       "id": "p_cw_1",
-      "kind": "priest",
+      "kind": "cantor",
       "x": 820,
-      "y": 405,
-      "minX": 755,
-      "maxX": 910
+      "y": 405
     },
     {
       "id": "an_cw_1",

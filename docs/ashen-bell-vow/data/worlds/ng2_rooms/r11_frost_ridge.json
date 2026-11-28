@@ -5,7 +5,7 @@
   "name": "霜骸圣脊 · 融雪谷口",
   "theme": "mountain",
   "bounds": {
-    "x": 1500,
+    "x": 8360,
     "y": 740,
     "w": 1320,
     "h": 780
@@ -13,14 +13,14 @@
   "subZones": [
     {
       "name": "霜骸圣脊 · 融雪冰廊",
-      "x": 560,
+      "x": 0,
       "y": 0,
       "w": 760,
       "h": 780
     },
     {
       "name": "霜骸圣脊 · 东崖雪道",
-      "x": 0,
+      "x": 760,
       "y": 0,
       "w": 560,
       "h": 780
@@ -33,98 +33,91 @@
   ],
   "solids": [
     {
-      "x": 1060,
+      "x": 0,
       "y": 640,
       "w": 260,
       "h": 140,
       "type": "ground"
     },
     {
-      "x": 760,
+      "x": 400,
       "y": 640,
       "w": 160,
       "h": 140,
       "type": "ground"
     },
     {
-      "x": 520,
+      "x": 560,
       "y": 540,
       "w": 240,
       "h": 240,
       "type": "ground"
     },
     {
-      "x": 440,
+      "x": 800,
       "y": 420,
       "w": 80,
       "h": 360,
       "type": "ground"
     },
     {
-      "x": 360,
+      "x": 880,
       "y": 420,
       "w": 80,
       "h": 80,
       "type": "ground"
     },
     {
-      "x": 140,
+      "x": 1100,
       "y": 420,
       "w": 80,
       "h": 80,
       "type": "ground"
     },
     {
-      "x": 0,
+      "x": 1180,
       "y": 420,
       "w": 140,
       "h": 360,
       "type": "ground"
     },
     {
-      "x": 140,
+      "x": 880,
       "y": 660,
       "w": 300,
       "h": 120,
       "type": "ground"
     },
     {
-      "x": 345,
+      "x": 885,
       "y": 555,
       "w": 90,
       "h": 18,
       "type": "platform"
     },
     {
-      "x": 0,
-      "y": 0,
-      "w": 40,
-      "h": 220,
-      "type": "pillar"
-    },
-    {
-      "x": 1005,
+      "x": 150,
       "y": 500,
       "w": 165,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 765,
+      "x": 380,
       "y": 385,
       "w": 175,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 535,
+      "x": 635,
       "y": 320,
       "w": 150,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 185,
+      "x": 920,
       "y": 245,
       "w": 215,
       "h": 22,
@@ -134,7 +127,7 @@
   "crumblePlatforms": [
     {
       "id": "crumble_frost_1",
-      "x": 945,
+      "x": 265,
       "y": 260,
       "w": 110,
       "h": 20
@@ -143,20 +136,20 @@
   "windZones": [
     {
       "id": "wz_frost_1",
-      "x": 740,
+      "x": 455,
       "y": 150,
       "w": 125,
       "h": 390,
-      "vx": 35,
+      "vx": -35,
       "vy": -1460
     },
     {
       "id": "wz_frost_2",
-      "x": 410,
+      "x": 790,
       "y": 120,
       "w": 120,
       "h": 300,
-      "vx": 28,
+      "vx": -28,
       "vy": -1420
     }
   ],
@@ -164,7 +157,7 @@
   "altars": [
     {
       "id": "altar_mountain",
-      "x": 1205,
+      "x": 115,
       "y": 640,
       "name": "霜骸圣脊 · 残刃祭坛",
       "shortName": "霜脊 · 残刃坛",
@@ -175,7 +168,7 @@
   "loreTablets": [
     {
       "id": "lore_mountain",
-      "x": 290,
+      "x": 1030,
       "y": 245,
       "title": "霜骸剑铭",
       "sub": "霜骸圣脊 · 残刃冢高台",
@@ -188,7 +181,7 @@
     {
       "id": "pickup_echo_mountain",
       "kind": "echoCache",
-      "x": 865,
+      "x": 455,
       "y": 385,
       "echoAmount": 105,
       "name": "冰封残响",
@@ -200,7 +193,7 @@
       "bonusHp": 10,
       "bonusSoul": 15,
       "echoAmount": 80,
-      "x": 290,
+      "x": 1030,
       "y": 660,
       "name": "冰窟秘藏 · 凝霜魂核",
       "desc": "以「镇岳下砸」震碎脆冰发现的冰窟魂核（生命 +10 · 魂火 +15 · +80 残响）"
@@ -210,7 +203,7 @@
   "pendulums": [
     {
       "id": "pend_frost_1",
-      "x": 635,
+      "x": 685,
       "anchorY": 35,
       "len": 240,
       "amp": 0.56,
@@ -223,19 +216,19 @@
   "grappleAnchors": [
     {
       "id": "anc_frost_1",
-      "x": 1005,
+      "x": 315,
       "y": 145,
       "topY": 0
     },
     {
       "id": "anc_frost_2",
-      "x": 575,
+      "x": 745,
       "y": 140,
       "topY": 0
     },
     {
       "id": "anc_frost_3",
-      "x": 255,
+      "x": 1065,
       "y": 115,
       "topY": 0
     }
@@ -243,93 +236,95 @@
   "lanterns": [
     {
       "id": "lan_frost_1",
-      "x": 800,
+      "x": 520,
       "anchorY": 120,
       "topY": 0,
       "len": 150,
-      "angle": -0.08
+      "angle": 0.08
     },
     {
       "id": "lan_frost_2",
-      "x": 410,
+      "x": 865,
       "anchorY": 100,
       "topY": 0,
-      "len": 140,
-      "angle": 0.08
+      "len": 125,
+      "angle": -0.08
     }
   ],
   "enemies": [
     {
       "id": "frostguard_1",
       "kind": "frostguard",
-      "x": 895,
+      "x": 385,
       "y": 572,
-      "minX": 750,
-      "maxX": 1110
+      "minX": 170,
+      "maxX": 530
     },
     {
       "id": "falcon_frost_1",
       "kind": "falcon",
-      "x": 611,
+      "x": 665,
       "y": 215
     },
     {
       "id": "priest_frost_1",
-      "kind": "priest",
-      "x": 319,
+      "kind": "cantor",
+      "x": 965,
       "y": 179
     },
     {
       "id": "frostguard_2",
       "kind": "frostguard",
-      "x": 625,
+      "x": 655,
       "y": 472,
-      "minX": 500,
-      "maxX": 705
+      "minX": 575,
+      "maxX": 780
     },
     {
       "id": "frostguard_3",
       "kind": "frostguard",
-      "x": 220,
+      "x": 1060,
       "y": 352,
-      "minX": 30,
-      "maxX": 440
+      "minX": 840,
+      "maxX": 1250
     }
   ],
   "bosses": [],
   "inscriptions": [
     {
-      "x": 1080,
+      "x": 240,
       "y": 575,
-      "text": "「霜骸圣脊 · 逆风寒崖，钟锤与摇铃可破严阵」"
+      "text": "「霜骸圣脊 · 逆风寒崖，钟锤与摇铃可破严阵」",
+      "hideInNgPlus": true
     },
     {
-      "x": 235,
+      "x": 1085,
       "y": 355,
       "text": "「风雪残刃冢 · 历代提灯者折戟之所」"
     },
     {
-      "x": 170,
+      "x": 1150,
       "y": 355,
       "text": "东行攀登「冻剑冢」直上雪巅 — 峰顶融雪顺岩缝化为墨雨倾泻全境"
     },
     {
-      "x": 725,
+      "x": 595,
       "y": 240,
-      "text": "「悬冰巨棱 · 击落可砸敌并冻成冰桥」"
+      "text": "「悬冰巨棱 · 击落可砸敌并冻成冰桥」",
+      "hideInNgPlus": true
     }
   ],
   "props": {
     "puddles": [],
     "banners": [
       {
-        "x": 1120,
+        "x": 200,
         "y": 25,
         "len": 165,
         "color": "#1d2b44"
       },
       {
-        "x": 465,
+        "x": 855,
         "y": 25,
         "len": 160,
         "color": "#1d2b44"
@@ -337,87 +332,87 @@
     ],
     "candles": [
       {
-        "x": 1165,
+        "x": 155,
         "y": 640,
         "count": 4
       },
       {
-        "x": 165,
+        "x": 1155,
         "y": 420,
         "count": 4
       }
     ],
     "boneCairns": [
-      1000,
-      325
+      320,
+      995
     ],
     "stamps": [
       {
         "type": "ice_spire",
-        "x": 1090,
+        "x": 230,
         "y": 640,
         "scale": 1.05,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.84,
         "seed": 0
       },
       {
         "type": "sword_mound",
-        "x": 865,
+        "x": 455,
         "y": 640,
         "scale": 0.96,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.82,
         "seed": 1
       },
       {
         "type": "ice_spire",
-        "x": 655,
+        "x": 665,
         "y": 540,
         "scale": 1.12,
-        "flip": false,
+        "flip": true,
         "layer": "bg",
         "alpha": 0.86,
         "seed": 2
       },
       {
         "type": "sword_mound",
-        "x": 380,
+        "x": 940,
         "y": 420,
         "scale": 1.12,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.88,
         "seed": 0
       },
       {
         "type": "ice_spire",
-        "x": 210,
+        "x": 1110,
         "y": 420,
         "scale": 1.18,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.86,
         "seed": 1
       },
       {
         "type": "sword_mound",
-        "x": 115,
+        "x": 1205,
         "y": 420,
         "scale": 0.92,
-        "flip": false,
+        "flip": true,
         "layer": "bg",
         "alpha": 0.84,
         "seed": 2
       },
       {
         "type": "stone_statue",
-        "x": 470,
+        "x": 850,
         "y": 420,
         "scale": 0.96,
-        "flip": false,
+        "flip": true,
         "layer": "bg",
         "alpha": 0.72,
         "seed": 1
@@ -427,13 +422,13 @@
   "voidBarriers": [
     {
       "id": "vb_frost_sweep",
-      "x": 1036,
+      "x": 260,
       "y": 495,
       "w": 24,
       "h": 145,
       "sweeping": true,
-      "sweepMinX": 786,
-      "sweepMaxX": 1126,
+      "sweepMinX": 170,
+      "sweepMaxX": 510,
       "sweepSpeed": 1.25,
       "sweepPhase": 1.2
     }
@@ -441,7 +436,7 @@
   "breakableFloors": [
     {
       "id": "floor_frost_ice",
-      "x": 220,
+      "x": 960,
       "y": 420,
       "w": 140,
       "h": 80,
@@ -449,7 +444,7 @@
     },
     {
       "id": "floor_frost_seep",
-      "x": 920,
+      "x": 260,
       "y": 640,
       "w": 140,
       "h": 140,
@@ -459,14 +454,14 @@
   "icePillars": [
     {
       "id": "ice_ridge_1",
-      "x": 725,
+      "x": 595,
       "topY": 0,
       "len": 155,
-      "bridgeX": 665,
+      "bridgeX": 545,
       "bridgeY": 385,
       "bridgeW": 110,
       "bridgeH": 20
     }
   ],
-  "mirrored": true
+  "mirrored": false
 }

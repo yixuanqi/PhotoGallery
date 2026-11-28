@@ -683,28 +683,28 @@ export const VOW_CONSTRAINTS = [
     name: '断油之誓',
     short: '断油',
     bonusPct: 25,
-    desc: '封印全部灯油瓶（上限锁为 0），仅可借攻击吸血与处决续航 · 残响 +25%'
+    desc: '灯油瓶归零，仅靠吸血与处决续航 · 残响 +25%'
   },
   {
     id: 'doubleDmg',
     name: '脆骨之誓',
     short: '脆骨',
     bonusPct: 30,
-    desc: '承受的所有常规与首领伤害提升至 180% · 残响 +30%'
+    desc: '承受全部伤害提至 180% · 残响 +30%'
   },
   {
     id: 'noGrayBlock',
     name: '无暇之誓',
     short: '无暇',
     bonusPct: 30,
-    desc: '普通格挡不再化为可吸回灰血，失误格挡直接扣除 75% 实血（纯打铁苦难）· 残响 +30%'
+    desc: '格挡无灰血，失误直扣 75% 实血 · 残响 +30%'
   },
   {
     id: 'fierceFoes',
     name: '狂钟之誓',
     short: '狂钟',
     bonusPct: 25,
-    desc: '敌兵与首领架势 +30%，招式衔接与追击节奏加快 18% · 残响 +25%'
+    desc: '敌势 +30%，连招节奏加快 18% · 残响 +25%'
   }
 ];
 

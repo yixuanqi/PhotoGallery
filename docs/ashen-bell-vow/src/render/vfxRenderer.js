@@ -6,7 +6,7 @@ import { G, isWorldSwitchOn, isSwitchUnlocked, getEffectiveNpcPos } from '../sta
 import { getActionKeyLabel } from '../input.js';
 import { drawGlowSprite, boilLine, boilCircle, drawTaperedCrescent } from '../vfx.js';
 import { rgbStr } from '../renderParallax.js';
-import { isPickupUnlocked } from '../combat.js';
+import { isPickupUnlocked, findNearestInteractable } from '../combat.js';
 import { t, isEn, locNpcName, locAltar, locTablet, locPickup, locDummyMode } from '../i18n.js';
 import { drawParryStarGlint } from './renderShared.js';
 import { drawCachedText, drawCachedBadge } from './glyphAtlas.js';
@@ -104,6 +104,26 @@ export function drawProjectiles() {
       G.ctx.stroke();
       G.ctx.fillStyle = '#fef9c3';
       G.ctx.beginPath(); G.ctx.arc(0, 0, pr.r * 0.45, 0, Math.PI * 2); G.ctx.fill();
+    } else if (pr.kind === 'radiantOrb') {
+      const charging = (pr.launchDelay || 0) > 0;
+      const rot = (G.globalTime || 0) * (charging ? 6.5 : 4.2);
+      drawGlowSprite('gold', 0, 0, pr.r * (charging ? 3.2 : 2.8), pr.reflected ? 0.96 : 0.84);
+      G.ctx.save();
+      G.ctx.rotate(rot);
+      G.ctx.strokeStyle = pr.reflected ? COLORS.cyanBright : '#fef08a';
+      G.ctx.lineWidth = 2.0;
+      for (let k = 0; k < 4; k++) {
+        const a = k * Math.PI * 0.5;
+        G.ctx.beginPath();
+        G.ctx.moveTo(Math.cos(a) * (pr.r * 0.65), Math.sin(a) * (pr.r * 0.65));
+        G.ctx.lineTo(Math.cos(a) * (pr.r * 1.55), Math.sin(a) * (pr.r * 1.55));
+        G.ctx.stroke();
+      }
+      G.ctx.restore();
+      G.ctx.fillStyle = '#fffbeb';
+      G.ctx.strokeStyle = COLORS.goldBright;
+      G.ctx.lineWidth = 2.0;
+      G.ctx.beginPath(); G.ctx.arc(0, 0, pr.r * 0.72, 0, Math.PI * 2); G.ctx.fill(); G.ctx.stroke();
     } else if (pr.kind === 'wraithOrb') {
       const col = pr.reflected ? COLORS.goldBright : COLORS.crimsonBright;
       drawGlowSprite(pr.reflected ? 'gold' : 'crimson', 0, 0, pr.r * 2.5, 0.85);
@@ -1121,58 +1141,80 @@ export function drawParticles() {
   ctx.globalAlpha = 1;
 }
 
+function drawMobileFocusPointer(x, y, accent = COLORS.goldBright) {
+  const ctx = G.ctx;
+  const bob = Math.sin(G.globalTime * 5.8) * 3.5;
+  const py = y + bob;
+  ctx.save();
+  drawGlowSprite(accent === COLORS.cyanBright ? 'cyan' : 'gold', x, py, 30, 0.52);
+  // Crisp minimalist diamond + downward chevron focus pin (no text clutter on mobile; bottom interact pill carries label!)
+  ctx.fillStyle = 'rgba(8, 12, 20, 0.88)';
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(x, py - 9);
+  ctx.lineTo(x + 8, py);
+  ctx.lineTo(x, py + 9);
+  ctx.lineTo(x - 8, py);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = accent;
+  ctx.beginPath();
+  ctx.arc(x, py, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x - 4.5, py + 13);
+  ctx.lineTo(x, py + 18);
+  ctx.lineTo(x + 4.5, py + 13);
+  ctx.stroke();
+  ctx.restore();
+}
+
 export function drawWorldPrompts() {
   if (!G.player || G.gameState !== 'playing') return;
   const px = G.player.x + G.player.w / 2;
   const py = G.player.y + G.player.h;
-  G.ctx.save();
+  const target = findNearestInteractable(px, py);
+  if (!target) return;
 
+  G.ctx.save();
   const isMob = !!(G.isMobile || (typeof document !== 'undefined' && document.body && document.body.classList.contains('is-mobile')));
-  const ek = isMob ? t('mob.interact') : getActionKeyLabel('interact');
-  if (G.worldState && G.worldState.boss3Defeated && !G.echoSession &&
-      Math.hypot(px - FIRST_BELL_CORE_POS.x, py - FIRST_BELL_CORE_POS.y) < 105) {
-    drawPromptBadge(FIRST_BELL_CORE_POS.x, FIRST_BELL_CORE_POS.y - 118, t('prompt.core', ek));
+  if (isMob) {
+    const accent = (target.kind === 'altar' || target.kind === 'pickup') ? COLORS.cyanBright : COLORS.goldBright;
+    drawMobileFocusPointer(target.x + (target.kind === 'npc' ? 4 : 0), target.promptY + 8, accent);
+    G.ctx.restore();
+    return;
   }
-  for (const altar of ALTARS) {
-    if (Math.hypot(px - altar.x, py - altar.y) < 86) {
-      const isLit = !G.worldState || G.worldState.litAltars.has(altar.id);
-      drawPromptBadge(altar.x, altar.y - 96, isLit ? t('prompt.altarRest', ek) : t('prompt.altarLight', ek, locAltar(altar, 'shortName')));
-    }
+
+  const ek = getActionKeyLabel('interact');
+  let label = '';
+  let bx = target.x;
+  if (target.kind === 'core') {
+    label = t('prompt.core', ek);
+  } else if (target.kind === 'altar') {
+    const isLit = !G.worldState || G.worldState.litAltars.has(target.ref.id);
+    label = isLit ? t('prompt.altarRest', ek) : t('prompt.altarLight', ek, locAltar(target.ref, 'shortName'));
+  } else if (target.kind === 'npc') {
+    bx += 8;
+    const npc = target.ref;
+    const verb = npc.kind === 'chronicler' ? t('prompt.npcChron') : npc.kind === 'keeper' ? t('prompt.npcKeeper') : npc.kind === 'scavenger' ? t('prompt.npcScav') : t('prompt.npcSmith');
+    label = t('prompt.npcFull', ek, verb, locNpcName(npc));
+  } else if (target.kind === 'dummy') {
+    const m = DUMMY_MODES[target.ref.modeIdx] || DUMMY_MODES[0];
+    label = t('prompt.dummyMode', ek, locDummyMode(m, 'label'));
+  } else if (target.kind === 'lever') {
+    label = t('prompt.lever', ek);
+  } else if (target.kind === 'switch') {
+    const sw = target.ref;
+    const pKey = sw.kind === 'sluice' ? 'prompt.switchSluice' : sw.kind === 'valve' ? 'prompt.switchValve' : sw.kind === 'hatch' ? 'prompt.switchHatch' : 'prompt.switchGateLever';
+    label = t(pKey, ek);
+  } else if (target.kind === 'tablet') {
+    label = t('prompt.lore', ek, locTablet(target.ref, 'title'));
+  } else if (target.kind === 'pickup') {
+    label = t('prompt.pickup', ek, locPickup(target.ref, 'name'));
   }
-  for (const npc of NPCS) {
-    const pos = getEffectiveNpcPos(npc);
-    if (Math.hypot(px - pos.x, py - pos.y) < 88) {
-      const verb = npc.kind === 'chronicler' ? t('prompt.npcChron') : npc.kind === 'keeper' ? t('prompt.npcKeeper') : npc.kind === 'scavenger' ? t('prompt.npcScav') : t('prompt.npcSmith');
-      drawPromptBadge(pos.x + 8, pos.y - 94, t('prompt.npcFull', ek, verb, locNpcName(npc)));
-    }
-  }
-  for (const e of G.enemies) {
-    if (e && e.alive && e.isDummy && Math.hypot(px - (e.x + e.w * 0.5), py - (e.y + e.h)) < 94) {
-      const m = DUMMY_MODES[e.modeIdx] || DUMMY_MODES[0];
-      drawPromptBadge(e.x + e.w * 0.5, e.y - 44, t('prompt.dummyMode', ek, locDummyMode(m, 'label')));
-    }
-  }
-  if (G.worldState && !G.worldState.shortcutOpen && Math.hypot(px - SHORTCUT_GATE_DEF.leverX, py - SHORTCUT_GATE_DEF.leverY) < 76) {
-    drawPromptBadge(SHORTCUT_GATE_DEF.leverX, SHORTCUT_GATE_DEF.leverY - 68, t('prompt.lever', ek));
-  }
-  for (const sw of WORLD_SWITCHES_DEF) {
-    if (isSwitchUnlocked(sw) && !isWorldSwitchOn(sw.switchKey) && Math.hypot(px - sw.x, py - sw.y) < 82) {
-      const pKey = sw.kind === 'sluice' ? 'prompt.switchSluice' : sw.kind === 'valve' ? 'prompt.switchValve' : sw.kind === 'hatch' ? 'prompt.switchHatch' : 'prompt.switchGateLever';
-      drawPromptBadge(sw.x, sw.y - 76, t(pKey, ek));
-    }
-  }
-  for (const lt of LORE_TABLETS) {
-    if (Math.hypot(px - lt.x, py - lt.y) < 78) {
-      drawPromptBadge(lt.x, lt.y - 80, t('prompt.lore', ek, locTablet(lt, 'title')));
-    }
-  }
-  if (G.worldState) {
-    for (const p of G.worldState.pickups) {
-      if (!p.collected && isPickupUnlocked(p) && Math.hypot(px - p.x, py - p.y) < 72) {
-        drawPromptBadge(p.x, p.y - 66, t('prompt.pickup', ek, locPickup(p, 'name')));
-      }
-    }
-  }
+  if (label) drawPromptBadge(bx, target.promptY, label);
   G.ctx.restore();
 }
 

@@ -56,7 +56,18 @@ export function drawWorldSwitches() {
     const col = on ? COLORS.goldBright : (isSluice ? COLORS.cyanBright : COLORS.gold);
     ctx.save();
     if (!unlocked) ctx.globalAlpha = 0.45;
-    drawGlowSprite(isSluice ? 'cyan' : 'gold', sw.x, sw.y - 32, on ? 56 : 38, on ? 0.55 : 0.34);
+    if (unlocked && !on) {
+      const sPulse = 0.72 + Math.sin((G.globalTime || 0) * 3.8 + sw.x) * 0.28;
+      const sg = ctx.createLinearGradient(sw.x, sw.y - 8, sw.x, sw.y - 115);
+      sg.addColorStop(0, isSluice ? `rgba(56, 189, 248, ${(0.20 * sPulse).toFixed(3)})` : `rgba(253, 224, 71, ${(0.20 * sPulse).toFixed(3)})`);
+      sg.addColorStop(1, 'rgba(253, 224, 71, 0)');
+      ctx.fillStyle = sg;
+      ctx.fillRect(sw.x - 14, sw.y - 115, 28, 107);
+      ctx.strokeStyle = isSluice ? `rgba(125, 211, 252, ${(0.45 * sPulse).toFixed(3)})` : `rgba(253, 224, 71, ${(0.45 * sPulse).toFixed(3)})`;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.ellipse(sw.x, sw.y - 1, 24, 4.5, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+    drawGlowSprite(isSluice ? 'cyan' : 'gold', sw.x, sw.y - 32, on ? 56 : 52, on ? 0.55 : 0.46);
     ctx.fillStyle = '#181e2c'; ctx.strokeStyle = col; ctx.lineWidth = 1.8;
     ctx.fillRect(sw.x - 16, sw.y - 16, 32, 16); ctx.strokeRect(sw.x - 16, sw.y - 16, 32, 16);
     ctx.fillRect(sw.x - 5, sw.y - 44, 10, 28); ctx.strokeRect(sw.x - 5, sw.y - 44, 10, 28);

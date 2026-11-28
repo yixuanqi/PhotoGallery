@@ -53,6 +53,7 @@ export const G = {
     showProfilerDetail: false,
     fpsDivisor: 1,
     hitstopMode: 'standard', // 'standard' | 'light' | 'off'
+    flashMode: 'soft', // 'soft' (eye-safe default) | 'off' | 'classic'
     musicEnabled: true,
     masterVol: 0.85,
     musicVol: 0.75,
@@ -60,8 +61,9 @@ export const G = {
     mobileFloatingJoy: true,
     mobileCombatAssist: true,
     mobileMergedParry: true,
+    mobileShowMinimap: false,
     mobileBtnScale: 1.0,
-    mobileBtnOpacity: 0.90,
+    mobileBtnOpacity: 0.65,
     mobileQuality: 'high', // 'high' (2.4x HD) | 'retina' (3.0x Native) | 'eco' (1.5x Battery)
     mobileEcoMode: false,
     keybinds: { ...DEFAULT_KEYBINDS }
@@ -83,6 +85,7 @@ export const G = {
   sporeClouds: [],
   weaponUltimates: [],
   delayedStrikes: [],
+  arenaHazards: [],
   dummyAutoFullSeals: false,
   dummyRefillTimer: 0,
   crumblePlatforms: [],
@@ -101,11 +104,14 @@ export const G = {
   },
   lanterns: [],
   grapplePreviewTarget: null,
+  grappleCandidates: [],
+  grappleLockSnapTimer: 0,
 
   // Runtime gameplay state
   gameState: 'title',
   hitstopTimer: 0,
   invertTimer: 0,
+  execKillFocus: null,
   screenFlash: { alpha: 0, color: '#fff' },
   cam: { x: 0, y: 0, shake: 0, kickX: 0, kickY: 0, zoom: 1, vLookY: 0, roomTransTimer: 0 },
   wardenArenaFx: { windDir: 0, windTimer: 0, blizzardAlpha: 0, bellPulseTimer: 0 },
@@ -243,6 +249,27 @@ export function createFreshWorldState() {
   };
 }
 
+// v47.3 Clean NG+ Scheme: auto-hide already-owned Abilities, Weapons, Realm Seals, Relics & Capped Flask Cores (zero duplicate shrines or HP/Soul stacking!)
+export function syncOwnedAbilityPickups(ws = G.worldState) {
+  if (!ws || !Array.isArray(ws.pickups)) return;
+  const flasksCapped = (3 + (ws.bonusFlasks || 0)) >= 6;
+  for (let i = 0; i < ws.pickups.length; i++) {
+    const p = ws.pickups[i];
+    if (!p || p.collected) continue;
+    if (p.kind === 'ability' && ws.abilities && ws.abilities[p.abilityId]) {
+      p.collected = true;
+    } else if (p.kind === 'weapon' && ws.unlockedWeapons && ws.unlockedWeapons.has(p.weaponId || 'bell')) {
+      p.collected = true;
+    } else if (p.kind === 'realmSeal' && ws.realmSeals && ws.realmSeals[p.sealId || 'wind'] && (!p.relicId || (ws.unlockedRelics && ws.unlockedRelics.has(p.relicId)))) {
+      p.collected = true;
+    } else if (p.kind === 'relic' && ws.unlockedRelics && ws.unlockedRelics.has(p.relicId)) {
+      p.collected = true;
+    } else if (p.kind === 'flaskCore' && flasksCapped) {
+      p.collected = true;
+    }
+  }
+}
+
 export function isWeaponUnlocked(id) {
   const norm = normalizeWeaponId(id);
   if (norm === 'blade') return true;
@@ -339,6 +366,13 @@ export function isWorldSwitchOn(key) {
 export function isRiverDrained() { return isWorldSwitchOn('riverDrained'); }
 export function isWindZoneActive(wz) {
   if (!wz) return false;
+  // v47.1 Seal vertical express wind shafts during Boss 2 / Echo rematches so players never float out of the arena ceiling!
+  if (wz.requiresSwitch === 'foundryValveOpen') {
+    if (G.echoSession || (G.boss2 && G.boss2.alive && G.boss2.awake)) return false;
+  }
+  if (wz.requiresBoss4Unlocked) {
+    if (G.echoSession && !(G.boss4 && G.boss4.alive && G.boss4.awake)) return false;
+  }
   if (wz.requiresSwitch && !isWorldSwitchOn(wz.requiresSwitch)) return false;
   if (wz.requiresBoss4Unlocked && !isBoss4Unlocked()) return false;
   return true;

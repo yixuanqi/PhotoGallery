@@ -22,6 +22,7 @@ import { drawFoundryVentGate, drawMirrorAbyssGate, drawBreakableFloors, drawWorl
 import { drawFoundryCrucibles, drawCinematicLetterbox, drawZoneCalligraphyBanner } from './render/cinematicRenderer.js';
 import { drawTitleIntroOverlay } from './render/titleIntro.js';
 import { drawBoss, drawBoss2, drawBoss3, drawBoss4MirrorFloor, drawBoss4, drawBossBanner } from './render/bossRenderer.js';
+import { drawArenaHazards } from './render/arenaHazardRenderer.js';
 import {
   drawProjectiles, drawTalismans, drawChapelTide, drawGroundWaves, drawSporeClouds,
   drawFrostOverlay, drawBellQuakes, drawDelayedStrikes, drawWeaponUltimates,
@@ -182,6 +183,7 @@ export function render() {
   drawTalismans();
   drawChapelTide();
   drawGroundWaves();
+  drawArenaHazards();
   drawSporeClouds();
   drawBellQuakes();
   drawWeaponUltimates();
@@ -228,15 +230,77 @@ export function render() {
   const vigImg = getCachedVignette(isPhase2);
   if (vigImg) G.ctx.drawImage(vigImg, 0, 0, G.canvasW, G.canvasH);
 
-  if (G.screenFlash.alpha > 0) {
-    G.ctx.fillStyle = G.screenFlash.color;
-    G.ctx.globalAlpha = G.screenFlash.alpha;
-    G.ctx.fillRect(0, 0, G.canvasW, G.canvasH);
-    G.ctx.globalAlpha = 1;
+  const flashMode = (G.settings && G.settings.flashMode) || 'soft';
+  if (G.screenFlash.alpha > 0 && flashMode !== 'off') {
+    const rawCol = G.screenFlash.color || '#f59e0b';
+    if (flashMode === 'classic') {
+      G.ctx.fillStyle = rawCol;
+      G.ctx.globalAlpha = Math.min(0.32, G.screenFlash.alpha);
+      G.ctx.fillRect(0, 0, G.canvasW, G.canvasH);
+      G.ctx.globalAlpha = 1;
+    } else {
+      // v46.2 Eye-Safe Soft Mode: map glaring near-whites to warm dark amber & render as peripheral edge-glow vignette!
+      const isGlareWhite = rawCol === '#fff' || rawCol === '#ffffff' || rawCol === '#fef9c3' || rawCol === '#fef08a';
+      const safeCol = isGlareWhite ? '#d97706' : rawCol;
+      const cappedA = Math.min(0.11, G.screenFlash.alpha * 0.36);
+      if (cappedA > 0.005) {
+        const cxF = G.canvasW * 0.5;
+        const cyF = G.canvasH * 0.5;
+        const rIn = Math.min(G.canvasW, G.canvasH) * 0.34;
+        const rOut = Math.hypot(cxF, cyF);
+        const fg = G.ctx.createRadialGradient(cxF, cyF, rIn, cxF, cyF, rOut);
+        fg.addColorStop(0, 'rgba(0,0,0,0)');
+        fg.addColorStop(0.65, 'rgba(0,0,0,0)');
+        fg.addColorStop(1, safeCol);
+        G.ctx.save();
+        G.ctx.globalAlpha = cappedA;
+        G.ctx.fillStyle = fg;
+        G.ctx.fillRect(0, 0, G.canvasW, G.canvasH);
+        G.ctx.restore();
+      }
+    }
   }
 
-  // Lightweight GPU-friendly execution inversion flash (replaces slow full-screen ctx.filter)
-  if (G.invertTimer > 0) {
+  // v46.2 Eye-Safe Execution & Boss-Kill Impact: Peripheral Ink-Vignette Squeeze + Localized Crimson-Gold Slash Burst!
+  if (G.execKillFocus && G.execKillFocus.timer > 0 && flashMode !== 'off') {
+    const ef = G.execKillFocus;
+    const p = Math.max(0, Math.min(1, ef.timer / Math.max(0.01, ef.maxTimer)));
+    const sx = Math.max(40, Math.min(G.canvasW - 40, ef.x - G.cam.x));
+    const sy = Math.max(40, Math.min(G.canvasH - 40, ef.y - G.cam.y));
+    const outerR = Math.hypot(G.canvasW, G.canvasH) * 0.72;
+    const clearR = ef.isBoss ? 148 : 112;
+    G.ctx.save();
+    // 1) Darken outer ink perimeter momentarily -> high dramatic contrast with LOWER overall screen luminance!
+    const sq = G.ctx.createRadialGradient(sx, sy, clearR, sx, sy, outerR);
+    sq.addColorStop(0, 'rgba(3, 5, 10, 0)');
+    sq.addColorStop(0.55, `rgba(4, 6, 12, ${(0.28 * p).toFixed(3)})`);
+    sq.addColorStop(1, `rgba(2, 4, 8, ${(0.54 * p).toFixed(3)})`);
+    G.ctx.fillStyle = sq;
+    G.ctx.fillRect(0, 0, G.canvasW, G.canvasH);
+    // 2) Localized warm crimson-gold radial impact glow strictly around target
+    const burstR = (ef.isBoss ? 185 : 138) * (1.18 - 0.25 * p);
+    const bg = G.ctx.createRadialGradient(sx, sy, 4, sx, sy, burstR);
+    bg.addColorStop(0, ef.isBoss ? `rgba(245, 158, 11, ${(0.34 * p).toFixed(3)})` : `rgba(220, 38, 38, ${(0.36 * p).toFixed(3)})`);
+    bg.addColorStop(0.5, `rgba(180, 83, 9, ${(0.16 * p).toFixed(3)})`);
+    bg.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    G.ctx.fillStyle = bg;
+    G.ctx.beginPath();
+    G.ctx.arc(sx, sy, burstR, 0, Math.PI * 2);
+    G.ctx.fill();
+    // 3) Crisp localized crimson-gold kill slash line across target
+    const cutLen = (ef.isBoss ? 155 : 108) * (0.85 + 0.35 * (1 - p));
+    G.ctx.strokeStyle = ef.isBoss ? `rgba(251, 191, 36, ${(0.82 * p).toFixed(3)})` : `rgba(248, 113, 113, ${(0.88 * p).toFixed(3)})`;
+    G.ctx.lineWidth = Math.max(1.5, (ef.isBoss ? 4.2 : 3.2) * p);
+    G.ctx.lineCap = 'round';
+    G.ctx.beginPath();
+    G.ctx.moveTo(sx - cutLen * 0.88, sy + cutLen * 0.34);
+    G.ctx.lineTo(sx + cutLen * 0.88, sy - cutLen * 0.34);
+    G.ctx.stroke();
+    G.ctx.restore();
+  }
+
+  // Classic full-screen difference invert preserved ONLY when player explicitly selects Classic flash mode
+  if (G.invertTimer > 0 && flashMode === 'classic') {
     G.ctx.globalCompositeOperation = 'difference';
     G.ctx.fillStyle = '#f5f2ea';
     G.ctx.fillRect(0, 0, G.canvasW, G.canvasH);

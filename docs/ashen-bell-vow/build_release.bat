@@ -1,9 +1,9 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title Ashen Bell Vow v46.1 - Multi-Platform Release Builder
+title Ashen Bell Vow v47.6 - Multi-Platform Release Builder
 echo ============================================================
-echo   Ashen Bell Vow v46.1 - Offline Release Builder
+echo   Ashen Bell Vow v47.6 - Offline Release Builder
 echo   Outputs TapTap/4399 Offline ZIP + itch.io Web ZIP to dist\
 echo ============================================================
 where py >nul 2>nul

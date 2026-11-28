@@ -273,6 +273,19 @@ export function buildSfxBakeTasks(makeNoise) {
           osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.17);
         }
       }],
+      ['grapple_tick', 0.08, (c, out) => {
+        // v46.5 Ultra-crisp subtle bronze clasp click for grapple target switching (zero ear fatigue!)
+        const freqs = [1960, 2940];
+        for (let i = 0; i < 2; i++) {
+          const osc = c.createOscillator(); const g = c.createGain();
+          osc.type = i === 0 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(freqs[i], 0);
+          osc.frequency.exponentialRampToValueAtTime(freqs[i] * 1.06, 0.045);
+          g.gain.setValueAtTime(i === 0 ? 0.085 : 0.045, 0);
+          g.gain.exponentialRampToValueAtTime(0.001, 0.055);
+          osc.connect(g); g.connect(out); osc.start(0); osc.stop(0.06);
+        }
+      }],
       ['wraith_shot', 0.30, (c, out) => {
         const osc = c.createOscillator(); const g = c.createGain();
         osc.type = 'sine'; osc.frequency.setValueAtTime(520, 0); osc.frequency.exponentialRampToValueAtTime(240, 0.24);

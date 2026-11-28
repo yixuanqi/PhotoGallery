@@ -94,13 +94,13 @@
       "desc": "生命 +10 · 魂火 +10 · +55 残响"
     },
     {
-      "id": "pickup_relic_bell",
+      "id": "pickup_relic_core",
       "kind": "relic",
-      "relicId": "bellthread",
+      "relicId": "bellcore",
       "x": 550,
       "y": 316,
-      "name": "隐藏圣物 · 幽丝断钟",
-      "desc": "已解锁并可在祭坛铭刻！"
+      "name": "苍穹秘宝 · 古钟心核",
+      "desc": "墨印上限 +1，弹反回血，居合/断钟返增伤 25%！"
     }
   ],
   "resonancePuzzles": [],

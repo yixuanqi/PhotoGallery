@@ -10,16 +10,16 @@
 <meta name="theme-color" content="#080b11" />
 <meta name="screen-orientation" content="landscape" />
 <meta name="x5-orientation" content="landscape" />
-<title>灰钟残誓 v46.1 — PWA 离线全屏壳、切后台音频保活与手机稳帧省电模式 · 暗黑手绘魂系类银河恶魔城</title>
+<title>灰钟残誓 v47.6 — PWA 离线全屏壳、切后台音频保活与手机稳帧省电模式 · 暗黑手绘魂系类银河恶魔城</title>
 <link rel="manifest" href="./manifest.webmanifest" />
 <link rel="icon" type="image/svg+xml" href="./icon.svg" />
 <link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png" />
-<link rel="stylesheet" href="./styles.css?v=46.1.0" />
+<link rel="stylesheet" href="./styles.css?v=47.6.0" />
 </head>
 <body>
 <div id="game-root">
   <canvas id="gameCanvas"></canvas>
-  <!-- v46.1 Mobile Portrait Rotate Guard (Elegant Dark-Ink Landscape Prompt) -->
+  <!-- v47.6 Mobile Portrait Rotate Guard (Elegant Dark-Ink Landscape Prompt) -->
   <div id="mobile-rotate-guard" class="mobile-rotate-guard" aria-live="polite">
     <div class="rotate-guard-card">
       <div class="rotate-phone-anim" aria-hidden="true">
@@ -102,6 +102,7 @@
         <div class="hud-btn-row">
           <button id="btn-ctrl" class="hud-btn desktop-only-btn" data-i18n-title="hud.ctrlTip" title="切换键鼠一体 / 纯键盘预设（支持原生手柄即插即用）">操控: 键鼠</button>
           <button id="btn-fullscreen" class="hud-btn mobile-only-btn" data-i18n="hud.fullscreen" data-i18n-title="hud.fullscreenTip" title="切换横屏全屏">全屏</button>
+          <button id="btn-mob-map" class="hud-btn mobile-only-btn mob-icon-btn" data-i18n-title="hud.minimapTip" title="展开手绘羊皮纸详图"><svg class="ui-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 3.5L5.5 2l5 1.8L14.5 2v10.5L10.5 14l-5-1.8-4 1.8V3.5z"/><path d="M5.5 2v10.2M10.5 3.8V14"/></svg></button>
           <button id="btn-map" class="hud-btn mobile-hide-btn" data-i18n="hud.map">地图 [M]</button>
           <button id="btn-help" class="hud-btn mobile-hide-btn" data-i18n="hud.help">心法</button>
           <button id="btn-settings" class="hud-btn" data-i18n="hud.settings">设置</button>
@@ -147,14 +148,14 @@
     A/D 移 · Space 跳 · 左键/J 三连·长按居合 · 右键/K 弹反 · F/中键/I 钩索 · R/U 灵刃 · Shift 闪 · C/L 墨印 · Q/H 回血 · E 交互 · M 舆图 · 支持手柄
   </div>
 
-  <!-- Title Overlay (v46.1 Full-Viewport Atmospheric Dark Hand-Drawn Title Stage) -->
+  <!-- Title Overlay (v47.6 Full-Viewport Atmospheric Dark Hand-Drawn Title Stage) -->
   <div id="title-screen" class="overlay-screen title-stage">
     <div class="title-backdrop-scrim" aria-hidden="true"></div>
 
     <div class="title-topbar">
-      <div class="title-ver-badge">ASHEN BELL VOW · v46.1</div>
+      <div class="title-ver-badge">ASHEN BELL VOW · v47.6</div>
       <div class="title-top-actions">
-        <button id="btn-title-fullscreen" type="button" class="title-lang-btn mobile-only-btn title-fs-btn" data-i18n="title.fullscreen">⛶ 全屏</button>
+        <button id="btn-title-fullscreen" type="button" class="title-lang-btn mobile-only-btn title-fs-btn" ><svg class="ui-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg><span data-i18n="title.fullscreen">全屏</span></button>
         <button id="btn-pwa-install" type="button" class="title-lang-btn title-install-btn hidden" data-i18n="title.installPwa">⬇ 安装到桌面</button>
         <button id="btn-title-replay-intro" type="button" class="title-lang-btn" data-i18n="title.replayIntro">↺ 重播开场</button>
         <button id="btn-title-lang" type="button" class="title-lang-btn">Lang: 中文 / EN</button>
@@ -195,7 +196,7 @@
         <div class="modal-sub title-subtitle" data-i18n="game.subtitle">ASHEN BELL VOW · 暗黑手绘魂系类银河恶魔城</div>
 
         <div id="file-protocol-warning" class="file-protocol-warning" style="display:none;">
-          <div class="fpw-title">⚠ 检测到本地 file:// 协议直接打开</div>
+          <div class="fpw-title">◆ 检测到本地 file:// 协议直接打开</div>
           <div class="fpw-body">
             浏览器安全策略（CORS）会拦截 <code>file://</code> 下加载 ES Modules 脚本，因此标题页按钮不会响应。<br>
             <strong>本地试玩：</strong>双击目录中的 <code>start_game.bat</code>（Windows）或运行 <code>./start_game.sh</code>（macOS / Linux），或在终端执行 <code>python serve_local.py</code> 后访问 <code>http://localhost:8080</code>。
@@ -238,7 +239,7 @@
   <div id="altar-modal" class="overlay-screen hidden">
     <div class="modal-card altar-modal-card">
       <div class="modal-top-bar modal-top-split">
-        <button id="btn-altar-to-codex" type="button" class="modal-top-link" data-i18n="modal.linkCodex">📜 晦渊残卷 [B]</button>
+        <button id="btn-altar-to-codex" type="button" class="modal-top-link"><svg class="ui-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2.5h8.5a1.5 1.5 0 0 1 0 3H11v8H3.5a1.5 1.5 0 0 1 0-3H5V4a1.5 1.5 0 0 0-1-1.5z"/><path d="M6.5 6.5h3M6.5 9h3"/></svg><span data-i18n="modal.linkCodex">晦渊残卷 [B]</span></button>
         <button type="button" class="modal-top-close" data-close-modal="altar" data-i18n="modal.backGame">✕ 返回游戏</button>
       </div>
       <div id="altar-modal-title" class="modal-title">熄灯祭坛</div>
@@ -265,7 +266,7 @@
   <div id="map-modal" class="overlay-screen hidden">
     <div class="modal-card" style="width: min(740px, 95%);">
       <div class="modal-top-bar modal-top-split">
-        <button id="btn-map-to-codex" type="button" class="modal-top-link" data-i18n="modal.linkCodex">📜 晦渊残卷 [B]</button>
+        <button id="btn-map-to-codex" type="button" class="modal-top-link"><svg class="ui-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2.5h8.5a1.5 1.5 0 0 1 0 3H11v8H3.5a1.5 1.5 0 0 1 0-3H5V4a1.5 1.5 0 0 0-1-1.5z"/><path d="M6.5 6.5h3M6.5 9h3"/></svg><span data-i18n="modal.linkCodex">晦渊残卷 [B]</span></button>
         <button type="button" class="modal-top-close" data-close-modal="map" data-i18n="modal.back">✕ 返回</button>
       </div>
       <div class="modal-title" data-i18n="map.title">晦渊舆图</div>
@@ -300,7 +301,7 @@
   <div id="codex-modal" class="overlay-screen hidden">
     <div class="modal-card codex-modal-card">
       <div class="modal-top-bar modal-top-split">
-        <button id="btn-codex-to-map" type="button" class="modal-top-link" data-i18n="modal.linkMap">🗺 晦渊舆图 [M]</button>
+        <button id="btn-codex-to-map" type="button" class="modal-top-link"><svg class="ui-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 3.5L5.5 2l5 1.8L14.5 2v10.5L10.5 14l-5-1.8-4 1.8V3.5z"/><path d="M5.5 2v10.2M10.5 3.8V14"/></svg><span data-i18n="modal.linkMap">晦渊舆图 [M]</span></button>
         <button type="button" class="modal-top-close" data-close-modal="codex" data-i18n="modal.back">✕ 返回</button>
       </div>
       <div class="modal-title" style="letter-spacing: 6px;" data-i18n="codex.title">晦 渊 残 卷</div>
@@ -382,11 +383,11 @@
     </div>
   </div>
 
-  <!-- Unified 4-Tab Settings, Weapon Codex, Bestiary & Archive Modal (v46.1) -->
+  <!-- Unified 4-Tab Settings, Weapon Codex, Bestiary & Archive Modal (v47.6) -->
   <div id="settings-modal" class="overlay-screen hidden">
     <div class="modal-card settings-journal-card">
       <div class="modal-top-bar modal-top-split">
-        <button id="btn-settings-to-map" type="button" class="modal-top-link" data-i18n="modal.linkMap">🗺 晦渊舆图 [M]</button>
+        <button id="btn-settings-to-map" type="button" class="modal-top-link"><svg class="ui-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 3.5L5.5 2l5 1.8L14.5 2v10.5L10.5 14l-5-1.8-4 1.8V3.5z"/><path d="M5.5 2v10.2M10.5 3.8V14"/></svg><span data-i18n="modal.linkMap">晦渊舆图 [M]</span></button>
         <button type="button" class="modal-top-close" data-close-modal="settings" data-i18n="modal.back">✕ 返回</button>
       </div>
       <div id="settings-modal-title" class="modal-title" data-i18n="settings.journalTitle">设置与晦渊图鉴</div>
@@ -443,6 +444,10 @@
           <div id="hitstop-mode-group" class="seg-group"></div>
         </div>
         <div class="settings-row">
+          <span data-i18n="settings.flashRow">闪光与斩杀特效 (护眼)</span>
+          <div id="flash-mode-group" class="seg-group"></div>
+        </div>
+        <div class="settings-row">
           <span data-i18n="settings.benchRow">自动化性能诊断 (2×2 控制变量)</span>
           <div class="seg-group">
             <button id="btn-run-bench" class="seg-btn active" data-i18n="settings.benchRun">▶ 运行 10秒 A/B 战斗压测 [F9]</button>
@@ -478,12 +483,18 @@
           </div>
         </div>
         <div class="settings-row">
+          <span data-i18n="settings.mobMinimapRow">右上角常驻小地图</span>
+          <div class="seg-group">
+            <button id="btn-mob-minimap" class="seg-btn">折叠 (默认)</button>
+          </div>
+        </div>
+        <div class="settings-row">
           <span data-i18n="settings.mobBtnScale">触控按键尺寸</span>
           <div class="vol-slider-wrap"><input id="mob-btn-scale" class="vol-slider" type="range" min="80" max="120" step="5" value="100" /><span id="mob-btn-scale-val" class="vol-val">100%</span></div>
         </div>
         <div class="settings-row">
           <span data-i18n="settings.mobBtnOpacity">触控按键透明度</span>
-          <div class="vol-slider-wrap"><input id="mob-btn-opacity" class="vol-slider" type="range" min="45" max="100" step="5" value="90" /><span id="mob-btn-opacity-val" class="vol-val">90%</span></div>
+          <div class="vol-slider-wrap"><input id="mob-btn-opacity" class="vol-slider" type="range" min="35" max="100" step="5" value="65" /><span id="mob-btn-opacity-val" class="vol-val">65%</span></div>
         </div>
         <div class="settings-row">
           <span data-i18n="settings.mobQuality">移动端画质清晰度（对齐 PC / 省电）</span>
@@ -623,7 +634,7 @@
     <!-- Contextual Interact Pill (appears near Altar / NPC / Tablet / Switch / Pickup) -->
     <button id="mobile-interact-btn" class="mobile-interact-btn t-btn hidden" data-key="KeyE" data-i18n="mob.interact">交互</button>
 
-    <!-- Bottom-Right Ergonomic 6+3 Soulslike Thumb Stage (v46.1) -->
+    <!-- Bottom-Right Ergonomic 6+3 Soulslike Thumb Stage (v47.6) -->
     <div id="action-fan" class="action-fan" data-i18n-aria="mob.fanAria" aria-label="动作扇形按键">
       <svg class="fan-arc-svg" viewBox="0 0 280 248" aria-hidden="true">
         <path d="M 88 228 A 145 145 0 0 1 256 64" fill="none" stroke="rgba(216, 207, 184, 0.16)" stroke-width="1.4" stroke-dasharray="4 6" />
@@ -710,7 +721,7 @@
 
   if (window.location.protocol === 'file:') {
     showDiag(
-      isEnBoot ? '⚠ Opened directly via local file:// protocol' : '⚠ 检测到本地 file:// 协议直接打开',
+      isEnBoot ? '◆ Opened directly via local file:// protocol' : '◆ 检测到本地 file:// 协议直接打开',
       isEnBoot
         ? 'Browser CORS policy blocks ES Modules under <code>file://</code>.<br><strong>Local Play:</strong> Run <code>start_game.bat</code> (Windows), <code>./start_game.sh</code> (macOS/Linux), or <code>python serve_local.py</code>.<br><strong>Online:</strong> Host on GitHub Pages (HTTPS) with zero config.'
         : '浏览器安全策略（CORS）会拦截 <code>file://</code> 下加载 ES Modules 脚本。<br><strong>本地试玩：</strong>双击目录中的 <code>start_game.bat</code>（Windows）或运行 <code>./start_game.sh</code>（macOS / Linux），或运行 <code>python serve_local.py</code>。<br><strong>线上部署：</strong>直接上传至 GitHub Pages（HTTPS）即可零配置游玩。',
@@ -725,7 +736,7 @@
     bootErrShown = true;
     var msg = (e && e.message) ? e.message : (isEnBoot ? 'Unknown module error' : '未知模块加载异常');
     showDiag(
-      isEnBoot ? '⚠ Module Startup Failed' : '⚠ 模块启动失败',
+      isEnBoot ? '◆ Module Startup Failed' : '◆ 模块启动失败',
       (isEnBoot
         ? 'Runtime error: <code>' + String(msg).replace(/</g, '&lt;') + '</code><br>Press <code>F12</code> to inspect console, or launch via <code>start_game.bat</code> / <code>python serve_local.py</code>.'
         : '脚本运行时报错：<code>' + String(msg).replace(/</g, '&lt;') + '</code><br>请按 <code>F12</code> 打开控制台查看详情，或确认使用本目录的 <code>start_game.bat</code> / <code>python serve_local.py</code> 启动。'),
@@ -738,7 +749,7 @@
     var isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
     if (isLocal) {
       showDiag(
-        isEnBoot ? '⚠ Local server did not serve ES Modules correctly' : '⚠ 本地服务未正确返回 ES Modules 脚本',
+        isEnBoot ? '◆ Local server did not serve ES Modules correctly' : '◆ 本地服务未正确返回 ES Modules 脚本',
         isEnBoot
           ? 'Most commonly, Windows Registry sets <code>.js</code> MIME type to <code>text/plain</code>.<br><strong>Fix:</strong> Launch with <code>start_game.bat</code> or <code>python serve_local.py</code> (which forces <code>text/javascript</code>) and refresh.'
           : '最常见原因是 Windows 注册表将 <code>.js</code> 的 MIME 类型设为了 <code>text/plain</code>，导致原生 <code>python -m http.server</code> 被浏览器拒载。<br><strong>解决方法：</strong>请使用本目录内置的 <code>start_game.bat</code> 或执行 <code>python serve_local.py</code> 启动（已强制修正 <code>.js</code> 为 <code>text/javascript</code>），然后刷新页面。',
@@ -746,7 +757,7 @@
       );
     } else {
       showDiag(
-        isEnBoot ? '⚠ Slow network detected — please wait or refresh' : '⚠ 移动端网络加载较慢，请稍候或刷新重试',
+        isEnBoot ? '◆ Slow network detected — please wait or refresh' : '◆ 移动端网络加载较慢，请稍候或刷新重试',
         isEnBoot
           ? 'Scripts are still downloading. If this persists, refresh the page or switch to a steadier connection.'
           : '当前网络环境下脚本仍在下载中；若长时间未响应，请点击右上角刷新页面或切换更稳定的网络后重试。',
@@ -756,7 +767,7 @@
   }, 8000);
 })();
 </script>
-<script type="module" src="./src/main.js?v=46.1.0"></script>
+<script type="module" src="./src/main.js?v=47.6.0"></script>
   <div id="abv-fatal-banner" class="abv-fatal-banner hidden" role="alert"></div>
   <div id="gp-nav-bar" class="gp-nav-bar hidden" data-i18n="gp.navLegend">[十字/左摇杆] 移动 · [A] 确认 · [B] 返回 · [LB/RB] 切页 · [右摇杆] 滚动</div>
 </body>

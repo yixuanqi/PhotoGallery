@@ -1,13 +1,13 @@
 // World Combat Interactions: Lantern Tide Quell, Secret Walls, Puzzles, Bell-Quake, Pickups & Ultimates (v32.0)
 import {
-  COLORS, RELICS, GRAPPLE_ANCHORS, PENDULUMS, VOID_BARRIERS, ABYSSAL_RIVERS, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, FOUNDRY_VENT_GATE_DEF, FIRST_BELL_CORE_POS, ENEMY_ECHO_REWARDS, DUMMY_MODES, SEVEN_BELLS_ORDER, WIND_ZONES, BOUNCE_PADS, WIND_VANES, SWITCH_GATES
+  COLORS, RELICS, ALTARS, NPCS, LORE_TABLETS, WORLD_SWITCHES_DEF, GRAPPLE_ANCHORS, PENDULUMS, VOID_BARRIERS, ABYSSAL_RIVERS, SHORTCUT_GATE_DEF, CHAPEL_EXIT_GATE_DEF, FOUNDRY_EXIT_GATE_DEF, FOUNDRY_VENT_GATE_DEF, FIRST_BELL_CORE_POS, ENEMY_ECHO_REWARDS, DUMMY_MODES, SEVEN_BELLS_ORDER, WIND_ZONES, BOUNCE_PADS, WIND_VANES, SWITCH_GATES
 } from '../config.js';
 import {
   G, hooks, getLivingFoes, getAwakeBoss, isWorldPosExplored, getRelicStats, getActiveVowStats, getCombatScaling, getBladeDamageMult, getSmithPostureMult,
   getActiveWeaponId, getActiveWeapon, isWeaponUnlocked, getUnlockedWeaponIds, unlockWeapon,
   hasActiveWeaponTrait,
   getBossBonusDamageMult, hasKeeperBlessing,
-  getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks, getRealmSealCount, hasThirdRelicSlot, isWorldSwitchOn, isSwitchUnlocked,
+  getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks, getRealmSealCount, hasThirdRelicSlot, isWorldSwitchOn, isSwitchUnlocked, getEffectiveNpcPos, syncOwnedAbilityPickups,
   scheduleOutcome, addShake, kickCamera, punchZoom, triggerBossBanner, triggerHitstop
 } from '../state.js';
 import { getRoomAt } from '../levelLoader.js';
@@ -559,15 +559,19 @@ export function collectPickup(p) {
   spawnShockwave(p.x, p.y - 26, 95, p.kind === 'flaskCore' ? COLORS.cyanBright : COLORS.goldBright, 4, 0.38);
   spawnParticles(p.x, p.y - 26, 28, { color: p.kind === 'flaskCore' ? COLORS.cyanBright : COLORS.goldBright, speed: 220, spark: true, life: 0.65 });
 
-  if (p.bonusHp) {
-    G.worldState.bonusMaxHp = (G.worldState.bonusMaxHp || 0) + p.bonusHp;
-    G.player.maxHp = getPlayerMaxHp();
-    G.player.hp = G.player.maxHp;
-  }
-  if (p.bonusSoul) {
-    G.worldState.bonusMaxSoul = (G.worldState.bonusMaxSoul || 0) + p.bonusSoul;
-    G.player.maxSoul = getPlayerMaxSoul();
-    G.player.soul = G.player.maxSoul;
+  const isDupFlask = p.kind === 'flaskCore' && (3 + (G.worldState.bonusFlasks || 0)) >= 6;
+  const isDupRelic = p.kind === 'relic' && G.worldState.unlockedRelics && G.worldState.unlockedRelics.has(p.relicId);
+  if (!isDupFlask && !isDupRelic) {
+    if (p.bonusHp) {
+      G.worldState.bonusMaxHp = (G.worldState.bonusMaxHp || 0) + p.bonusHp;
+      G.player.maxHp = getPlayerMaxHp();
+      G.player.hp = G.player.maxHp;
+    }
+    if (p.bonusSoul) {
+      G.worldState.bonusMaxSoul = (G.worldState.bonusMaxSoul || 0) + p.bonusSoul;
+      G.player.maxSoul = getPlayerMaxSoul();
+      G.player.soul = G.player.maxSoul;
+    }
   }
 
   if (p.echoAmount && p.kind !== 'echoCache') {
@@ -591,9 +595,16 @@ export function collectPickup(p) {
   } else if (p.kind === 'statCore') {
     spawnFloatText(p.x, p.y - 54, `${pkName} · ${pkDesc}`, COLORS.violetBright, 20, 1.95);
   } else if (p.kind === 'ability') {
+    const alreadyOwned = !!(G.worldState.abilities && G.worldState.abilities[p.abilityId]);
     G.worldState.abilities[p.abilityId] = true;
     G.player.airJumpsLeft = 1;
-    if (p.abilityId === 'shadeDash') {
+    if (alreadyOwned) {
+      const ngEcho = Math.round(220 * getCombatScaling(false).echoMult);
+      G.worldState.echoes = (G.worldState.echoes || 0) + ngEcho;
+      punchZoom(1.04);
+      spawnShockwave(p.x, p.y - 26, 150, COLORS.goldBright, 4.8, 0.46);
+      spawnFloatText(p.x, p.y - 58, t('combat.ngAbilityDup', pkName, ngEcho), COLORS.goldBright, 20, 2.1);
+    } else if (p.abilityId === 'shadeDash') {
       audio.playShadeDash(); punchZoom(1.05);
       spawnShockwave(p.x, p.y - 26, 160, COLORS.violetBright, 5.2, 0.5);
       spawnFloatText(p.x, p.y - 58, t('combat.unlockShade', pkName), COLORS.violetBright, 22, 2.4);
@@ -679,6 +690,7 @@ export function collectPickup(p) {
       spawnFloatText(p.x, p.y - 54, `${pkName} · ${pkDesc}`, COLORS.goldBright, 20, 1.95);
     }
   }
+  syncOwnedAbilityPickups(G.worldState);
   checkAchievements();
   G.minimapDirty = true;
   hooks.saveProgress(true);
@@ -836,4 +848,61 @@ export function triggerWeaponResonanceUltimate() {
   checkAchievements({ ultimateCast: true });
   hooks.syncHUD(true);
   return true;
+}
+
+// v46.3 Single-Focus Nearest Interactable Selector (shared by world prompts, mobile interact pill & interact key -> zero overlapping prompts!)
+export function findNearestInteractable(px, py) {
+  if (!G.player || G.gameState !== 'playing') return null;
+  let best = null;
+  let bestScore = Infinity;
+  const consider = (kind, ref, x, y, promptY, maxR, bias = 0) => {
+    const d = Math.hypot(px - x, py - y);
+    if (d < maxR) {
+      const score = d + bias;
+      if (score < bestScore) {
+        bestScore = score;
+        best = { kind, ref, x, y, promptY, dist: d };
+      }
+    }
+  };
+  if (G.worldState && G.worldState.boss3Defeated && !G.echoSession) {
+    consider('core', FIRST_BELL_CORE_POS, FIRST_BELL_CORE_POS.x, FIRST_BELL_CORE_POS.y, FIRST_BELL_CORE_POS.y - 118, 105, -8);
+  }
+  for (let i = 0; i < ALTARS.length; i++) {
+    const a = ALTARS[i];
+    consider('altar', a, a.x, a.y, a.y - 96, 86, 0);
+  }
+  for (let i = 0; i < NPCS.length; i++) {
+    const npc = NPCS[i];
+    const pos = getEffectiveNpcPos(npc);
+    consider('npc', npc, pos.x, pos.y, pos.y - 94, 88, 0);
+  }
+  for (let i = 0; i < G.enemies.length; i++) {
+    const e = G.enemies[i];
+    if (e && e.alive && e.isDummy) {
+      consider('dummy', e, e.x + e.w * 0.5, e.y + e.h, e.y - 44, 94, 4);
+    }
+  }
+  if (G.worldState && !G.worldState.shortcutOpen) {
+    consider('lever', SHORTCUT_GATE_DEF, SHORTCUT_GATE_DEF.leverX, SHORTCUT_GATE_DEF.leverY, SHORTCUT_GATE_DEF.leverY - 68, 76, -4);
+  }
+  for (let i = 0; i < WORLD_SWITCHES_DEF.length; i++) {
+    const sw = WORLD_SWITCHES_DEF[i];
+    if (isSwitchUnlocked(sw) && !isWorldSwitchOn(sw.switchKey)) {
+      consider('switch', sw, sw.x, sw.y, sw.y - 76, 82, -4);
+    }
+  }
+  for (let i = 0; i < LORE_TABLETS.length; i++) {
+    const lt = LORE_TABLETS[i];
+    consider('tablet', lt, lt.x, lt.y, lt.y - 80, 78, 2);
+  }
+  if (G.worldState && Array.isArray(G.worldState.pickups)) {
+    for (let i = 0; i < G.worldState.pickups.length; i++) {
+      const p = G.worldState.pickups[i];
+      if (!p.collected && isPickupUnlocked(p)) {
+        consider('pickup', p, p.x, p.y, p.y - 66, 72, -6);
+      }
+    }
+  }
+  return best;
 }

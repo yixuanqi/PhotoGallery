@@ -3,7 +3,7 @@
   "name": "霜渊冰窖 · 暗河源洞",
   "theme": "mountain",
   "bounds": {
-    "x": 1500,
+    "x": 7940,
     "y": 1520,
     "w": 1740,
     "h": 740
@@ -14,21 +14,21 @@
   ],
   "solids": [
     {
-      "x": 1060,
+      "x": 0,
       "y": 0,
       "w": 680,
       "h": 34,
       "type": "pillar"
     },
     {
-      "x": 0,
+      "x": 820,
       "y": 0,
       "w": 920,
       "h": 34,
       "type": "pillar"
     },
     {
-      "x": 0,
+      "x": 1700,
       "y": 0,
       "w": 40,
       "h": 740,
@@ -42,49 +42,49 @@
       "type": "ground"
     },
     {
-      "x": 1290,
+      "x": 220,
       "y": 430,
       "w": 230,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 880,
+      "x": 635,
       "y": 430,
       "w": 225,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 900,
+      "x": 665,
       "y": 220,
       "w": 175,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 470,
+      "x": 1030,
       "y": 445,
       "w": 240,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 120,
+      "x": 1360,
       "y": 320,
       "w": 260,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 40,
+      "x": 1390,
       "y": 160,
       "w": 310,
       "h": 20,
       "type": "pillar"
     },
     {
-      "x": 40,
+      "x": 1390,
       "y": 320,
       "w": 310,
       "h": 20,
@@ -97,7 +97,7 @@
   "voidBarriers": [
     {
       "id": "vb_frost_seep",
-      "x": 323,
+      "x": 1395,
       "y": 180,
       "w": 22,
       "h": 140
@@ -111,7 +111,7 @@
       "id": "pickup_echo_frost_seep",
       "kind": "echoCache",
       "echoAmount": 120,
-      "x": 230,
+      "x": 1510,
       "y": 320,
       "name": "冰窖源洞残响",
       "desc": "冻雪暗河源头封存的 +120 精纯残响"
@@ -121,14 +121,14 @@
   "lanterns": [
     {
       "id": "lan_fs_1",
-      "x": 1380,
+      "x": 360,
       "anchorY": 34,
       "len": 190,
       "topY": 34
     },
     {
       "id": "lan_fs_2",
-      "x": 580,
+      "x": 1160,
       "anchorY": 34,
       "len": 195,
       "topY": 34
@@ -136,13 +136,13 @@
   ],
   "grappleAnchors": [
     {
-      "x": 990,
+      "x": 750,
       "y": 120,
       "id": "anc_r24_frost_seep_0",
       "topY": 34
     },
     {
-      "x": 480,
+      "x": 1260,
       "y": 350,
       "id": "anc_r24_frost_seep_1",
       "topY": 34
@@ -152,9 +152,9 @@
   "windZones": [
     {
       "id": "wz_frost_seep_up",
-      "x": 910,
+      "x": 686,
       "y": -20,
-      "w": 160,
+      "w": 128,
       "h": 620,
       "vx": 0,
       "vy": -1640
@@ -163,10 +163,10 @@
   "icePillars": [
     {
       "id": "ice_seep_1",
-      "x": 595,
+      "x": 1145,
       "topY": 34,
       "len": 150,
-      "bridgeX": 370,
+      "bridgeX": 1255,
       "bridgeY": 370,
       "bridgeW": 115,
       "bridgeH": 20
@@ -177,32 +177,32 @@
     {
       "id": "fr_fs_1",
       "kind": "frostguard",
-      "x": 1280,
+      "x": 420,
       "y": 528,
-      "minX": 1040,
-      "maxX": 1560
+      "minX": 140,
+      "maxX": 660
     },
     {
       "id": "fr_fs_2",
       "kind": "frostguard",
-      "x": 480,
+      "x": 1220,
       "y": 528,
-      "minX": 80,
-      "maxX": 740
+      "minX": 960,
+      "maxX": 1620
     },
     {
       "id": "f_fs_1",
       "kind": "falcon",
-      "x": 616,
+      "x": 1080,
       "y": 250,
-      "minX": 156,
-      "maxX": 856
+      "minX": 840,
+      "maxX": 1540
     }
   ],
   "bosses": [],
   "inscriptions": [
     {
-      "x": 990,
+      "x": 750,
       "y": 540,
       "text": "「寒流风井直通霜骸圣脊 · 地下大环路至此闭环」"
     }
@@ -210,20 +210,20 @@
   "props": {
     "puddles": [
       {
-        "x": 1240,
+        "x": 280,
         "w": 220,
         "y": 600
       }
     ],
     "banners": [
       {
-        "x": 1200,
+        "x": 540,
         "y": 34,
         "len": 160,
         "color": "#1a2840"
       },
       {
-        "x": 300,
+        "x": 1440,
         "y": 34,
         "len": 165,
         "color": "#1a2840"
@@ -231,12 +231,12 @@
     ],
     "candles": [
       {
-        "x": 1580,
+        "x": 160,
         "y": 600,
         "count": 3
       },
       {
-        "x": 260,
+        "x": 1480,
         "y": 320,
         "count": 3
       }
@@ -245,21 +245,19 @@
     "stamps": [
       {
         "type": "tide_pillar",
-        "x": 1450,
+        "x": 290,
         "y": 600,
         "scale": 1.05,
-        "layer": "bg",
-        "flip": true
+        "layer": "bg"
       },
       {
         "type": "sunken_bell_giant",
-        "x": 220,
+        "x": 1520,
         "y": 600,
         "scale": 1.0,
-        "layer": "bg",
-        "flip": true
+        "layer": "bg"
       }
     ]
   },
-  "mirrored": true
+  "mirrored": false
 }

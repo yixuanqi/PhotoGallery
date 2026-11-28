@@ -18,6 +18,7 @@ import {
 } from './combat.js';
 import { recordBestiaryEvent, checkAchievements, updateAchievementBanner } from './codex.js';
 import { t } from './i18n.js';
+import { updateArenaHazards, damageArenaHazardsInBox } from './arenaHazards.js';
 import { updateThemeAndWeather, isRoomOccluded } from './worldCamera.js';
 
 export function updateWorldEffects(dt) {
@@ -233,6 +234,27 @@ export function updateWorldEffects(dt) {
           break;
         }
       }
+    }
+    if (pr.launchDelay > 0) {
+      pr.launchDelay -= dt;
+      if (pr.owner === 'enemy' && pr.source && pr.source.alive && pr.orbitAngle !== undefined) {
+        pr.orbitAngle += dt * 2.2;
+        const scx = pr.source.x + pr.source.w * 0.5;
+        const scy = pr.source.y + (pr.orbitOffY !== undefined ? pr.orbitOffY : 40);
+        pr.x = scx + Math.cos(pr.orbitAngle) * (pr.orbitR || 64);
+        pr.y = scy + Math.sin(pr.orbitAngle) * (pr.orbitR || 64);
+      }
+      if (pr.launchDelay <= 0) {
+        if (G.player && G.player.hp > 0) {
+          const ang = Math.atan2((G.player.y + G.player.h * 0.45) - pr.y, (G.player.x + G.player.w * 0.5) - pr.x);
+          const spd = pr.launchSpeed || 435;
+          pr.vx = Math.cos(ang) * spd;
+          pr.vy = Math.sin(ang) * spd;
+        }
+        audio.playBellChimeCast(2);
+        spawnShockwave(pr.x, pr.y, 44, '#fef08a', 2.8, 0.20);
+      }
+      continue;
     }
     if (pr.grav) pr.vy += pr.grav * dt;
     pr.x += pr.vx * dt;
@@ -495,6 +517,7 @@ export function updateWorldEffects(dt) {
           }
         }
       }
+      damageArenaHazardsInBox({ x: pr.x - pr.r, y: pr.y - pr.r, w: pr.r * 2, h: pr.r * 2 }, pr.dmg || 26, true, pr.hitIds);
       for (const cr of (G.foundryCrucibles || [])) {
         if (cr.state === 'hanging' && !pr.hitIds.has(cr.id) && Math.abs(pr.x - cr.x) < pr.r + 32 && pr.y >= cr.anchorY && pr.y <= cr.y + 24) { pr.hitIds.add(cr.id); severFoundryCrucible(cr); }
       }
@@ -564,9 +587,9 @@ export function updateWorldEffects(dt) {
           }
         }
       }
-    } else if (pr.kind === 'wraithOrb' || pr.kind === 'windBlade' || pr.kind === 'frostShard' || pr.kind === 'webOrb' || pr.kind === 'emberGlob' || pr.kind === 'boss4EchoOrb' || pr.kind === 'yuanResonanceWave') {
+    } else if (pr.kind === 'wraithOrb' || pr.kind === 'radiantOrb' || pr.kind === 'windBlade' || pr.kind === 'frostShard' || pr.kind === 'webOrb' || pr.kind === 'emberGlob' || pr.kind === 'boss4EchoOrb' || pr.kind === 'yuanResonanceWave') {
       if (Math.random() < 28 * dt) {
-        const trailCol = (pr.reflected || pr.kind === 'yuanResonanceWave') ? COLORS.goldBright : (pr.kind === 'boss4EchoOrb' ? (pr.stance === 'bell' ? COLORS.cyanBright : COLORS.goldBright) : pr.kind === 'windBlade' ? '#7dd3fc' : pr.kind === 'frostShard' ? '#bae6fd' : pr.kind === 'webOrb' ? '#6ee7b7' : pr.kind === 'emberGlob' ? '#fb923c' : COLORS.crimson);
+        const trailCol = (pr.reflected || pr.kind === 'yuanResonanceWave' || pr.kind === 'radiantOrb') ? COLORS.goldBright : (pr.kind === 'boss4EchoOrb' ? (pr.stance === 'bell' ? COLORS.cyanBright : COLORS.goldBright) : pr.kind === 'windBlade' ? '#7dd3fc' : pr.kind === 'frostShard' ? '#bae6fd' : pr.kind === 'webOrb' ? '#6ee7b7' : pr.kind === 'emberGlob' ? '#fb923c' : COLORS.crimson);
         spawnParticles(pr.x, pr.y, 1, { color: trailCol, speed: 45, grav: 0, life: 0.22 });
       }
       if (pr.kind === 'emberGlob' && pr.vy > 0 && pr.y >= getGroundSurfaceY(pr.x, pr.y) - 6) {
@@ -642,8 +665,9 @@ export function updateWorldEffects(dt) {
             addShake(9);
             const isEchoClash = pr.kind === 'boss4EchoOrb' && foe.kind === 'boss4';
             const isYuanWave = pr.kind === 'yuanResonanceWave' && foe.kind === 'boss3';
-            damageEnemyHP(foe, isYuanWave ? 58 : isEchoClash ? 62 : (foe.isBoss ? 32 : 48), true);
-            addPostureToEnemy(foe, isYuanWave ? 68 : isEchoClash ? 56 : (foe.isBoss ? 28 : 55));
+            const isRadiantRef = pr.kind === 'radiantOrb' && foe.kind === 'boss3';
+            damageEnemyHP(foe, isYuanWave ? 58 : isEchoClash ? 62 : isRadiantRef ? 46 : (foe.isBoss ? 32 : 48), true);
+            addPostureToEnemy(foe, isYuanWave ? 68 : isEchoClash ? 56 : isRadiantRef ? 44 : (foe.isBoss ? 28 : 55));
             if (isYuanWave) {
               foe.symphonyReflects = (foe.symphonyReflects || 0) + 1;
               if (foe.symphonyReflects >= 3 && foe.alive) {
@@ -666,7 +690,7 @@ export function updateWorldEffects(dt) {
     }
 
     let hitSolid = false;
-    if (pr.kind === 'wraithOrb' || pr.kind === 'windBlade' || pr.kind === 'frostShard' || pr.kind === 'boss4EchoOrb') {
+    if (pr.kind === 'wraithOrb' || pr.kind === 'radiantOrb' || pr.kind === 'windBlade' || pr.kind === 'frostShard' || pr.kind === 'boss4EchoOrb') {
       const pb = { x: pr.x - 5, y: pr.y - 5, w: 10, h: 10 };
       for (const s of SOLIDS) {
         if (s.type !== 'platform' && aabbOverlap(pb, s)) { hitSolid = true; break; }
@@ -756,6 +780,9 @@ export function updateWorldEffects(dt) {
     }
     if (gw.life <= 0 || gw.x < minX || gw.x > maxX) G.groundWaves.splice(i, 1);
   }
+
+  // v47.0 Persistent Arena Hazards (Thorns Carpet, Bramble Cage, Root Spikes, Solar Pillars, Prism Beams, Radiant Cross)
+  updateArenaHazards(dt, applyIncomingAttackToPlayer);
 
   // Toxic Fungal Spore Clouds (枯墨古林毒孢云 — 可用 W+L 镇魂钟鸣驱散)
   if (G.sporeClouds && G.sporeClouds.length > 0) {
@@ -1326,7 +1353,10 @@ export function updateWorldEffects(dt) {
       }
     }
   }
-  if (G.screenFlash.alpha > 0) G.screenFlash.alpha = Math.max(0, G.screenFlash.alpha - dt * 1.2);
+  if (G.screenFlash.alpha > 0) {
+    const decayRate = (G.settings && G.settings.flashMode === 'classic') ? 1.4 : 3.4;
+    G.screenFlash.alpha = Math.max(0, G.screenFlash.alpha - dt * decayRate);
+  }
 }
 
 

@@ -3,7 +3,7 @@
   "name": "悬索钟阁 · 风桥前廊",
   "theme": "wind",
   "bounds": {
-    "x": 5620,
+    "x": 3780,
     "y": -740,
     "w": 1780,
     "h": 740
@@ -21,42 +21,42 @@
       "type": "pillar"
     },
     {
-      "x": 1744,
+      "x": 0,
       "y": 0,
       "w": 36,
       "h": 740,
       "type": "pillar"
     },
     {
-      "x": 1630,
+      "x": 0,
       "y": 620,
       "w": 150,
       "h": 120,
       "type": "ground"
     },
     {
-      "x": 1460,
+      "x": 150,
       "y": 620,
       "w": 170,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 1000,
+      "x": 320,
       "y": 620,
       "w": 460,
       "h": 120,
       "type": "ground"
     },
     {
-      "x": 0,
+      "x": 1020,
       "y": 620,
       "w": 760,
       "h": 120,
       "type": "ground"
     },
     {
-      "x": 1120,
+      "x": 450,
       "y": 445,
       "w": 210,
       "h": 22,
@@ -70,28 +70,28 @@
       "type": "platform"
     },
     {
-      "x": 400,
+      "x": 1150,
       "y": 430,
       "w": 230,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 775,
+      "x": 815,
       "y": 195,
       "w": 190,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 775,
+      "x": 830,
       "y": 195,
       "w": 175,
       "h": 20,
       "type": "pillar"
     },
     {
-      "x": 775,
+      "x": 985,
       "y": 34,
       "w": 20,
       "h": 161,
@@ -101,7 +101,7 @@
   "crumblePlatforms": [
     {
       "id": "cr_gal_1",
-      "x": 810,
+      "x": 830,
       "y": 540,
       "w": 140,
       "h": 20
@@ -112,7 +112,7 @@
   "voidBarriers": [
     {
       "id": "vb_galleries",
-      "x": 923,
+      "x": 835,
       "y": 34,
       "w": 22,
       "h": 161
@@ -126,7 +126,7 @@
       "id": "pickup_echo_galleries",
       "kind": "echoCache",
       "echoAmount": 85,
-      "x": 870,
+      "x": 910,
       "y": 195,
       "name": "悬索钟阁残响",
       "desc": "高悬钟阁断索之间凝结的 +85 残响"
@@ -136,22 +136,22 @@
   "lanterns": [
     {
       "id": "lan_gal_1",
-      "x": 1545,
+      "x": 235,
       "anchorY": 34,
       "len": 230,
       "topY": 34
     },
     {
       "id": "lan_gal_2",
-      "x": 890,
+      "x": 1130,
       "anchorY": 34,
-      "len": 140,
+      "len": 185,
       "topY": 34
     }
   ],
   "grappleAnchors": [
     {
-      "x": 1545,
+      "x": 235,
       "y": 540,
       "id": "anc_r20_bell_galleries_0",
       "topY": 34
@@ -163,7 +163,7 @@
       "topY": 34
     },
     {
-      "x": 300,
+      "x": 1480,
       "y": 380,
       "id": "anc_r20_bell_galleries_2",
       "topY": 34
@@ -171,7 +171,7 @@
   ],
   "pendulums": [
     {
-      "x": 1100,
+      "x": 680,
       "anchorY": 34,
       "len": 320,
       "amp": 0.48,
@@ -180,7 +180,7 @@
       "r": 24
     },
     {
-      "x": 430,
+      "x": 1350,
       "anchorY": 34,
       "len": 300,
       "amp": 0.5,
@@ -192,20 +192,20 @@
   "windZones": [
     {
       "id": "wz_gal_1",
-      "x": 785,
-      "y": 120,
-      "w": 195,
-      "h": 540,
-      "vx": -18,
+      "x": 680,
+      "y": 130,
+      "w": 140,
+      "h": 490,
+      "vx": 18,
       "vy": -1540
     }
   ],
   "windVanes": [
     {
       "id": "vane_gal_1",
-      "x": 1220,
+      "x": 560,
       "y": 445,
-      "dir": -1,
+      "dir": 1,
       "boostVx": 155,
       "targetZoneIds": [
         "wz_gal_1"
@@ -217,30 +217,30 @@
     {
       "id": "f_gal_1",
       "kind": "falcon",
-      "x": 1116,
+      "x": 620,
       "y": 290,
-      "minX": 776,
-      "maxX": 1396
+      "minX": 340,
+      "maxX": 960
     },
     {
       "id": "f_gal_2",
       "kind": "falcon",
-      "x": 496,
+      "x": 1240,
       "y": 265,
-      "minX": 96,
-      "maxX": 736
+      "minX": 1000,
+      "maxX": 1640
     },
     {
       "id": "cantor_gal_1",
       "kind": "cantor",
-      "x": 324,
+      "x": 1420,
       "y": 515
     }
   ],
   "bosses": [],
   "inscriptions": [
     {
-      "x": 170,
+      "x": 1610,
       "y": 550,
       "text": "「东侧绝风铁闸须自千铃断桥一侧启闸贯通」",
       "hideWhenSwitch": "galleryWindOpen"
@@ -250,13 +250,13 @@
     "puddles": [],
     "banners": [
       {
-        "x": 1370,
+        "x": 410,
         "y": 34,
         "len": 160,
         "color": "#16263a"
       },
       {
-        "x": 660,
+        "x": 1120,
         "y": 34,
         "len": 170,
         "color": "#16263a"
@@ -264,12 +264,12 @@
     ],
     "candles": [
       {
-        "x": 1400,
+        "x": 380,
         "y": 620,
         "count": 3
       },
       {
-        "x": 260,
+        "x": 1520,
         "y": 620,
         "count": 3
       }
@@ -278,31 +278,29 @@
     "stamps": [
       {
         "type": "broken_arch",
-        "x": 1290,
+        "x": 490,
         "y": 620,
         "scale": 1.1,
-        "layer": "bg",
-        "flip": true
+        "layer": "bg"
       },
       {
         "type": "fallen_bell",
-        "x": 520,
+        "x": 1260,
         "y": 620,
         "scale": 0.95,
-        "layer": "bg",
-        "flip": true
+        "layer": "bg"
       }
     ]
   },
   "slickWalls": [
     {
       "id": "slick_r20_west",
-      "x": 1744,
+      "x": 0,
       "y": 120,
       "w": 36,
       "h": 460,
-      "side": "left"
+      "side": "right"
     }
   ],
-  "mirrored": true
+  "mirrored": false
 }

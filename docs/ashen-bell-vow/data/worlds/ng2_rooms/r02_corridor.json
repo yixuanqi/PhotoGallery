@@ -5,7 +5,7 @@
   "name": "枯骨长廊",
   "theme": "corridor",
   "bounds": {
-    "x": 8535,
+    "x": 940,
     "y": 0,
     "w": 1705,
     "h": 720
@@ -13,14 +13,14 @@
   "subZones": [
     {
       "name": "沉钟回廊 · 枯骨长廊",
-      "x": 225,
+      "x": 0,
       "y": 0,
       "w": 1480,
       "h": 720
     },
     {
       "name": "沉钟回廊 · 礼拜堂前",
-      "x": 0,
+      "x": 1480,
       "y": 0,
       "w": 225,
       "h": 720
@@ -34,119 +34,119 @@
   ],
   "solids": [
     {
-      "x": 665,
+      "x": 0,
       "y": 580,
       "w": 1040,
       "h": 160,
       "type": "ground"
     },
     {
-      "x": 545,
+      "x": 1040,
       "y": 580,
       "w": 120,
       "h": 160,
       "type": "ground"
     },
     {
-      "x": 265,
+      "x": 1310,
       "y": 580,
       "w": 130,
       "h": 160,
       "type": "ground"
     },
     {
-      "x": 0,
+      "x": 1540,
       "y": 580,
       "w": 165,
       "h": 160,
       "type": "ground"
     },
     {
-      "x": 1515,
+      "x": 20,
       "y": 410,
       "w": 170,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 1300,
+      "x": 235,
       "y": 255,
       "w": 170,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 1227,
+      "x": 440,
       "y": 245,
       "w": 38,
       "h": 240,
       "type": "pillar"
     },
     {
-      "x": 955,
+      "x": 535,
       "y": 245,
       "w": 215,
       "h": 24,
       "type": "platform"
     },
     {
-      "x": 745,
+      "x": 795,
       "y": 365,
       "w": 165,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 470,
+      "x": 1100,
       "y": 478,
       "w": 135,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 355,
+      "x": 1190,
       "y": 255,
       "w": 160,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 150,
+      "x": 1400,
       "y": 380,
       "w": 155,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": -1,
+      "x": 1670,
       "y": 270,
       "w": 36,
       "h": 210,
       "type": "pillar"
     },
     {
-      "x": 175,
+      "x": 1445,
       "y": 270,
       "w": 85,
       "h": 20,
       "type": "platform"
     },
     {
-      "x": 0,
+      "x": 1550,
       "y": 270,
       "w": 155,
       "h": 22,
       "type": "pillar"
     },
     {
-      "x": 0,
+      "x": 1550,
       "y": 130,
       "w": 155,
       "h": 20,
       "type": "pillar"
     },
     {
-      "x": 0,
+      "x": 1685,
       "y": 150,
       "w": 20,
       "h": 120,
@@ -156,7 +156,7 @@
   "crumblePlatforms": [
     {
       "id": "crumble_corridor_1",
-      "x": 629,
+      "x": 980,
       "y": 325,
       "w": 96,
       "h": 20
@@ -165,7 +165,7 @@
   "altars": [
     {
       "id": "altar_chapel",
-      "x": 130,
+      "x": 1575,
       "y": 580,
       "name": "礼拜堂前 · 断索祭坛",
       "shortName": "礼拜堂 · 断索祭坛",
@@ -175,7 +175,7 @@
   "loreTablets": [
     {
       "id": "lore_corridor",
-      "x": 1080,
+      "x": 625,
       "y": 245,
       "title": "风化残碑",
       "sub": "枯骨长廊 · 高台铭文",
@@ -186,11 +186,11 @@
     {
       "id": "gate_skyway",
       "role": "shortcut",
-      "x": 1227,
+      "x": 440,
       "y": 0,
       "w": 38,
       "h": 245,
-      "leverX": 1150,
+      "leverX": 555,
       "leverY": 245
     },
     {
@@ -198,7 +198,7 @@
       "role": "switchGate",
       "switchKey": "cryptHatchOpen",
       "orientation": "horizontal",
-      "x": 165,
+      "x": 1440,
       "y": 580,
       "w": 100,
       "h": 26
@@ -209,7 +209,7 @@
     {
       "id": "pickup_flask_core",
       "kind": "flaskCore",
-      "x": 435,
+      "x": 1270,
       "y": 255,
       "name": "灯油残芯",
       "desc": "灯油上限永久 +1！"
@@ -220,7 +220,7 @@
       "relicId": "ironheart",
       "requiresPuzzle": "puzzle_corridor",
       "bonusSoul": 20,
-      "x": 725,
+      "x": 980,
       "y": 580,
       "name": "深井秘宝 · 裂钟铁心",
       "desc": "解锁破势圣物「裂钟铁心」且生命上限永久 +15！"
@@ -231,10 +231,19 @@
       "bonusHp": 20,
       "bonusSoul": 25,
       "echoAmount": 70,
-      "x": 75,
+      "x": 1630,
       "y": 270,
       "name": "礼拜堂暗阁 · 古钟魂晶",
       "desc": "生命上限 +20、魂火上限 +25，并获 +70 残响！"
+    },
+    {
+      "id": "pickup_echo_ng2_corridor",
+      "kind": "echoCache",
+      "echoAmount": 120,
+      "x": 660,
+      "y": 580,
+      "name": "蚀月残响匣",
+      "desc": "蚀月大师模式秘宝 · 获得 +120 残响！"
     }
   ],
   "resonancePuzzles": [
@@ -242,26 +251,26 @@
       "id": "puzzle_corridor",
       "name": "枯骨长廊 · 三钟共鸣",
       "timeLimit": 7.5,
-      "cageX": 725,
+      "cageX": 980,
       "cageY": 580,
       "bells": [
         {
           "id": "rb_c1",
-          "x": 855,
+          "x": 850,
           "y": 470,
           "topY": 387,
           "noteFreq": 392.0
         },
         {
           "id": "rb_c2",
-          "x": 677,
+          "x": 1028,
           "y": 255,
           "topY": 0,
           "noteFreq": 493.88
         },
         {
           "id": "rb_c3",
-          "x": 540,
+          "x": 1165,
           "y": 355,
           "topY": 0,
           "noteFreq": 587.33
@@ -274,16 +283,16 @@
   "grappleAnchors": [
     {
       "id": "anc_2",
-      "x": 1585,
+      "x": 120,
       "y": 250
     },
     {
       "id": "anc_5",
-      "x": 195,
+      "x": 1510,
       "y": 215
     },
     {
-      "x": 1375,
+      "x": 330,
       "y": 82,
       "id": "anc_r02_corridor_2"
     }
@@ -291,94 +300,99 @@
   "lanterns": [
     {
       "id": "lan_1",
-      "x": 1350,
-      "anchorY": 165,
-      "len": 175,
-      "angle": 0.05
+      "x": 355,
+      "anchorY": 277,
+      "len": 82,
+      "angle": -0.05,
+      "topY": 277
     },
     {
       "id": "lan_2",
-      "x": 800,
+      "x": 905,
       "anchorY": 110,
       "len": 145,
-      "angle": -0.04
+      "angle": 0.04
     },
     {
       "id": "lan_3",
-      "x": 400,
-      "anchorY": 170,
-      "len": 160,
-      "angle": 0.06
+      "x": 1305,
+      "anchorY": 277,
+      "len": 78,
+      "angle": -0.06,
+      "topY": 277
     }
   ],
   "enemies": [
     {
       "id": "sent_1",
-      "kind": "sentinel",
-      "x": 1319,
-      "y": 518,
-      "minX": 1159,
-      "maxX": 1529
+      "kind": "frostguard",
+      "x": 350,
+      "y": 512,
+      "minX": 140,
+      "maxX": 506
     },
     {
       "id": "sent_2",
       "kind": "crawler",
-      "x": 449,
+      "x": 1220,
       "y": 538,
-      "minX": 269,
-      "maxX": 615
+      "minX": 1040,
+      "maxX": 1386
     },
     {
       "id": "wraith_1",
       "kind": "wraith",
-      "x": 1189,
-      "y": 315
+      "x": 575,
+      "y": 365
     },
     {
       "id": "wraith_2",
       "kind": "cantor",
-      "x": 329,
+      "x": 1340,
       "y": 270
     },
     {
       "id": "leech_corridor",
       "kind": "leech",
-      "x": 1046,
+      "x": 625,
       "y": 269
     }
   ],
   "bosses": [],
   "inscriptions": [
     {
-      "x": 1480,
+      "x": 225,
       "y": 492,
-      "dynamicKey": "parry"
+      "dynamicKey": "parry",
+      "hideInNgPlus": true
     },
     {
-      "x": 1385,
+      "x": 320,
       "y": 215,
       "text": "「青铜锁链闸 · 须自东侧残碑台启锁」",
       "hideWhenShortcutOpen": true
     },
     {
-      "x": 725,
+      "x": 980,
       "y": 492,
       "dynamicKey": "bellPuzzle",
       "hideWhenPuzzleSolved": "puzzle_corridor"
     },
     {
-      "x": 585,
+      "x": 1120,
       "y": 372,
-      "text": "「高台钟龛藏有灯油残芯」"
+      "text": "「高台钟龛藏有灯油残芯」",
+      "hideWhenFlaskMax": true,
+      "hideWhenPickup": "pickup_flask_core"
     },
     {
-      "x": 217,
+      "x": 1488,
       "y": 236,
       "text": "「礼拜堂暗阁 · 需幽影穿身」",
       "hideWhenShadeDash": true
     },
     {
-      "x": 470,
+      "x": 1235,
       "y": 532,
       "text": "「裂石薄层 · 需以「镇岳下砸」垂直震破」",
       "hideWhenFloorBroken": "floor_corridor_crypt"
@@ -387,33 +401,33 @@
   "props": {
     "puddles": [
       {
-        "x": 1550,
+        "x": 25,
         "w": 130
       },
       {
-        "x": 1112,
+        "x": 475,
         "w": 118
       },
       {
-        "x": 542,
+        "x": 1055,
         "w": 108
       }
     ],
     "banners": [
       {
-        "x": 1525,
+        "x": 180,
         "y": 110,
         "len": 165,
         "color": "#33151e"
       },
       {
-        "x": 990,
+        "x": 715,
         "y": 100,
         "len": 150,
         "color": "#1e2433"
       },
       {
-        "x": 335,
+        "x": 1370,
         "y": 120,
         "len": 155,
         "color": "#33151e"
@@ -421,114 +435,114 @@
     ],
     "candles": [
       {
-        "x": 1113,
+        "x": 592,
         "y": 245,
         "count": 3
       },
       {
-        "x": 1047,
+        "x": 658,
         "y": 245,
         "count": 2
       },
       {
-        "x": 177,
+        "x": 1528,
         "y": 580,
         "count": 3
       },
       {
-        "x": 83,
+        "x": 1622,
         "y": 580,
         "count": 3
       },
       {
-        "x": 43,
+        "x": 1662,
         "y": 270,
         "count": 3
       }
     ],
     "boneCairns": [
-      1435,
-      855,
-      535,
-      210
+      270,
+      850,
+      1170,
+      1495
     ],
     "stamps": [
       {
         "type": "tattered_pennant",
-        "x": 1613,
+        "x": 92,
         "y": 410,
         "scale": 0.72,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.7,
         "seed": 1
       },
       {
         "type": "broken_arch",
-        "x": 1490,
+        "x": 215,
         "y": 580,
         "scale": 1.2,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.68,
         "seed": 0
       },
       {
         "type": "stone_statue",
-        "x": 1145,
+        "x": 560,
         "y": 580,
         "scale": 0.95,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.72,
         "seed": 1
       },
       {
         "type": "hanging_chains",
-        "x": 1010,
+        "x": 695,
         "y": 0,
         "scale": 1.0,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.5,
         "seed": 0
       },
       {
         "type": "fallen_bell",
-        "x": 915,
+        "x": 790,
         "y": 580,
         "scale": 0.92,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.82,
         "seed": 2
       },
       {
         "type": "broken_arch",
-        "x": 540,
+        "x": 1165,
         "y": 580,
         "scale": 1.18,
-        "flip": false,
+        "flip": true,
         "layer": "bg",
         "alpha": 0.66,
         "seed": 2
       },
       {
         "type": "hanging_chains",
-        "x": 440,
+        "x": 1265,
         "y": 0,
         "scale": 0.9,
-        "flip": false,
+        "flip": true,
         "layer": "bg",
         "alpha": 0.48,
         "seed": 2
       },
       {
         "type": "stone_statue",
-        "x": 240,
+        "x": 1465,
         "y": 580,
         "scale": 0.88,
-        "flip": false,
+        "flip": true,
         "layer": "bg",
         "alpha": 0.74,
         "seed": 0
@@ -538,16 +552,28 @@
   "voidBarriers": [
     {
       "id": "vb_corridor",
-      "x": 133,
+      "x": 1550,
       "y": 150,
       "w": 22,
       "h": 120
+    },
+    {
+      "id": "vb_ng2_corridor_sweep",
+      "x": 620,
+      "y": 438,
+      "w": 24,
+      "h": 142,
+      "sweeping": true,
+      "sweepMinX": 500,
+      "sweepMaxX": 980,
+      "sweepSpeed": 1.25,
+      "sweepPhase": 0.4
     }
   ],
   "breakableFloors": [
     {
       "id": "floor_corridor_crypt",
-      "x": 395,
+      "x": 1160,
       "y": 580,
       "w": 150,
       "h": 160,
@@ -557,7 +583,7 @@
   "slickWalls": [
     {
       "id": "slick_r02_mid",
-      "x": 1227,
+      "x": 440,
       "y": 245,
       "w": 38,
       "h": 240,
@@ -565,12 +591,12 @@
     },
     {
       "id": "slick_r02_east",
-      "x": -1,
+      "x": 1670,
       "y": 270,
       "w": 36,
       "h": 210,
-      "side": "right"
+      "side": "left"
     }
   ],
-  "mirrored": true
+  "mirrored": false
 }

@@ -302,10 +302,12 @@ export function applyMobileTouchPrefs() {
   if (typeof document === 'undefined' || !document.body) return;
   const floatOn = !G.settings || G.settings.mobileFloatingJoy !== false;
   const scale = Math.max(0.80, Math.min(1.20, Number(G.settings && G.settings.mobileBtnScale) || 1.0));
-  const alpha = Math.max(0.45, Math.min(1.00, Number(G.settings && G.settings.mobileBtnOpacity) || 0.90));
+  const alpha = Math.max(0.35, Math.min(1.00, Number(G.settings && G.settings.mobileBtnOpacity) || 0.65));
   const mergedOn = !G.settings || G.settings.mobileMergedParry !== false;
+  const showMini = !!(G.settings && G.settings.mobileShowMinimap);
   document.body.classList.toggle('mob-floating-joy', floatOn);
   document.body.classList.toggle('mob-merged-parry', mergedOn);
+  document.body.classList.toggle('mob-show-minimap', showMini);
   const isEco = !!(G.settings && (G.settings.mobileQuality === 'eco' || G.settings.mobileEcoMode));
   document.body.classList.toggle('mob-eco-mode', isEco);
   const tc = document.getElementById('touch-controls');

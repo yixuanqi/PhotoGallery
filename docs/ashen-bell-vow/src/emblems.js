@@ -305,3 +305,24 @@ const WEAPON_SVG_MAP = {
 export function getWeaponEmblemSvg(id) {
   return WEAPON_SVG_MAP[id] || WEAPON_SVG_MAP.locked;
 }
+
+// ==================== v46.4 MINIMALIST INK & STELE LINE-ART UI SVG ICONS (Zero System Emoji!) ====================
+export const UI_ICONS = {
+  map:     '<svg class="ui-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 3.5L5.5 2l5 1.8L14.5 2v10.5L10.5 14l-5-1.8-4 1.8V3.5z"/><path d="M5.5 2v10.2M10.5 3.8V14"/></svg>',
+  scroll:  '<svg class="ui-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2.5h8.5a1.5 1.5 0 0 1 0 3H11v8H3.5a1.5 1.5 0 0 1 0-3H5V4a1.5 1.5 0 0 0-1-1.5z"/><path d="M6.5 6.5h3M6.5 9h3"/></svg>',
+  sword:   '<svg class="ui-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 2.5L6 10M13.5 2.5l-1 4.2-4.7 4.7M13.5 2.5l-4.2 1-4.7 4.7M4.2 8.2l3.6 3.6M2.5 13.5l2.5-2.5"/></svg>',
+  relic:   '<svg class="ui-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8L13.5 8 8 14.2 2.5 8 8 1.8z"/><circle cx="8" cy="8" r="2.1"/></svg>',
+  vow:     '<svg class="ui-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2v12M4 3h8.5l-2 3 2 3H4"/></svg>',
+  bell:    '<svg class="ui-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.2v1.2M4.5 11.2c0-3.2 1.2-6.8 3.5-6.8s3.5 3.6 3.5 6.8l1.3 1.4H3.2l1.3-1.4z"/><path d="M6.8 13.8a1.3 1.3 0 0 0 2.4 0"/></svg>',
+  gear:    '<svg class="ui-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="2.6"/><path d="M8 1.8v1.7M8 12.5v1.7M1.8 8h1.7M12.5 8h1.7M3.6 3.6l1.2 1.2M11.2 11.2l1.2 1.2M12.4 3.6l-1.2 1.2M4.8 11.2l-1.2 1.2"/></svg>',
+  foe:     '<svg class="ui-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4.5L5.2 7A4.2 4.2 0 0 1 8 6c1.1 0 2.1.4 2.8 1L13 4.5l-.6 4.8A4.4 4.4 0 0 1 8 13.8a4.4 4.4 0 0 1-4.4-4.5L3 4.5z"/><path d="M6.2 9.4h.6M9.2 9.4h.6"/></svg>',
+  lock:    '<svg class="ui-ico ui-ico-lock" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="7.2" width="9" height="6.6" rx="1"/><path d="M5.5 7.2V5.3a2.5 2.5 0 0 1 5 0v1.9"/></svg>',
+  bolt:    '<svg class="ui-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.2 1.8L3.8 8.8h4L6.8 14.2l5.4-7h-4l1-5.4z"/></svg>',
+  refresh: '<svg class="ui-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.6L13 6M13 2.5V6H9.5"/></svg>',
+  meter:   '<svg class="ui-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 13h11M4.5 13V8.5M8 13V4.5M11.5 13V6.8"/></svg>',
+  expand:  '<svg class="ui-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg>'
+};
+
+export function uiIcon(name) {
+  return UI_ICONS[name] || '';
+}

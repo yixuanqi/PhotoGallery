@@ -11,7 +11,7 @@ import { audio } from '../audio.js';
 import { triggerHaptic } from '../input.js';
 import { saveProgress } from '../save.js';
 import { t, isEn, locNpcName, locRelic } from '../i18n.js';
-import { getRelicEmblemSvg, getWeaponEmblemSvg } from '../emblems.js';
+import { uiIcon, getRelicEmblemSvg, getWeaponEmblemSvg } from '../emblems.js';
 import { getNpcPortraitSvg } from '../npcPortraits.js';
 import { WEAPONS } from '../weapons.js';
 import { checkAchievements } from '../codex.js';
@@ -190,13 +190,13 @@ export function renderSmithModal() {
   const tabs = document.createElement('div');
   tabs.className = 'smith-tabs';
   [
-    { id: 'tree', label: t('smith.tabTree', litTreeCount, totalTreeCount) },
-    { id: 'refine', label: t('smith.tabRefine', refinedCount, unlockedRelicsList.length) }
+    { id: 'tree',   ico: 'bell',  label: t('smith.tabTree', litTreeCount, totalTreeCount) },
+    { id: 'refine', ico: 'relic', label: t('smith.tabRefine', refinedCount, unlockedRelicsList.length) }
   ].forEach(tb => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = `codex-tab-btn${smithActiveTab === tb.id ? ' active' : ''}`;
-    btn.textContent = tb.label;
+    btn.innerHTML = `${uiIcon(tb.ico)}<span>${tb.label}</span>`;
     btn.addEventListener('click', () => {
       smithActiveTab = tb.id;
       renderSmithModal();
@@ -291,7 +291,7 @@ export function renderSmithModal() {
     btn.dataset.nodeId = node.id;
     btn.title = `${en ? node.nameEn : node.name}${node.cost > 0 ? ` (${node.cost})` : ''}`;
 
-    const glyphTxt = st.weaponMissing ? '🔒' : (en ? node.glyphEn : node.glyph);
+    const glyphTxt = st.weaponMissing ? uiIcon('lock') : (en ? node.glyphEn : node.glyph);
     const subTag = node.kind === 'trait' && !st.weaponMissing
       ? `<span class="skill-node-wdot" style="background:${WEAPONS[node.weaponId].color};"></span>`
       : '';
@@ -395,7 +395,10 @@ function renderSkillInspector(container, node, echoes) {
     }
     container.appendChild(actBtn);
   }
-  updateAndRenderSkillPreview(0);
+  updateAndRenderSkillPreview(0.016);
+  if (typeof window !== 'undefined' && window.requestAnimationFrame) {
+    window.requestAnimationFrame(() => updateAndRenderSkillPreview(0.016));
+  }
 }
 
 function renderSmithRefineTab(list, unlockedRelicsList, echoes) {

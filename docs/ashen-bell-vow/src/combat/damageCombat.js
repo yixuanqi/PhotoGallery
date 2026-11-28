@@ -143,6 +143,7 @@ export function applyEnemyHitFeel(enemy, heavy = false, hitDir = 0, launchSpeed 
 export function damageEnemyHP(enemy, amount, showNum = true) {
   if (!enemy || !enemy.alive) return;
   if (enemy.kind) recordBestiaryEvent(enemy.kind, 'seen');
+  if (!enemy.isBoss) { enemy.deaggroTimer = 0; enemy._leashStuckTimer = 0; enemy._wallStuckTimer = 0; }
   if ((enemy.isBoss || enemy.isMiniBoss) && enemy.state !== 'stagger' && G.player) {
     const pDist = Math.abs((G.player.x + G.player.w * 0.5) - (enemy.x + enemy.w * 0.5));
     if (pDist < 155) {
@@ -277,7 +278,7 @@ export function killEnemy(enemy) {
     triggerHaptic('execution', 1.05);
     addShake(14);
     if (G.echoSession) {
-      G.groundWaves = [];
+      G.groundWaves = []; G.arenaHazards = [];
       if (G.echoSession.mode === 'seven_bells' && G.echoSession.stage < SEVEN_BELLS_ORDER.length - 1) {
         G.echoSession.stage++;
         spawnFloatText(enemy.x + enemy.w / 2, enemy.y - 44, t('combat.sevenBellsAdvance', G.echoSession.stage + 1), COLORS.goldBright, 21, 1.5);
@@ -329,9 +330,10 @@ export function killEnemy(enemy) {
     triggerBossBanner(locBoss(enemy, 'name'), bannerQuote, COLORS.goldBright, 3.0);
   }
   if (enemy.isBoss) {
-    G.chapelTide = null; G.groundWaves = [];
+    G.chapelTide = null; G.groundWaves = []; G.arenaHazards = [];
     triggerBossKillSlowmo(0.85);
-    G.screenFlash = { alpha: 0.36, color: '#fef9c3' };
+    G.screenFlash = { alpha: 0.22, color: '#d97706' };
+    G.execKillFocus = { x: enemy.x + enemy.w * 0.5, y: enemy.y + enemy.h * 0.45, timer: 0.24, maxTimer: 0.24, isBoss: true };
     spawnShockwave(enemy.x + enemy.w * 0.5, enemy.y + enemy.h * 0.45, 290, COLORS.goldBright, 6.0, 0.62);
     audio.playBellToll(); triggerHaptic('execution', 1.25); addShake(18);
     if (G.echoSession) {
@@ -368,8 +370,10 @@ export function killEnemy(enemy) {
         }
         G.minimapDirty = true; checkAchievements(); hooks.saveProgress(false);
       }
+      // v46.8 Seamless exploration: no victory menu popup on mid-game bosses (only banner + gate unseal!)
       spawnFloatText(CHAPEL_EXIT_GATE_DEF.x, CHAPEL_EXIT_GATE_DEF.y - 34, t('combat.gateChapelOpen'), COLORS.cyanBright, 20, 2.0);
-      scheduleOutcome(() => hooks.showVictory('boss_hui'), 1100, true);
+      triggerBossBanner(t('victory.huiTitle'), t('combat.gateChapelOpen'), COLORS.cyanBright, 3.0);
+      hooks.syncHUD(true);
     } else if (enemy.id === 'boss_ji') {
       if (G.worldState) {
         G.worldState.boss2Defeated = true;
@@ -384,8 +388,10 @@ export function killEnemy(enemy) {
         checkAchievements();
         hooks.saveProgress(false);
       }
+      // v46.8 Seamless exploration: no victory menu popup on mid-game bosses (only banner + gate unseal!)
       spawnFloatText(FOUNDRY_EXIT_GATE_DEF.x, FOUNDRY_EXIT_GATE_DEF.y - 34, t('combat.gateFoundryOpen'), COLORS.goldBright, 21, 2.2);
-      scheduleOutcome(() => hooks.showVictory('boss_ji'), 1200, true);
+      triggerBossBanner(t('victory.jiTitle'), t('combat.gateFoundryOpen'), COLORS.goldBright, 3.0);
+      hooks.syncHUD(true);
     } else if (enemy.id === 'boss_yuan') {
       if (G.worldState) {
         G.worldState.boss3Defeated = true;
@@ -546,6 +552,9 @@ export function applyIncomingAttackToPlayer(attacker, damage, isUnparryable, kno
         G.player.activeAttack = null;
         G.player.attackTimer = 0;
         G.player.attackCd = 0;
+        G.player.comboStep = 0;
+        G.player.clashParryCd = 0;
+        G.player.clashChainTimer = 0.52;
       }
       G.player.parryCooldown = isRapidMidHit ? 0.02 : 0.03;
       G.player.riposteWindow = isComboFinisher ? 0.68 : 0.56; // Opens K -> J Cross Counter Slash!

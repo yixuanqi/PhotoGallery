@@ -326,13 +326,13 @@
     {
       "id": "anc_asc_r1",
       "x": 470,
-      "y": 1175,
+      "y": 1210,
       "topY": 1120
     },
     {
       "id": "anc_asc_r2",
       "x": 815,
-      "y": 1175,
+      "y": 1210,
       "topY": 1120
     },
     {
@@ -381,11 +381,11 @@
   "enemies": [
     {
       "id": "golem_asc",
-      "kind": "golem",
+      "kind": "anchorite",
       "x": 1170,
       "y": 1302,
       "minX": 1000,
-      "maxX": 1460
+      "maxX": 1458
     },
     {
       "id": "cantor_asc_1",
@@ -395,11 +395,11 @@
     },
     {
       "id": "duelist_asc",
-      "kind": "duelist",
+      "kind": "frostguard",
       "x": 580,
-      "y": 960,
+      "y": 952,
       "minX": 320,
-      "maxX": 900
+      "maxX": 894
     },
     {
       "id": "cantor_asc_2",
@@ -424,7 +424,8 @@
     {
       "x": 385,
       "y": 935,
-      "text": "「破晓密室 · 幽影穿身可取真结局之印」"
+      "text": "「破晓密室 · 幽影穿身可取真结局之印」",
+      "hideWhenDawnSigil": true
     },
     {
       "x": 1465,

@@ -10,7 +10,7 @@ import {
   G, createFreshWorldState, getActiveAltar, getActiveSynergies, getRelicStats, getActiveVowStats, getCombatScaling, getEquippedRelicLabel, getActiveWeaponId, getActiveWeapon, isWeaponUnlocked, getUnlockedWeaponIds, unlockWeapon,
   isWeaponTraitUnlocked, getActiveWeaponTraitId, unlockWeaponTrait, setActiveWeaponTrait,
   ensureNpcQuests, hasKeeperBlessing,
-  getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks, getPlayerMaxSeals,
+  getPlayerMaxHp, getPlayerMaxSoul, getPlayerMaxFlasks, getPlayerMaxSeals, syncOwnedAbilityPickups,
   markMapExplored, getExplorationPercent, createLanterns,
   createResonancePuzzles, createCrumblePlatforms, createFoundryCrucibles, getAwakeBoss, getHudBoss, isBoss4Unlocked, clearOutcomeTimer, triggerBossBanner, setTextFast
 } from '../state.js';
@@ -86,6 +86,7 @@ export function setupEchoArena(stageBoss) {
   G.sporeClouds = [];
   G.weaponUltimates = [];
   G.delayedStrikes = [];
+  G.arenaHazards = [];
   if (G.wardenArenaFx) { G.wardenArenaFx.windDir = 0; G.wardenArenaFx.windTimer = 0; G.wardenArenaFx.blizzardAlpha = 0; G.wardenArenaFx.bellPulseTimer = 0; }
   G.particles = [];
   G.slashes = [];
@@ -100,6 +101,7 @@ export function setupEchoArena(stageBoss) {
   G.projectiles = [];
   G.hitstopTimer = 0;
   G.invertTimer = 0;
+  G.execKillFocus = null;
   G.screenFlash = { alpha: 0.18, color: COLORS.goldBright };
 
   // Helper: derive player spawn point on the opposite side of the arena from the boss/warden (works even when translated or mirrored!)
@@ -349,6 +351,7 @@ export function restAtAltar() {
   G.sporeClouds = [];
   G.weaponUltimates = [];
   G.delayedStrikes = [];
+  G.arenaHazards = [];
   if (G.wardenArenaFx) { G.wardenArenaFx.windDir = 0; G.wardenArenaFx.windTimer = 0; G.wardenArenaFx.blizzardAlpha = 0; G.wardenArenaFx.bellPulseTimer = 0; }
   G.projectiles = [];
   G.talismans = [];
@@ -392,6 +395,7 @@ export function respawnAtActiveAltar() {
   G.sporeClouds = [];
   G.weaponUltimates = [];
   G.delayedStrikes = [];
+  G.arenaHazards = [];
   if (G.wardenArenaFx) { G.wardenArenaFx.windDir = 0; G.wardenArenaFx.windTimer = 0; G.wardenArenaFx.blizzardAlpha = 0; G.wardenArenaFx.bellPulseTimer = 0; }
   G.particles = [];
   G.slashes = [];
@@ -407,6 +411,7 @@ export function respawnAtActiveAltar() {
   snapCameraToPlayer(0);
   G.hitstopTimer = 0;
   G.invertTimer = 0;
+  G.execKillFocus = null;
   G.screenFlash = { alpha: 0, color: '#fff' };
   markMapExplored(altar.x, altar.y - 40);
   hideAllOverlays();
@@ -592,6 +597,7 @@ export async function startGame() {
   G.sporeClouds = [];
   G.weaponUltimates = [];
   G.delayedStrikes = [];
+  G.arenaHazards = [];
   if (G.wardenArenaFx) { G.wardenArenaFx.windDir = 0; G.wardenArenaFx.windTimer = 0; G.wardenArenaFx.blizzardAlpha = 0; G.wardenArenaFx.bellPulseTimer = 0; }
   G.particles = [];
   G.slashes = [];
@@ -607,6 +613,7 @@ export async function startGame() {
   G.grapplePreviewTarget = null;
   G.hitstopTimer = 0;
   G.invertTimer = 0;
+  G.execKillFocus = null;
   G.screenFlash = { alpha: 0, color: '#fff' };
   snapCameraToPlayer(0);
   G.playTimeSec = 0;
@@ -666,11 +673,22 @@ export async function startNewGamePlus() {
       chroniclerClaims: Array.isArray(prev.npcQuests.chroniclerClaims) ? [...prev.npcQuests.chroniclerClaims] : [],
       metKeeper: !!prev.npcQuests.metKeeper,
       keeperWickGifted: !!prev.npcQuests.keeperWickGifted,
-      keeperBlessingActive: false
+      keeperBlessingActive: false,
+      metScavenger: !!prev.npcQuests.metScavenger,
+      boughtSecretMap: !!prev.npcQuests.boughtSecretMap,
+      boughtBellSatchel: !!prev.npcQuests.boughtBellSatchel
     };
   }
+  fresh.abilities = {
+    grappleHook: !!(prev.abilities && prev.abilities.grappleHook),
+    doubleJump: !!(prev.abilities && prev.abilities.doubleJump),
+    shadeDash: !!(prev.abilities && prev.abilities.shadeDash),
+    bellDive: !!(prev.abilities && prev.abilities.bellDive)
+  };
+  if (fresh.abilities.doubleJump) fresh.foundryGateAnim = 1;
+  syncOwnedAbilityPickups(fresh);
   fresh.mapPins = [];
-  // Fresh world progression (bosses, fog, gates, abilities, keyItems reset for full NG+ replay)
+  // v46.8 NG+ retains all unlocked movement abilities, weapons, relics & upgrades; resets bosses, fog & world gates
   G.worldState = fresh;
   G.equippedRelics = keepEquipped;
   G.currentRelic = keepEquipped[0] || RELICS[0];
@@ -697,6 +715,7 @@ export async function startNewGamePlus() {
   G.sporeClouds = [];
   G.weaponUltimates = [];
   G.delayedStrikes = [];
+  G.arenaHazards = [];
   if (G.wardenArenaFx) { G.wardenArenaFx.windDir = 0; G.wardenArenaFx.windTimer = 0; G.wardenArenaFx.blizzardAlpha = 0; G.wardenArenaFx.bellPulseTimer = 0; }
   G.particles = [];
   G.slashes = [];
@@ -712,6 +731,7 @@ export async function startNewGamePlus() {
   G.grapplePreviewTarget = null;
   G.hitstopTimer = 0;
   G.invertTimer = 0;
+  G.execKillFocus = null;
   G.screenFlash = { alpha: 0.24, color: COLORS.goldBright };
   snapCameraToPlayer(10);
   G.stats = { parries: 0, executions: 0, damageTaken: 0, startTime: performance.now() };
@@ -747,7 +767,7 @@ export function continueIntoBellWell() {
   G.gameState = 'playing';
   audio.playBellToll();
   uiHooks.syncHUD(true);
-  const intoAscent = !!(G.player && G.player.x > 5500);
+  const intoAscent = !!(G.worldState && G.worldState.boss2Defeated);
   spawnFloatText(
     G.player.x + G.player.w / 2,
     G.player.y - 34,

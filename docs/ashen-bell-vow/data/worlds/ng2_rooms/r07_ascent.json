@@ -5,7 +5,7 @@
   "name": "初钟圣阶",
   "theme": "ascent",
   "bounds": {
-    "x": 2820,
+    "x": 6740,
     "y": 0,
     "w": 1620,
     "h": 1520
@@ -20,14 +20,14 @@
     },
     {
       "name": "初钟圣顶 · 破晓密室",
-      "x": 1260,
+      "x": 0,
       "y": 780,
       "w": 360,
       "h": 260
     },
     {
       "name": "初钟圣顶 · 墨翼天梯",
-      "x": 0,
+      "x": 360,
       "y": 600,
       "w": 1260,
       "h": 440
@@ -49,112 +49,112 @@
   ],
   "solids": [
     {
-      "x": 1580,
+      "x": 0,
       "y": 0,
       "w": 40,
       "h": 420,
       "type": "pillar"
     },
     {
-      "x": 1580,
+      "x": 0,
       "y": 580,
       "w": 40,
       "h": 660,
       "type": "pillar"
     },
     {
-      "x": 1385,
+      "x": 0,
       "y": 580,
       "w": 235,
       "h": 45,
       "type": "ground"
     },
     {
-      "x": 0,
+      "x": 1580,
       "y": 580,
       "w": 40,
       "h": 640,
       "type": "pillar"
     },
     {
-      "x": 610,
+      "x": 0,
       "y": 1380,
       "w": 1010,
       "h": 180,
       "type": "ground"
     },
     {
-      "x": 0,
+      "x": 1150,
       "y": 1380,
       "w": 470,
       "h": 180,
       "type": "ground"
     },
     {
-      "x": 1150,
+      "x": 355,
       "y": 1300,
       "w": 115,
       "h": 20,
       "type": "platform"
     },
     {
-      "x": 60,
+      "x": 1365,
       "y": 1215,
       "w": 195,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 660,
+      "x": 40,
       "y": 1020,
       "w": 920,
       "h": 100,
       "type": "ground"
     },
     {
-      "x": 1338,
+      "x": 40,
       "y": 860,
       "w": 242,
       "h": 20,
       "type": "pillar"
     },
     {
-      "x": 445,
+      "x": 1020,
       "y": 1255,
       "w": 155,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 175,
+      "x": 1290,
       "y": 1135,
       "w": 155,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 445,
+      "x": 1005,
       "y": 1015,
       "w": 170,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 450,
+      "x": 1015,
       "y": 785,
       "w": 155,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 465,
+      "x": 1005,
       "y": 665,
       "w": 150,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 980,
+      "x": 420,
       "y": 740,
       "w": 220,
       "h": 22,
@@ -168,7 +168,7 @@
       "type": "platform"
     },
     {
-      "x": 0,
+      "x": 1160,
       "y": 580,
       "w": 460,
       "h": 130,
@@ -178,21 +178,21 @@
   "crumblePlatforms": [
     {
       "id": "crumble_asc_1",
-      "x": 965,
+      "x": 545,
       "y": 1285,
       "w": 110,
       "h": 20
     },
     {
       "id": "crumble_asc_2",
-      "x": 765,
+      "x": 745,
       "y": 1295,
       "w": 110,
       "h": 20
     },
     {
       "id": "crumble_asc_3",
-      "x": 227,
+      "x": 1275,
       "y": 895,
       "w": 118,
       "h": 20
@@ -201,7 +201,7 @@
   "altars": [
     {
       "id": "altar_ascent",
-      "x": 1470,
+      "x": 150,
       "y": 1380,
       "name": "初钟圣顶 · 誓阶底坛",
       "shortName": "圣阶 · 誓阶底坛",
@@ -209,7 +209,7 @@
     },
     {
       "id": "altar_summit",
-      "x": 185,
+      "x": 1435,
       "y": 580,
       "name": "初钟圣顶 · 终誓祭坛",
       "shortName": "圣顶 · 终誓祭坛",
@@ -221,14 +221,14 @@
       "id": "npc_keeper",
       "kind": "keeper",
       "name": "旧誓守灯人 · 汐",
-      "x": 88,
+      "x": 1532,
       "y": 580
     }
   ],
   "loreTablets": [
     {
       "id": "lore_ascent",
-      "x": 345,
+      "x": 1275,
       "y": 580,
       "title": "初钟真史碑",
       "sub": "初钟圣顶 · 终誓圣门",
@@ -241,7 +241,7 @@
       "role": "switchGate",
       "switchKey": "windAscentOpen",
       "orientation": "vertical",
-      "x": 1580,
+      "x": 0,
       "y": 420,
       "w": 40,
       "h": 160
@@ -250,7 +250,7 @@
   "secretWalls": [
     {
       "id": "wall_frost_entry",
-      "x": 2,
+      "x": 1582,
       "y": 1220,
       "w": 36,
       "h": 160,
@@ -260,20 +260,20 @@
   "voidBarriers": [
     {
       "id": "vb_ascent_dawn",
-      "x": 1338,
+      "x": 260,
       "y": 880,
       "w": 22,
       "h": 140
     },
     {
       "id": "vb_ascent_sweep",
-      "x": 1176,
+      "x": 420,
       "y": 875,
       "w": 24,
       "h": 145,
       "sweeping": true,
-      "sweepMinX": 816,
-      "sweepMaxX": 1336,
+      "sweepMinX": 260,
+      "sweepMaxX": 780,
       "sweepSpeed": 1.35,
       "sweepPhase": 0.0
     }
@@ -285,7 +285,7 @@
       "keyId": "dawnSigil",
       "bonusHp": 15,
       "bonusSoul": 20,
-      "x": 1485,
+      "x": 135,
       "y": 1020,
       "name": "终章真宝 · 破晓初印",
       "desc": "持有此印斩落初钟圣骸，可开启真结局「破晓熄钟」！(生命+15 / 魂火+20)"
@@ -294,7 +294,7 @@
       "id": "pickup_echo_ascent",
       "kind": "echoCache",
       "echoAmount": 130,
-      "x": 1090,
+      "x": 530,
       "y": 740,
       "name": "圣阶古钟遗匣",
       "desc": "获得 +130 残响，可回铁砧淬炼断刃与圣物精粹！"
@@ -304,7 +304,7 @@
   "pendulums": [
     {
       "id": "pend_asc_1",
-      "x": 980,
+      "x": 640,
       "anchorY": 1120,
       "len": 168,
       "amp": 0.56,
@@ -316,7 +316,7 @@
   "rivers": [
     {
       "id": "river_ascent",
-      "x": 675,
+      "x": 275,
       "y": 1368,
       "w": 670,
       "drainable": true
@@ -325,37 +325,37 @@
   "grappleAnchors": [
     {
       "id": "anc_asc_r1",
-      "x": 1150,
-      "y": 1175,
+      "x": 470,
+      "y": 1210,
       "topY": 1120
     },
     {
       "id": "anc_asc_r2",
-      "x": 805,
-      "y": 1175,
+      "x": 815,
+      "y": 1210,
       "topY": 1120
     },
     {
       "id": "anc_asc_s1",
-      "x": 430,
+      "x": 1190,
       "y": 1055,
       "topY": 710
     },
     {
       "id": "anc_asc_s2",
-      "x": 435,
+      "x": 1185,
       "y": 825,
       "topY": 710
     },
     {
       "id": "anc_asc_s3",
-      "x": 525,
+      "x": 1095,
       "y": 530,
       "topY": 0
     },
     {
       "id": "anc_asc_west",
-      "x": 980,
+      "x": 640,
       "y": 645,
       "topY": 0
     }
@@ -363,81 +363,82 @@
   "lanterns": [
     {
       "id": "lan_asc_1",
-      "x": 980,
+      "x": 640,
       "anchorY": 1120,
       "topY": 1120,
       "len": 110,
-      "angle": -0.05
+      "angle": 0.05
     },
     {
       "id": "lan_asc_2",
-      "x": 240,
+      "x": 1380,
       "anchorY": 710,
       "topY": 710,
       "len": 115,
-      "angle": 0.05
+      "angle": -0.05
     }
   ],
   "enemies": [
     {
       "id": "golem_asc",
       "kind": "anchorite",
-      "x": 404,
+      "x": 1170,
       "y": 1302,
-      "minX": 114,
-      "maxX": 572
+      "minX": 1000,
+      "maxX": 1458
     },
     {
       "id": "cantor_asc_1",
       "kind": "cantor",
-      "x": 139,
+      "x": 1445,
       "y": 1110
     },
     {
       "id": "duelist_asc",
-      "kind": "duelist",
-      "x": 1006,
-      "y": 960,
-      "minX": 686,
-      "maxX": 1266
+      "kind": "frostguard",
+      "x": 580,
+      "y": 952,
+      "minX": 320,
+      "maxX": 894
     },
     {
       "id": "cantor_asc_2",
       "kind": "cantor",
-      "x": 404,
+      "x": 1180,
       "y": 860
     },
     {
       "id": "leech_asc",
       "kind": "leech",
-      "x": 1091,
+      "x": 495,
       "y": 1122
     }
   ],
   "bosses": [],
   "inscriptions": [
     {
-      "x": 1440,
+      "x": 180,
       "y": 1280,
       "text": "「初钟圣阶 · 沿东侧天梯登临圣心」"
     },
     {
-      "x": 1235,
+      "x": 385,
       "y": 935,
-      "text": "「破晓密室 · 幽影穿身可取真结局之印」"
+      "text": "「破晓密室 · 幽影穿身可取真结局之印」",
+      "hideWhenDawnSigil": true
     },
     {
-      "x": 155,
+      "x": 1465,
       "y": 485,
       "text": "「前方 · 初钟圣心 · 最终决战 →」"
     },
     {
-      "x": 155,
+      "x": 1465,
       "y": 1315,
       "text": "「寒霜暗壁 · 破冰踏入霜骸圣脊 →」"
     },
     {
-      "x": 1495,
+      "x": 125,
       "y": 520,
       "text": "「启闸开启绝风铁闸 · 贯通初钟圣阶与绝风断塔」",
       "hideWhenSwitch": "windAscentOpen"
@@ -447,19 +448,19 @@
     "puddles": [],
     "banners": [
       {
-        "x": 560,
+        "x": 1060,
         "y": 1060,
         "len": 150,
         "color": "#3d1a26"
       },
       {
-        "x": 280,
+        "x": 1340,
         "y": 120,
         "len": 175,
         "color": "#4a1c28"
       },
       {
-        "x": 95,
+        "x": 1525,
         "y": 120,
         "len": 175,
         "color": "#4a1c28"
@@ -467,112 +468,112 @@
     ],
     "candles": [
       {
-        "x": 1520,
+        "x": 100,
         "y": 1380,
         "count": 4
       },
       {
-        "x": 1415,
+        "x": 205,
         "y": 1380,
         "count": 3
       },
       {
-        "x": 1528,
+        "x": 92,
         "y": 1020,
         "count": 4
       },
       {
-        "x": 235,
+        "x": 1385,
         "y": 580,
         "count": 4
       },
       {
-        "x": 130,
+        "x": 1490,
         "y": 580,
         "count": 4
       }
     ],
     "boneCairns": [
-      580,
-      400
+      1040,
+      1220
     ],
     "stamps": [
       {
         "type": "bronze_gear",
-        "x": 1495,
+        "x": 125,
         "y": 1190,
         "scale": 0.9,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.58,
         "seed": 0
       },
       {
         "type": "wind_buttress",
-        "x": 1100,
+        "x": 520,
         "y": 1020,
         "scale": 1.05,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.68,
         "seed": 0
       },
       {
         "type": "tattered_pennant",
-        "x": 1165,
+        "x": 455,
         "y": 740,
         "scale": 0.78,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.76,
         "seed": 0
       },
       {
         "type": "wind_buttress",
-        "x": 760,
+        "x": 860,
         "y": 1020,
         "scale": 1.05,
-        "flip": false,
+        "flip": true,
         "layer": "bg",
         "alpha": 0.68,
         "seed": 2
       },
       {
         "type": "crucible_vat",
-        "x": 560,
+        "x": 1060,
         "y": 1120,
         "scale": 0.82,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.76,
         "seed": 1
       },
       {
         "type": "stone_statue",
-        "x": 405,
+        "x": 1215,
         "y": 580,
         "scale": 0.92,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.74,
         "seed": 2
       },
       {
         "type": "broken_arch",
-        "x": 255,
+        "x": 1365,
         "y": 580,
         "scale": 1.18,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.66,
         "seed": 1
       },
       {
         "type": "tattered_pennant",
-        "x": 55,
+        "x": 1565,
         "y": 580,
         "scale": 0.84,
-        "flip": false,
+        "flip": true,
         "layer": "bg",
         "alpha": 0.74,
         "seed": 1
@@ -582,7 +583,7 @@
   "breakableFloors": [
     {
       "id": "floor_ascent_cistern",
-      "x": 470,
+      "x": 1010,
       "y": 1380,
       "w": 140,
       "h": 140,
@@ -594,10 +595,10 @@
       "id": "switch_wind_ascent",
       "switchKey": "windAscentOpen",
       "kind": "gateLever",
-      "x": 1495,
+      "x": 125,
       "y": 580,
       "name": "圣阶西侧绝风铁闸"
     }
   ],
-  "mirrored": true
+  "mirrored": false
 }

@@ -18,7 +18,7 @@ import { audio } from '../audio.js';
 import {
   isActionHeld, syncHelpModalText, getActionKeyLabel, startKeyCapture, cancelKeyCapture, triggerHaptic
 } from '../input.js';
-import { isPickupUnlocked, equipWeapon } from '../combat.js';
+import { isPickupUnlocked, findNearestInteractable, equipWeapon } from '../combat.js';
 import { spawnParticles, spawnShockwave, spawnFloatText } from '../vfx.js';
 import { snapCameraToPlayer } from '../world.js';
 import { createPlayer, createSentinels, createBoss, createBoss2, createBoss3, createBoss4, makeWardenWind, makeWardenForest, makeWardenMountain } from '../entities.js';
@@ -543,13 +543,13 @@ export function syncHUD(force = false) {
       }
     }
 
-    // Dynamic 3: Ink Seal / Full-Seal Ultimate (appears whenever player has >=1 seal or stuck talismans!)
+    // Dynamic 3: Ink Seal / Full-Seal Ultimate (v46.2: only appears when Full-Seal Ult is ready or Talismans are stuck, keeping center-right clean!)
     if (HUD_DOM.fanSeal) {
       const sNow = G.player.seals || 0;
       const sMax = G.player.maxSeals || 3;
       const hasTal = !!(G.talismans && G.talismans.length > 0);
-      const showSeal = sNow > 0 || hasTal;
       const isUlt = sMax > 0 && sNow >= sMax;
+      const showSeal = isUlt || hasTal;
       if (force || hudCache.mobShowSeal !== showSeal || hudCache.mobSealNow !== sNow || hudCache.mobSealUlt !== isUlt) {
         hudCache.mobShowSeal = showSeal;
         hudCache.mobSealNow = sNow;
@@ -561,69 +561,36 @@ export function syncHUD(force = false) {
       }
     }
 
-    // Contextual Interact Pill (covers all Altars, migrated NPCs incl. Scavenger, World Switches, Tablets, Pickups)
+    // Contextual Interact Pill (v46.3: strictly synced with findNearestInteractable so pill & world pointer match 1:1!)
     if (HUD_DOM.mobileInteract) {
       let interactLabel = '';
       if (G.gameState === 'playing' && G.player.hp > 0) {
         const px = G.player.x + G.player.w / 2;
         const py = G.player.y + G.player.h;
-        if (G.worldState && G.worldState.boss3Defeated && !G.echoSession &&
-            Math.hypot(px - FIRST_BELL_CORE_POS.x, py - FIRST_BELL_CORE_POS.y) < 105) {
-          interactLabel = t('prompt.coreMob');
-        }
-        if (!interactLabel) for (const altar of ALTARS) {
-          if (Math.hypot(px - altar.x, py - altar.y) < 86) {
-            const lit = !G.worldState || G.worldState.litAltars.has(altar.id);
+        const near = findNearestInteractable(px, py);
+        if (near) {
+          if (near.kind === 'core') {
+            interactLabel = t('prompt.coreMob');
+          } else if (near.kind === 'altar') {
+            const lit = !G.worldState || G.worldState.litAltars.has(near.ref.id);
             interactLabel = lit ? t('prompt.altarRestMob') : t('prompt.altarLightMob');
-            break;
-          }
-        }
-        if (!interactLabel) {
-          for (const npc of NPCS) {
-            const pos = getEffectiveNpcPos(npc);
-            if (Math.hypot(px - pos.x, py - pos.y) < 88) {
-              const verb = npc.kind === 'chronicler' ? t('prompt.npcChronMob')
-                : npc.kind === 'keeper' ? t('prompt.npcKeeperMob')
-                : npc.kind === 'scavenger' ? t('prompt.npcScav')
-                : t('prompt.npcSmithMob');
-              interactLabel = `${verb} · ${locNpcName(npc)}`;
-              break;
-            }
-          }
-        }
-        if (!interactLabel) {
-          for (const sw of WORLD_SWITCHES_DEF) {
-            if (!isWorldSwitchOn(sw.switchKey) && isSwitchUnlocked(sw) && Math.hypot(px - sw.x, py - sw.y) < 84) {
-              interactLabel = t('mob.pullSwitch');
-              break;
-            }
-          }
-        }
-        if (!interactLabel) {
-          for (const e of G.enemies) {
-            if (e && e.alive && e.isDummy && Math.hypot(px - (e.x + e.w * 0.5), py - (e.y + e.h)) < 94) {
-              interactLabel = t('prompt.dummyModeMob');
-              break;
-            }
-          }
-        }
-        if (!interactLabel && G.worldState && !G.worldState.shortcutOpen && Math.hypot(px - SHORTCUT_GATE_DEF.leverX, py - SHORTCUT_GATE_DEF.leverY) < 76) {
-          interactLabel = t('prompt.leverMob');
-        }
-        if (!interactLabel) {
-          for (const lt of LORE_TABLETS) {
-            if (Math.hypot(px - lt.x, py - lt.y) < 78) {
-              interactLabel = t('prompt.loreMob', locTablet(lt, 'title'));
-              break;
-            }
-          }
-        }
-        if (!interactLabel && G.worldState) {
-          for (const p of G.worldState.pickups) {
-            if (!p.collected && isPickupUnlocked(p) && Math.hypot(px - p.x, py - p.y) < 72) {
-              interactLabel = t('prompt.pickupMob', locPickup(p, 'name'));
-              break;
-            }
+          } else if (near.kind === 'npc') {
+            const npc = near.ref;
+            const verb = npc.kind === 'chronicler' ? t('prompt.npcChronMob')
+              : npc.kind === 'keeper' ? t('prompt.npcKeeperMob')
+              : npc.kind === 'scavenger' ? t('prompt.npcScav')
+              : t('prompt.npcSmithMob');
+            interactLabel = `${verb} · ${locNpcName(npc)}`;
+          } else if (near.kind === 'switch') {
+            interactLabel = t('mob.pullSwitch');
+          } else if (near.kind === 'dummy') {
+            interactLabel = t('prompt.dummyModeMob');
+          } else if (near.kind === 'lever') {
+            interactLabel = t('prompt.leverMob');
+          } else if (near.kind === 'tablet') {
+            interactLabel = t('prompt.loreMob', locTablet(near.ref, 'title'));
+          } else if (near.kind === 'pickup') {
+            interactLabel = t('prompt.pickupMob', locPickup(near.ref, 'name'));
           }
         }
       }

@@ -3,7 +3,7 @@
   "name": "断索钟楼 · 外廊残钟",
   "theme": "sanctuary",
   "bounds": {
-    "x": 10240,
+    "x": 0,
     "y": -740,
     "w": 940,
     "h": 740
@@ -21,42 +21,42 @@
       "type": "pillar"
     },
     {
-      "x": 920,
+      "x": -40,
       "y": 0,
       "w": 60,
       "h": 740,
       "type": "pillar"
     },
     {
-      "x": 210,
+      "x": 0,
       "y": 600,
       "w": 730,
       "h": 140,
       "type": "ground"
     },
     {
-      "x": 0,
+      "x": 890,
       "y": 600,
       "w": 50,
       "h": 140,
       "type": "ground"
     },
     {
-      "x": 580,
+      "x": 110,
       "y": 420,
       "w": 250,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 280,
+      "x": 440,
       "y": 316,
       "w": 220,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 570,
+      "x": 130,
       "y": 215,
       "w": 240,
       "h": 22,
@@ -70,7 +70,7 @@
       "role": "switchGate",
       "switchKey": "belfryHatchOpen",
       "orientation": "horizontal",
-      "x": 50,
+      "x": 730,
       "y": 600,
       "w": 160,
       "h": 26
@@ -88,7 +88,7 @@
       "bonusHp": 10,
       "bonusSoul": 10,
       "echoAmount": 55,
-      "x": 715,
+      "x": 225,
       "y": 215,
       "name": "钟楼古核 · 断索灵晶",
       "desc": "生命 +10 · 魂火 +10 · +55 残响"
@@ -97,7 +97,7 @@
       "id": "pickup_relic_core",
       "kind": "relic",
       "relicId": "bellcore",
-      "x": 390,
+      "x": 550,
       "y": 316,
       "name": "苍穹秘宝 · 古钟心核",
       "desc": "墨印上限 +1，弹反回血，居合/断钟返增伤 25%！"
@@ -107,14 +107,14 @@
   "lanterns": [
     {
       "id": "lan_belfry_1",
-      "x": 400,
+      "x": 540,
       "anchorY": 34,
       "len": 160,
       "topY": 34
     },
     {
       "id": "lan_belfry_2",
-      "x": 130,
+      "x": 810,
       "anchorY": 34,
       "len": 210,
       "topY": 34
@@ -122,13 +122,13 @@
   ],
   "grappleAnchors": [
     {
-      "x": 545,
+      "x": 395,
       "y": 245,
       "id": "anc_r19_belfry_outer_0",
       "topY": 34
     },
     {
-      "x": 130,
+      "x": 810,
       "y": 540,
       "id": "anc_r19_belfry_outer_1",
       "topY": 34
@@ -140,14 +140,14 @@
     {
       "id": "cantor_belfry_1",
       "kind": "cantor",
-      "x": 524,
+      "x": 380,
       "y": 492
     }
   ],
   "bosses": [],
   "inscriptions": [
     {
-      "x": 265,
+      "x": 675,
       "y": 532,
       "text": "「启闸开启青铜活板 · 永久贯通回起点熄灯祭坛」",
       "hideWhenSwitch": "belfryHatchOpen"
@@ -156,20 +156,20 @@
   "props": {
     "puddles": [
       {
-        "x": 560,
+        "x": 220,
         "w": 160,
         "y": 600
       }
     ],
     "banners": [
       {
-        "x": 660,
+        "x": 280,
         "y": 34,
         "len": 170,
         "color": "#1a2030"
       },
       {
-        "x": 280,
+        "x": 660,
         "y": 34,
         "len": 155,
         "color": "#26161d"
@@ -177,12 +177,12 @@
     ],
     "candles": [
       {
-        "x": 715,
+        "x": 225,
         "y": 215,
         "count": 4
       },
       {
-        "x": 230,
+        "x": 710,
         "y": 600,
         "count": 3
       }
@@ -191,30 +191,28 @@
     "stamps": [
       {
         "type": "fallen_bell",
-        "x": 760,
+        "x": 180,
         "y": 600,
         "scale": 1.1,
-        "layer": "bg",
-        "flip": true
+        "layer": "bg"
       },
       {
         "type": "broken_arch",
-        "x": 380,
+        "x": 560,
         "y": 600,
         "scale": 1.0,
-        "layer": "bg",
-        "flip": true
+        "layer": "bg"
       }
     ]
   },
   "slickWalls": [
     {
       "id": "slick_r19_west",
-      "x": 920,
+      "x": 0,
       "y": 140,
       "w": 20,
       "h": 420,
-      "side": "left"
+      "side": "right"
     }
   ],
   "worldSwitches": [
@@ -222,10 +220,10 @@
       "id": "switch_belfry_hatch",
       "switchKey": "belfryHatchOpen",
       "kind": "hatch",
-      "x": 265,
+      "x": 675,
       "y": 600,
       "name": "断索钟楼单向活板闸"
     }
   ],
-  "mirrored": true
+  "mirrored": false
 }

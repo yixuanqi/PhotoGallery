@@ -3,7 +3,7 @@ import {
   COLORS, RELICS, DEFAULT_KEYBINDS, ROOMS, ALTARS, WORLD_MIN_X, WORLD_MIN_Y, MAP_COLS, MAP_ROWS, MAP_CELL_W, MAP_CELL_H,
   SAVE_KEY, LEGACY_SAVE_KEY_V9, LEGACY_SAVE_KEY_V8, SETTINGS_KEY
 } from './config.js';
-import { G, hooks, createFreshWorldState, getExplorationPercent, syncWindVanesFromWorldState } from './state.js';
+import { G, hooks, createFreshWorldState, getExplorationPercent, syncWindVanesFromWorldState, syncOwnedAbilityPickups } from './state.js';
 import { WEAPON_ORDER, normalizeWeaponId, getWeaponById } from './weapons.js';
 import { storage } from './storage.js';
 import { audio } from './audio.js';
@@ -42,6 +42,7 @@ export function saveUserSettings() {
     showPerf: !!G.settings.showPerf,
     fpsDivisor: Math.max(1, Math.min(4, Number(G.settings.fpsDivisor) || 1)),
     hitstopMode: ['standard', 'light', 'off'].includes(G.settings.hitstopMode) ? G.settings.hitstopMode : 'standard',
+    flashMode: ['soft', 'off', 'classic'].includes(G.settings.flashMode) ? G.settings.flashMode : 'soft',
     musicEnabled: G.settings.musicEnabled !== false,
     masterVol: G.settings.masterVol,
     musicVol: G.settings.musicVol,
@@ -49,8 +50,9 @@ export function saveUserSettings() {
     mobileFloatingJoy: G.settings.mobileFloatingJoy !== false,
     mobileCombatAssist: G.settings.mobileCombatAssist !== false,
     mobileMergedParry: G.settings.mobileMergedParry !== false,
+    mobileShowMinimap: !!G.settings.mobileShowMinimap,
     mobileBtnScale: Number(G.settings.mobileBtnScale) || 1.0,
-    mobileBtnOpacity: Number(G.settings.mobileBtnOpacity) || 0.90,
+    mobileBtnOpacity: Number(G.settings.mobileBtnOpacity) || 0.65,
     mobileQuality: ['high', 'retina', 'eco'].includes(G.settings.mobileQuality) ? G.settings.mobileQuality : 'high',
     mobileEcoMode: G.settings.mobileQuality === 'eco' || !!G.settings.mobileEcoMode,
     keybinds: { ...G.settings.keybinds }
@@ -71,6 +73,7 @@ export function loadUserSettings() {
   if ([1, 2, 3, 4].includes(Number(s.fpsDivisor))) G.settings.fpsDivisor = Number(s.fpsDivisor);
   else G.settings.fpsDivisor = 1; // Migrate off legacy non-integer fpsCap cleanly
   if (['standard', 'light', 'off'].includes(s.hitstopMode)) G.settings.hitstopMode = s.hitstopMode;
+  if (['soft', 'off', 'classic'].includes(s.flashMode)) G.settings.flashMode = s.flashMode;
   if (typeof s.musicEnabled === 'boolean') {
     G.settings.musicEnabled = s.musicEnabled;
     audio.setMusicEnabled(s.musicEnabled);
@@ -81,11 +84,12 @@ export function loadUserSettings() {
   if (typeof s.mobileFloatingJoy === 'boolean') G.settings.mobileFloatingJoy = s.mobileFloatingJoy;
   if (typeof s.mobileCombatAssist === 'boolean') G.settings.mobileCombatAssist = s.mobileCombatAssist;
   if (typeof s.mobileMergedParry === 'boolean') G.settings.mobileMergedParry = s.mobileMergedParry;
+  if (typeof s.mobileShowMinimap === 'boolean') G.settings.mobileShowMinimap = s.mobileShowMinimap;
   if (typeof s.mobileBtnScale === 'number' && !Number.isNaN(s.mobileBtnScale)) {
     G.settings.mobileBtnScale = Math.max(0.80, Math.min(1.20, s.mobileBtnScale));
   }
   if (typeof s.mobileBtnOpacity === 'number' && !Number.isNaN(s.mobileBtnOpacity)) {
-    G.settings.mobileBtnOpacity = Math.max(0.45, Math.min(1.0, s.mobileBtnOpacity));
+    G.settings.mobileBtnOpacity = Math.max(0.35, Math.min(1.0, s.mobileBtnOpacity));
   }
   if (['high', 'retina', 'eco'].includes(s.mobileQuality)) {
     G.settings.mobileQuality = s.mobileQuality;
@@ -369,6 +373,7 @@ export function applySaveData(data) {
   for (const p of G.worldState.pickups) {
     if (pickedSet.has(p.id)) p.collected = true;
   }
+  syncOwnedAbilityPickups(G.worldState);
 
   if (typeof data.exploredStr === 'string') {
     const rows = data.exploredStr.split('|');
@@ -383,10 +388,10 @@ export function applySaveData(data) {
       return false;
     };
     if (oldR === MAP_ROWS && oldC === MAP_COLS && data.v >= 41) {
-      // Legacy pre-v46.1 NG2 saves stored unmirrored fog; mirror columns cleanly onto NG2 layout!
+      // Seamlessly flip fog columns if migrating between legacy mirrored NG2 saves and forward NG2/NG3 worlds!
       const savedVar = data.worldVariant || 'ng1_classic';
       const curVar = G.currentWorldVariant || 'ng1_classic';
-      const flipLegacyFog = (savedVar !== 'ng2_mirror' && curVar === 'ng2_mirror');
+      const flipLegacyFog = (savedVar === 'ng2_mirror') !== (curVar === 'ng2_mirror');
       for (let r = 0; r < MAP_ROWS; r++) {
         for (let c = 0; c < MAP_COLS; c++) {
           const dstC = flipLegacyFog ? (MAP_COLS - 1 - c) : c;

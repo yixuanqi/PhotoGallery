@@ -5,7 +5,7 @@
   "name": "绝风断塔 · 风井下口",
   "theme": "wind",
   "bounds": {
-    "x": 4440,
+    "x": 5560,
     "y": 0,
     "w": 1180,
     "h": 780
@@ -13,21 +13,21 @@
   "subZones": [
     {
       "name": "绝风断塔 · 炉热排风井",
-      "x": 725,
+      "x": 0,
       "y": 0,
       "w": 455,
       "h": 780
     },
     {
       "name": "绝风断塔 · 悬风断桥",
-      "x": 270,
+      "x": 455,
       "y": 0,
       "w": 455,
       "h": 780
     },
     {
       "name": "绝风断塔 · 绝风祈坛",
-      "x": 0,
+      "x": 910,
       "y": 0,
       "w": 270,
       "h": 780
@@ -41,63 +41,63 @@
   ],
   "solids": [
     {
-      "x": 935,
+      "x": 0,
       "y": 580,
       "w": 245,
       "h": 200,
       "type": "ground"
     },
     {
-      "x": 485,
+      "x": 455,
       "y": 560,
       "w": 240,
       "h": 220,
       "type": "ground"
     },
     {
-      "x": 0,
+      "x": 910,
       "y": 580,
       "w": 270,
       "h": 200,
       "type": "ground"
     },
     {
-      "x": 865,
+      "x": 165,
       "y": 420,
       "w": 150,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 520,
+      "x": 475,
       "y": 360,
       "w": 185,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 160,
+      "x": 850,
       "y": 390,
       "w": 170,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 495,
+      "x": 510,
       "y": 205,
       "w": 175,
       "h": 22,
       "type": "platform"
     },
     {
-      "x": 905,
+      "x": 245,
       "y": 738,
       "w": 30,
       "h": 42,
       "type": "ground"
     },
     {
-      "x": 270,
+      "x": 430,
       "y": 738,
       "w": 480,
       "h": 42,
@@ -107,14 +107,14 @@
   "crumblePlatforms": [
     {
       "id": "crumble_wind_1",
-      "x": 750,
+      "x": 325,
       "y": 470,
       "w": 105,
       "h": 20
     },
     {
       "id": "crumble_wind_2",
-      "x": 345,
+      "x": 730,
       "y": 465,
       "w": 105,
       "h": 20
@@ -123,28 +123,28 @@
   "windZones": [
     {
       "id": "wz_wind_1",
-      "x": 745,
+      "x": 265,
       "y": -20,
       "w": 170,
       "h": 758,
-      "vx": -14,
+      "vx": 14,
       "vy": -1560
     },
     {
       "id": "wz_wind_2",
-      "x": 290,
+      "x": 710,
       "y": -20,
       "w": 180,
       "h": 758,
-      "vx": -18,
+      "vx": 18,
       "vy": -1600
     },
     {
       "id": "wz_wind_3",
-      "x": 505,
-      "y": 60,
+      "x": 510,
+      "y": 95,
       "w": 165,
-      "h": 295,
+      "h": 260,
       "vx": 0,
       "vy": -1420
     }
@@ -153,7 +153,7 @@
   "altars": [
     {
       "id": "altar_wind",
-      "x": 150,
+      "x": 1030,
       "y": 580,
       "name": "绝风断塔 · 绝风祈坛",
       "shortName": "断塔 · 绝风坛",
@@ -164,7 +164,7 @@
   "loreTablets": [
     {
       "id": "lore_wind",
-      "x": 610,
+      "x": 570,
       "y": 560,
       "title": "绝风塔铭",
       "sub": "绝风断塔 · 悬风中台",
@@ -177,7 +177,7 @@
     {
       "id": "pickup_echo_wind",
       "kind": "echoCache",
-      "x": 245,
+      "x": 935,
       "y": 390,
       "echoAmount": 80,
       "name": "残风余响",
@@ -186,18 +186,27 @@
     {
       "id": "pickup_echo_wind_top",
       "kind": "echoCache",
-      "x": 582,
+      "x": 598,
       "y": 205,
       "echoAmount": 90,
       "name": "炉风残印",
       "desc": "热浪卷上高台的熔金残响（+90 残响）"
+    },
+    {
+      "id": "pickup_echo_ng2_spire",
+      "kind": "echoCache",
+      "echoAmount": 120,
+      "x": 590,
+      "y": 580,
+      "name": "绝风蚀月匣",
+      "desc": "蚀月大师模式秘宝 · 获得 +120 残响！"
     }
   ],
   "resonancePuzzles": [],
   "pendulums": [
     {
       "id": "pend_wind_1",
-      "x": 795,
+      "x": 385,
       "anchorY": 60,
       "len": 250,
       "amp": 0.62,
@@ -207,7 +216,7 @@
     },
     {
       "id": "pend_wind_2",
-      "x": 390,
+      "x": 790,
       "anchorY": 55,
       "len": 265,
       "amp": 0.6,
@@ -219,7 +228,7 @@
   "rivers": [
     {
       "id": "river_wind_chasm",
-      "x": 280,
+      "x": 435,
       "y": 726,
       "w": 465
     }
@@ -227,19 +236,19 @@
   "grappleAnchors": [
     {
       "id": "anc_wind_1",
-      "x": 830,
+      "x": 350,
       "y": 260,
       "topY": 0
     },
     {
       "id": "anc_wind_2",
-      "x": 585,
+      "x": 595,
       "y": 115,
       "topY": 0
     },
     {
       "id": "anc_wind_3",
-      "x": 375,
+      "x": 805,
       "y": 240,
       "topY": 0
     }
@@ -247,73 +256,75 @@
   "lanterns": [
     {
       "id": "lan_wind_1",
-      "x": 725,
+      "x": 455,
       "anchorY": 165,
       "topY": 0,
       "len": 150,
-      "angle": -0.14
+      "angle": 0.14
     },
     {
       "id": "lan_wind_2",
-      "x": 455,
+      "x": 725,
       "anchorY": 155,
       "topY": 0,
       "len": 155,
-      "angle": 0.14
+      "angle": -0.14
     }
   ],
   "enemies": [
     {
       "id": "falcon_wind_1",
       "kind": "falcon",
-      "x": 786,
+      "x": 350,
       "y": 290
     },
     {
       "id": "falcon_wind_2",
       "kind": "falcon",
-      "x": 346,
+      "x": 790,
       "y": 255
     },
     {
       "id": "priest_wind_1",
-      "kind": "priest",
-      "x": 624,
+      "kind": "cantor",
+      "x": 520,
       "y": 294
     },
     {
       "id": "duelist_wind_1",
-      "kind": "duelist",
-      "x": 571,
-      "y": 500,
-      "minX": 461,
-      "maxX": 681
+      "kind": "crawler",
+      "x": 575,
+      "y": 518,
+      "minX": 465,
+      "maxX": 669
     }
   ],
   "bosses": [],
   "inscriptions": [
     {
-      "x": 1025,
+      "x": 155,
       "y": 510,
-      "text": "「绝风断塔 · 踏入青白罡风即可御风浮升」"
+      "text": "「绝风断塔 · 踏入青白罡风即可御风浮升」",
+      "hideInNgPlus": true
     },
     {
-      "x": 105,
+      "x": 1075,
       "y": 510,
       "text": "「东出断塔 · 直抵初钟圣阶上层捷径 →」"
     },
     {
-      "x": 600,
+      "x": 580,
       "y": 515,
       "text": "脚下铁栅连通沉渊古炉 — 千年熔金热浪化作永续罡风，乘风直上可抵「千铃悬桥」"
     },
     {
-      "x": 635,
+      "x": 545,
       "y": 302,
-      "text": "「换向风铃 · 击鸣可反转双井罡风侧向气流」"
+      "text": "「换向风铃 · 击鸣可反转双井罡风侧向气流」",
+      "hideInNgPlus": true
     },
     {
-      "x": 1085,
+      "x": 95,
       "y": 520,
       "text": "「启闸开启西侧铁闸 · 贯通回沉渊钟井上层」",
       "hideWhenSwitch": "windWestOpen"
@@ -323,7 +334,7 @@
     "puddles": [],
     "banners": [
       {
-        "x": 1060,
+        "x": 120,
         "y": 30,
         "len": 175,
         "color": "#163046"
@@ -335,7 +346,7 @@
         "color": "#163046"
       },
       {
-        "x": 120,
+        "x": 1060,
         "y": 30,
         "len": 185,
         "color": "#163046"
@@ -343,97 +354,97 @@
     ],
     "candles": [
       {
-        "x": 175,
+        "x": 1005,
         "y": 580,
         "count": 4
       },
       {
-        "x": 640,
+        "x": 540,
         "y": 560,
         "count": 3
       }
     ],
     "boneCairns": [
-      1000,
-      220
+      180,
+      960
     ],
     "stamps": [
       {
         "type": "wind_buttress",
-        "x": 1050,
+        "x": 130,
         "y": 580,
         "scale": 1.05,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.78,
         "seed": 0
       },
       {
         "type": "tattered_pennant",
-        "x": 955,
+        "x": 225,
         "y": 580,
         "scale": 0.95,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.9,
         "seed": 1
       },
       {
         "type": "wind_buttress",
-        "x": 605,
+        "x": 575,
         "y": 560,
         "scale": 1.12,
-        "flip": false,
+        "flip": true,
         "layer": "bg",
         "alpha": 0.72,
         "seed": 2
       },
       {
         "type": "tattered_pennant",
-        "x": 510,
+        "x": 670,
         "y": 560,
         "scale": 1.02,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.92,
         "seed": 0
       },
       {
         "type": "fallen_bell",
-        "x": 680,
+        "x": 500,
         "y": 560,
         "scale": 0.84,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.74,
         "seed": 1
       },
       {
         "type": "wind_buttress",
-        "x": 145,
+        "x": 1035,
         "y": 580,
         "scale": 1.08,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.76,
         "seed": 1
       },
       {
         "type": "tattered_pennant",
-        "x": 235,
+        "x": 945,
         "y": 580,
         "scale": 0.96,
-        "flip": false,
+        "flip": true,
         "layer": "bg",
         "alpha": 0.9,
         "seed": 2
       },
       {
         "type": "hanging_chains",
-        "x": 730,
+        "x": 450,
         "y": 0,
         "scale": 1.0,
-        "flip": true,
+        "flip": false,
         "layer": "bg",
         "alpha": 0.44,
         "seed": 1
@@ -444,9 +455,9 @@
   "windVanes": [
     {
       "id": "vane_wind_1",
-      "x": 685,
+      "x": 495,
       "y": 360,
-      "dir": -1,
+      "dir": 1,
       "boostVx": 145,
       "targetZoneIds": [
         "wz_wind_1",
@@ -459,10 +470,10 @@
       "id": "switch_wind_west",
       "switchKey": "windWestOpen",
       "kind": "gateLever",
-      "x": 1085,
+      "x": 95,
       "y": 580,
       "name": "断塔西廊捷径铁闸"
     }
   ],
-  "mirrored": true
+  "mirrored": false
 }

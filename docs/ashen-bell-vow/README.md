@@ -1,3 +1,199 @@
+## v47.6 全境风井侧壁/顶板净空精修 + 悬灯/钩环防嵌板修复与自动化门控
+- **修复全图扫描检出的 5 处风井、悬灯与钩环顶板/穿板隐患**：
+  * **`r20_bell_galleries`（残钟阁）**：将风井 `wz_gal_1` 移至幽影暗阁外左侧（`x=680..820, y=130..620`），不再穿透暗阁底板 `pillar#10` 与右壁 `pillar#11`，顶部距天花板保留 `69px` 净空；将 `lan_gal_2` 迁出矮暗阁移至东中开阔空域（`x=1130, len=185`），彻底消除钩落脚部嵌板与磕顶。
+  * **`r24_frost_seep`（霜渊冰窖）**：将上升风井 `wz_frost_seep_up` 收窄居中至 `x=686..814`（世界 `8626..8754`），左右距竖井两侧实心顶梁各留 `6px` 净空，消除贴壁上升擦头。
+  * **`r23_cistern_lock`（断索水闸）**：将悬灯 `lan_cl_1` 移至幽影密室门外空域（`x=470, len=180`），修复灯绳穿透实心顶板 `pillar#11` 及密室内钩落磕顶问题，同时可辅助起跳穿影入室。
+  * **`r07_ascent`（初钟圣阶）**：下层双钩环 `anc_asc_r1 / anc_asc_r2` 下移 `35px` 至 `y=1210`，头顶距上方实心厚楼板净空由 `25px` 增至 `60px`，连荡释放不再磕顶。
+  * **`r09_wind_spire`（绝风断塔）**：中央风井 `wz_wind_3` 顶部由 `y=60` 微降至 `y=95`（`h: 295 → 260`），距上方千铃悬桥桥底留足 `68px` 缓冲。
+- **新增自动化空间净空防回归门控（`verify_project.py` Law 0.5 / 0.5d / 0.5e，覆盖 NG1/NG2/NG3 全周目）**：
+  * 强化 **Law 0.5**：同时拦截悬灯灯绳穿透实心墙柱/平台及悬灯钩落机身嵌实心块；
+  * 新增 **Law 0.5d**：断言全图风井零侧壁重叠、零低顶板（`< 45px` 头顶净空）遮挡；
+  * 新增 **Law 0.5e**：断言全图 73 枚钩环零机身嵌实心块且头顶至少保留 `35px` 净空。
+
+---
+
+## v47.5 紧急修复：盘根溶洞荧光孢伞顶墙卡死并穿房瞬移至沉钟回廊 Bug
+- **问题根因**：
+  * `r14_woods_cavern`（盘根溶洞）左侧竖井孢伞列（`bp_wc_up1 / mid / up2 / up3`）位于世界 `x=1470`，偏离上方 `r10_ink_woods` 竖井开口（`x=1260..1460`）右缘，导致顶部孢伞 `bp_wc_up3` 右半侧直接顶在实心天花板下方且弹起瞬间将主角头顶 `snap` 进 `r10_ink_woods` 地面内部 `11px`；
+  * 当主角头顶卡入天花板并按左键脱身时，`resolveHorizontalAgainst()` 未校验上一帧 `prevX` 方向，误判为从右侧撞墙并将主角沿 `520px` + `1360px` 连续实心地面强行横推 `1880px`，直接穿房瞬移至 `r06_crypt`（沉钟回廊 · 残钟地窖）。
+- **地图 + 物理引擎 + 门控三重根治**：
+  * **对齐两处竖井孢伞（`data/rooms/r14_woods_cavern.json` / `r15_woods_heart.json`）**：将盘根溶洞竖井孢伞列整体左移至局部 `x=322`（世界 `1402`，完全避开右侧实心顶板 `1460` 并在左侧保留 `103px` 畅通下落通道，`bp_wc_up3` 下移至 `y=104`）；同步将全图扫描发现的古钟树窟出口孢伞列（`bp_wh_exit / mid / top`）由 `x=260` 右移至 `x=318`，完全避开上方 `r10_ink_woods` 左侧实心顶板并在右侧保留 `103px` 下落通道。
+  * **引擎级防横推穿房（`src/physics.js` / `src/player.js`）**：`resolveHorizontalAgainst()` 引入 `prevX` 进入侧校验，垂直穿入实心块时严禁触发横向瞬移，并补齐 `vy === 0` 最小纵轴推离；孢伞起跳位置增加顶板碰撞截断，永不再把主角头顶塞进天花板。
+  * **自动化防回归校验（`verify_project.py` Law 0.5c）**：对 NG1 / NG2 / NG3 三套世界自动断言所有荧光孢伞上方净空无实心顶板遮挡。
+
+---
+
+## v47.4 Boss 主题特色技全面重塑（第 3 步收官：Boss 2「寂」熔浆火柱/天降铁链 + 风/霜守卫空间大招）
+- **扩展通用留场场地机关引擎（`src/arenaHazards.js` / `src/render/arenaHazardRenderer.js`）**：
+  * 新增 5 类特色场地技能与手绘水墨几何预警渲染：`moltenGeyser`（熔金裂地预警 + 留场喷涌熔浆火柱）、`chainDrop`（穹顶铁链垂砸）、`galeTornado`（横穿全场的青白螺旋龙卷风柱）、`iceLance`（半空追踪后锁定贯刺的悬冰断剑）及 `frostPatch`（留场叠加寒霜与减速的锯齿冰晶带）。
+- **第二关 Boss「沉渊铸钟师 · 寂」重塑为【熔炉铁链 · 留场火柱】主题（`src/ai/bossesAi.js`）**：
+  * 开场首招必出 **熔浆火柱阵（`moltenGeysers`）**：地面裂纹预警 `0.78s` 后喷发 `3–4` 道高 `205px` 的留场熔浆火柱（留场 `4.0–4.6s`，保证 `≥ 165px` 安全缝隙）；
+  * 新增 **天降锻链垂砸（`chainBarrage`）**：错拍召唤 `3–4` 道穹顶巨链铁锤重砸地面（二阶段落点追加残留火柱）；
+  * 贴脸贪刀 4 下触发炉盾霸体震退并立刻衔接火柱或铁链压制，彻底破除贴身站撸。
+- **风境守卫「截风巡塔使 · 朔」重塑为【罡风龙卷 · 俯冲风刃】主题（`src/ai/wardensAi.js`）**：
+  * 开场首招必出 **罡风龙卷（`galeTornado`）**：`0.72s` 涡环方向预告后生成高 `265px` 的移动青白龙卷柱横扫全场（二阶段双向双龙卷），逼迫玩家二段跳越顶或幽影穿身穿风；
+  * 强化高空风刃扇阵（`updraftBarrage`）至 `3–5` 道可弹反风刃；贴脸贪刀 4 下触发罡风震退后跃并立刻甩出龙卷反制。
+- **霜境守卫「断剑霜侯 · 凛」重塑为【悬冰剑阵 · 寒域瞬闪】主题（`src/ai/wardensAi.js`）**：
+  * 开场首招必出 **悬冰剑阵（`frostSwordArray`）**：半空扇弧浮现 `4–6` 柄晶莹寒冰断剑，先拉出冰蓝激光瞄准线追踪，随后白光锁定错拍齐射贯穿全场并叠加寒霜值；
+  * 新增 **极寒冰域（`frostDomain`）**：震地铺设 `320–380px` 锯齿冰晶带留场 `4.8–5.4s`，踩踏快速叠霜并减速，迫使玩家借平台周旋；贴脸贪刀 4 下触发冰爆瞬移拉距并召唤悬冰剑阵。
+
+---
+
+## v47.3 多周目清爽化净化（已拥有神龛全面隐去 + 拾荒商人永久道具继承 + 过时/新手铭文自动静默）
+- **全面隐藏已拥有的重复神龛（`src/state.js` / `src/combat/worldCombat.js` / `src/save.js` / `src/ui/progressionUi.js`）**：
+  * 扩展 `syncOwnedAbilityPickups()`：除已习得 4 项移动绝技与已解锁兵刃外，同步在开启多周目、读取旧存档及实时拾取满上限后，自动隐藏 **3 处已持有的三境铭印神龛（`realmSeal`）**、**6 处已解锁的世界圣物神龛（`relic`）** 以及 **满 6 瓶上限后的 4 处灯油残芯（`flaskCore`）**；
+  * 修复重复拾取已拥有圣物（`ironheart / clapper`）或满灯油残芯（`pickup_flask_abyss`）时意外叠加 `bonusMaxHp / bonusMaxSoul` 的隐性漏洞。
+- **修复拾荒商人永久道具漏继承 Bug（`src/ui/progressionUi.js`）**：
+  * `startNewGamePlus()` 完整继承 `metScavenger`、`boughtSecretMap`（暗墙秘图）与 `boughtBellSatchel`（古钟囊袋 +15 血/魂），进入二、三周目不再丢失暗墙标记与血蓝上限。
+- **清理 17 条多周目过时与纯新手操作铭文（9 个房间 JSON + `src/render/worldRenderer.js`）**：
+  * 为 4 条神龛指向铭文补齐精确消失条件：`r03_chapel`（`hideWhenGrappleHook`）、`r04_bell_well`（`hideWhenDoubleJump`）、`r02_corridor`（`hideWhenFlaskMax` + `hideWhenPickup`）、`r07_ascent`（`hideWhenDawnSigil`）；
+  * 为枯骨长廊、沉渊钟井、铸钟殿、残钟地窖、绝风断塔、枯墨古林与霜骸圣脊共 **13 条纯一周目操作教学铭文** 标记 `hideInNgPlus: true`，二、三周目自动静默（完整保留全部世界观碑文与区域路线指向）。
+
+---
+
+## v47.2 浮空怪防穿柱体碰撞 + 多周目已习得技能/兵刃神龛去重热修
+- **修复图 1 枯骨长廊提灯鬼火穿进带刺柱体（`data/rooms/r02_corridor.json` / `src/physics.js` / `src/ai/enemiesAi.js` / `src/ai/biomeEnemiesAi.js` / `src/ai/exoticEnemiesAi.js`）**：
+  * 将 `r02_corridor` 的 `wraith_1` 由紧贴柱体右侧 `2px` 的 `(480, 315)` 移至开阔空域 `(575, 365)`，巡航摆幅全程远离 `pillar#6`（`x=440..478`）；
+  * 在 `src/physics.js` 新增 `resolveFlyingEnemySolids(ent)` 实心墙柱推离解算，全面接入 `wraith / cantor / falcon` 三类浮空敌兵，同时为鬼火受惊瞬移补充实心碰撞与视线校验，杜绝全图任何浮空怪穿模进石柱或封闭闸门；
+  * `verify_project.py` 新增 **Law 0.5b** 自动化校验，在 NG1/NG2/NG3 三套世界下断言零浮空怪巡航轨道穿实心墙柱。
+- **修复图 2 多周目已拥有钩锁/移动绝技或兵刃仍重复刷出神龛（`src/state.js` / `src/ui/progressionUi.js` / `src/save.js`）**：
+  * 新增 `syncOwnedAbilityPickups(ws)`，在开启二、三周目（`startNewGamePlus`）及读取已有存档（`applySaveData`）时，自动将主角已掌握的 4 项移动绝技（钩锁/墨翼/穿影/镇岳下砸）与已解锁兵刃神龛标记为已收集，不再在断钟礼拜堂等房间重复刷新；旧 NG+2/NG+3 存档读档即刻生效。
+
+---
+
+## v47.1 紧急热修：第二关 Boss 残誓回响「风井浮空逃出屏幕 + 黑屏遮罩卡死」修复
+- **问题根因**：主线开启过铸钟殿高速风井（`foundryValveOpen`）后，在祭坛开启「残誓回响 · 沉渊铸钟师」挑战时，场地内 `wz_foundry_express` 强上升气流仍保持激活且头顶风阀闸门未重新闭合，导致玩家刚向右走即被气流直冲顶出铸钟殿天花板进入上方 `r09_wind_spire` / `r12_wind_bridge`；而镜头仍锁死在 Boss 2 所在 `r05_foundry`，触发房间遮罩将整个屏幕逐渐拉黑卡死。
+- **四重根治（`src/state.js` / `src/physics.js` / `src/worldCamera.js`）**：
+  * `isWindZoneActive()` 在 Boss 2 激战或残誓回响期间自动关闭 `wz_foundry_express`（同步关闭风境回响时的 `wz_mirror_ascent` 顶井气流）；
+  * `refreshDynamicBlockers()` 在 Boss 2 激战或残誓回响期间强制重新闭合铸钟殿顶闸 `FOUNDRY_VENT_GATE_DEF`（同步封锁镜渊顶闸）；
+  * `moveAndCollide()` 为全部已唤醒 Boss 补齐纵轴顶部天花板钳位（`ent.y >= activeBoss.arenaTopY`），杜绝任何招式或气流将角色顶出战场上方；
+  * `updateRoomVisibility()` 强制将当前激战 Boss 所在房间常驻加入 `visibleRoomIds`，彻底杜绝 Boss 战镜头被房间遮罩拉黑。
+
+---
+
+## v47.0 Boss 主题特色技全面重塑（第 1 步 + 第 2 步：通用场地机关引擎 + 林境荆棘地笼 + 终关圣光审判 + Boss AI 模块拆分）
+- **第 1 步 · 通用留场场地技能框架（`src/arenaHazards.js` / `src/render/arenaHazardRenderer.js` / `src/physics.js` / `src/combat/playerCombat.js` / `src/world.js` / `src/renderer.js`）**：
+  * 新增 `G.arenaHazards` 四态生命周期框架（`几何预警 telegraph → 实体激活 active → 渐变退场 fade → 自动随 Boss 死亡/脱战清理`）；
+  * 支持**物理阻挡且可破坏**的场地实体（`brambleCage`）：阻挡主角走位，但可通过挥砍/重击/法术劈碎（破笼返还 `+18 魂火`）或直接以 **幽影穿身** 穿出；
+  * 新增延迟充能追踪光球 `radiantOrb`，支持完美弹反归元反伤与高额削势。
+- **第 2 步 · 林境守卫「盘根古钟精 · 枯」重塑为【荆棘倒刺 · 囚笼控场】主题（`src/ai/wardensAi.js`）**：
+  * 开场首招必出 **荆棘地毯（`thornCarpet`）**：`0.72s` 翠绿地裂预警后生出长达 `350–430px` 的密排锯齿倒刺并留场 `5.2–6.0s`，踩踏持续掉血并附带减速，逼迫玩家借高台空战；
+  * 新增 **可破坏荆棘地笼（`brambleCage`）**：两侧合拢藤蔓虚影预警 `0.78s` 后锁死主角于 `192px` 窄区，并立即在笼心追加穿地根刺逼迫破笼或穿影脱身；
+  * 升级 **穿地根刺三连/四连（`rootEruption`）** 为带地面靶环预警的 `rootSpike`；贴脸贪刀 4 下触发霸体震退并立刻甩出地笼/地毯反制站撸。
+- **第 2 步 · 第三关终关 Boss「初钟圣骸 · 渊」重塑为【圣光审判 · 棱镜光束】主题（`src/ai/endgameBossesAi.js` / `src/render/bossRenderer.js`）**：
+  * 将 `src/ai/bossesAi.js` 拆分为 `bossesAi.js`（共享机制 + 晦/寂）与 `endgameBossesAi.js`（渊/铸），全工程 72 模块零循环依赖、零 `[OVER]` 超限告警；
+  * 一阶段开场首招必出 **天降圣光柱（`solarPillars`）**：全屏降下 `3–5` 道带收缩光轨与地面圣印预告的灼热圣光巨柱（保留 `≥ 145px` 安全缝隙）；
+  * 新增 **光翼棱镜扫射（`prismSweep`）**：渊浮空展开圣光翼，经 `0.76s` 瞄准激光与扇区预告后释放白金光束横扫全场（二/三阶段双翼对扫）；
+  * 新增 **圣光十字斩阵（`radiantCross`）**：悬空凝结圣印延迟引爆全屏「十」字激光（二/三阶段升格为「十」→「×」两拍交替爆发）；
+  * 新增 **光球星环（`haloOrbs`）**：围绕自身亮起 `4–6` 枚金白圣光球依次齐射，可精准弹反打回渊造成高额削势；贴脸贪刀 4 下触发光羽震退瞬移拉开距离并衔接圣光审判；同步强化 `drawBoss3` 的黎明圣光轮与施法日芒特效。
+
+---
+
+## v46.9 启动黑屏语法报错热修 & 全工程词法作用域防回归门控
+- **修复 `v46.8` 启动黑屏 `Script error.`（`src/player.js`）**：
+  * 修复 `updatePlayer()` 中瀑布检测（L1006）与 Boss 激活检测（L1225）在同一词法块内重复声明 `const pMidX` 引发的 `SyntaxError`（重命名为 `bossChkX`）。
+- **全工程 69 模块 + 离线单包同名 `const`/`let` 词法作用域全量复核与永久门控（`tools/build_release.py` / `verify_project.py`）**：
+  * 新增精确 ES6 词法作用域扫描器 `scan_duplicate_lexical_decls()`（完整配平 `${ ... }` 模板插值、块级作用域、解构赋值、`import` 与函数/箭头参数），复核全部 69 个 JS 模块、`sw.js` 及编译后 44,458 行 `game.bundle.js` 零重复声明；
+  * 已永久接入 `verify_project.py` 与 `tools/build_release.py` 的 `audit_bundle_syntax()`，杜绝同名 `const`/`let` 解析错误再次流入发行包。
+
+---
+
+## v46.8 多周目体验重构（无缝过关、保留全移动绝技、修复四 Boss 动态激活、NG2 蚀月大师模式）
+- **去掉中途 Boss 结算弹窗（`src/combat/damageCombat.js`）**：
+  * 主线击杀 **晦（Boss 1）** 与 **寂（Boss 2）** 不再弹出中断节奏的结算菜单，保留慢动作、钟鸣与开门横幅后直接无缝踏入下一区域；仅终关 **渊（终誓抉择）**、隐藏终关 **铸** 及 **残誓回响挑战** 保留结算菜单。
+- **二、三周目完整保留主角全部移动绝技（`src/ui/progressionUi.js` / `src/combat/worldCombat.js` / `src/locales/ui*.js`）**：
+  * `startNewGamePlus()` 完整继承 `grappleHook / doubleJump / shadeDash / bellDive`，不再强迫玩家在多周目重走开荒锁技；
+  * 重复拾取已习得的技能神龛自动转为「绝技共鸣」发放 `+220 × 周目倍率` 残响，保持探索收益。
+- **彻底修复四 Boss 激活触发区间（`src/player.js` / `src/ai/bossesAi.js` / `src/ui/progressionUi.js`）**：
+  * 移除 `src/player.js` 中残留的 `2740..3760` / `5650..6720` / `8450..9660` 硬编码 X 触发区以及 Boss 4 偏单侧触发条件，统一改为基于 `arenaMinX + 75 .. arenaMaxX - 75` 的动态双向对称激活，无论从左门还是右门进场均可稳定唤醒。
+- **NG2 取消镜像，改版为方案 A「蚀月大师模式」（`tools/assemble_worlds.py` / `src/levelLoader.js` / `src/save.js` / `src/locales/world.js`）**：
+  * **NG2 (`ng2_eclipse` · 蚀月大师)**：恢复正向 25 房布局，全境 **17 处小怪重编为跨生态高阶混编小队**（长廊/钟井/地窖/古林/绝风/霜脊/雨阶/水牢），增设 **3 道扫荡暗蚀结界**（专配继承的幽影穿身）、**2 处蚀月专属残响匣（+120）** 与 2 对同层级圣物台重排；
+  * **NG3 (`ng3_skyway` · 苍穹长桥)**：在完整承袭 NG2 蚀月大师编队与机关的基础上，接入第 26 号高空模块 `r26_sky_span`（附带高空扫荡结界）与巅峰驻守升级；
+  * 旧版镜像 NG2 存档读取时自动双向校准迷雾网格列，零坏档风险。
+
+---
+
+## v46.7 跨房柱体错位与柱帽接缝合并 + 全图悬灯穿平台彻底清理
+- **修复图 6 霜脊/冰冢/圣心三房交界双柱错位与穿模（`data/rooms/r08_heart.json` / `r11_frost_ridge.json` / `r16_frost_tomb.json`）**：
+  * 收拢 `r08_heart` 东侧封墙柱宽度（`60 → 40px`），不再溢出房界 `20px` 穿进 `r16_frost_tomb`；
+  * 移除 `r11_frost_ridge` 错位 `40px` 且纵向交叠 `20px` 的东侧门楣柱，并将 `r16_frost_tomb` 西壁巨柱向下无缝延展至门洞顶（`h: 760 → 960`，世界 `y=0..960`），彻底消除双柱错位穿插。
+- **全境柱体四向接缝与柱帽自动合并（`src/levelLoader.js` / `src/renderTerrain.js`）**：
+  * 水合阶段自动扫描所有 `pillar` 的 `seamTop / seamBottom / seamLeft / seamRight` 贴合状态；
+  * `paintPillarSolid()` 据此自动隐藏埋入相邻柱体/地面的内侧柱帽、柱基与假接缝描边，并在并排贴合侧（如铸钟殿与圣阶交界双壁）将柱帽齐平收口（`pad = 0`），彻底根治跨房柱帽十字穿模。
+- **全图悬灯穿平台扫描与 6 处修复（覆盖 NG1 / NG2 / NG3 全周目）**：
+  * 修复 **3 处灯体嵌平台**：`r16_frost_tomb` 的 `lan_ft_1`（上移悬停于雪平台上方 `70px`）、`lan_ft_2`（改为自上层平台 `y=642` 底面垂挂并高出下层平台 `65px`）及 `r11_frost_ridge` 的 `lan_frost_2`（左移至 `x=865, len=125` 远离平台角）；
+  * 修复 **3 处灯绳穿平台**：`r02_corridor` 的 `lan_1` / `lan_3`（改为自上方平台底面 `y=277` 自然垂挂）及 `r14_woods_cavern` 的 `lan_wc_1`（右移至 `x=480` 避开上层平台边缘）。
+- **新增自动化地形美学门控（`verify_project.py` Law 0.5）**：对 NG1 / NG2 / NG3 三套世界同时断言「零竖向柱体内部重叠/短错位」与「零悬灯灯体及灯绳穿平台」。
+
+---
+
+## v46.6 全地面与垂挂敌兵 AI 防卡死重构（防坠崖、撞墙跃阶脱困、孢伞防循环弹怪与边界脱战）
+- **统一地面敌兵运动防卡死管线（`src/physics.js`：`hasWalkableAhead` / `findClimbableStepY` / `findWalkableFloorSpan` / `canEnemyAggro` / `moveGroundEnemyWithGuard`，全面接入 9 类地面怪）**：
+  * **防坠崖（Ledge Guard）**：巡逻触及平台边缘自动折返，追击触及悬崖停止盲走并定时脱战回撤；`墨丝织蛛` 后跳吐丝（`webShot`）前检测背后是否有实心地面，濒临悬崖时改为原地吐丝，不再自行后跳坠入孢伞坑。
+  * **撞墙跃阶与脱困（Step-Up Vault & Wall Escape）**：敏捷地面怪（`weaver / duelist / sentinel / frostguard / drowned`）追击撞墙时自动探测前方 `≤ 88px` 可登高台阶与净空，自动起跳翻越（如盘根溶洞 `70px` 水池台阶）；若被不可翻越的高墙阻挡超过 `0.72s`，自动脱战折返巡逻；`weaver` 垂丝扑击（`silkDrop`）撞墙即弹开收招，杜绝墙角滑落死循环。
+  * **边界脱战与防原地空跑（Boundary Leash De-Aggro）**：抵近 `minX / maxX` 边界且玩家超出攻击射程时停止原地空跑，持续 `0.65s` 后自动切回巡逻并附带 `2.4s` `deaggroTimer`（若玩家贴身或攻击则立即清零反击），彻底修复霜骸圣脊寒戟卫隔缝贴空气墙空跑的问题。
+  * **跌落动态重锚（Dynamic Floor Re-Anchor）**：敌兵若被玩家击飞跌落到下方楼层（高度差 `> 68px`），自动扫描新楼层连续可行走区间重设 `minX / maxX`，防止被旧平台狭窄范围锁死在坑底。
+- **荧光孢伞防无限循环弹怪（`src/ai/enemiesAi.js`：`applyEnemyBiomeCoupling`）**：
+  * 孢伞弹飞敌兵时附加 `190–235 px/s` 横向推离速度使敌兵脱离伞面落回平地；若 `3.0s` 内连续弹飞 2 次，自动赋予 `2.6s` 孢伞免疫冷却，杜绝无限垂直蹦床。
+- **倒挂墨蛭防半空卡态与坠井回收（`src/ai/enemiesAi.js`：`updateLeech` / `updateEnemyLaunchPhysics`）**：
+  * 为 `drop` 增加 `1.18s` 最大下落时长与 `360px` 深度熔断，失手坠入深井自动拉丝回巢；`climb` 状态按实际距离动态计算回巢时限并纳入空中免疫，避免风场/击飞干扰导致悬空卡态；空中失衡结束直接转入 `climb` 而非半空 `crawl`。
+
+---
+
+## v46.5 P2 钩锁交互升级（多目标候补圈 + 推摇杆切锁清脆反馈音 + 可钩敌兵突袭提示）
+- **多目标候补圈与更灵敏的方向切锁（`src/combat/playerCombat.js` / `src/state.js` / `src/render/worldRenderer.js`）**：
+  * `findBestGrappleTarget()` 同步输出射程与视线内的全部有效钩点与敌兵至 `G.grappleCandidates`（最多 6 个），主动推摇杆或方向键时收紧方向锥权重并降低黏滞回滞（`0.88`），让玩家可随心挑选任意钩点或敌兵；
+  * `drawGrappleReticle()` 在所有非主锁定的候补目标上绘制低干扰虚线候补圈，存在 2 个及以上可选目标时在主准星两侧亮起微弱方向箭头，直观传达“推方向可切目标”。
+- **切锁清脆听觉与收缩环反馈（`src/audioSfxBank.js` / `src/audio.js` / `src/player.js`）**：
+  * 离线烘焙 `grapple_tick` 短促清脆青铜锁扣声（`0.08s`，限频 `95ms` 防疲劳），推方向切换锁定目标或首次锁中敌兵时自动响起并触发 `0.14s` 收缩锁定环（`grappleLockSnapTimer`）。
+- **可钩敌兵视觉识别与战术强化（`src/render/worldRenderer.js` / `src/player.js` / `src/locales/uiZh.js` / `src/locales/uiEn.js`）**：
+  * 射程内的候补敌兵胸口亮起枯金虚线圈 + 双向箭头徽标；主锁定敌兵时准星切为**枯金外弧 + 朱红内菱 + `钩锁·突袭` 铭牌**，与普通跑图钩环彻底区分；
+  * 钩索命中处于读条/前摇的远程与浮空怪（`wraith / priest / cantor / weaver / falcon`）直接打断其招式并提升削势至 `24`（暗影加成 `42`），确立钩索“空中突袭 + 打断高台远程”的独特战斗价值。
+
+---
+
+## v46.4 P1 界面审美全面重塑（去 AI 网页风 · 全线描 SVG 纹章 + 玄墨宣纸枯金碑刻体系 + 文案瘦身）
+- **零彩色系统 Emoji → 统一自绘线描 SVG 纹章（`src/emblems.js` / `index.html` / `src/ui/relicBoardUi.js` / `src/ui/skillTreeUi.js` / `src/ui/modalsUi.js` / `src/locales/uiZh.js` / `src/locales/uiEn.js`）**：
+  * 在 `src/emblems.js` 新增 13 枚极简手绘单色线描 SVG 图标库 `UI_ICONS`（舆图、残卷、兵刃、圣物、钟誓、鸣钟、齿轮、妖魔、锁印、雷印、轮回、统计、全屏）；
+  * 彻底清除全界面 `📜 🗺 ⚔ ⚑ 🔔 ⚙ 👹 ⚡ 🔄 📊 🔒 ⛶ ⚠` 等系统彩色 Emoji，统一替换为 `14×14` 枯金/宣纸线描 SVG；`index.html` 按钮文字独立包裹 `<span data-i18n>` 保证双语切换零图标丢失。
+- **「玄墨 · 宣纸 · 枯金」碑刻视觉重构（`styles.css`）**：
+  * 全弹窗与面板告别现代 Web 后台的大圆角（`12–16px`）与多彩霓虹蓝紫边框，统一收束为 **`2px` 锐利石碑方角 + 外枯金发丝边与内宣纸双线框**；
+  * 标题区配渐变枯金细线，页签去大圆胶囊改为**枯金下划线碑刻页签**，所有主/副按钮、移动端顶部按钮与交互铭牌同步收拢为玄墨铜边方角铭牌，视觉与手绘水墨世界高度统一。
+- **弹窗文案瘦身（`src/config.js` / `src/locales/entities.js` / `src/locales/uiZh.js` / `src/locales/uiEn.js`）**：
+  * 全面精简祭坛、铁匠、演武台、钟誓制约（4 条）及终誓抉择（双结局）中英文描述，消除冗长“说明书感”，凝练为古雅易读的短句。
+
+---
+
+## v46.3 P0 战斗深度与交互可读性紧急修复（攻弹合一防盲点漏洞修复 + 交互光柱显眼化 + 全局唯一防重叠提示）
+- **根治移动端「攻弹合一」100% 无缝无敌拼刀漏洞（`src/combat/playerCombat.js` / `src/combat/damageCombat.js` / `src/entities.js` / `src/player.js`）**：
+  * 定位根因：此前断刃轻击冷却 `150ms`，而攻弹合一每次挥刀均赠送 `165–240ms` 拼刀窗，导致手机端狂点普攻即全程无敌，一路平A砍死 Boss、闪避与法术沦为摆设；
+  * **防盲点节拍机制**：近战拼刀窗收紧至 **`95–118ms`**，且仅在**主动起手首刀（`slash1 / air1 / dashAttack / up / pogo`）且冷却归零（`clashParryCd: 0.44s`）** 时触发，连段盲点 `L2/L3/H4` 不再送拼刀无敌；
+  * **保留打铁连弹手感**：一旦真正成功拼刀（近战拼刀或挥斩弹反弹幕），立即清零 `clashParryCd` 并开启 `0.52s` 连弹窗（`clashChainTimer`）与归零攻击冷却，顺着 Boss 多段连招精准单键 `叮-叮-叮` 依然丝滑，而无脑乱砍会被 Boss 技能与红光技扎实惩罚，重新激活闪避与法术的价值。
+- **高对比常驻交互光柱与动态信标（`src/render/worldRenderer.js` / `src/render/puzzleRenderer.js`）**：
+  * **熄灯祭坛（存档点）**：无论已点燃或未点燃，均新增柔和呼吸的**垂直光柱（195–225px）+ 中心光丝 + 底座光环 + 飘升萤火**（未点燃时以醒目的冷金白光柱召唤玩家靠近点亮），半屏之外一眼可见；
+  * **秘宝/能力拾取物、未读残碑与未拉机关**：统一补齐分色垂直微光束、底座光环与上升光尘（残碑阅读后微光自动收敛以区分已读/未读），彻底与背景装饰物拉开层次。
+- **全局唯一聚焦交互提示（彻底杜绝文字挤成一团，`src/combat/worldCombat.js` / `src/render/vfxRenderer.js` / `src/ui/hudCore.js` / `src/player.js`）**：
+  * 新增统一最近目标选择器 `findNearestInteractable(px, py)`，场景浮标、移动端底部交互胶囊与实际交互按键 100% 锁定同一个最近目标；
+  * 移动端取消画面中悬浮的大段文字框（避免多交互点文字撞车），改为在当前聚焦对象正上方绘制极简**菱形聚焦指针**，具体交互动作清晰交由底部唯一胶囊承接；PC 端严格只显示距离最近的唯一 1 枚提示条。
+
+---
+
+## v46.2 移动端视野极限瘦身、弹窗错位修复与护眼斩杀特效重构
+- **步骤 1 · 护眼斩杀与闪光重构（`src/renderer.js` / `src/world.js` / `src/combat/playerCombat.js` / `src/combat/damageCombat.js` / `src/state.js` / `src/save.js` / `src/ui/modalsUi.js`）**：
+  * 废除默认处决全屏 `difference` 差值反色闪白（`#f5f2ea`）与 Boss 击杀浅白黄铺屏（`#fef9c3`），改为 **`execKillFocus` 局部斩杀聚焦**——在受击点爆发局部红/金径向光爆与斜向斩裂线，同时外围水墨暗角瞬缩压暗 `160–240ms`，降低屏幕平均亮度且对比度更凌厉；
+  * 默认 **柔和护眼（`soft`）** 模式下，全屏 `screenFlash` 映射为深琥珀金/原色外围边缘微晕（中心 48% 通透、透明度封顶 `≤ 0.11`、衰减速率提速至 `dt * 3.4`）；
+  * 设置页新增 **「闪光与斩杀特效（护眼）」** 三档切换（`柔和护眼 (默认)` / `关闭闪光` / `经典`）。
+- **步骤 2 · 移动端 HUD 极限瘦身、折叠小地图与低干扰键位（`styles.css` / `index.html` / `src/ui/hudCore.js` / `src/input.js` / `src/main.js`）**：
+  * 左上角 `.player-status` 去除不透明厚底黑框与 6 枚折行被动能力文字大框及重复武器栏，压成 `192px` 无框 2 行极简条（圆角细血/魂条 + 可点击迷你 `灯油 ●●●` + 极简墨印菱形 + `✦ 残响`）；
+  * 右上角默认隐藏常驻 `#zone-banner` 与小地图，收拢为单行半透明胶囊（`🗺` / `设置` / `暂停`），点击 `🗺` 直接打开全屏舆图（设置页新增「右上角常驻小地图」开关可按需重新开启微缩版）；
+  * 右下角键位收紧尺寸（主钮 `76px`、内圈 `54–56px`、`切刃 42px` 收拢至最右边缘 `钩锁` 上方），常态透明度默认降至 **`65%`**（按下/满蓄/满印奥义瞬间高亮 `100%`），`#fan-seal` 仅在满印奥义或贴符可爆时浮现，彻底解放中右部视野。
+- **步骤 3 · 老铸钟匠与终誓抉择移动端弹窗修复（`styles.css` / `src/ui/skillTreeUi.js`）**：
+  * 修复 `#smith-modal` 标题上半截裁切、`× 返回` 压住 `当前持有残响` 及右侧被 TapTap 悬浮胶囊遮挡的问题（单行顶栏 + 残响徽标紧贴头像左侧 `order: 2` + 隐藏移动端冗余底部关闭钮，实现零滚动一屏展示）；
+  * 修复 `#skill-preview-canvas` 在移动端因 `height: auto` 被 `overflow: hidden` 截掉下半截主角与地板导致演示框空白的问题（改为 `height: 100%; object-fit: contain` 完整呈现 208×116 动作演示）；
+  * 移动端隐藏 `#ending-choice-modal` 顶部重复的 `× 暂缓抉择` 按钮，由底部主按钮承接并让双结局卡片居中更舒展。
+
+---
+
 ## v46.1 多周目拓扑重构 · 阶段 3（运行时三周目无缝切图 + 离线三世界打包 + 旧存档兼容）
 - **运行时多周目无缝切图与缓存（`src/levelLoader.js` / `src/state.js` / `src/main.js`）**：
   * 新增 `ensureWorldForCycle(cycle)`、`getWorldVariantKeyForCycle(cycle)` 与 `getWorldVariantLabel(cycle)`：一周目加载 **NG1（经典东征 · 25房）**、二周目无缝切入 **NG2（倒影逆钟 · 25房全图镜像）**、三周目及以后切入 **NG3（苍穹长桥 · 26房高空连桥）**，并缓存已载入世界防止重复拉取。

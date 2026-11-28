@@ -4,7 +4,7 @@ import { G, addShake, triggerBossBanner, getCombatScaling, getBladeDamageMult, i
 import { audio } from '../audio.js';
 import { triggerHaptic } from '../input.js';
 import { updateCloak, spawnParticles, spawnShockwave, spawnFloatText } from '../vfx.js';
-import { aabbOverlap, moveAndCollide, getGroundSurfaceY, hasLineOfSight } from '../physics.js';
+import { aabbOverlap, moveAndCollide, getGroundSurfaceY, hasLineOfSight, hasWalkableAhead, canEnemyAggro, moveGroundEnemyWithGuard, resolveFlyingEnemySolids } from '../physics.js';
 import { applyIncomingAttackToPlayer, applyEnemyHitFeel, damageEnemyHP, addPostureToEnemy } from '../combat.js';
 import { t, locBoss } from '../i18n.js';
 
@@ -103,13 +103,18 @@ export function updateEnemyLaunchPhysics(e, dt) {
   if (Math.abs(e.vx) < 110 && (e.grounded || isFly)) {
     e.launchTimer = 0;
   }
+  if (e.kind === 'leech' && e.launchTimer <= 0 && !e.grounded) {
+    e.state = 'climb';
+    const cd = Math.hypot((e.homeX || e.x) - e.x, (e.homeY || e.y) - e.y);
+    e.stateTimer = Math.max(1.6, Math.min(4.2, cd / 280 + 0.6));
+  }
   if (e.cloak) updateCloak(e.cloak, e.x + e.w * 0.5 - e.facing * 6, e.y + 18, e.facing, -e.vx * 0.4, dt);
   return true;
 }
 
 export function applyEnemyBiomeCoupling(e, dt) {
   if (!e || !e.alive || e.isBoss || e.isDummy) return;
-  const isFlying = e.kind === 'wraith' || e.kind === 'falcon' || (e.kind === 'leech' && (e.state === 'cling' || e.state === 'telegraph'));
+  const isFlying = e.kind === 'wraith' || e.kind === 'falcon' || e.kind === 'cantor' || (e.kind === 'leech' && (e.state === 'cling' || e.state === 'telegraph' || e.state === 'climb'));
   const heavyRooted = e.kind === 'warden_forest';
   const ecx = e.x + e.w * 0.5;
   const ecy = e.y + e.h * 0.5;
@@ -153,18 +158,26 @@ export function applyEnemyBiomeCoupling(e, dt) {
       if (!isBouncePadAwake(bp)) continue;
       if (aabbOverlap(fBox, { x: bp.x - bp.w * 0.5, y: bp.y - bp.h, w: bp.w, h: bp.h })) {
         bp.squish = 1.0;
-        e.bounceCd = 0.85;
+        e._padBounceCount = (e._padBounceCount || 0) + 1;
+        e._padBounceResetTimer = 3.0;
+        // v46.6 Anti-Bounce-Loop: laterally eject enemy OFF the spore cap and grant 2.6s immunity after 2 rapid bounces!
+        const repeatBounce = e._padBounceCount >= 2;
+        const pCx = G.player ? (G.player.x + G.player.w * 0.5) : bp.x;
+        let ejectDir = Math.abs(ecx - bp.x) > 8 ? (ecx >= bp.x ? 1 : -1) : (pCx >= bp.x ? 1 : -1);
+        if (e.wallDir !== 0 && ejectDir === e.wallDir) ejectDir = -e.wallDir;
+        e.bounceCd = repeatBounce ? 2.6 : 0.95;
         e.y = bp.y - bp.h - e.h - 2;
-        e.vy = (bp.boostVy || -760) * (e.isMiniBoss ? 0.58 : 0.82);
+        e.vx = ejectDir * Math.max(repeatBounce ? 235 : 190, Math.abs(e.vx));
+        e.vy = (bp.boostVy || -760) * (e.isMiniBoss ? 0.55 : (repeatBounce ? 0.52 : 0.78));
         e.grounded = false;
-        if (!e.isMiniBoss && e.state !== 'stagger') {
+        if (!e.isMiniBoss && e.state !== 'stagger' && !repeatBounce) {
           e.posture = Math.min(e.maxPosture - 1, e.posture + 14);
           e.postureDecayDelay = 2.6;
         }
         audio.playSporeBounce();
         spawnShockwave(bp.x, bp.y - bp.h * 0.6, 56, '#6ee7b7', 2.8, 0.24);
         spawnParticles(bp.x, bp.y - bp.h * 0.7, 12, { color: '#6ee7b7', speed: 180, spark: true, grav: -40, life: 0.36 });
-        spawnFloatText(ecx, e.y - 18, t('combat.bounceLaunch'), '#6ee7b7', 15, 0.75);
+        if (!repeatBounce) spawnFloatText(ecx, e.y - 18, t('combat.bounceLaunch'), '#6ee7b7', 15, 0.75);
         break;
       }
     }
@@ -607,7 +620,7 @@ export function updateDuelist(e, dt) {
     e.vx = e.facing * 88;
     if (e.x < e.minX) e.facing = 1;
     if (e.x > e.maxX) e.facing = -1;
-    if (absDx < 360 && Math.abs(dy) < 120) e.state = 'chase';
+    if (canEnemyAggro(e, absDx, 360, Math.abs(dy), 120)) e.state = 'chase';
   } else if (e.state === 'chase') {
     e.facing = dx >= 0 ? 1 : -1;
     if (absDx > 92) e.vx = e.facing * 178;
@@ -687,7 +700,7 @@ export function updateDuelist(e, dt) {
   }
 
   e.vy += GRAVITY * dt;
-  moveAndCollide(e, dt, false);
+  moveGroundEnemyWithGuard(e, dt, { leashPad: 70, canStepUp: true });
   if (Math.abs(e.vx) > 15 && e.grounded) e.walkCycle = (e.walkCycle || 0) + dt * Math.abs(e.vx) * 0.05;
   updateCloak(e.cloak, e.x + e.w / 2 - e.facing * 5, e.y + 18, e.facing, -e.vx * 0.5, dt);
 }
@@ -706,14 +719,29 @@ export function updateLeech(e, dt) {
   const dx = px - cx;
   const dy = py - cy;
 
+  const startLeechClimb = () => {
+    const distHome = Math.hypot(e.homeX - e.x, e.homeY - e.y);
+    e.state = 'climb';
+    e.vx = 0;
+    e.vy = 0;
+    e.stateTimer = Math.max(1.5, Math.min(4.2, distHome / 280 + 0.55));
+  };
+
   if (e.state === 'stagger') {
     e.vx *= damp(0.82, dt);
     e.vy += GRAVITY * dt;
     moveAndCollide(e, dt, false);
-    if (e.stateTimer <= 0) {
-      e.state = 'crawl';
+    if ((e.y - e.homeY) > 420 && !e.grounded) {
       e.posture = e.maxPosture * 0.25;
-      e.stateTimer = 2.0;
+      startLeechClimb();
+    } else if (e.stateTimer <= 0) {
+      e.posture = e.maxPosture * 0.25;
+      if (e.grounded && (e.y - e.homeY) <= 360) {
+        e.state = 'crawl';
+        e.stateTimer = 1.8;
+      } else {
+        startLeechClimb();
+      }
     }
   } else if (e.state === 'cling') {
     e.x = e.homeX;
@@ -735,6 +763,7 @@ export function updateLeech(e, dt) {
     e.y = e.homeY;
     if (e.stateTimer <= 0) {
       e.state = 'drop';
+      e.stateTimer = 1.18;
       e.vx = Math.max(-130, Math.min(130, dx * 1.1));
       e.vy = 260;
       e.didHit = false;
@@ -750,34 +779,41 @@ export function updateLeech(e, dt) {
       audio.playLand();
       spawnParticles(cx, e.y + e.h, 10, { color: COLORS.ink, speed: 150, grav: 260, life: 0.35 });
       e.state = 'crawl';
-      e.stateTimer = 2.6;
+      e.stateTimer = 2.4;
       e.didHit = false;
+    } else if (e.stateTimer <= 0 || (e.y - e.homeY) > 360) {
+      startLeechClimb();
     }
   } else if (e.state === 'crawl') {
     e.facing = dx >= 0 ? 1 : -1;
     e.vx = e.facing * 112;
+    if (e.grounded && !hasWalkableAhead(e, e.facing, 10, 36)) {
+      e.vx = 0;
+    }
     e.vy += GRAVITY * dt;
     moveAndCollide(e, dt, false);
+    if (e.wallDir !== 0) e.vx = -e.wallDir * 80;
     if (!e.didHit && aabbOverlap(e, G.player)) {
       e.didHit = true;
       applyIncomingAttackToPlayer(e, 16, false, 180);
       e.vx = -e.facing * 140;
     }
-    if (e.stateTimer <= 0) {
-      e.state = 'climb';
-      e.stateTimer = 1.6;
+    if (e.stateTimer <= 0 || (!e.grounded && (e.y - e.homeY) > 360)) {
+      startLeechClimb();
     }
   } else if (e.state === 'climb') {
+    e.vx = 0;
+    e.vy = 0;
     const cdx = e.homeX - e.x;
     const cdy = e.homeY - e.y;
     const cd = Math.hypot(cdx, cdy);
-    if (cd < 14 || e.stateTimer <= 0) {
+    if (cd < 16 || e.stateTimer <= 0) {
       e.x = e.homeX; e.y = e.homeY; e.vx = 0; e.vy = 0;
       e.state = 'cling';
       e.stateTimer = 1.1;
     } else {
-      e.x += (cdx / cd) * 320 * dt;
-      e.y += (cdy / cd) * 320 * dt;
+      e.x += (cdx / cd) * 340 * dt;
+      e.y += (cdy / cd) * 340 * dt;
     }
   }
 }
@@ -821,8 +857,14 @@ export function updateWraith(e, dt) {
         e.blinkCd = 5.0;
         const fleeDir = dx >= 0 ? -1 : 1;
         spawnParticles(e.x + e.w / 2, e.y + e.h / 2, 14, { color: COLORS.cyanBright, speed: 180, spark: true, life: 0.32 });
+        const oldX = e.x;
+        const oldY = e.y;
         e.x = e.homeX + fleeDir * 95;
         e.y = e.homeY - 26;
+        if (resolveFlyingEnemySolids(e) || !hasLineOfSight(e.x + e.w * 0.5, e.y + e.h * 0.5, G.player.x + G.player.w * 0.5, G.player.y + G.player.h * 0.5)) {
+          e.x = oldX;
+          e.y = oldY;
+        }
         audio.playShadowBlink();
         spawnShockwave(e.x + e.w / 2, e.y + e.h / 2, 54, COLORS.cyanBright, 2.6, 0.24);
         e.state = 'windup';
@@ -863,6 +905,7 @@ export function updateWraith(e, dt) {
     }
   }
 
+  resolveFlyingEnemySolids(e);
   updateCloak(e.cloak, e.x + e.w / 2, e.y + 24, e.facing, -e.vx * 0.3, dt);
 }
 
@@ -887,7 +930,7 @@ export function updateSentinel(e, dt) {
     e.vx = e.facing * 68;
     if (e.x < e.minX) e.facing = 1;
     if (e.x > e.maxX) e.facing = -1;
-    if (absDx < 320 && Math.abs(dy) < 120) e.state = 'chase';
+    if (canEnemyAggro(e, absDx, 320, Math.abs(dy), 120)) e.state = 'chase';
   } else if (e.state === 'chase') {
     e.facing = dx >= 0 ? 1 : -1;
     if (absDx > 95) e.vx = e.facing * 125;
@@ -966,7 +1009,7 @@ export function updateSentinel(e, dt) {
   }
 
   e.vy += GRAVITY * dt;
-  moveAndCollide(e, dt, false);
+  moveGroundEnemyWithGuard(e, dt, { leashPad: 70, canStepUp: true });
   if (Math.abs(e.vx) > 15 && e.grounded) e.walkCycle = (e.walkCycle || 0) + dt * Math.abs(e.vx) * 0.045;
   updateCloak(e.cloak, e.x + e.w / 2 - e.facing * 6, e.y + 18, e.facing, -e.vx * 0.4, dt);
 }
@@ -992,7 +1035,7 @@ export function updateGolem(e, dt) {
     e.vx = e.facing * 48;
     if (e.x < e.minX) e.facing = 1;
     if (e.x > e.maxX) e.facing = -1;
-    if (absDx < 300 && Math.abs(dy) < 110) e.state = 'chase';
+    if (canEnemyAggro(e, absDx, 300, Math.abs(dy), 110)) e.state = 'chase';
   } else if (e.state === 'chase') {
     e.facing = dx >= 0 ? 1 : -1;
     if (absDx > 92) e.vx = e.facing * 82;
@@ -1057,9 +1100,7 @@ export function updateGolem(e, dt) {
   }
 
   e.vy += GRAVITY * dt;
-  moveAndCollide(e, dt, false);
-  if (e.x < e.minX - 60) e.x = e.minX - 60;
-  if (e.x > e.maxX + 60) e.x = e.maxX + 60;
+  moveGroundEnemyWithGuard(e, dt, { leashPad: 60, canStepUp: false });
   updateCloak(e.cloak, e.x + e.w / 2 - e.facing * 8, e.y + 24, e.facing, -e.vx * 0.4, dt);
 }
 
