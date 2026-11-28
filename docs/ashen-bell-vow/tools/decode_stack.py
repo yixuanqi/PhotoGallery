@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline SourceMap v3 Stack-Trace Decoder for Ashen Bell Vow (v50.0).
+"""Offline SourceMap v3 Stack-Trace Decoder for Ashen Bell Vow (v50.1).
 
 Usage:
   python3 tools/decode_stack.py dist/sourcemaps/game.bundle.js.map 12:4832

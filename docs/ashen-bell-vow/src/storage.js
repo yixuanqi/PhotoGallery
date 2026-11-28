@@ -1,4 +1,4 @@
-// Storage abstraction layer (v50.0): synchronous local persistence + optional TapTap Cloud Save adapter
+// Storage abstraction layer (v50.1): synchronous local persistence + optional TapTap Cloud Save adapter
 // Automatically detects TapTap H5 / mini-game `tap.getCloudSaveManager()` or `tap.getFileSystemManager()`
 // and falls back seamlessly to localStorage in standard browsers (blog / itch.io / offline file://).
 

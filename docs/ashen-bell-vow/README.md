@@ -1,3 +1,14 @@
+## v50.1 紧急热修：修复启动 `Unexpected token 'else'` 语法报错 + 模板字符串压缩空格 Bug + 构建期全量 Token 等价性门控
+- **修复启动报错 `SyntaxError: Unexpected token 'else'`（`src/ui/progressionUi.js`）**：
+  * `v50.0` 合入合规壳国际化刷新时，`refreshComplianceI18n()` 误插入在 `refreshActiveModalI18n()` 的 `if / else if` 分支链中间导致后续 `else if` 悬空报错；现已移至整段分支末尾安全执行。
+- **修复内置 JS 压缩器在模板字符串 `${` 前多插空格的隐患（`tools/minify_obfuscate.py`）**：
+  * 修正 `_needs_space()` 误将模板文本尾字符与 `${` 的 `$` 视为相邻标识符的问题，彻底消除 72 处模板字符串空格变异（如结局文案 Key、图章缓存 Key 与按钮类名）。
+- **新增两项构建期防回归硬门控（`tools/build_release.py`）**：
+  * `audit_bundle_syntax()` 新增**孤立 `else` 结构扫描**，构建期直接拦截任何插断 `if / else if` 链的语法破坏；
+  * 内置压缩器构建完成后自动执行**100% 原始/压缩 Token 流逐项等价性比对**，确保压缩过程零字符篡改。
+
+---
+
 ## v50.0 里程碑商业发行版：合规壳（适龄提示/隐私弹窗/健康忠告/制作名单）+ TapTap 云存档适配器 + 防坏档双备份 + 校验器增强
 - **商业合规壳（`src/ui/complianceUi.js` / `index.html` / `styles.css`）**：
   * **标题页合规展示**：左上角版本徽章旁新增自绘线框 **CADPA 12+ 适龄提示徽章按钮**；底栏集成标准 48 字 **《健康游戏忠告》**、软著/ICP/版号集中配置位（`COMPLIANCE_META`）以及「适龄提示 12+ / 隐私与协议 / 制作名单」快捷入口；

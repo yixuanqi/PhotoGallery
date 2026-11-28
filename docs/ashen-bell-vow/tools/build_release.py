@@ -708,6 +708,15 @@ def build_offline_bundle_js(version, minify=True, obfuscate=True, emit_sourcemap
             segments, tokenize_js, out_file="game.bundle.js", emit_sourcemap=emit_sourcemap
         )
         engine_used = "builtin"
+        # v50.1 Exact 100% token-stream parity audit between unminified and minified JS (catches any template/string mutation!)
+        _raw_assembled = "".join(seg["code"] for seg in segments)
+        _t_raw = [(k, t) for (k, t, _s, _e) in tokenize_js(_raw_assembled) if k not in ("ws", "comment")]
+        _t_min = [(k, t) for (k, t, _s, _e) in tokenize_js(bundle_js) if k not in ("ws", "comment")]
+        if _t_raw != _t_min:
+            for _ti in range(min(len(_t_raw), len(_t_min))):
+                if _t_raw[_ti] != _t_min[_ti]:
+                    raise RuntimeError(f"Minifier token-parity audit failed at token #{_ti}: raw={_t_raw[_ti]!r} != min={_t_min[_ti]!r}")
+            raise RuntimeError(f"Minifier token-parity length mismatch: raw={len(_t_raw)} != min={len(_t_min)}")
 
     audit_bundle_syntax(bundle_js)
 
@@ -745,7 +754,7 @@ def build_offline_bundle_js(version, minify=True, obfuscate=True, emit_sourcemap
 
 def scan_duplicate_lexical_decls(code, label="bundle"):
     """
-    Exact ES6 lexical-scope duplicate declaration scanner (v50.0).
+    Exact ES6 lexical-scope duplicate declaration scanner (v50.1).
     Detects duplicate const/let/class/import/param declarations in the same lexical block,
     properly balancing `${ ... }` template interpolations with `}`.
     """
@@ -1024,7 +1033,47 @@ def audit_bundle_syntax(js_code):
     # Guard against accidental sourceMappingURL leakage into public production bundle
     if "sourceMappingURL=" in js_code:
         raise RuntimeError("Security audit failed: sourceMappingURL comment leaked into public game.bundle.js!")
-    # v50.0 Guard against duplicate lexical const/let/class/param declarations in the same scope!
+    # v50.1 Guard against orphaned `else` statements (e.g. statement inserted mid if/else-if chain)
+    _sig = [(k, t, s) for (k, t, s, _e) in tokens if k not in ("ws", "comment")]
+    for _idx in range(len(_sig)):
+        _k, _t, _s = _sig[_idx]
+        if _k == "ident" and _t == "else":
+            # Walk backward to find the statement preceding `else`; it MUST terminate an `if` branch (either `}` or `;` following an `if (...) <stmt>`).
+            if _idx == 0:
+                raise RuntimeError("Syntax audit failed: leading orphaned 'else'")
+            _pk, _pt, _ps = _sig[_idx - 1]
+            if _pt == ";":
+                # Walk back to start of single-line statement before `;`, skipping balanced (), [], {}
+                _j = _idx - 2
+                _d = 0
+                while _j >= 0:
+                    _jt = _sig[_j][1]
+                    if _jt in (")", "]", "}"):
+                        _d += 1
+                    elif _jt in ("(", "[", "{", "${"):
+                        if _d == 0:
+                            break
+                        _d -= 1
+                    elif _d == 0 and _jt in (";", "{", "}"):
+                        break
+                    _j -= 1
+                # The statement between _j+1 and _idx-1 must begin with `if` (e.g. `if (...) stmt;`)!
+                # Find first `if` at depth 0 inside this statement segment
+                _has_if = False
+                _d2 = 0
+                for _q in range(_j + 1, _idx - 1):
+                    _qt = _sig[_q][1]
+                    if _qt in ("(", "[", "{", "${"):
+                        _d2 += 1
+                    elif _qt in (")", "]", "}"):
+                        _d2 -= 1
+                    elif _d2 == 0 and _sig[_q][0] == "ident" and _qt == "if":
+                        _has_if = True
+                        break
+                if not _has_if:
+                    _ln = js_code.count("\n", 0, _s) + 1
+                    raise RuntimeError(f"Syntax audit failed: orphaned 'else' (not preceded by if-statement) near bundle line {_ln}")
+    # v50.1 Guard against duplicate lexical const/let/class/param declarations in the same scope!
     dup_errs = scan_duplicate_lexical_decls(js_code, "game.bundle.js")
     if dup_errs:
         raise RuntimeError("Syntax audit failed: " + " | ".join(dup_errs[:5]))
@@ -1064,7 +1113,7 @@ def build_offline_index_html():
     var head = document.createElement('div');
     head.className = 'abv-fatal-head';
     var title = document.createElement('span');
-    title.textContent = isEnBoot ? '◆ Runtime Error (v50.0)' : '◆ 运行异常诊断 (v50.0)';
+    title.textContent = isEnBoot ? '◆ Runtime Error (v50.1)' : '◆ 运行异常诊断 (v50.1)';
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'abv-fatal-dismiss';

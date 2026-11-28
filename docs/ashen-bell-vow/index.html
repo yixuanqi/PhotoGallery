@@ -10,16 +10,16 @@
 <meta name="theme-color" content="#080b11" />
 <meta name="screen-orientation" content="landscape" />
 <meta name="x5-orientation" content="landscape" />
-<title>灰钟残誓 v50.0 — PWA 离线全屏壳、切后台音频保活与手机稳帧省电模式 · 暗黑手绘魂系类银河恶魔城</title>
+<title>灰钟残誓 v50.1 — PWA 离线全屏壳、切后台音频保活与手机稳帧省电模式 · 暗黑手绘魂系类银河恶魔城</title>
 <link rel="manifest" href="./manifest.webmanifest" />
 <link rel="icon" type="image/svg+xml" href="./icon.svg" />
 <link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png" />
-<link rel="stylesheet" href="./styles.css?v=50.0.0" />
+<link rel="stylesheet" href="./styles.css?v=50.1.0" />
 </head>
 <body>
 <div id="game-root">
   <canvas id="gameCanvas"></canvas>
-  <!-- v50.0 Mobile Portrait Rotate Guard (Elegant Dark-Ink Landscape Prompt) -->
+  <!-- v50.1 Mobile Portrait Rotate Guard (Elegant Dark-Ink Landscape Prompt) -->
   <div id="mobile-rotate-guard" class="mobile-rotate-guard" aria-live="polite">
     <div class="rotate-guard-card">
       <div class="rotate-phone-anim" aria-hidden="true">
@@ -148,13 +148,13 @@
     A/D 移 · Space 跳 · 左键/J 三连·长按居合 · 右键/K 弹反 · F/中键/I 钩索 · R/U 灵刃 · Shift 闪 · C/L 墨印 · Q/H 回血 · E 交互 · M 舆图 · 支持手柄
   </div>
 
-  <!-- Title Overlay (v50.0 Full-Viewport Atmospheric Dark Hand-Drawn Title Stage) -->
+  <!-- Title Overlay (v50.1 Full-Viewport Atmospheric Dark Hand-Drawn Title Stage) -->
   <div id="title-screen" class="overlay-screen title-stage">
     <div class="title-backdrop-scrim" aria-hidden="true"></div>
 
     <div class="title-topbar">
       <div class="title-left-badges">
-        <div class="title-ver-badge">ASHEN BELL VOW · v50.0</div>
+        <div class="title-ver-badge">ASHEN BELL VOW · v50.1</div>
         <button id="btn-cadpa-badge" type="button" class="cadpa-badge-btn" title="CADPA 12+ 适龄提示" aria-label="CADPA 12+">
           <svg class="cadpa-svg" viewBox="0 0 36 44" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <rect x="1.5" y="1.5" width="33" height="41" rx="2" fill="#0d1612" stroke="#4ade80" stroke-width="2"/>
@@ -414,7 +414,7 @@
     </div>
   </div>
 
-  <!-- Unified 4-Tab Settings, Weapon Codex, Bestiary & Archive Modal (v50.0) -->
+  <!-- Unified 4-Tab Settings, Weapon Codex, Bestiary & Archive Modal (v50.1) -->
   <div id="settings-modal" class="overlay-screen hidden">
     <div class="modal-card settings-journal-card">
       <div class="modal-top-bar modal-top-split">
@@ -611,7 +611,7 @@
   </div>
 
   <!-- Finale Choice Modal (Heart of the First Bell) -->
-  <!-- Legal / CADPA 12+ / Privacy Policy / Credits Modal (v50.0) -->
+  <!-- Legal / CADPA 12+ / Privacy Policy / Credits Modal (v50.1) -->
   <div id="legal-modal" class="overlay-screen hidden">
     <div class="modal-card" style="width: min(640px, 94%);">
       <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="legal" data-i18n="modal.close">✕ 关闭</button></div>
@@ -623,7 +623,7 @@
     </div>
   </div>
 
-  <!-- Save-Code Export / Import Backup Modal (v50.0) -->
+  <!-- Save-Code Export / Import Backup Modal (v50.1) -->
   <div id="savecode-modal" class="overlay-screen hidden">
     <div class="modal-card" style="width: min(600px, 94%);">
       <div class="modal-top-bar"><button type="button" class="modal-top-close" data-close-modal="savecode" data-i18n="modal.close">✕ 关闭</button></div>
@@ -639,7 +639,7 @@
     </div>
   </div>
 
-  <!-- First-Run Unchecked Privacy & User Agreement Consent Overlay (v50.0) -->
+  <!-- First-Run Unchecked Privacy & User Agreement Consent Overlay (v50.1) -->
   <div id="compliance-consent-modal" class="consent-overlay hidden" role="dialog" aria-modal="true">
     <div class="modal-card consent-card">
       <div class="modal-title" data-i18n="legal.consentTitle">隐私政策与用户协议提示</div>
@@ -730,7 +730,7 @@
     <!-- Contextual Interact Pill (appears near Altar / NPC / Tablet / Switch / Pickup) -->
     <button id="mobile-interact-btn" class="mobile-interact-btn t-btn hidden" data-key="KeyE" data-i18n="mob.interact">交互</button>
 
-    <!-- Bottom-Right Ergonomic 6+3 Soulslike Thumb Stage (v50.0) -->
+    <!-- Bottom-Right Ergonomic 6+3 Soulslike Thumb Stage (v50.1) -->
     <div id="action-fan" class="action-fan" data-i18n-aria="mob.fanAria" aria-label="动作扇形按键">
       <svg class="fan-arc-svg" viewBox="0 0 280 248" aria-hidden="true">
         <path d="M 88 228 A 145 145 0 0 1 256 64" fill="none" stroke="rgba(216, 207, 184, 0.16)" stroke-width="1.4" stroke-dasharray="4 6" />
@@ -863,7 +863,7 @@
   }, 8000);
 })();
 </script>
-<script type="module" src="./src/main.js?v=50.0.0"></script>
+<script type="module" src="./src/main.js?v=50.1.0"></script>
   <div id="abv-fatal-banner" class="abv-fatal-banner hidden" role="alert"></div>
   <div id="gp-nav-bar" class="gp-nav-bar hidden" data-i18n="gp.navLegend">[十字/左摇杆] 移动 · [A] 确认 · [B] 返回 · [LB/RB] 切页 · [右摇杆] 滚动</div>
 </body>

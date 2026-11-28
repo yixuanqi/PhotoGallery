@@ -1,4 +1,4 @@
-// Commercial Compliance Shell & Save-Code Backup UI (v50.0)
+// Commercial Compliance Shell & Save-Code Backup UI (v50.1)
 // Includes: Health Gaming Advisory, CADPA 12+ Age Rating Modal, Unchecked First-Run Privacy/Agreement Consent,
 // Credits Screen, Save-Code Export/Import & TapTap Cloud Sync Status Pill.
 import { G } from '../state.js';
@@ -11,7 +11,7 @@ const CONSENT_STORAGE_KEY = 'ashen_bell_vow_consent_v1';
 const CONSENT_POLICY_VERSION = '2026-11';
 
 export const COMPLIANCE_META = {
-  version: 'v50.0',
+  version: 'v50.1',
   ageRating: '12+',
   developer: '灰钟残誓独立制作组 / Ashen Bell Studio',
   copyrightNo: '', // e.g. '软著登字第 XXXXXXX 号'

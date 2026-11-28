@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Zero-dependency JS/CSS Minifier, Scope-Safe Obfuscator & Standard SourceMap v3 Generator
-for Ashen Bell Vow (v50.0).
+for Ashen Bell Vow (v50.1).
 
 Supports:
   - Engine 'builtin': 100% zero-dependency Python 3 (works out-of-the-box on Windows/macOS/Linux)
@@ -796,6 +796,13 @@ _REGEX_KEYWORDS = {"return", "throw", "case", "in", "of", "typeof", "void", "del
 
 def _needs_space(prev_k, prev_t, next_k, next_t):
     if not prev_t or not next_t:
+        return False
+    # v50.1 CRITICAL: NEVER insert a space before template literal `${` or right after template `}` into a template chunk!
+    if next_t == "${" or prev_t == "${":
+        return False
+    if prev_k == "str" and next_k == "punct":
+        return False
+    if prev_k == "punct" and prev_t == "}" and next_k == "str":
         return False
     last_c = prev_t[-1]
     first_c = next_t[0]

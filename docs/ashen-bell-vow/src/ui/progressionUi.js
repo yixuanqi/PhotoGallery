@@ -879,7 +879,6 @@ export function refreshActiveModalI18n() {
   else if (G.activeModal === 'lore') uiHooks.renderLoreModal();
   else if (G.activeModal === 'smith') uiHooks.renderSmithModal();
   else if (G.activeModal === 'dummy') uiHooks.renderDummyModal();
-  refreshComplianceI18n();
   else if (G.activeModal === 'npc' && uiState.activeNpcModalRef) {
     if (uiState.activeNpcModalRef.kind === 'chronicler') uiHooks.renderChroniclerModal();
     else if (uiState.activeNpcModalRef.kind === 'keeper') uiHooks.renderKeeperModal();
@@ -893,6 +892,7 @@ export function refreshActiveModalI18n() {
     if (G.endingState.finished) renderEndingEpilogueUI();
     else syncEndingActUI();
   }
+  refreshComplianceI18n();
 }
 
 export function updateAndRenderEndingCinematic(dt) {

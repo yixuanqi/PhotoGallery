@@ -177,7 +177,7 @@ export function readSaveSlot(slot = G.activeSaveSlot) {
   const key = slotKey(slot);
   const data = storage.getJSON(key);
   if (isValidSavePayload(data)) return data;
-  // v50.0 Automatic Rolling-Backup Recovery if primary slot was truncated/corrupted
+  // v50.1 Automatic Rolling-Backup Recovery if primary slot was truncated/corrupted
   const bak = storage.getJSON(slotBackupKey(slot));
   if (isValidSavePayload(bak)) {
     storage.setJSON(key, bak);
