@@ -2,121 +2,376 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#181d3a" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23181d3a'/%3E%3Ccircle cx='42' cy='22' r='13' fill='%23fbf0d8'/%3E%3Cpath d='M10 47 Q32 42 54 47 Q48 56 32 56 Q16 56 10 47 Z' fill='%239c6642'/%3E%3Ccircle cx='50' cy='40' r='3.5' fill='%23ffe69e'/%3E%3C/svg%3E" />
   <title>月潮孤舟</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
   <canvas id="game-canvas"></canvas>
 
-  <!-- 顶部极简状态：左拼装碎片、中海图位置、右声音开关 -->
+  <!-- 顶部轻盈绘本状态栏 -->
   <header id="hud-top" class="hud-top hidden">
-    <div id="parts-bar" class="parts-bar" aria-label="船体挂件与碎片进度">
-      <div class="part-pill" data-type="lantern" title="船舷 · 灯火系（3份碎片升1级）">
-        <span class="dot dot-lantern"></span>
-        <span class="p-label">灯火</span>
-        <span class="p-lv">0</span>
-        <span class="p-pips"><i></i><i></i><i></i></span>
+    <div class="hud-left">
+      <div class="hud-pill hull-pill" title="船体耐久度">
+        <span class="pill-label">船体</span>
+        <span class="bar-track"><i id="hull-bar-fill" class="bar-fill"></i></span>
       </div>
-      <div class="part-pill" data-type="gramophone" title="甲板 · 共振系（3份碎片升1级）">
-        <span class="dot dot-gramophone"></span>
-        <span class="p-label">共振</span>
-        <span class="p-lv">0</span>
-        <span class="p-pips"><i></i><i></i><i></i></span>
+      <div class="hud-pill star-pill" title="收集的月尘星火（船坞货币）">
+        <span class="star-icon">✦</span>
+        <span id="star-count">0</span>
       </div>
-      <div class="part-pill" data-type="thruster" title="船尾 · 推进系（3份碎片升1级）">
-        <span class="dot dot-thruster"></span>
-        <span class="p-label">推进</span>
-        <span class="p-lv">0</span>
-        <span class="p-pips"><i></i><i></i><i></i></span>
+      <div id="relic-pill" class="hud-pill relic-pill hidden" title="本海域隐藏的沉海遗物">
+        <span class="relic-icon">◈</span>
+        <span id="relic-count">0/3</span>
       </div>
-      <div class="part-pill" data-type="balloon" title="桅杆 · 浮空系（3份碎片升1级）">
-        <span class="dot dot-balloon"></span>
-        <span class="p-label">浮空</span>
-        <span class="p-lv">0</span>
-        <span class="p-pips"><i></i><i></i><i></i></span>
-      </div>
+      <div id="combo-pill" class="hud-pill combo-pill hidden">连技 ×<span id="combo-count">1</span></div>
+      <div id="env-pill" class="hud-pill env-pill hidden">环境状态</div>
     </div>
 
-    <!-- 360° 环形迷雾星图 -->
-    <div id="sea-chart" class="sea-chart" aria-label="环形迷雾海图">
-      <canvas id="sea-chart-canvas" class="sea-chart-canvas" width="96" height="96"></canvas>
-      <div class="sea-chart-meta">
-        <div id="zone-label" class="zone-label">暮光浅湾</div>
-        <div id="chart-sub" class="chart-sub">探索 0% · 环海航行</div>
+    <div class="hud-center">
+      <div id="era-label" class="era-label">月潮之海</div>
+      <div id="dist-label" class="dist-label">0 m</div>
+      <!-- v12 极简黄铜水深/方位刻度条（开放海域定位灯塔港、海底洞窟与当前水深，不遮挡画面） -->
+      <div id="brass-compass" class="brass-compass hidden" title="开放海域方位与水深刻度（⚓ 西端灯塔港 · ▾ 深海洞窟）">
+        <div class="compass-track-wrap">
+          <span class="compass-end">西</span>
+          <div id="compass-track" class="compass-track">
+            <span class="compass-home" style="left:8.3%" title="暮光灯塔港">⚓</span>
+            <span id="compass-marks" class="compass-marks"></span>
+            <i id="compass-needle" class="compass-needle"></i>
+          </div>
+          <span class="compass-end">东</span>
+        </div>
+        <div id="compass-depth" class="compass-depth">海面 · 0 m</div>
+      </div>
+      <div id="climax-bar-wrap" class="climax-bar-wrap hidden">
+        <span class="climax-bar-label">冲破巨潮</span>
+        <span class="climax-track"><i id="climax-bar-fill" class="climax-fill"></i></span>
       </div>
     </div>
 
     <div class="hud-right">
+      <button id="btn-phase-dial" class="hud-btn phase-dial-btn hidden" type="button" title="潮汐怀表（轻点或按 T 可轻柔拨动天象时轮）">⏱ 怀表</button>
+      <button id="btn-codex" class="hud-btn codex-btn" type="button" title="打开月潮博物手记（快捷键 G）">手记 <span id="codex-hud-count">0/26</span></button>
+      <button id="btn-dock" class="hud-btn dock-btn" type="button">船坞整备</button>
       <button id="btn-mute" class="hud-btn" type="button">声景：开</button>
+      <button id="btn-settings" class="hud-btn settings-btn" type="button" title="系统设置（音量 / 画质 / 键位，快捷键 Esc）">⚙ 设置</button>
     </div>
   </header>
 
-  <!-- 驶入新海域时的诗意过场浮标 -->
-  <div id="zone-banner" class="zone-banner hidden">
-    <div id="zone-banner-kicker" class="zone-banner-kicker"></div>
-    <div id="zone-banner-title" class="zone-banner-title"></div>
-    <div id="zone-banner-sub" class="zone-banner-sub"></div>
+  <!-- 纪元剧变与新生里程碑诗意横幅 -->
+  <div id="era-banner" class="era-banner hidden">
+    <div id="era-banner-kicker" class="era-banner-kicker"></div>
+    <div id="era-banner-title" class="era-banner-title"></div>
+    <div id="era-banner-sub" class="era-banner-sub"></div>
   </div>
 
-  <!-- 一句话残骸微故事 / 组装完成提示 -->
-  <div id="whisper-banner" class="whisper-banner hidden">
-    <div id="whisper-title" class="whisper-title"></div>
-    <div id="whisper-line" class="whisper-line"></div>
+  <!-- 左上角轻盈动态航行委托 -->
+  <div id="bounty-pill" class="bounty-pill hidden">
+    <span class="bounty-tag">委托</span>
+    <span id="bounty-text">完成 1 次完美空翻</span>
+    <span id="bounty-prog" class="bounty-prog">0/1</span>
+    <span id="bounty-reward" class="bounty-reward">+35✦</span>
   </div>
 
-  <!-- 底部极简键位提示 -->
-  <div id="controls-tip" class="controls-tip hidden">
-    A / D 环海航行（自动掠拾碎片）· 点按/空格抛钩拉动机关与摆荡 · E / 右键 释放声波共鸣 · 迎浪峰 W / Shift 完美跃浪
+  <!-- 情景式动态微引导（按时机浮现，学会即隐退） -->
+  <div id="controls-tip" class="controls-tip hidden"></div>
+
+  <!-- 实景快照极柔白纸快门微闪 -->
+  <div id="shutter-flash" class="shutter-flash"></div>
+
+  <!-- 跨海航门极光星雾平滑转场帷幕 -->
+  <div id="realm-transition" class="realm-transition">
+    <div id="realm-transition-title" class="realm-transition-title">霜穹冰海</div>
   </div>
 
-  <!-- 仅在真实触屏输入时浮现的移动端按钮 -->
+  <!-- 博物手记新发现极简轻提示（含实景水彩邮票缩略图！） -->
+  <div id="codex-toast" class="codex-toast hidden">
+    <img id="codex-toast-thumb" class="codex-toast-thumb hidden" alt="" />
+    <span class="codex-toast-dot">◈</span>
+    <span id="codex-toast-text">手记收录 · 新发现</span>
+  </div>
+
+  <!-- 移动端自由探索触控：左侧单指浮标摇杆 + 右侧推进冲刺单键 -->
   <div id="touch-controls" class="touch-controls hidden">
-    <div class="touch-group">
-      <button id="tc-left" class="touch-btn" type="button" aria-label="向左划桨">‹</button>
-      <button id="tc-right" class="touch-btn" type="button" aria-label="向右划桨">›</button>
+    <div id="joy-zone" class="joy-zone" aria-label="全向游弋摇杆">
+      <div id="joy-base" class="joy-base">
+        <div id="joy-knob" class="joy-knob"></div>
+      </div>
     </div>
-    <div class="touch-group">
-      <button id="tc-pulse" class="touch-btn touch-pulse" type="button" aria-label="声波脉冲">音</button>
-      <button id="tc-boost" class="touch-btn touch-boost hidden" type="button" aria-label="推进">火</button>
-      <button id="tc-hook" class="touch-btn touch-hook" type="button" aria-label="抛钩交互">钩</button>
+    <div class="touch-group hidden">
+      <button id="tc-left" class="touch-btn" type="button" aria-label="左">↺</button>
+      <button id="tc-right" class="touch-btn" type="button" aria-label="右">↻</button>
+    </div>
+    <div class="touch-group touch-action-cluster">
+      <div class="touch-mini-row">
+        <button id="tc-snap" class="touch-btn touch-mini" type="button" aria-label="拍实景快照">❖</button>
+        <button id="tc-sonar" class="touch-btn touch-sonar" type="button" aria-label="声呐共振">◌</button>
+      </div>
+      <button id="tc-boost" class="touch-btn touch-boost" type="button" aria-label="推进与冲刺">冲</button>
     </div>
   </div>
+
+  <!-- 竖屏窄屏非阻塞横握轻提示 -->
+  <div id="rotate-hint" class="rotate-hint" role="button" aria-label="横屏提示">横屏冲浪视野更佳 · 轻触关闭</div>
 
   <!-- 开篇标题遮罩 -->
   <div id="title-screen" class="overlay-screen">
-    <div class="title-box">
-      <div class="title-sub">MOON TIDE SKIFF</div>
+    <div class="paper-card title-card">
+      <div class="card-kicker">MOON TIDE SKIFF</div>
       <h1>月潮孤舟</h1>
-      <p class="title-poem">
-        月亮越来越近了。<br />
-        在无边无界的三百六十度月海里自由航行，<br />
-        点亮灯塔、古钟、推月塔与观月台四座古迹，唤醒潮汐光柱。
+      <p class="card-poem">
+        月亮正缓缓沉向这片寂静的大洋。<br />
+        不必赶路，自在驾着小小木舟往返海面与深海——<br />
+        看天色流转、潮汐起落，在月陨沉渊与沉船气室间静静探索。
       </p>
-      <button id="btn-play" class="start-btn" type="button">解缆出海</button>
-      <div class="title-hint">每收集 3 份同类碎片自动完成装船升级 · 建议开启声音</div>
+      <div id="title-rebirth-badge" class="rebirth-badge hidden">✦ 已见证月潮轮回</div>
+      <div class="title-actions">
+        <button id="btn-play" class="primary-btn" type="button">解缆探索</button>
+        <button id="btn-play-endless" class="endless-btn hidden" type="button">无尽月潮</button>
+      </div>
+      <div class="card-hint">WASD 航行潜海 · 空格 推进冲刺 · Q 声呐共振 · P 拍实景快照 · G 博物手记 · E 泊港整备</div>
     </div>
   </div>
 
-  <!-- 结局诗意浮层 -->
-  <div id="ending-screen" class="overlay-screen ending-overlay hidden">
-    <div class="ending-box">
-      <div id="ending-kicker" class="title-sub">潮汐终章</div>
-      <h2 id="ending-title"></h2>
-      <p id="ending-poem" class="title-poem"></p>
-      <div id="ending-stats" class="ending-stats"></div>
-      <div class="ending-actions">
-        <button id="btn-continue" class="ghost-btn" type="button">继续在月海漂流</button>
-        <button id="btn-replay" class="start-btn" type="button">重新启航</button>
+  <!-- 船坞改装商店与六纪元驿站浮层 -->
+  <div id="dock-screen" class="overlay-screen dock-overlay hidden">
+    <div class="paper-card dock-card">
+      <div class="dock-header">
+        <div>
+          <div id="dock-kicker" class="card-kicker">暮光船坞 · 改装工坊</div>
+          <h2 id="dock-title">暂泊暮光船坞</h2>
+        </div>
+        <div class="dock-header-right">
+          <div id="dock-rebirth-badge" class="rebirth-mini hidden">✦ 新生见证</div>
+          <div class="bank-badge" title="可用于船坞改装的月尘星火">
+            <span class="star-icon">✦</span>
+            <strong id="dock-bank">0</strong>
+          </div>
+        </div>
+      </div>
+
+      <p id="dock-note" class="dock-note">
+        用沿途拾得的月尘星火整备木舟，再向更远的未知海域进发。
+      </p>
+
+      <div class="dock-summary">
+        <span>本次航程 <strong id="stat-dist">0 m</strong></span>
+        <span>收获星火 <strong id="stat-stars">+0 ✦</strong></span>
+        <span>特技 <strong id="stat-tricks">0</strong></span>
+        <span>最远纪录 <strong id="stat-best">0 m</strong></span>
+      </div>
+
+      <!-- 跨海域快速切航栏（解锁第 2 海域《霜穹冰海》后浮现，可随时在两片开放海域间自由切换） -->
+      <div id="waypoint-section" class="waypoint-section hidden">
+        <div class="waypoint-label">已探明开放海域（跨海航道已贯通）</div>
+        <div id="waypoint-bar" class="waypoint-bar"></div>
+      </div>
+
+      <!-- 船坞工坊：上栏 3 项基础强化 + 下栏未知构思图纸（随探索逐件解锁） -->
+      <div class="shop-sections">
+        <div class="shop-group">
+          <div class="shop-section-title">一 · 船体核心强化 <span>全程生效</span></div>
+          <div id="shop-core-grid" class="shop-grid shop-grid-core"></div>
+        </div>
+        <div id="shop-era-group" class="shop-group">
+          <div class="shop-section-title"><span id="shop-era-heading">二 · 月潮海洋流派改装</span> <span id="shop-era-sub">三套专属流派自由搭配 · 改变手感与木舟外观</span></div>
+          <div id="shop-era-empty" class="shop-fog-hint hidden">远海彼端尚笼罩在迷雾之中——亲历未知天象后，小船夫会在此构思新的应对图纸。</div>
+          <div id="shop-era-grid" class="shop-grid shop-grid-ocean"></div>
+        </div>
+        <div id="dock-commission-group" class="shop-group">
+          <div class="shop-section-title">三 · 守望者博物委托 <span>提交实景邮票解锁潜艇涂装与潮汐怀表</span></div>
+          <div id="commission-grid" class="commission-grid"></div>
+        </div>
+        <div id="dock-skin-group" class="shop-group">
+          <div class="shop-section-title">四 · Q 版小潜艇涂装 <span>纯净水彩机身配色 · 随时免费换装</span></div>
+          <div id="skin-bar" class="skin-bar"></div>
+        </div>
+      </div>
+
+      <div class="card-actions dock-actions">
+        <button id="btn-relaunch" class="primary-btn" type="button">解缆启航</button>
+        <button id="btn-dock-endless" class="endless-btn hidden" type="button">无尽月潮 · 四幕昼夜</button>
+        <button id="btn-reset-save" class="ghost-reset-btn" type="button" title="清空已探明航图与星火，从零体验迷雾探索">重置航图</button>
       </div>
     </div>
   </div>
 
+  <!-- 月潮博物手记轻图鉴浮层（5 枚沉海遗物 + 6 类深海生态，关闭无缝继续探索） -->
+  <div id="codex-screen" class="overlay-screen codex-overlay hidden">
+    <div class="paper-card codex-card">
+      <div class="dock-header codex-header">
+        <div>
+          <div class="card-kicker">MOON TIDE FIELD GUIDE</div>
+          <h2>月潮博物手记</h2>
+        </div>
+        <div class="codex-progress-pill">已收录 <strong id="codex-total-prog">0 / 26</strong></div>
+      </div>
+
+      <div class="codex-sections">
+        <div class="codex-group">
+          <div class="shop-section-title">一 · 沉海遗物 <span id="codex-relic-sub">0/9 · 散落于月潮之海与霜穹冰海之间</span></div>
+          <div id="codex-relic-grid" class="codex-grid"></div>
+        </div>
+        <div class="codex-group">
+          <div class="shop-section-title">二 · 深海生态 <span id="codex-fauna-sub">0/10 · 靠近观察或按 Q 声呐共振即可拍录</span></div>
+          <div id="codex-fauna-grid" class="codex-grid"></div>
+        </div>
+        <div class="codex-group">
+          <div class="shop-section-title">三 · 天象奇观 <span id="codex-wonder-sub">0/7 · 亲历双海域天象剧变与圣殿终章留影</span></div>
+          <div id="codex-wonder-grid" class="codex-grid"></div>
+        </div>
+      </div>
+
+      <div class="card-actions codex-actions">
+        <button id="btn-export-poster" class="endless-btn" type="button">导出水彩邮票长图</button>
+        <button id="btn-codex-close" class="primary-btn" type="button">合上手记 · 继续探索</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 实景水彩邮票放大赏析灯箱 -->
+  <div id="stamp-lightbox" class="overlay-screen stamp-lightbox hidden">
+    <div class="paper-card stamp-lightbox-card">
+      <img id="lightbox-img" class="lightbox-img" alt="实景绘本快照" />
+      <h3 id="lightbox-title" class="lightbox-title">潮汐铜怀表</h3>
+      <p id="lightbox-lore" class="lightbox-lore"></p>
+      <button id="btn-lightbox-close" class="primary-btn" type="button">收起邮票</button>
+    </div>
+  </div>
+
+  <!-- 商业版系统设置与暂停浮层（Esc 或右上角 ⚙ 打开） -->
+  <div id="settings-screen" class="overlay-screen settings-overlay hidden">
+    <div class="paper-card settings-card">
+      <div class="dock-header">
+        <div>
+          <div class="card-kicker">SYSTEM SETTINGS · MOON TIDE SKIFF</div>
+          <h2>航行设置与声画选项</h2>
+        </div>
+      </div>
+
+      <div class="settings-list">
+        <div class="setting-row">
+          <div class="setting-meta">
+            <strong>海洋配乐与环境底噪</strong>
+            <span id="set-music-val">85%</span>
+          </div>
+          <input id="set-music-vol" class="setting-slider" type="range" min="0" max="100" value="85" />
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-meta">
+            <strong>潜艇马达、声呐与互动音效</strong>
+            <span id="set-sfx-val">90%</span>
+          </div>
+          <input id="set-sfx-vol" class="setting-slider" type="range" min="0" max="100" value="90" />
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-meta">
+            <strong>画面渲染档位</strong>
+            <span id="set-quality-hint">高清绘本 · 含冷压画纸肌理</span>
+          </div>
+          <div class="quality-toggle">
+            <button id="btn-qual-high" class="qual-btn active" type="button">高清绘本</button>
+            <button id="btn-qual-eco" class="qual-btn" type="button">流畅省电</button>
+          </div>
+        </div>
+
+        <div class="setting-keys">
+          <div><span>WASD / 方向键</span> 自由航行与潜海</div>
+          <div><span>空格 / Shift</span> 推进与水下冲刺破冰</div>
+          <div><span>Q / 触屏 ◌</span> 主动声呐共鸣与控棱镜</div>
+          <div><span>P / 触屏 ❖</span> 抓拍实景水彩邮票</div>
+          <div><span>G · E · Esc</span> 博物手记 · 泊港/跨海 · 设置</div>
+        </div>
+      </div>
+
+      <div class="card-actions settings-actions">
+        <button id="btn-settings-close" class="primary-btn" type="button">返回海域</button>
+        <button id="btn-settings-reset" class="ghost-reset-btn" type="button">清空全部存档</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 第 1 关通关结算卡：《月潮之海 · 突破落月巨潮》 -->
+  <div id="stage-clear-screen" class="overlay-screen stage-clear-overlay hidden">
+    <div class="paper-card stage-clear-card">
+      <div id="sc-kicker" class="card-kicker">STAGE 1 CLEAR · MOON TIDE SEA</div>
+      <h2 id="sc-title">月潮之海 · 航程达成</h2>
+      <p id="sc-poem" class="card-poem">
+        你乘着这叶小小木舟潜穿百米浪墙、躲过坠落陨星，冲破了落月海平线。<br />
+        巨月已然坠海，前方沸腾的赤金火海正等待你整备启航。
+      </p>
+
+      <div class="dock-summary sc-stats">
+        <span>本关用时 <strong id="sc-time">00:00</strong></span>
+        <span>本关星火 <strong id="sc-stars">+0 ✦</strong></span>
+        <span><em id="sc-metric-label" class="sc-metric-label">穿越浪墙</em> <strong id="sc-walls">0</strong></span>
+        <span>关卡遗物 <strong id="sc-relics-num">0/3</strong></span>
+      </div>
+
+      <div id="sc-relic-list" class="sc-relic-list"></div>
+      <div id="sc-unlock-note" class="sc-unlock-note">✦ 已解锁新海域「陨落火海」· 船坞构思「黑曜石隔热壳」图纸</div>
+
+      <div class="sc-actions">
+        <button id="btn-sc-dock-next" class="primary-btn" type="button">回港整备 · 启航火海</button>
+        <button id="btn-sc-continue" class="endless-btn" type="button">直接冲进陨落火海</button>
+        <button id="btn-sc-replay" class="ghost-sc-btn" type="button">重游月潮之海</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 史诗终章纪念卡：《翡翠海岸 · 新生世界树》通关浮层 -->
+  <div id="finale-screen" class="overlay-screen finale-overlay hidden">
+    <div class="paper-card finale-card">
+      <div class="card-kicker">EPILOGUE · REBORN SHORE</div>
+      <h2>翡翠海岸 · 新生世界树</h2>
+      <p class="card-poem">
+        坠落之月化作远处青翠连绵的巨山，干涸的大洋重新涌回海岸。<br />
+        你驾着这叶小小木舟，亲历了沸腾火海、漫长尘冬、陨石荒原与破土春雨——<br />
+        此刻，新生世界树在晨光中舒展枝叶，沧海桑田已成诗篇。
+      </p>
+      <div class="finale-unlock-note">✦ 已永久解锁「无尽漫游模式」：六大风貌乱序无缝切换，自在御风飙分</div>
+      <div class="dock-summary finale-stats">
+        <span>史诗航程 <strong id="fin-dist">0 m</strong></span>
+        <span>本趟收获 <strong id="fin-stars">+0 ✦</strong></span>
+        <span>空中特技 <strong id="fin-tricks">0</strong></span>
+        <span>航程累计 <strong id="fin-voyages">1 趟</strong></span>
+      </div>
+      <div class="finale-actions">
+        <button id="btn-finale-endless" class="endless-btn" type="button">启程 · 无尽漫游（乱序六境）</button>
+        <button id="btn-finale-dock" class="primary-btn" type="button">返回暮光船坞</button>
+      </div>
+    </div>
+  </div>
+
+  <script defer src="js/platform.js"></script>
   <script defer src="js/config.js"></script>
+  <script defer src="js/art.js"></script>
   <script defer src="js/audio.js"></script>
-  <script defer src="js/world.js"></script>
-  <script defer src="js/boat.js"></script>
-  <script defer src="js/renderer.js"></script>
+  <script defer src="js/storage-db.js"></script>
+  <script defer src="js/shop.js"></script>
+  <script defer src="js/snapshot.js"></script>
+  <script defer src="js/eras.js"></script>
+  <script defer src="js/level-engine.js"></script>
+  <script defer src="js/levels/level-01-abyss-fauna.js"></script>
+  <script defer src="js/levels/level-01-caves.js"></script>
+  <script defer src="js/levels/level-01-shrines.js"></script>
+  <script defer src="js/levels/level-01-abyss.js"></script>
+  <script defer src="js/levels/level-01-sea.js"></script>
+  <script defer src="js/levels/level-02-ice-fauna.js"></script>
+  <script defer src="js/levels/level-02-ice-shrines.js"></script>
+  <script defer src="js/levels/level-02-ice.js"></script>
+  <script defer src="js/physics.js"></script>
+  <script defer src="js/render-sky.js"></script>
+  <script defer src="js/render-terrain.js"></script>
+  <script defer src="js/render-world.js"></script>
+  <script defer src="js/render-boat.js"></script>
   <script defer src="js/main.js"></script>
 </body>
 </html>

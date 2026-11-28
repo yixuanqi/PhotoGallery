@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>月潮孤舟 · 自动化视觉质检与金标画廊</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #101424; color: #f6efe2; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; }
+    body.headless-single { overflow: hidden; width: 960px; height: 540px; }
+    body.headless-sheet { overflow: hidden; width: 1920px; height: 784px; }
+    .bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; background: #171d36; border-bottom: 1px solid rgba(247,207,134,0.22); }
+    .bar h1 { margin: 0; font-size: 16px; letter-spacing: 0.12em; color: #ffe6b2; font-weight: 500; }
+    .bar .actions { display: flex; gap: 10px; }
+    .btn { padding: 7px 14px; border-radius: 999px; border: 1px solid rgba(247,207,134,0.48); background: rgba(247,207,134,0.16); color: #fff6df; cursor: pointer; font-size: 12px; letter-spacing: 0.08em; }
+    .btn:hover { background: rgba(247,207,134,0.30); }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 14px; max-width: 1960px; margin: 0 auto; }
+    .card { background: #18203c; border: 1px solid rgba(255,235,198,0.14); border-radius: 8px; overflow: hidden; }
+    .card-head { padding: 6px 10px; font-size: 12px; color: #f6dfb2; display: flex; justify-content: space-between; background: rgba(12,16,32,0.72); }
+    .card img { display: block; width: 100%; height: auto; }
+    #work-canvas { display: none; }
+    #headless-out { display: block; }
+  </style>
+</head>
+<body>
+  <div id="ui-bar" class="bar">
+    <h1>月潮孤舟 · 实机多机位视觉质检画廊（Chrome 真核）</h1>
+    <div class="actions">
+      <button id="btn-rerender" class="btn" type="button">重新抓帧</button>
+      <button id="btn-export-sheet" class="btn" type="button">导出 6 宫格金标图 (PNG)</button>
+    </div>
+  </div>
+  <div id="gallery" class="grid"></div>
+  <canvas id="work-canvas" width="960" height="540"></canvas>
+
+  <script>
+    // 强制 RenderWorld 以固定 960x540 逻辑视口渲染，确保所有设备/分辨率下像素坐标 100% 可复现！
+    try {
+      Object.defineProperty(window, 'innerWidth', { get: function () { return 960; }, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { get: function () { return 540; }, configurable: true });
+      Object.defineProperty(window, 'devicePixelRatio', { get: function () { return 1; }, configurable: true });
+    } catch (e) {}
+    if (typeof Object.assign !== 'function') {
+      Object.assign = function (t) {
+        for (var i = 1; i < arguments.length; i++) {
+          var s = arguments[i];
+          if (s) for (var k in s) if (Object.prototype.hasOwnProperty.call(s, k)) t[k] = s[k];
+        }
+        return t;
+      };
+    }
+    if (!Math.hypot) Math.hypot = function (x, y) { return Math.sqrt(x * x + y * y); };
+    if (!Math.tanh) Math.tanh = function (x) { var a = Math.exp(x), b = Math.exp(-x); return (a - b) / (a + b); };
+  </script>
+  <script src="../js/platform.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/art.js"></script>
+  <script src="../js/audio.js"></script>
+  <script src="../js/storage-db.js"></script>
+  <script src="../js/shop.js"></script>
+  <script src="../js/snapshot.js"></script>
+  <script src="../js/eras.js"></script>
+  <script src="../js/level-engine.js"></script>
+  <script src="../js/levels/level-01-abyss-fauna.js"></script>
+  <script src="../js/levels/level-01-caves.js"></script>
+  <script src="../js/levels/level-01-shrines.js"></script>
+  <script src="../js/levels/level-01-abyss.js"></script>
+  <script src="../js/levels/level-01-sea.js"></script>
+  <script src="../js/levels/level-02-ice-fauna.js"></script>
+  <script src="../js/levels/level-02-ice-shrines.js"></script>
+  <script src="../js/levels/level-02-ice.js"></script>
+  <script src="../js/physics.js"></script>
+  <script src="../js/render-sky.js"></script>
+  <script src="../js/render-terrain.js"></script>
+  <script src="../js/render-world.js"></script>
+  <script src="../js/render-boat.js"></script>
+  <script>
+    (function () {
+      // 确定性伪随机种子（保证金标回归帧像素 100% 可复现）
+      var _seed = 20261126;
+      function setSeed(s) { _seed = (s >>> 0) || 1; }
+      Math.random = function () {
+        _seed = (_seed * 1664525 + 1013904223) >>> 0;
+        return _seed / 4294967296;
+      };
+
+      var SHOTS = [
+        { id: '01_harbor_twilight', label: '暮光港湾 · 自由停泊与灯塔',       x: 680,  clock: 15,  abyss: false, facing: 1 },
+        { id: '02_biolum_turn',     label: '蓝眼泪深潮 · 自由掉头返航高架桥', x: 4540, clock: 105, abyss: false, facing: -1 },
+        { id: '03_clear_dive',      label: '灾前清澈深潜 · 水下巨藻与鱼群',   x: 3260, clock: 120, abyss: true,  ay: 235, facing: 1 },
+        { id: '04_impact_boil',     label: '撞击沸海 · 同片海域赤穹避难',     x: 5260, clock: 228, abyss: true,  ay: 245, facing: 1 },
+        { id: '05_murky_ash',       label: '尘幕灰海 · 浮尘遮日探照蝠鲼',     x: 5260, clock: 312, abyss: true,  ay: 225, facing: -1 },
+        { id: '06_dawn_clear',      label: '破晓回清 · 同座钟楼迎来晨光',     x: 2860, clock: 424, abyss: false, facing: 1 }
+      ];
+
+      function parseQuery() {
+        var q = {};
+        var str = (window.location.search || '').replace(/^\?/, '');
+        str.split('&').forEach(function (pair) {
+          if (!pair) return;
+          var kv = pair.split('=');
+          q[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1] || '');
+        });
+        return q;
+      }
+
+      var workCanvas = document.getElementById('work-canvas');
+      var inited = false;
+
+      function renderShot(shot) {
+        setSeed(20261126 + shot.x);
+        if (!inited) {
+          window.MT.RenderWorld.init(workCanvas);
+          inited = true;
+        }
+        window.MT.Eras.reset(120, 'story');
+        window.MT.LevelEngine.reset(120, 'story');
+        var boat = window.MT.Physics.reset(120);
+        boat.x = shot.x;
+        boat.y = window.MT.Eras.getSurfaceY(shot.x, 0);
+        if (shot.wall) {
+          boat.x = 9340;
+          window.MT.LevelEngine.update(0.05, boat, window.MT.Eras, null);
+          boat.x = shot.x;
+          boat.y = window.MT.Eras.getSurfaceY(shot.x, 0.4);
+          boat.angle = Math.atan(window.MT.Eras.getSurfaceSlope(shot.x, 0.4));
+        }
+        if (window.MT.Eras.setWorldClock) window.MT.Eras.setWorldClock(shot.clock || 10);
+        boat.facing = shot.facing || 1;
+        boat.facingSmooth = boat.facing;
+        if (shot.abyss) {
+          boat.inAbyss = true; boat.isDiving = true;
+          boat.y = shot.ay || 220;
+          boat.canopyOpen = 1.0; boat.spotlightStrength = 0.90; boat.breath = 0.78;
+        }
+        for (var f = 0; f < 14; f++) {
+          window.MT.Eras.update(0.06, boat, null);
+          window.MT.LevelEngine.update(0.06, boat, window.MT.Eras, null);
+        }
+        if (shot.abyss) { boat.x = shot.x; boat.y = shot.ay || 220; boat.canopyOpen = 1.0; }
+        window.MT.RenderWorld.snapCameraTo(boat.x, boat.y);
+        for (var r = 0; r < 14; r++) window.MT.RenderWorld.render(0.05);
+        return workCanvas.toDataURL('image/png');
+      }
+
+      function buildSheetCanvas(capturedList) {
+        var tw = 640, th = 360, hh = 32;
+        var sheet = document.createElement('canvas');
+        sheet.width = tw * 3;
+        sheet.height = (th + hh) * 2;
+        var g = sheet.getContext('2d');
+        g.fillStyle = '#101424';
+        g.fillRect(0, 0, sheet.width, sheet.height);
+
+        return Promise.all(capturedList.map(function (item, idx) {
+          return new Promise(function (resolve) {
+            var im = new Image();
+            im.onload = function () {
+              var col = idx % 3, row = Math.floor(idx / 3);
+              var ox = col * tw, oy = row * (th + hh);
+              g.fillStyle = '#161c34';
+              g.fillRect(ox, oy, tw, hh);
+              g.fillStyle = '#f6e0b2';
+              g.font = '13px "Microsoft YaHei", sans-serif';
+              g.fillText(item.shot.id + '  |  ' + item.shot.label + ' (x=' + item.shot.x + ')', ox + 12, oy + 21);
+              g.drawImage(im, ox, oy + hh, tw, th);
+              resolve();
+            };
+            im.src = item.url;
+          });
+        })).then(function () { return sheet; });
+      }
+
+      var lastCaptured = [];
+
+      function runAll() {
+        var q = parseQuery();
+        var uiBar = document.getElementById('ui-bar');
+        var gallery = document.getElementById('gallery');
+
+        if (q.shot) {
+          uiBar.style.display = 'none';
+          gallery.style.display = 'none';
+          document.body.className = 'headless-single';
+          var found = SHOTS.filter(function (s) { return s.id === q.shot; })[0] || SHOTS[0];
+          var dataUrl = renderShot(found);
+          var img = document.createElement('img');
+          img.id = 'headless-out';
+          img.src = dataUrl;
+          img.style.cssText = 'position:fixed;top:0;left:0;width:960px;height:540px;';
+          document.body.appendChild(img);
+          window.__QA_READY__ = true;
+          return;
+        }
+
+        lastCaptured = SHOTS.map(function (s) {
+          return { shot: s, url: renderShot(s) };
+        });
+
+        if (q.mode === 'sheet') {
+          uiBar.style.display = 'none';
+          gallery.style.display = 'none';
+          document.body.className = 'headless-sheet';
+          buildSheetCanvas(lastCaptured).then(function (sheet) {
+            sheet.id = 'headless-out';
+            sheet.style.cssText = 'position:fixed;top:0;left:0;width:1920px;height:784px;';
+            document.body.appendChild(sheet);
+            window.__QA_READY__ = true;
+          });
+          return;
+        }
+
+        gallery.innerHTML = '';
+        lastCaptured.forEach(function (item) {
+          var card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = '<div class="card-head"><span>' + item.shot.label + '</span><span>x=' + item.shot.x + '</span></div>';
+          var im = document.createElement('img');
+          im.src = item.url;
+          card.appendChild(im);
+          gallery.appendChild(card);
+        });
+      }
+
+      document.getElementById('btn-rerender').addEventListener('click', runAll);
+      document.getElementById('btn-export-sheet').addEventListener('click', function () {
+        if (!lastCaptured.length) return;
+        buildSheetCanvas(lastCaptured).then(function (sheet) {
+          var a = document.createElement('a');
+          a.download = 'lv1-chrome-golden-sheet.png';
+          a.href = sheet.toDataURL('image/png');
+          a.click();
+        });
+      });
+
+      window.addEventListener('load', runAll);
+    })();
+  </script>
+</body>
+</html>
