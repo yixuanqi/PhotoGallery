@@ -1793,6 +1793,10 @@ html, body {
     height: 58px;
   }
 
+  .touch-skill-btn {
+    bottom: 84px;
+  }
+
   .title-card {
     padding: 14px 18px;
     gap: 8px;

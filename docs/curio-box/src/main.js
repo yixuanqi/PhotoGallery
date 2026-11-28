@@ -512,7 +512,13 @@
     game.stageBannerTimer = stayOnTitle ? 0 : 3.4;
 
     if (!stayOnTitle) {
+      const wasOnTitle = !!game.titleOpen;
       game.titleOpen = false;
+      const playZ = computePlayZoom();
+      game.camera.targetZoom = playZ;
+      if (!wasOnTitle) {
+        game.camera.zoom = playZ;
+      }
     }
 
     const savedLoadout = stayOnTitle ? game.meta.loadoutCurioId : null;
@@ -1233,6 +1239,20 @@
     }
   }
 
+  function computePlayZoom() {
+    const { viewW, viewH, touchActive, platform } = game;
+    const isMobile = !!(touchActive || platform === 'mobile');
+    if (isMobile) {
+      // 移动端温和拉远视野：目标可见约 1160×550 世界像素（看清整房与邻近门洞/守卫，同时保持角色 70%~78% 清晰度）
+      const z = Math.min(viewW / 1160, viewH / 550);
+      return Math.max(0.68, Math.min(0.92, z));
+    }
+    if (viewH < 560 || viewW < 920) {
+      return Math.max(0.74, Math.min(1.0, Math.min(viewW / 1060, viewH / 580)));
+    }
+    return 1;
+  }
+
   function updateCamera(dt) {
     const { camera, player, input, map, viewW, viewH } = game;
     let targetX = player.x;
@@ -1247,17 +1267,28 @@
       targetY = map.bounds.cy + Math.sin(orbitA) * ry;
       camera.targetZoom = Math.max(0.55, Math.min(0.82, Math.min(viewW / 1400, viewH / 880) * 0.92));
     } else if (game.mapOverview && map) {
-      const padW = viewW - 260;
-      const padH = viewH - 160;
+      const isMobile = !!(game.touchActive || game.platform === 'mobile');
+      const padW = Math.max(180, viewW - (isMobile ? 140 : 260));
+      const padH = Math.max(140, viewH - (isMobile ? 105 : 160));
       camera.targetZoom = Math.max(0.22, Math.min(0.68, Math.min(padW / map.bounds.w, padH / map.bounds.h)));
       targetX = map.bounds.cx;
       targetY = map.bounds.cy;
     } else {
-      camera.targetZoom = 1;
-      const lookAheadX = (input.mouseWorldX - player.x) * 0.1;
-      const lookAheadY = (input.mouseWorldY - player.y) * 0.1;
-      targetX = player.x + Math.max(-84, Math.min(84, lookAheadX));
-      targetY = player.y + Math.max(-60, Math.min(60, lookAheadY));
+      camera.targetZoom = computePlayZoom();
+      if (input.useTouchAim) {
+        if (input.aimStickActive) {
+          targetX = player.x + Math.cos(input.aimStickAngle) * 56;
+          targetY = player.y + Math.sin(input.aimStickAngle) * 40;
+        } else if (Math.hypot(player.vx || 0, player.vy || 0) > 40) {
+          targetX = player.x + Math.max(-38, Math.min(38, player.vx * 0.11));
+          targetY = player.y + Math.max(-26, Math.min(26, player.vy * 0.09));
+        }
+      } else {
+        const lookAheadX = (input.mouseWorldX - player.x) * 0.1;
+        const lookAheadY = (input.mouseWorldY - player.y) * 0.1;
+        targetX = player.x + Math.max(-84, Math.min(84, lookAheadX));
+        targetY = player.y + Math.max(-60, Math.min(60, lookAheadY));
+      }
     }
 
     const smooth = 1 - Math.exp(-(game.titleOpen ? 2.4 : 8.5) * dt);
